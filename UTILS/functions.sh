@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-function run_once_for_checkout__UPSTREAM () {
+function run_once_for_checkout_UPSTREAM () {
     REPO=${1};
     cd ${REPO};
     git clone \
