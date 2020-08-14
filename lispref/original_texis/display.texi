@@ -1,6 +1,6 @@
 @c -*- mode: texinfo; coding: utf-8 -*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990-1995, 1998-2016 Free Software Foundation, Inc.
+@c Copyright (C) 1990-1995, 1998-2017 Free Software Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Display
 @chapter Emacs Display
@@ -1553,10 +1553,8 @@ the buffer's undo list.
 
   Since more than one overlay can specify a property value for the
 same character, Emacs lets you specify a priority value of each
-overlay.  In case two overlays have the same priority value, and one
-is nested in the other, then the inner one will have priority over the
-outer one.  If neither is nested in the other then you should not make
-assumptions about which overlay will prevail.
+overlay.  The priority value is used to decide which of the
+overlapping overlays will ``win''.
 
   These functions read and set the properties of an overlay:
 
@@ -1593,17 +1591,26 @@ If you want to specify a priority value, use either @code{nil}
 
 The priority matters when two or more overlays cover the same
 character and both specify the same property; the one whose
-@code{priority} value is larger overrides the other.  For the
+@code{priority} value is larger overrides the other.  (For the
 @code{face} property, the higher priority overlay's value does not
 completely override the other value; instead, its face attributes
 override the face attributes of the lower priority @code{face}
-property.
+property.)  If two overlays have the same priority value, and one is
+nested in the other, then the inner one will prevail over the outer
+one.  If neither is nested in the other then you should not make
+assumptions about which overlay will prevail.
 
 Currently, all overlays take priority over text properties.
 
 Note that Emacs sometimes uses non-numeric priority values for some of
-its internal overlays, so do not try to do arithmetic on the
-priority of an overlay (unless it is one that you created).  If you
+its internal overlays, so do not try to do arithmetic on the priority
+of an overlay (unless it is one that you created).  In particular, the
+overlay used for showing the region uses a priority value of the form
+@w{@code{(@var{primary} . @var{secondary})}}, where the @var{primary}
+value is used as described above, and @var{secondary} is the fallback
+value used when @var{primary} and the nesting considerations fail to
+resolve the precedence between overlays.  However, you are advised not
+to design Lisp programs based on this implementation detail; if you
 need to put overlays in priority order, use the @var{sorted} argument
 of @code{overlays-at}.  @xref{Finding Overlays}.
 
@@ -1965,6 +1972,12 @@ means to not include the height of the mode- or header-line of
 @code{mode-line} or @code{header-line}, include only the height of that
 line, if present, in the return value.  If it is @code{t}, include the
 height of both, if present, in the return value.
+@end defun
+
+@defun line-pixel-height
+This function returns the height in pixels of the line at point in the
+selected window.  The value includes the line spacing of the line
+(@pxref{Line Height}).
 @end defun
 
 
@@ -2541,7 +2554,7 @@ modifying the attributes of a named face.
 This function returns the value of the @var{attribute} attribute for
 @var{face} on @var{frame}.
 
-If @var{frame} is @code{nil}, that means the selected frame
+If @var{frame} is omitted or @code{nil}, that means the selected frame
 (@pxref{Input Focus}).  If @var{frame} is @code{t}, this function
 returns the value of the specified attribute for newly-created frames
 (this is normally @code{unspecified}, unless you have specified some
@@ -2637,8 +2650,8 @@ created frames.
 
   The following commands and functions mostly provide compatibility
 with old versions of Emacs.  They work by calling
-@code{set-face-attribute}.  Values of @code{t} and @code{nil} for
-their @var{frame} argument are handled just like
+@code{set-face-attribute}.  Values of @code{t} and @code{nil} (or
+omitted) for their @var{frame} argument are handled just like
 @code{set-face-attribute} and @code{face-attribute}.  The commands
 read their arguments using the minibuffer, if called interactively.
 
@@ -2707,7 +2720,8 @@ name used for @var{character}.
 @defun face-foreground face &optional frame inherit
 @defunx face-background face &optional frame inherit
 These functions return the foreground color (or background color,
-respectively) of face @var{face}, as a string.
+respectively) of face @var{face}, as a string.  If the color is
+unspecified, they return @code{nil}.
 @end defun
 
 @defun face-stipple face &optional frame inherit
@@ -3020,6 +3034,7 @@ attribute on this face (@pxref{Face Attributes}).
 @itemx bold-italic
 @itemx underline
 @itemx fixed-pitch
+@itemx fixed-pitch-serif
 @itemx variable-pitch
 These have the attributes indicated by their names (e.g., @code{bold}
 has a bold @code{:weight} attribute), with all other attributes
@@ -4170,12 +4185,12 @@ bar.)  @var{horizontal-type} is either @code{bottom} or @code{nil}
 (which means no horizontal scroll bar).
 @end defun
 
-@defun frame-scroll-bar-width &optional Lisp_Object &optional frame
+@defun frame-scroll-bar-width &optional frame
 This function returns the width of vertical scroll bars of @var{frame}
 in pixels.
 @end defun
 
-@defun frame-scroll-bar-height &optional Lisp_Object &optional frame
+@defun frame-scroll-bar-height &optional frame
 This function returns the height of horizontal scroll bars of
 @var{frame} in pixels.
 @end defun
@@ -4657,16 +4672,21 @@ a form.  Emacs evaluates it to get the new height, with the symbol
 
 @item (raise @var{factor})
 This kind of display specification raises or lowers the text
-it applies to, relative to the baseline of the line.
+it applies to, relative to the baseline of the line.  It is mainly
+meant to support display of subscripts and superscripts.
 
-@var{factor} must be a number, which is interpreted as a multiple of the
-height of the affected text.  If it is positive, that means to display
-the characters raised.  If it is negative, that means to display them
-lower down.
+The @var{factor} must be a number, which is interpreted as a multiple
+of the height of the affected text.  If it is positive, that means to
+display the characters raised.  If it is negative, that means to
+display them lower down.
 
-If the text also has a @code{height} display specification, that does
-not affect the amount of raising or lowering, which is based on the
-faces used for the text.
+Note that if the text also has a @code{height} display specification,
+which was specified before (i.e.@: to the left of) @code{raise}, the
+latter will affect the amount of raising or lowering in pixels,
+because that is based on the height of the text being raised.
+Therefore, if you want to display a sub- or superscript that is
+smaller than the normal text height, consider specifying @code{raise}
+before @code{height}.
 @end table
 
 @c We put all the '@code{(when ...)}' on one line to encourage
@@ -5149,6 +5169,12 @@ ImageMagick library to load many image formats (@pxref{File
 Conveniences,,, emacs, The GNU Emacs Manual}).  The image type symbol
 for images loaded via ImageMagick is @code{imagemagick}, regardless of
 the actual underlying image format.
+
+To check for ImageMagick support, use the following:
+
+@lisp
+(image-type-available-p 'imagemagick)
+@end lisp
 
 @defun imagemagick-types
 This function returns a list of image file extensions supported by the
@@ -6943,7 +6969,7 @@ Emacs is displaying the frame using X.
 Emacs is displaying the frame using native MS-Windows GUI.
 @item ns
 Emacs is displaying the frame using the Nextstep interface (used on
-GNUstep and Mac OS X).
+GNUstep and macOS).
 @item pc
 Emacs is displaying the frame using MS-DOS direct screen writes.
 @item nil

@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990-1995, 1998-1999, 2001-2016 Free Software
+@c Copyright (C) 1990-1995, 1998-1999, 2001-2017 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Files
@@ -403,7 +403,11 @@ buffer name instead.
 @end deffn
 
   Saving a buffer runs several hooks.  It also performs format
-conversion (@pxref{Format Conversion}).
+conversion (@pxref{Format Conversion}).  Note that these hooks,
+described below, are only run by @code{save-buffer}, they are not run
+by other primitives and functions that write buffer text to files, and
+in particular auto-saving (@pxref{Auto-Saving}) doesn't run these
+hooks.
 
 @defvar write-file-functions
 The value of this variable is a list of functions to be called before
@@ -1136,6 +1140,21 @@ This function returns @code{t} if @var{file} is a file in directory
 @code{t} if @var{file} and @var{dir} are the same directory.  It
 compares the truenames of the two directories.  If @var{dir} does not
 name an existing directory, the return value is @code{nil}.
+@end defun
+
+@defun vc-responsible-backend file
+This function determines the responsible VC backend of the given
+@var{file}.  For example, if @file{emacs.c} is a file tracked by Git,
+@w{@code{(vc-responsible-backend "emacs.c")}} returns @samp{Git}.
+Note that if @var{file} is a symbolic link,
+@code{vc-responsible-backend} will not resolve it---the backend of the
+symbolic link file itself is reported.  To get the backend VC of the
+file to which @var{file} refers, wrap @var{file} with a symbolic link
+resolving function such as @code{file-chase-links}:
+
+@smallexample
+(vc-responsible-backend (file-chase-links "emacs.c"))
+@end smallexample
 @end defun
 
 @node File Attributes
@@ -2136,6 +2155,7 @@ function:
 
 @cindex file name abbreviations
 @cindex abbreviated file names
+@vindex directory-abbrev-alist
 @defun abbreviate-file-name filename
 @anchor{abbreviate-file-name}
 This function returns an abbreviated form of @var{filename}.  It
