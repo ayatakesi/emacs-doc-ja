@@ -1,13 +1,13 @@
 .PHONY: clean
 .PHONY: emacs
 
-all: emacs
+all: lispref
 
 clean:
 	rm -f japanese_texis/*;
 	rm -f TITLES/ja/LC_MESSAGES/*.mo;
 
-emacs:
+lispref:
 	for TEXI in original_texis/*.texi; \
 	do \
 		../UTILS/functions.sh \

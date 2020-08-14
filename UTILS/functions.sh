@@ -78,39 +78,36 @@ print "msgid \"${en}\"\nmsgstr \"${ja}\"\n\n";' >> ${TITLES_PO_DIR}/${TEXI}.po
 
 function translate_texi_except_titles () {
     
-    if [ $# -eq 0 ]
-    then
-	echo -n "translate_texi_except_titles "
-	echo -n "(in)ORIGINAL_TEXI_DIR "
-	echo -n "(out)JAPANESE_TEXI_DIR "
-	echo -n "(in)PO_DIR "
-	echo "(str)JAPANESE_TEXI_SUFFIX"
-	
-    else
-    
-	ORIGINAL_TEXI_DIR=$(realpath ${1}); # /.../original_texis
-	JAPANESE_TEXI_DIR=$(realpath ${2}); # /.../japanese_texis
-	PO_DIR=$(realpath ${3}); # /.../.
-	JAPANESE_TEXI_SUFFIX=${4}; # "", "-ja", ...
+    TEXI0=$(realpath ${1}); # /.../xxx.texi
+    JA_TEXI_DIR=$(realpath ${2}); # /.../japanese_texis
+    PO_DIR=$(realpath ${3}); # /.../.
+    JA_TEXI_SUFFIX=${4}; # "", "-ja", ...
 
-	for TEXI0 in ${ORIGINAL_TEXI_DIR}/*.texi
-	do
-	    TEXI=$(basename ${TEXI0}); # xxx.texi
-	    TEXI_NAME=$(basename ${TEXI} .texi) # xxx
-	    JAPANESE_TEXI=${TEXI_NAME}${JAPANESE_TEXI_SUFFIX}.texi
-	    if [ -f ${PO_DIR}/${TEXI}.po ]
-	    then
-		po4a-translate -f texinfo \
-			       -k 0 \
-			       -M utf8 \
-			       -m ${TEXI0} \
-			       -p ${PO_DIR}/${TEXI}.po \
-			       -l ${JAPANESE_TEXI_DIR}/${JAPANESE_TEXI};
-	    else
-		cp -p ${TEXI0} ${JAPANESE_TEXI_DIR}/${JAPANESE_TEXI}
-	    fi
-	done
+    TEXI=$(basename ${TEXI0}) # xxx.texi
+    TEXI_NAME=$(basename ${TEXI} .texi) # xxx
+    JA_TEXI=${TEXI_NAME}${JA_TEXI_SUFFIX}.texi
+
+    echo -n "Processing ${FUNCNAME[0]}: ${TEXI} ... "
+    if [ -f ${PO_DIR}/${TEXI}.po ]
+    then
+	po4a-translate -f texinfo \
+		       -k 0 \
+		       -M utf8 \
+		       -m ${TEXI0} \
+		       -p ${PO_DIR}/${TEXI}.po \
+		       -l ${JA_TEXI_DIR}/${JA_TEXI};
+    else
+	cp -p ${TEXI0} ${JA_TEXI_DIR}/${JA_TEXI}
     fi
+
+    if [ ${TEXI} != ${JA_TEXI} ]
+    then
+	# change @include filename according to JA_TEXI_SUFFIX
+	RE=$(printf 's/^(@include\s+)([^.]+).texi/\\1\\2%s.texi/' ${JA_TEXI_SUFFIX})
+	
+	sed -i -r ${RE} ${JA_TEXI_DIR}/${JA_TEXI}
+    fi
+    echo "done."
 }
 
 function translate_title_by_gettext () {
@@ -123,6 +120,7 @@ function translate_title_by_gettext () {
     JA_TEXI="$(basename ${EN_TEXI} .texi)${JA_TEXI_SUFFIX}.texi"
     RM_FILES=; # for rm -f ${RM_FILES}
 
+    echo -n "Processing ${FUNCNAME[0]}: ${EN_TEXI} ... "
     # compile po to mo
     CTLG_DIR=${TITLES_ROOT_DIR}/ja/LC_MESSAGES;
     msgfmt -o ${CTLG_DIR}//${EN_TEXI}.mo \
@@ -144,15 +142,10 @@ EOT
     printf "\tprint;\n}" >>${PERL}
     RM_FILES+=" ${PERL}"
 
-    # change @include filename according to JA_TEXI_SUFFIX
-    RE=$(printf 's/^(@include\s+)([^.]+).texi/\\1\\2%s.texi/' ${JA_TEXI_SUFFIX})
-    
-    # filter-out guoes suffixed texi 
     cat ${JA_TEXI_DIR}/${EN_TEXI} |
-	LANGUAGE=ja perl ${PERL} |
-	sed -r ${RE} >${JA_TEXI_DIR}/${JA_TEXI}
-
-    RM_FILES+=" ${JA_TEXI_DIR}/${EN_TEXI}" # rm after filtering
+	LANGUAGE=ja perl ${PERL} > ${JA_TEXI_DIR}/${JA_TEXI}
+    
+    echo "done."
     
     rm -f ${RM_FILES}
 }

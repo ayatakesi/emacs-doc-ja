@@ -1,0 +1,3421 @@
+# SOME DESCRIPTIVE TITLE
+# Copyright (C) YEAR Free Software Foundation, Inc.
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Emacs 25.1\n"
+"POT-Creation-Date: 2020-03-01 00:20+0900\n"
+"PO-Revision-Date: 2020-03-01 00:19+0900\n"
+"Last-Translator: Ayanokoji Takesi <ayanokoji.takesi@gmail.com>\n"
+"Language-Team: \n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. type: appendix
+#: original_texis/internals.texi:6 original_texis/internals.texi:7
+#, no-wrap
+msgid "GNU Emacs Internals"
+msgstr "GNU Emacs Internals"
+
+#. type: Plain text
+#: original_texis/internals.texi:12
+msgid "This chapter describes how the runnable Emacs executable is dumped with the preloaded Lisp libraries in it, how storage is allocated, and some internal aspects of GNU Emacs that may be of interest to C programmers."
+msgstr "このチャプターでは実行可能なEmacs実行可能形式を事前ロードされたLispライブラリーとともにダンプする方法、ストレージが割り当てられる方法、およびCプログラマーが興味をもつかもしれないGNU Emacsの内部的な側面のいくつかを説明します。"
+
+#. type: section
+#: original_texis/internals.texi:22 original_texis/internals.texi:24
+#: original_texis/internals.texi:25
+#, no-wrap
+msgid "Building Emacs"
+msgstr "Building Emacs"
+
+#. type: menuentry
+#: original_texis/internals.texi:22
+msgid "How the dumped Emacs is made."
+msgstr "ダンプ済みEmacsの作成方法。"
+
+#. type: section
+#: original_texis/internals.texi:22 original_texis/internals.texi:160
+#: original_texis/internals.texi:161
+#, no-wrap
+msgid "Pure Storage"
+msgstr "Pure Storage"
+
+#. type: menuentry
+#: original_texis/internals.texi:22
+msgid "Kludge to make preloaded Lisp functions shareable."
+msgstr "その場かぎりの事前ロードされたLisp関数を共有する。"
+
+#. type: section
+#: original_texis/internals.texi:22 original_texis/internals.texi:220
+#: original_texis/internals.texi:221
+#, no-wrap
+msgid "Garbage Collection"
+msgstr "Garbage Collection"
+
+#. type: menuentry
+#: original_texis/internals.texi:22
+msgid "Reclaiming space for Lisp objects no longer used."
+msgstr "Lispオブジェクトの使用されないスペースの回収。"
+
+#. type: section
+#: original_texis/internals.texi:22 original_texis/internals.texi:527
+#: original_texis/internals.texi:528
+#, no-wrap
+msgid "Memory Usage"
+msgstr "Memory Usage"
+
+#. type: menuentry
+#: original_texis/internals.texi:22
+msgid "Info about total size of Lisp objects made so far."
+msgstr "これまでに作成されたLispオブジェクトの総サイズの情報。"
+
+#. type: section
+#: original_texis/internals.texi:22 original_texis/internals.texi:579
+#: original_texis/internals.texi:580
+#, no-wrap
+msgid "C Dialect"
+msgstr "C Dialect"
+
+#. type: menuentry
+#: original_texis/internals.texi:22
+msgid "What C variant Emacs is written in."
+msgstr "Emacsを記述するC系言語は何か。"
+
+#. type: section
+#: original_texis/internals.texi:22 original_texis/internals.texi:593
+#: original_texis/internals.texi:594
+#, no-wrap
+msgid "Writing Emacs Primitives"
+msgstr "Writing Emacs Primitives"
+
+#. type: menuentry
+#: original_texis/internals.texi:22
+msgid "Writing C code for Emacs."
+msgstr "Emacs用にCコードを記述する。"
+
+#. type: section
+#: original_texis/internals.texi:22 original_texis/internals.texi:918
+#: original_texis/internals.texi:919
+#, no-wrap
+msgid "Object Internals"
+msgstr "Object Internals"
+
+#. type: menuentry
+#: original_texis/internals.texi:22
+msgid "Data formats of buffers, windows, processes."
+msgstr "バッファー、ウィンドウ、プロセスのデータフォーマット。"
+
+#. type: section
+#: original_texis/internals.texi:22 original_texis/internals.texi:1563
+#: original_texis/internals.texi:1564
+#, no-wrap
+msgid "C Integer Types"
+msgstr "C Integer Types"
+
+#. type: menuentry
+#: original_texis/internals.texi:22
+msgid "How C integer types are used inside Emacs."
+msgstr "Emacs内部でCの整数型が使用される方法。"
+
+#. type: cindex
+#: original_texis/internals.texi:26
+#, no-wrap
+msgid "building Emacs"
+msgstr "building Emacs"
+
+#. type: pindex
+#: original_texis/internals.texi:27
+#, no-wrap
+msgid "temacs"
+msgstr "temacs"
+
+#. type: Plain text
+#: original_texis/internals.texi:33
+msgid "This section explains the steps involved in building the Emacs executable.  You don't have to know this material to build and install Emacs, since the makefiles do all these things automatically.  This information is pertinent to Emacs developers."
+msgstr "このセクションではEmacs実行可能形式のビルドに関するステップの説明をします。makefileがこれらすべてを自動的に行うので、Emacsをビルドやインストールをするためにこの題材を知る必要はありません。この情報はEmacs開発者に適しています。"
+
+#. type: Plain text
+#: original_texis/internals.texi:38
+msgid "Compilation of the C source files in the @file{src} directory produces an executable file called @file{temacs}, also called a @dfn{bare impure Emacs}.  It contains the Emacs Lisp interpreter and I/O routines, but not the editing commands."
+msgstr "@file{src}ディレクトリー内のCソースファイルをコンパイルすることにより、@file{temacs}と呼ばれる実行可能形式ファイルが生成されます。これは@dfn{bare impure Emacs(裸で不純なEmacs)}とも呼ばれます。これにはEmacs LispインタープリターとI/Oルーチンが含まれますが編集コマンドは含まれません。"
+
+#. type: file{#1}
+#: original_texis/internals.texi:39
+#, no-wrap
+msgid "loadup.el"
+msgstr "loadup.el"
+
+#. type: Plain text
+#: original_texis/internals.texi:45
+msgid "The command @w{@command{temacs -l loadup}} would run @file{temacs} and direct it to load @file{loadup.el}.  The @code{loadup} library loads additional Lisp libraries, which set up the normal Emacs editing environment.  After this step, the Emacs executable is no longer @dfn{bare}."
+msgstr "コマンド@w{@command{temacs -l loadup}}は@file{temacs}を実行して@file{loadup.el}をロードするように計らいます。@code{loadup}ライブラリーは通常のEmacs編集環境をセットアップする追加のLispライブラリーをロードします。このステップの後にはEmacs実行可能形式は@dfn{bare(裸)}ではなくなります。"
+
+#. type: cindex
+#: original_texis/internals.texi:46
+#, no-wrap
+msgid "dumping Emacs"
+msgstr "dumping Emacs"
+
+#. type: Plain text
+#: original_texis/internals.texi:56
+msgid "Because it takes some time to load the standard Lisp files, the @file{temacs} executable usually isn't run directly by users.  Instead, as one of the last steps of building Emacs, the command @samp{temacs -batch -l loadup dump} is run.  The special @samp{dump} argument causes @command{temacs} to dump out an executable program, called @file{emacs}, which has all the standard Lisp files preloaded.  (The @samp{-batch} argument prevents @file{temacs} from trying to initialize any of its data on the terminal, so that the tables of terminal information are empty in the dumped Emacs.)"
+msgstr "標準的なLispファイルのロードには若干の時間を要するので、ユーザーが直接@file{temacs}実行可能形式を実行することは通常はありません。そのかわり、Emacsビルドの最終ステップとしてコマンド@samp{temacs -batch -l loadup dump}が実行されます。特別な引数@samp{dump}により@command{temacs}は@file{emacs}と呼ばれる実行可能形式のプログラムにダンプされます。これには標準的なLispファイルがすべて事前ロードされています(引数@samp{-batch}は@file{temacs}がその端末上でデータの初期化を試みることを防げるので端末情報のテーブルはダンプされたEmacsでは空になる)。"
+
+#. type: cindex
+#: original_texis/internals.texi:57
+#, no-wrap
+msgid "preloaded Lisp files"
+msgstr "preloaded Lisp files"
+
+#. type: vindex
+#: original_texis/internals.texi:58
+#, no-wrap
+msgid "preloaded-file-list"
+msgstr "preloaded-file-list"
+
+#. type: Plain text
+#: original_texis/internals.texi:65
+msgid "The dumped @file{emacs} executable (also called a @dfn{pure} Emacs)  is the one which is installed.  The variable @code{preloaded-file-list} stores a list of the Lisp files preloaded into the dumped Emacs.  If you port Emacs to a new operating system, and are not able to implement dumping, then Emacs must load @file{loadup.el} each time it starts."
+msgstr "ダンプされた@file{emacs}実行可能形式(@dfn{純粋}なEmacsとも呼ばれる)がインストールされるEmacsになります。変数@code{preloaded-file-list}にはダンプ済みEmacsに事前ロードされるLispファイルのリストが格納されています。新たなオペレーティングシステムにEmacsをポートする際に、そのOSがダンプを実装していなければEmacsは起動時に毎回@file{loadup.el}をロードしなければなりません。"
+
+#. type: file{#1}
+#: original_texis/internals.texi:66
+#, no-wrap
+msgid "site-load.el"
+msgstr "site-load.el"
+
+#. type: Plain text
+#: original_texis/internals.texi:70
+msgid "You can specify additional files to preload by writing a library named @file{site-load.el} that loads them.  You may need to rebuild Emacs with an added definition"
+msgstr "@file{site-load.el}という名前のライブラリーを記述することにより、事前ロードするファイルを追加指定できます。追加するファイルを保持するために純粋(pure)なスペース@var{n}バイトを追加するように、以下の定義"
+
+#. type: example
+#: original_texis/internals.texi:73
+#, no-wrap
+msgid "#define SITELOAD_PURESIZE_EXTRA @var{n}\n"
+msgstr "#define SITELOAD_PURESIZE_EXTRA @var{n}\n"
+
+#. type: Plain text
+#: original_texis/internals.texi:81
+msgid "to make @var{n} added bytes of pure space to hold the additional files; see @file{src/puresize.h}.  (Try adding increments of 20000 until it is big enough.)  However, the advantage of preloading additional files decreases as machines get faster.  On modern machines, it is usually not advisable."
+msgstr "でEmacsをリビルドする必要があるでしょう。@file{src/puresize.h}を参考にしてください(十分大きくなるまで20000ずつ増加させる)。しかし追加ファイルの事前ロードの優位はマシンの高速化により減少します。現代的なマシンでは通常はお勧めしません。"
+
+#. type: Plain text
+#: original_texis/internals.texi:87
+msgid "After @file{loadup.el} reads @file{site-load.el}, it finds the documentation strings for primitive and preloaded functions (and variables) in the file @file{etc/DOC} where they are stored, by calling @code{Snarf-documentation} (@pxref{Definition of Snarf-documentation,, Accessing Documentation})."
+msgstr "@file{loadup.el}が@file{site-load.el}を読み込んだ後に@code{Snarf-documentation}を呼び出すことにより、それらが格納された場所のファイル@file{etc/DOC}内にあるプリミティブと事前ロードされる関数(と変数)のドキュメント文字列を探します(@ref{Definition of Snarf-documentation,, Accessing Documentation}を参照)。"
+
+#. type: file{#1}
+#: original_texis/internals.texi:88
+#, no-wrap
+msgid "site-init.el"
+msgstr "site-init.el"
+
+#. type: cindex
+#: original_texis/internals.texi:89
+#, no-wrap
+msgid "preloading additional functions and variables"
+msgstr "preloading additional functions and variables"
+
+#. type: Plain text
+#: original_texis/internals.texi:93
+msgid "You can specify other Lisp expressions to execute just before dumping by putting them in a library named @file{site-init.el}.  This file is executed after the documentation strings are found."
+msgstr "@file{site-init.el}という名前のライブラリー名に配置することにより、ダンプ直前に実行する他のLisp式を指定できます。このファイルはドキュメント文字列を見つけた後に実行されます。"
+
+#. type: Plain text
+#: original_texis/internals.texi:97
+msgid "If you want to preload function or variable definitions, there are three ways you can do this and make their documentation strings accessible when you subsequently run Emacs:"
+msgstr "関数や変数の定義を事前ロードしたい場合には、それを行うために3つの方法があります。それらにより定義ロードしてその後のEmacs実行時にドキュメント文字列をアクセス可能にします:"
+
+#. type: itemize
+#: original_texis/internals.texi:102
+msgid "Arrange to scan these files when producing the @file{etc/DOC} file, and load them with @file{site-load.el}."
+msgstr "@file{etc/DOC}の生成時にそれらのファイルをスキャンするよう計らい@file{site-load.el}でロードする。"
+
+#. type: itemize
+#: original_texis/internals.texi:106
+msgid "Load the files with @file{site-init.el}, then copy the files into the installation directory for Lisp files when you install Emacs."
+msgstr "ファイルを@file{site-init.el}でロードしてEmacsインストール時にLispファイルのインストール先ディレクトリーにファイルをコピーする。"
+
+#. type: itemize
+#: original_texis/internals.texi:113
+msgid "Specify a @code{nil} value for @code{byte-compile-dynamic-docstrings} as a local variable in each of these files, and load them with either @file{site-load.el} or @file{site-init.el}.  (This method has the drawback that the documentation strings take up space in Emacs all the time.)"
+msgstr "それらの各ファイルでローカル変数として@code{byte-compile-dynamic-docstrings}に@code{nil}値を指定して@file{site-load.el}か@file{site-init.el}でロードする(この手法にはEmacsが毎回そのドキュメント文字列用のスペースを確保するという欠点がある)。"
+
+#. type: cindex
+#: original_texis/internals.texi:115
+#, no-wrap
+msgid "change @code{load-path} at configure time"
+msgstr "change @code{load-path} at configure time"
+
+#. type: cindex
+#: original_texis/internals.texi:116
+#, no-wrap
+msgid "@option{--enable-locallisppath} option to @command{configure}"
+msgstr "@option{--enable-locallisppath} option to @command{configure}"
+
+#. type: Plain text
+#: original_texis/internals.texi:127
+msgid "It is not advisable to put anything in @file{site-load.el} or @file{site-init.el} that would alter any of the features that users expect in an ordinary unmodified Emacs.  If you feel you must override normal features for your site, do it with @file{default.el}, so that users can override your changes if they wish.  @xref{Startup Summary}.  Note that if either @file{site-load.el} or @file{site-init.el} changes @code{load-path}, the changes will be lost after dumping.  @xref{Library Search}.  To make a permanent change to @code{load-path}, use the @option{--enable-locallisppath} option of @command{configure}."
+msgstr "通常の未変更のEmacsでユーザーが期待する何らかの機能を変更するような何かを@file{site-load.el}や@file{site-init.el}内に配置することはお勧めしません。あなたのサイトで通常の機能をオーバーライドしなければならないと感じた場合には、@file{default.el}でそれを行えばユーザーが望む場合にあなたの変更をオーバーライドできます。@ref{Startup Summary}を参照してください。@file{site-load.el}か@file{site-init.el}のいずれかが@code{load-path}を変更する場合には変更はダンプ後に失われます。@ref{Library Search}を参照してください。@code{load-path}を永続的に変更するには@command{configure}の@option{--enable-locallisppath}オプションを指定してください。"
+
+#. type: Plain text
+#: original_texis/internals.texi:137
+msgid "In a package that can be preloaded, it is sometimes necessary (or useful) to delay certain evaluations until Emacs subsequently starts up.  The vast majority of such cases relate to the values of customizable variables.  For example, @code{tutorial-directory} is a variable defined in @file{startup.el}, which is preloaded.  The default value is set based on @code{data-directory}.  The variable needs to access the value of @code{data-directory} when Emacs starts, not when it is dumped, because the Emacs executable has probably been installed in a different location since it was dumped."
+msgstr "事前ロード可能なパッケージでは、その後のEmacsスタートアップまで特定の評価の遅延が必要(または便利)なことがあります。そのようなケースの大半はカスタマイズ可能な変数の値に関するものです。たとえば@code{tutorial-directory}は事前ロードされる@file{startup.el}内で定義される変数です。これのデフォルト値は@code{data-directory}にもとづいてセットされます。この変数はEmacsダンプ時ではなくスタート時に@code{data-directory}の値を必要とします。なぜならEmacs実行可能形式はダンプされたものなので、恐らく異なる場所にインストールされるからです。"
+
+#. type: defun
+#: original_texis/internals.texi:138
+#, no-wrap
+msgid "custom-initialize-delay symbol value"
+msgstr "custom-initialize-delay symbol value"
+
+#. type: defun
+#: original_texis/internals.texi:144
+msgid "This function delays the initialization of @var{symbol} to the next Emacs start.  You normally use this function by specifying it as the @code{:initialize} property of a customizable variable.  (The argument @var{value} is unused, and is provided only for compatibility with the form Custom expects.)"
+msgstr "この関数は次回のEmacs開始まで@var{symbol}の初期化を遅延する。通常はカスタマイズ可能変数の@code{:initialize}プロパティとしてこの関数を指定することにより使用する(引数@var{value}はフォームCustom由来の互換性のためだけに提供されており使用しない)。"
+
+#. type: Plain text
+#: original_texis/internals.texi:149
+msgid "In the unlikely event that you need a more general functionality than @code{custom-initialize-delay} provides, you can use @code{before-init-hook} (@pxref{Startup Summary})."
+msgstr "@code{custom-initialize-delay}が提供するより一般的な機能を要する稀なケースでは@code{before-init-hook}を使用できます(@ref{Startup Summary}を参照)。"
+
+#. type: defun
+#: original_texis/internals.texi:150
+#, no-wrap
+msgid "dump-emacs to-file from-file"
+msgstr "dump-emacs to-file from-file"
+
+#. type: cindex
+#: original_texis/internals.texi:151
+#, no-wrap
+msgid "unexec"
+msgstr "unexec"
+
+#. type: defun
+#: original_texis/internals.texi:155
+msgid "This function dumps the current state of Emacs into an executable file @var{to-file}.  It takes symbols from @var{from-file} (this is normally the executable file @file{temacs})."
+msgstr "この関数はEmacsのカレント状態を実行可能ファイル@var{to-file}にダンプする。これは@var{from-file} (通常はファイル@file{temacs})からシンボルを取得する。"
+
+#. type: defun
+#: original_texis/internals.texi:158
+msgid "If you want to use this function in an Emacs that was already dumped, you must run Emacs with @samp{-batch}."
+msgstr "すでにダンプ済みのEmacs内でこの関数を使用する場合には@samp{-batch}でEmacsを実行しなければならない。"
+
+#. type: cindex
+#: original_texis/internals.texi:162
+#, no-wrap
+msgid "pure storage"
+msgstr "pure storage"
+
+#. type: Plain text
+#: original_texis/internals.texi:170
+msgid "Emacs Lisp uses two kinds of storage for user-created Lisp objects: @dfn{normal storage} and @dfn{pure storage}.  Normal storage is where all the new data created during an Emacs session are kept (@pxref{Garbage Collection}).  Pure storage is used for certain data in the preloaded standard Lisp files---data that should never change during actual use of Emacs."
+msgstr "Emacs Lispはユーザー作成Lispオブジェクトにたいして、@dfn{通常ストレージ(normal storage)}と@dfn{純粋ストレージ(pure storage)}という2種のストレージをもちます。通常ストレージはEmacsセッションが維持される間に新たにデータが作成される場所です。純粋ストレージは事前ロードされた標準Lispファイル内の特定のデータのために使用されます。このデータは実際のEmacs使用中に決して変更されるべきではないデータです。"
+
+#. type: Plain text
+#: original_texis/internals.texi:186
+msgid "Pure storage is allocated only while @command{temacs} is loading the standard preloaded Lisp libraries.  In the file @file{emacs}, it is marked as read-only (on operating systems that permit this), so that the memory space can be shared by all the Emacs jobs running on the machine at once.  Pure storage is not expandable; a fixed amount is allocated when Emacs is compiled, and if that is not sufficient for the preloaded libraries, @file{temacs} allocates dynamic memory for the part that didn't fit.  The resulting image will work, but garbage collection (@pxref{Garbage Collection}) is disabled in this situation, causing a memory leak.  Such an overflow normally won't happen unless you try to preload additional libraries or add features to the standard ones.  Emacs will display a warning about the overflow when it starts.  If this happens, you should increase the compilation parameter @code{SYSTEM_PURESIZE_EXTRA} in the file @file{src/puresize.h} and rebuild Emacs."
+msgstr "純粋ストレージは@command{temacs}が標準的な事前ローLispライブラリーのロード中にのみ割り当てられます。ファイル@file{emacs}ではこのメモリースペースは読み取り専用とマークされるのでマシン上で実行中のすべてのEmacsジョブで共有できます。純粋ストレージは拡張できません。Emacsのコンパイル時に固定された量が割り当てられて、それが事前ロードされるライブラリーにたいして不足なら@file{temacs}はそれに収まらない部分を動的メモリーに割り当てます。結果イメージは動作するでしょうがこの状況ではメモリーリークとなるのでガーベージコレクション(@ref{Garbage Collection}を参照)は無効です。そのような通常なら発生しないオーバーフローは、あなたが事前ロードライブラリの追加や標準的な事前ロードライブラリに追加を試みないかぎり発生しません。Emacsはオーバーロードの開始時にオーバーロードに関する警告を表示するでしょう。これが発生したらファイル@file{src/puresize.h}内のコンパイルパラメーターを@code{SYSTEM_PURESIZE_EXTRA}を増やしてEmacsをリビルドする必要があります。"
+
+#. type: defun
+#: original_texis/internals.texi:187
+#, no-wrap
+msgid "purecopy object"
+msgstr "purecopy object"
+
+#. type: defun
+#: original_texis/internals.texi:194
+msgid "This function makes a copy in pure storage of @var{object}, and returns it.  It copies a string by simply making a new string with the same characters, but without text properties, in pure storage.  It recursively copies the contents of vectors and cons cells.  It does not make copies of other objects such as symbols, but just returns them unchanged.  It signals an error if asked to copy markers."
+msgstr "この関数は純粋ストレージに@var{object}のコピーを作成してリターンする。これは同じ文字で新たに文字列を作成することにより文字列をコピーするが、純粋ストレージではテキストプロパティはない。これはベクターとコンスセルのコンテンツを再帰的にコピーする。シンボルのような他のオブジェクトのコピーは作成しないが未変更でリターンする。マーカーのコピーを試みるとエラーをシグナルする。"
+
+#. type: defun
+#: original_texis/internals.texi:197
+msgid "This function is a no-op except while Emacs is being built and dumped; it is usually called only in preloaded Lisp files."
+msgstr "この関数はEmacsのビルド中とダンプ中を除き何もしない。通常は事前ロードされるLispファイル内でのみ呼び出される。"
+
+#. type: defvar
+#: original_texis/internals.texi:199
+#, no-wrap
+msgid "pure-bytes-used"
+msgstr "pure-bytes-used"
+
+#. type: defvar
+#: original_texis/internals.texi:204
+msgid "The value of this variable is the number of bytes of pure storage allocated so far.  Typically, in a dumped Emacs, this number is very close to the total amount of pure storage available---if it were not, we would preallocate less."
+msgstr "この変数の値は、これまでに割り当てられた純粋ストレージのバイト数。ダンプされたEmacsでは通常は利用可能な純粋ストレージの総量とほとんど同じであり、もしそうでないならわたしたちは事前割り当てをもっと少なくするだろう。"
+
+#. type: defvar
+#: original_texis/internals.texi:206
+#, no-wrap
+msgid "purify-flag"
+msgstr "purify-flag"
+
+#. type: defvar
+#: original_texis/internals.texi:210
+msgid "This variable determines whether @code{defun} should make a copy of the function definition in pure storage.  If it is non-@code{nil}, then the function definition is copied into pure storage."
+msgstr "この変数は@code{defun}が純粋ストレージにその関数定義のコピーを作成するべきか否かを判断する。これが非@code{nil}ならその関数の定義は純粋ストレージにコピーされる。"
+
+#. type: defvar
+#: original_texis/internals.texi:216
+msgid "This flag is @code{t} while loading all of the basic functions for building Emacs initially (allowing those functions to be shareable and non-collectible).  Dumping Emacs as an executable always writes @code{nil} in this variable, regardless of the value it actually has before and after dumping."
+msgstr "このフラグはEmacsのビルド用の基本的な関数の初回ロード中は@code{t}となる。実行可能形式としてEmacsをダンプすることにより、ダンプ前後の実際の値とは無関係に常にこの変数に@code{nil}が書き込まれる。"
+
+#. type: defvar
+#: original_texis/internals.texi:218
+msgid "You should not change this flag in a running Emacs."
+msgstr "実行中のEmacsでこのフラグを変更しないこと。"
+
+#. type: cindex
+#: original_texis/internals.texi:223
+#, no-wrap
+msgid "memory allocation"
+msgstr "memory allocation"
+
+#. type: Plain text
+#: original_texis/internals.texi:233
+msgid "When a program creates a list or the user defines a new function (such as by loading a library), that data is placed in normal storage.  If normal storage runs low, then Emacs asks the operating system to allocate more memory.  Different types of Lisp objects, such as symbols, cons cells, small vectors, markers, etc., are segregated in distinct blocks in memory.  (Large vectors, long strings, buffers and certain other editing types, which are fairly large, are allocated in individual blocks, one per object; small strings are packed into blocks of 8k bytes, and small vectors are packed into blocks of 4k bytes)."
+msgstr "プログラムがリストを作成するときや、(ライブライのロード等により)ユーザーが新しい関数を定義する際には、そのデータは通常ストレージに配置されます。通常ストレージが少なくなるとEmacsはもっとメモリーを割り当てるようにオペレーティングシステムに要求します。シンボル、コンスセル、小さいベクター、マーカー等のような別のタイプのLispオブジェクトはメモリー内の個別のブロックに隔離されます(大きいベクター、長い文字列、バッファー、および他の特定の編集タイプは非常に巨大であり1つのオブジェクトにたいして個別のブロックが割り当てられて、小さな文字列は8kバイトのブロック、小さいベクターは4kバイトのブロックにパックされる)。"
+
+#. type: cindex
+#: original_texis/internals.texi:234
+#, no-wrap
+msgid "vector-like objects, storage"
+msgstr "vector-like objects, storage"
+
+#. type: cindex
+#: original_texis/internals.texi:235
+#, no-wrap
+msgid "storage of vector-like Lisp objects"
+msgstr "storage of vector-like Lisp objects"
+
+#. type: Plain text
+#: original_texis/internals.texi:244
+msgid "Beyond the basic vector, a lot of objects like window, buffer, and frame are managed as if they were vectors.  The corresponding C data structures include the @code{struct vectorlike_header} field whose @code{size} member contains the subtype enumerated by @code{enum pvec_type} and an information about how many @code{Lisp_Object} fields this structure contains and what the size of the rest data is.  This information is needed to calculate the memory footprint of an object, and used by the vector allocation code while iterating over the vector blocks."
+msgstr "基本的なベクターではないウィンドウ、バッファー、フレームがあたかもベクターであるかのように管理されています。対応するCデータ構造体には@code{struct vectorlike_header}フィールドが含まれていて、そのメンバー@code{size}には@code{enum pvec_type}で列挙されたサブタイプ、その構造体が含む@code{Lisp_Object}フィールドの数に関する情報、および残りのデータのサイズが含まれます。この情報はオブジェクトのメモリーフットプリントの計算に必要であり、ベクターブロックの繰り返し処理の際のベクター割り当てコードにより使用されます。"
+
+#. type: cindex
+#: original_texis/internals.texi:245
+#, no-wrap
+msgid "garbage collection"
+msgstr "garbage collection"
+
+#. type: Plain text
+#: original_texis/internals.texi:255
+msgid "It is quite common to use some storage for a while, then release it by (for example) killing a buffer or deleting the last pointer to an object.  Emacs provides a @dfn{garbage collector} to reclaim this abandoned storage.  The garbage collector operates by finding and marking all Lisp objects that are still accessible to Lisp programs.  To begin with, it assumes all the symbols, their values and associated function definitions, and any data presently on the stack, are accessible.  Any objects that can be reached indirectly through other accessible objects are also accessible."
+msgstr "しばらくの間いくつかのストレージを使用して、(たとえば)バッファーのkillやあるオブジェクトを指す最後のポインターの削除によりそれを解放するのは非常に一般的です。この放棄されたストレージを再利用するためにEmacsは@dfn{ガーベージコレクター(garbage collector)}を提供します。ガーベージコレクターは、いまだLispプログラムからアクセス可能なすべてのLispオブジェクトを検索、マークすることにより動作します。これを開始するにはすべてのシンボル、それらの値と関連付けられている関数定義、現在スタック上にあるすべてのデータをアクセス可能であると仮定します。別のアクセス可能オブジェクトを介して間接的に到達できるすべてのオブジェクトもアクセス可能とみなされます。"
+
+#. type: Plain text
+#: original_texis/internals.texi:261
+msgid "When marking is finished, all objects still unmarked are garbage.  No matter what the Lisp program or the user does, it is impossible to refer to them, since there is no longer a way to reach them.  Their space might as well be reused, since no one will miss them.  The second (``sweep'') phase of the garbage collector arranges to reuse them."
+msgstr "マーキングが終了して、それでもマークされないオブジェクトはすべてガーベージ(garbage: ごみ)です。Lispプログラムかユーザーの行為かに関わらず、それらに到達する手段はもはや存在しないので、それらを参照することは不可能です。誰もそれを失うことはないので、それらのスペースは再利用されることになります。ガーベージコレクターの2つ目の((``スイープ(sweep: 一掃'')))のフェーズでは、それらの再利用を計らいます。"
+
+#. type: cindex
+#: original_texis/internals.texi:264
+#, no-wrap
+msgid "free list"
+msgstr "free list"
+
+#. type: Plain text
+#: original_texis/internals.texi:274
+msgid "The sweep phase puts unused cons cells onto a @dfn{free list} for future allocation; likewise for symbols and markers.  It compacts the accessible strings so they occupy fewer 8k blocks; then it frees the other 8k blocks.  Unreachable vectors from vector blocks are coalesced to create largest possible free areas; if a free area spans a complete 4k block, that block is freed.  Otherwise, the free area is recorded in a free list array, where each entry corresponds to a free list of areas of the same size.  Large vectors, buffers, and other large objects are allocated and freed individually."
+msgstr "スイープフェーズは将来の割り当て用に、シンボルやマーカーと同様に未使用のコンスセルを@dfn{フリーリスト(free list)}上に配置します。これはアクセス可能な文字列は少数の8kブロックを占有するように圧縮して、その後に他の8kブロックを解放します。ベクターブロックから到達不可能はベクターは可能なかぎり最大のフリーエリアを作成するために統合して、フリーエリアが完全な4kブロックに跨がるようならブロックは解放されます。それ以外ならフリーエリアはフリーリスト配列に記録されます。これは各エントリーが同サイズのエリアのフリーリストに対応します。巨大なベクター、バッファー、その他の巨大なオブジェクトは個別に割り当てと解放が行われます。"
+
+#. type: cindex
+#: original_texis/internals.texi:275
+#, no-wrap
+msgid "CL note---allocate more storage"
+msgstr "CL note---allocate more storage"
+
+#. type: quotation
+#: original_texis/internals.texi:282
+msgid "@b{Common Lisp note:} Unlike other Lisps, GNU Emacs Lisp does not call the garbage collector when the free list is empty.  Instead, it simply requests the operating system to allocate more storage, and processing continues until @code{gc-cons-threshold} bytes have been used."
+msgstr "@b{Common Lispに関する注意:} 他のLispと異なりGNU Emacs Lispはフリーリストが空のときにガーベージコレクターを呼び出さない。かわりに単にオペレーティングシステムに更なるストレージの割り当てを要求して、@code{gc-cons-threshold}バイトを使い切るまで処理を継続する。"
+
+#. type: quotation
+#: original_texis/internals.texi:288
+msgid "This means that you can make sure that the garbage collector will not run during a certain portion of a Lisp program by calling the garbage collector explicitly just before it (provided that portion of the program does not use so much space as to force a second garbage collection)."
+msgstr "これは特定のLispプログラムの範囲の実行直前に明示的にガーベージコレクターを呼び出せば、その範囲の実行中はガーベージコレクターが実行されないだろうと確信できることを意味する(そのプログラム範囲が2回目のガーベージコレクションを強制するほど多くのスペースを使用しないという前提)。"
+
+#. type: deffn
+#: original_texis/internals.texi:290
+#, no-wrap
+msgid "Command garbage-collect"
+msgstr "Command garbage-collect"
+
+#. type: deffn
+#: original_texis/internals.texi:295
+msgid "This command runs a garbage collection, and returns information on the amount of space in use.  (Garbage collection can also occur spontaneously if you use more than @code{gc-cons-threshold} bytes of Lisp data since the previous garbage collection.)"
+msgstr "このコマンドはガーベージコレクションを実行して使用中のスペース量の情報をリターンする(前回のガーベージコレクション以降に@code{gc-cons-threshold}バイトより多いLispデータを使用した場合には自然にガーベージコレクションが発生することもあり得る)。"
+
+#. type: deffn
+#: original_texis/internals.texi:304
+msgid "@code{garbage-collect} returns a list with information on amount of space in use, where each entry has the form @samp{(@var{name} @var{size} @var{used})} or @samp{(@var{name} @var{size} @var{used} @var{free})}.  In the entry, @var{name} is a symbol describing the kind of objects this entry represents, @var{size} is the number of bytes used by each one, @var{used} is the number of those objects that were found live in the heap, and optional @var{free} is the number of those objects that are not live but that Emacs keeps around for future allocations.  So an overall result is:"
+msgstr "@code{garbage-collect}は使用中のスペース量の情報をリストでリターンする。これの各エントリーは@samp{(@var{name} @var{size} @var{used})}という形式をもつ。このエントリーで@var{name}はそのエントリーが対応するオブジェクトの種類を記述するシンボル、@var{size}はそれが使用するバイト数、@var{used}はヒープ内で生きていることが解ったオブジェクトの数、オプションの@var{free}は生きていないがEmacsが将来の割り当て用に保持しているオブジェクトの数。全体的な結果は以下のようになる:"
+
+#. type: example
+#: original_texis/internals.texi:317
+#, no-wrap
+msgid ""
+"((@code{conses} @var{cons-size} @var{used-conses} @var{free-conses})\n"
+" (@code{symbols} @var{symbol-size} @var{used-symbols} @var{free-symbols})\n"
+" (@code{miscs} @var{misc-size} @var{used-miscs} @var{free-miscs})\n"
+" (@code{strings} @var{string-size} @var{used-strings} @var{free-strings})\n"
+" (@code{string-bytes} @var{byte-size} @var{used-bytes})\n"
+" (@code{vectors} @var{vector-size} @var{used-vectors})\n"
+" (@code{vector-slots} @var{slot-size} @var{used-slots} @var{free-slots})\n"
+" (@code{floats} @var{float-size} @var{used-floats} @var{free-floats})\n"
+" (@code{intervals} @var{interval-size} @var{used-intervals} @var{free-intervals})\n"
+" (@code{buffers} @var{buffer-size} @var{used-buffers})\n"
+" (@code{heap} @var{unit-size} @var{total-size} @var{free-size}))\n"
+msgstr ""
+"((@code{conses} @var{cons-size} @var{used-conses} @var{free-conses})\n"
+" (@code{symbols} @var{symbol-size} @var{used-symbols} @var{free-symbols})\n"
+" (@code{miscs} @var{misc-size} @var{used-miscs} @var{free-miscs})\n"
+" (@code{strings} @var{string-size} @var{used-strings} @var{free-strings})\n"
+" (@code{string-bytes} @var{byte-size} @var{used-bytes})\n"
+" (@code{vectors} @var{vector-size} @var{used-vectors})\n"
+" (@code{vector-slots} @var{slot-size} @var{used-slots} @var{free-slots})\n"
+" (@code{floats} @var{float-size} @var{used-floats} @var{free-floats})\n"
+" (@code{intervals} @var{interval-size} @var{used-intervals} @var{free-intervals})\n"
+" (@code{buffers} @var{buffer-size} @var{used-buffers})\n"
+" (@code{heap} @var{unit-size} @var{total-size} @var{free-size}))\n"
+
+#. type: deffn
+#: original_texis/internals.texi:320
+msgid "Here is an example:"
+msgstr "以下は例:"
+
+#. type: example
+#: original_texis/internals.texi:329
+#, no-wrap
+msgid ""
+"(garbage-collect)\n"
+"      @result{} ((conses 16 49126 8058) (symbols 48 14607 0)\n"
+"                 (miscs 40 34 56) (strings 32 2942 2607)\n"
+"                 (string-bytes 1 78607) (vectors 16 7247)\n"
+"                 (vector-slots 8 341609 29474) (floats 8 71 102)\n"
+"                 (intervals 56 27 26) (buffers 944 8)\n"
+"                 (heap 1024 11715 2678))\n"
+msgstr ""
+"(garbage-collect)\n"
+"      @result{} ((conses 16 49126 8058) (symbols 48 14607 0)\n"
+"                 (miscs 40 34 56) (strings 32 2942 2607)\n"
+"                 (string-bytes 1 78607) (vectors 16 7247)\n"
+"                 (vector-slots 8 341609 29474) (floats 8 71 102)\n"
+"                 (intervals 56 27 26) (buffers 944 8)\n"
+"                 (heap 1024 11715 2678))\n"
+
+#. type: deffn
+#: original_texis/internals.texi:334
+msgid "Below is a table explaining each element.  Note that last @code{heap} entry is optional and present only if an underlying @code{malloc} implementation provides @code{mallinfo} function."
+msgstr "以下は各要素を説明するためのテーブル。最後の@code{heap}エントリーはオプションであり、背景にある@code{malloc}実装が@code{mallinfo}関数を提供する場合のみ与えられることに注意。"
+
+#. type: item
+#: original_texis/internals.texi:336
+#, no-wrap
+msgid "cons-size"
+msgstr "cons-size"
+
+#. type: table
+#: original_texis/internals.texi:338
+msgid "Internal size of a cons cell, i.e., @code{sizeof (struct Lisp_Cons)}."
+msgstr "コンスセルの内部的サイズ(@code{sizeof (struct Lisp_Cons)})。"
+
+#. type: item
+#: original_texis/internals.texi:339
+#, no-wrap
+msgid "used-conses"
+msgstr "used-conses"
+
+#. type: table
+#: original_texis/internals.texi:341
+msgid "The number of cons cells in use."
+msgstr "使用中のコンスセルの数。"
+
+#. type: item
+#: original_texis/internals.texi:342
+#, no-wrap
+msgid "free-conses"
+msgstr "free-conses"
+
+#. type: table
+#: original_texis/internals.texi:345
+msgid "The number of cons cells for which space has been obtained from the operating system, but that are not currently being used."
+msgstr "オペレーティングシステムから取得したスペースにあるがカレントで未使用のコンスセルの数。"
+
+#. type: item
+#: original_texis/internals.texi:346
+#, no-wrap
+msgid "symbol-size"
+msgstr "symbol-size"
+
+#. type: table
+#: original_texis/internals.texi:348
+msgid "Internal size of a symbol, i.e., @code{sizeof (struct Lisp_Symbol)}."
+msgstr "シンボルの内部的サイズ(@code{sizeof (struct Lisp_Symbol)})。"
+
+#. type: item
+#: original_texis/internals.texi:349
+#, no-wrap
+msgid "used-symbols"
+msgstr "used-symbols"
+
+#. type: table
+#: original_texis/internals.texi:351
+msgid "The number of symbols in use."
+msgstr "使用中のシンボルの数。"
+
+#. type: item
+#: original_texis/internals.texi:352
+#, no-wrap
+msgid "free-symbols"
+msgstr "free-symbols"
+
+#. type: table
+#: original_texis/internals.texi:355
+msgid "The number of symbols for which space has been obtained from the operating system, but that are not currently being used."
+msgstr "オペレーティングシステムから取得したスペースにあるがカレントで未使用のシンボルの数。"
+
+#. type: item
+#: original_texis/internals.texi:356
+#, no-wrap
+msgid "misc-size"
+msgstr "misc-size"
+
+#. type: table
+#: original_texis/internals.texi:360
+msgid "Internal size of a miscellaneous entity, i.e., @code{sizeof (union Lisp_Misc)}, which is a size of the largest type enumerated in @code{enum Lisp_Misc_Type}."
+msgstr "雑多なエンティティーの内部的なサイズ。@code{sizeof (union Lisp_Misc)}は@code{enum Lisp_Misc_Type}に列挙された最大タイプのサイズ。"
+
+#. type: item
+#: original_texis/internals.texi:361
+#, no-wrap
+msgid "used-miscs"
+msgstr "used-miscs"
+
+#. type: table
+#: original_texis/internals.texi:364
+msgid "The number of miscellaneous objects in use.  These include markers and overlays, plus certain objects not visible to users."
+msgstr "使用中の雑多なエンティティーの数。これらのエンティティーにはマーカー、オーバーレイに加えて、ユーザーにとって不可視な特定のオブジェクトが含まれる。"
+
+#. type: item
+#: original_texis/internals.texi:365
+#, no-wrap
+msgid "free-miscs"
+msgstr "free-miscs"
+
+#. type: table
+#: original_texis/internals.texi:368
+msgid "The number of miscellaneous objects for which space has been obtained from the operating system, but that are not currently being used."
+msgstr "オペレーティングシステムから取得したスペースにあるがカレントで未使用の雑多なオブジェクトの数。"
+
+#. type: item
+#: original_texis/internals.texi:369
+#, no-wrap
+msgid "string-size"
+msgstr "string-size"
+
+#. type: table
+#: original_texis/internals.texi:371
+msgid "Internal size of a string header, i.e., @code{sizeof (struct Lisp_String)}."
+msgstr "文字列ヘッダーの内部的サイズ(@code{sizeof (struct Lisp_String)})。"
+
+#. type: item
+#: original_texis/internals.texi:372
+#, no-wrap
+msgid "used-strings"
+msgstr "used-strings"
+
+#. type: table
+#: original_texis/internals.texi:374
+msgid "The number of string headers in use."
+msgstr "使用中の文字列ヘッダーの数。"
+
+#. type: item
+#: original_texis/internals.texi:375
+#, no-wrap
+msgid "free-strings"
+msgstr "free-strings"
+
+#. type: table
+#: original_texis/internals.texi:378
+msgid "The number of string headers for which space has been obtained from the operating system, but that are not currently being used."
+msgstr "オペレーティングシステムから取得したスペースにあるがカレントで未使用の文字列ヘッダーの数。"
+
+#. type: item
+#: original_texis/internals.texi:379
+#, no-wrap
+msgid "byte-size"
+msgstr "byte-size"
+
+#. type: table
+#: original_texis/internals.texi:381
+msgid "This is used for convenience and equals to @code{sizeof (char)}."
+msgstr "これは利便性のために使用されるもので@code{sizeof (char)}と同じ。"
+
+#. type: item
+#: original_texis/internals.texi:382
+#, no-wrap
+msgid "used-bytes"
+msgstr "used-bytes"
+
+#. type: table
+#: original_texis/internals.texi:384
+msgid "The total size of all string data in bytes."
+msgstr "すべての文字列データの総バイト数。"
+
+#. type: item
+#: original_texis/internals.texi:385
+#, no-wrap
+msgid "vector-size"
+msgstr "vector-size"
+
+#. type: table
+#: original_texis/internals.texi:387
+msgid "Internal size of a vector header, i.e., @code{sizeof (struct Lisp_Vector)}."
+msgstr "ベクターヘッダーの内部的サイズ(@code{sizeof (struct Lisp_Vector)})。"
+
+#. type: item
+#: original_texis/internals.texi:388
+#, no-wrap
+msgid "used-vectors"
+msgstr "used-vectors"
+
+#. type: table
+#: original_texis/internals.texi:390
+msgid "The number of vector headers allocated from the vector blocks."
+msgstr "ベクターブロックから割り当てられたベクターブロック数。"
+
+#. type: item
+#: original_texis/internals.texi:391
+#, no-wrap
+msgid "slot-size"
+msgstr "slot-size"
+
+#. type: table
+#: original_texis/internals.texi:393
+msgid "Internal size of a vector slot, always equal to @code{sizeof (Lisp_Object)}."
+msgstr "ベクタースロットの内部的なサイズで常に@code{sizeof (Lisp_Object)}と等しい。"
+
+#. type: item
+#: original_texis/internals.texi:394
+#, no-wrap
+msgid "used-slots"
+msgstr "used-slots"
+
+#. type: table
+#: original_texis/internals.texi:396
+msgid "The number of slots in all used vectors."
+msgstr "使用されているすべてのベクターのスロット数。"
+
+#. type: item
+#: original_texis/internals.texi:397
+#, no-wrap
+msgid "free-slots"
+msgstr "free-slots"
+
+#. type: table
+#: original_texis/internals.texi:399
+msgid "The number of free slots in all vector blocks."
+msgstr "すべてのベクターブロックのフリースロットの数。"
+
+#. type: item
+#: original_texis/internals.texi:400
+#, no-wrap
+msgid "float-size"
+msgstr "float-size"
+
+#. type: table
+#: original_texis/internals.texi:403
+msgid "Internal size of a float object, i.e., @code{sizeof (struct Lisp_Float)}.  (Do not confuse it with the native platform @code{float} or @code{double}.)"
+msgstr "浮動小数点数オブジェクトの内部的なサイズ(@code{sizeof (struct Lisp_Float)})。(ネイティブプラットフォームの@code{float}や@code{double}と混同しないこと。)"
+
+#. type: item
+#: original_texis/internals.texi:404
+#, no-wrap
+msgid "used-floats"
+msgstr "used-floats"
+
+#. type: table
+#: original_texis/internals.texi:406
+msgid "The number of floats in use."
+msgstr "使用中の浮動小数点数の数。"
+
+#. type: item
+#: original_texis/internals.texi:407
+#, no-wrap
+msgid "free-floats"
+msgstr "free-floats"
+
+#. type: table
+#: original_texis/internals.texi:410
+msgid "The number of floats for which space has been obtained from the operating system, but that are not currently being used."
+msgstr "オペレーティングシステムから取得したスペースにあるがカレントで未使用の浮動小数点数の数。"
+
+#. type: item
+#: original_texis/internals.texi:411
+#, no-wrap
+msgid "interval-size"
+msgstr "interval-size"
+
+#. type: table
+#: original_texis/internals.texi:413
+msgid "Internal size of an interval object, i.e., @code{sizeof (struct interval)}."
+msgstr "インターバルオブジェクト(interval object)の内部的なサイズ(@code{sizeof (struct interval)})。"
+
+#. type: item
+#: original_texis/internals.texi:414
+#, no-wrap
+msgid "used-intervals"
+msgstr "used-intervals"
+
+#. type: table
+#: original_texis/internals.texi:416
+msgid "The number of intervals in use."
+msgstr "使用中のインターバルの数。"
+
+#. type: item
+#: original_texis/internals.texi:417
+#, no-wrap
+msgid "free-intervals"
+msgstr "free-intervals"
+
+#. type: table
+#: original_texis/internals.texi:420
+msgid "The number of intervals for which space has been obtained from the operating system, but that are not currently being used."
+msgstr "オペレーティングシステムから取得したスペースにあるがカレントで未使用のインターバルの数。"
+
+#. type: item
+#: original_texis/internals.texi:421
+#, no-wrap
+msgid "buffer-size"
+msgstr "buffer-size"
+
+#. type: table
+#: original_texis/internals.texi:424
+msgid "Internal size of a buffer, i.e., @code{sizeof (struct buffer)}.  (Do not confuse with the value returned by @code{buffer-size} function.)"
+msgstr "バッファーの内部的なサイズ(@code{sizeof (struct buffer)})。(@code{buffer-size}関数がリターンする値と混同しないこと。)"
+
+#. type: item
+#: original_texis/internals.texi:425
+#, no-wrap
+msgid "used-buffers"
+msgstr "used-buffers"
+
+#. type: table
+#: original_texis/internals.texi:428
+msgid "The number of buffer objects in use.  This includes killed buffers invisible to users, i.e., all buffers in @code{all_buffers} list."
+msgstr "使用中のバッファーオブジェクトの数。これにはユーザーからは不可視のkillされたバッファー、つまりリスト@code{all_buffers}内のバッファーすべてが含まれる。"
+
+#. type: item
+#: original_texis/internals.texi:429
+#, no-wrap
+msgid "unit-size"
+msgstr "unit-size"
+
+#. type: table
+#: original_texis/internals.texi:431
+msgid "The unit of heap space measurement, always equal to 1024 bytes."
+msgstr "ヒープスペースを計る単位であり常に1024バイトと等しい。"
+
+#. type: item
+#: original_texis/internals.texi:432
+#, no-wrap
+msgid "total-size"
+msgstr "total-size"
+
+#. type: table
+#: original_texis/internals.texi:434
+msgid "Total heap size, in @var{unit-size} units."
+msgstr "@var{unit-size}単位での総ヒープサイズ。"
+
+#. type: item
+#: original_texis/internals.texi:435
+#, no-wrap
+msgid "free-size"
+msgstr "free-size"
+
+#. type: table
+#: original_texis/internals.texi:437
+msgid "Heap space which is not currently used, in @var{unit-size} units."
+msgstr "@var{unit-size}単位でのカレントで未使用のヒープスペース。"
+
+#. type: deffn
+#: original_texis/internals.texi:442
+msgid "If there was overflow in pure space (@pxref{Pure Storage}), @code{garbage-collect} returns @code{nil}, because a real garbage collection cannot be done."
+msgstr "純粋スペース(@ref{Pure Storage}を参照)内にオーバーフローがあれば実際にガーベージコレクションを行うことは不可能なので@code{garbage-collect}は@code{nil}をリターンする。"
+
+#. type: defopt
+#: original_texis/internals.texi:444
+#, no-wrap
+msgid "garbage-collection-messages"
+msgstr "garbage-collection-messages"
+
+#. type: defopt
+#: original_texis/internals.texi:448
+msgid "If this variable is non-@code{nil}, Emacs displays a message at the beginning and end of garbage collection.  The default value is @code{nil}."
+msgstr "この変数が非@code{nil}ならEmacsはガーベージコレクションの最初と最後にメッセージを表示する。デフォルト値は@code{nil}。"
+
+#. type: defvar
+#: original_texis/internals.texi:450
+#, no-wrap
+msgid "post-gc-hook"
+msgstr "post-gc-hook"
+
+#. type: defvar
+#: original_texis/internals.texi:454
+msgid "This is a normal hook that is run at the end of garbage collection.  Garbage collection is inhibited while the hook functions run, so be careful writing them."
+msgstr "これはガーベージコレクションの終わりに実行されるノーマルフック。ガーベージコレクションはこのフックの関数の実行中は抑制されるので慎重に記述すること。"
+
+#. type: defopt
+#: original_texis/internals.texi:456
+#, no-wrap
+msgid "gc-cons-threshold"
+msgstr "gc-cons-threshold"
+
+#. type: defopt
+#: original_texis/internals.texi:465
+msgid "The value of this variable is the number of bytes of storage that must be allocated for Lisp objects after one garbage collection in order to trigger another garbage collection.  You can use the result returned by @code{garbage-collect} to get an information about size of the particular object type; space allocated to the contents of buffers does not count.  Note that the subsequent garbage collection does not happen immediately when the threshold is exhausted, but only the next time the Lisp interpreter is called."
+msgstr "この変数の値は別のガーベージコレクションをトリガーするために、ガーベージコレクション後にLispオブジェクト用に割り当てなければならないストレージのバイト数。特定のオブジェクトタイプに関する情報を取得するために、@code{garbage-collect}がリターンした結果を使用できる。バッファーのコンテンツに割り当てられたスペースは勘定に入らない。後続のガーベージコレクションはこのthreshold(閾値)が消費されても即座には実行されず、次回にLispインタープリターが呼び出されたときにのみ実行されることに注意。"
+
+#. type: defopt
+#: original_texis/internals.texi:473
+msgid "The initial threshold value is @code{GC_DEFAULT_THRESHOLD}, defined in @file{alloc.c}.  Since it's defined in @code{word_size} units, the value is 400,000 for the default 32-bit configuration and 800,000 for the 64-bit one.  If you specify a larger value, garbage collection will happen less often.  This reduces the amount of time spent garbage collecting, but increases total memory use.  You may want to do this when running a program that creates lots of Lisp data."
+msgstr "thresholdの初期値は@code{GC_DEFAULT_THRESHOLD}であり、これは@file{alloc.c}内で定義されている。これは@code{word_size}単位で定義されているので、デフォルトの32ビット設定では400,000、64ビット設定では800,000になる。大きい値を指定するとガーベージコレクションの頻度が下る。これはガーベージコレクションにより費やされる時間を減少させるがメモリーの総使用量は増大する。大量のLispデータを作成するプログラムの実行時にはこれを行いたいと思うかもしれない。"
+
+#. type: defopt
+#: original_texis/internals.texi:478
+msgid "You can make collections more frequent by specifying a smaller value, down to 1/10th of @code{GC_DEFAULT_THRESHOLD}.  A value less than this minimum will remain in effect only until the subsequent garbage collection, at which time @code{garbage-collect} will set the threshold back to the minimum."
+msgstr "@code{GC_DEFAULT_THRESHOLD}の1/10まで下げた小さな値を指定することにより、より頻繁にガーベージコレクションを発生させることができる。この最小値より小さい値は後続のガーベージコレクションで、@code{garbage-collect}がthresholdを最小値に戻すときまでしか効果をもたないだろう。"
+
+#. type: defopt
+#: original_texis/internals.texi:480
+#, no-wrap
+msgid "gc-cons-percentage"
+msgstr "gc-cons-percentage"
+
+#. type: defopt
+#: original_texis/internals.texi:485
+msgid "The value of this variable specifies the amount of consing before a garbage collection occurs, as a fraction of the current heap size.  This criterion and @code{gc-cons-threshold} apply in parallel, and garbage collection occurs only when both criteria are satisfied."
+msgstr "この変数の値はガーベージコレクション発生するまでのコンス(訳注: これは@code{gc-cons-threshold}や@code{gc-cons-percentage}の@samp{-cons-}のことで、これらの変数が定義されている@file{alloc.c}内ではLisp方言での@samp{cons}をより一般化したメモリー割り当てプロセスのことを指す模様)の量をカレントヒープサイズにたいする割り合いで指定する。この条件と@code{gc-cons-threshold}を並行して適用して、条件が両方満足されたときだけガーベージコレクションが発生する。"
+
+#. type: defopt
+#: original_texis/internals.texi:489
+msgid "As the heap size increases, the time to perform a garbage collection increases.  Thus, it can be desirable to do them less frequently in proportion."
+msgstr "ヒープサイズ増加にともないガーベージコレクションの処理時間は増大する。したがってガーベージコレクションの頻度割合を減らすのが望ましいことがある。"
+
+#. type: Plain text
+#: original_texis/internals.texi:495
+msgid "The value returned by @code{garbage-collect} describes the amount of memory used by Lisp data, broken down by data type.  By contrast, the function @code{memory-limit} provides information on the total amount of memory Emacs is currently using."
+msgstr "@code{garbage-collect}がリターンする値はデータ型に分類されたLispデータのメモリー使用量を記述します。それとは対照的に関数@code{memory-limit}はEmacsがカレントで使用中の総メモリー量の情報を提供します。"
+
+#. type: defun
+#: original_texis/internals.texi:496
+#, no-wrap
+msgid "memory-limit"
+msgstr "memory-limit"
+
+#. type: defun
+#: original_texis/internals.texi:500
+msgid "This function returns the address of the last byte Emacs has allocated, divided by 1024.  We divide the value by 1024 to make sure it fits in a Lisp integer."
+msgstr "この関数はEmacsが割り当てたメモリーの最後のバイトアドレスを1024で除した値をリターンする。値を1024で除しているのはLisp整数に収まるようにするため。"
+
+#. type: defun
+#: original_texis/internals.texi:503
+msgid "You can use this to get a general idea of how your actions affect the memory usage."
+msgstr "あなたのアクションがメモリー使用に与える影響について大まかなアイデアを得るためにこれを使用することができる。"
+
+#. type: defvar
+#: original_texis/internals.texi:505
+#, no-wrap
+msgid "memory-full"
+msgstr "memory-full"
+
+#. type: defvar
+#: original_texis/internals.texi:508
+msgid "This variable is @code{t} if Emacs is nearly out of memory for Lisp objects, and @code{nil} otherwise."
+msgstr "この変数はLispオブジェクト用のメモリーが不足に近い状態なら@code{t}、それ以外なら@code{nil}。"
+
+#. type: defun
+#: original_texis/internals.texi:510
+#, no-wrap
+msgid "memory-use-counts"
+msgstr "memory-use-counts"
+
+#. type: defun
+#: original_texis/internals.texi:514
+msgid "This returns a list of numbers that count the number of objects created in this Emacs session.  Each of these counters increments for a certain kind of object.  See the documentation string for details."
+msgstr "これはそのEmacsセッションで作成されたオブジェクト数をカウントしたリスト。これらのカウンターはそれぞれ特定の種類のオブジェクトを数える。詳細はドキュメント文字列を参照のこと。"
+
+#. type: defvar
+#: original_texis/internals.texi:516
+#, no-wrap
+msgid "gcs-done"
+msgstr "gcs-done"
+
+#. type: defvar
+#: original_texis/internals.texi:519
+msgid "This variable contains the total number of garbage collections done so far in this Emacs session."
+msgstr "この変数はそのEmacsセッションでそれまでに行われたガーベージコレクションの合計回数。"
+
+#. type: defvar
+#: original_texis/internals.texi:521
+#, no-wrap
+msgid "gc-elapsed"
+msgstr "gc-elapsed"
+
+#. type: defvar
+#: original_texis/internals.texi:525
+msgid "This variable contains the total number of seconds of elapsed time during garbage collection so far in this Emacs session, as a floating-point number."
+msgstr "この変数はそのEmacsセッションでガーベージコレクションの間に費やされた経過時間を浮動小数点数で表した総秒数。"
+
+#. type: cindex
+#: original_texis/internals.texi:529
+#, no-wrap
+msgid "memory usage"
+msgstr "memory usage"
+
+#. type: Plain text
+#: original_texis/internals.texi:537
+msgid "These functions and variables give information about the total amount of memory allocation that Emacs has done, broken down by data type.  Note the difference between these and the values returned by @code{garbage-collect}; those count objects that currently exist, but these count the number or size of all allocations, including those for objects that have since been freed."
+msgstr "以下の関数と変数はEmacsが行なったメモリー割り当ての総量に関する情報をデータ型ごとに分類して提供します。これらの関数や変数と@code{garbage-collect}がリターンする値との違いに注意してください。@code{garbage-collect}はカレントで存在するオブジェクトを計数しますが、以下の関数や変数はすでに解放されたオブジェクトを含めて割り当てのすべての数やサイズを計数します。"
+
+#. type: defvar
+#: original_texis/internals.texi:538
+#, no-wrap
+msgid "cons-cells-consed"
+msgstr "cons-cells-consed"
+
+#. type: defvar
+#: original_texis/internals.texi:541
+msgid "The total number of cons cells that have been allocated so far in this Emacs session."
+msgstr "そのEmacsセッションでそれまでに割り当てられたコンスセルの総数。"
+
+#. type: defvar
+#: original_texis/internals.texi:543
+#, no-wrap
+msgid "floats-consed"
+msgstr "floats-consed"
+
+#. type: defvar
+#: original_texis/internals.texi:546
+msgid "The total number of floats that have been allocated so far in this Emacs session."
+msgstr "そのEmacsセッションでそれまでに割り当てられた浮動小数点数の総数。"
+
+#. type: defvar
+#: original_texis/internals.texi:548
+#, no-wrap
+msgid "vector-cells-consed"
+msgstr "vector-cells-consed"
+
+#. type: defvar
+#: original_texis/internals.texi:551
+msgid "The total number of vector cells that have been allocated so far in this Emacs session."
+msgstr "そのEmacsセッションでそれまでに割り当てられたベクターセル"
+
+#. type: defvar
+#: original_texis/internals.texi:553
+#, no-wrap
+msgid "symbols-consed"
+msgstr "symbols-consed"
+
+#. type: defvar
+#: original_texis/internals.texi:556
+msgid "The total number of symbols that have been allocated so far in this Emacs session."
+msgstr "そのEmacsセッションでそれまでに割り当てられたシンボルの総数。"
+
+#. type: defvar
+#: original_texis/internals.texi:558
+#, no-wrap
+msgid "string-chars-consed"
+msgstr "string-chars-consed"
+
+#. type: defvar
+#: original_texis/internals.texi:561
+msgid "The total number of string characters that have been allocated so far in this session."
+msgstr "そのEmacsセッションでそれまでに割り当てられた文字列の文字の総数。"
+
+#. type: defvar
+#: original_texis/internals.texi:563
+#, no-wrap
+msgid "misc-objects-consed"
+msgstr "misc-objects-consed"
+
+#. type: defvar
+#: original_texis/internals.texi:567
+msgid "The total number of miscellaneous objects that have been allocated so far in this session.  These include markers and overlays, plus certain objects not visible to users."
+msgstr "そのEmacsセッションでそれまでに割り当てられた雑多なオブジェクトの総数。これにはマーカー、オーバーレイに加えてユーザーには不可視な特定のオブジェクトが含まれる。"
+
+#. type: defvar
+#: original_texis/internals.texi:569
+#, no-wrap
+msgid "intervals-consed"
+msgstr "intervals-consed"
+
+#. type: defvar
+#: original_texis/internals.texi:572
+msgid "The total number of intervals that have been allocated so far in this Emacs session."
+msgstr "そのEmacsセッションでそれまでに割り当てられたインターバルの総数。"
+
+#. type: defvar
+#: original_texis/internals.texi:574
+#, no-wrap
+msgid "strings-consed"
+msgstr "strings-consed"
+
+#. type: defvar
+#: original_texis/internals.texi:577
+msgid "The total number of strings that have been allocated so far in this Emacs session."
+msgstr "そのEmacsセッションでそれまでに割り当てられた文字列の総数。"
+
+#. type: cindex
+#: original_texis/internals.texi:581
+#, no-wrap
+msgid "C programming language"
+msgstr "C programming language"
+
+#. type: Plain text
+#: original_texis/internals.texi:589
+msgid "The C part of Emacs is portable to C89: C99-specific features such as @samp{<stdbool.h>} and @samp{inline} are not used without a check, typically at configuration time, and the Emacs build procedure provides a substitute implementation if necessary.  Some C99 features, such as declarations after statements, are too difficult to provide substitutes for, so they are avoided entirely."
+msgstr "EmacsのC部分は、C89にたいして移植性があります。@samp{<stdbool.h>}や@samp{inline}のようなC99固有の機能は、通常configure時に行われるチェックなしでは使用しておらず、Emacsのビルド手順は必要なら代替えの実装を提供します。ステートメントの後の宣言のような、その他のC99機能は代替えの提供が非常に困難なので、すべて回避されています。"
+
+#. type: Plain text
+#: original_texis/internals.texi:592
+msgid "At some point in the not-too-distant future the base C dialect will change from C89 to C99, and eventually it will no doubt change to C11."
+msgstr "そう遠くない将来のある時点で、基本となるC方言はC89からC99に変更され、最終的には間違いなくC11に変更されるでしょう。"
+
+#. type: cindex
+#: original_texis/internals.texi:595
+#, no-wrap
+msgid "primitive function internals"
+msgstr "primitive function internals"
+
+#. type: cindex
+#: original_texis/internals.texi:596
+#, no-wrap
+msgid "writing Emacs primitives"
+msgstr "writing Emacs primitives"
+
+#. type: Plain text
+#: original_texis/internals.texi:602
+msgid "Lisp primitives are Lisp functions implemented in C@.  The details of interfacing the C function so that Lisp can call it are handled by a few C macros.  The only way to really understand how to write new C code is to read the source, but we can explain some things here."
+msgstr "LispプリミティブとはCで実装されたLisp関数です。Lispから呼び出せるようにC関数インターフェースの詳細はCのマクロで処理されます。新たなCコードの記述のしかたを真に理解するにはソースを読むのが唯一の方法ですが、ここではいくつかの事項について説明します。"
+
+#. type: Plain text
+#: original_texis/internals.texi:606
+msgid "An example of a special form is the definition of @code{or}, from @file{eval.c}.  (An ordinary function would have the same general appearance.)"
+msgstr "スペシャルフォームの例として以下は@file{eval.c}の@code{or}です(通常の関数は同様の一般的な外観をもつ)。"
+
+#. type: cindex
+#: original_texis/internals.texi:607
+#, no-wrap
+msgid "garbage collection protection"
+msgstr "garbage collection protection"
+
+#. type: group
+#: original_texis/internals.texi:615
+#, no-wrap
+msgid ""
+"DEFUN (\"or\", For, Sor, 0, UNEVALLED, 0,\n"
+"  doc: /* Eval args until one of them yields non-nil, then return\n"
+"that value.\n"
+"The remaining args are not evalled at all.\n"
+"If all args return nil, return nil.\n"
+msgstr ""
+"DEFUN (\"or\", For, Sor, 0, UNEVALLED, 0,\n"
+"  doc: /* Eval args until one of them yields non-nil, then return\n"
+"that value.\n"
+"The remaining args are not evalled at all.\n"
+"If all args return nil, return nil.\n"
+
+#. type: group
+#: original_texis/internals.texi:622
+#, no-wrap
+msgid ""
+"usage: (or CONDITIONS ...)  */)\n"
+"  (Lisp_Object args)\n"
+"@{\n"
+"  register Lisp_Object val = Qnil;\n"
+"  struct gcpro gcpro1;\n"
+msgstr ""
+"usage: (or CONDITIONS ...)  */)\n"
+"  (Lisp_Object args)\n"
+"@{\n"
+"  register Lisp_Object val = Qnil;\n"
+"  struct gcpro gcpro1;\n"
+
+#. type: group
+#: original_texis/internals.texi:626
+#, no-wrap
+msgid "  GCPRO1 (args);\n"
+msgstr "  GCPRO1 (args);\n"
+
+#. type: group
+#: original_texis/internals.texi:636
+#, no-wrap
+msgid ""
+"  while (CONSP (args))\n"
+"    @{\n"
+"      val = eval_sub (XCAR (args));\n"
+"      if (!NILP (val))\n"
+"        break;\n"
+"      args = XCDR (args);\n"
+"    @}\n"
+msgstr ""
+"  while (CONSP (args))\n"
+"    @{\n"
+"      val = eval_sub (XCAR (args));\n"
+"      if (!NILP (val))\n"
+"        break;\n"
+"      args = XCDR (args);\n"
+"    @}\n"
+
+#. type: group
+#: original_texis/internals.texi:642
+#, no-wrap
+msgid ""
+"  UNGCPRO;\n"
+"  return val;\n"
+"@}\n"
+msgstr ""
+"  UNGCPRO;\n"
+"  return val;\n"
+"@}\n"
+
+#. type: cindex
+#: original_texis/internals.texi:645
+#, no-wrap
+msgid "@code{DEFUN}, C macro to define Lisp primitives"
+msgstr "@code{DEFUN}, C macro to define Lisp primitives"
+
+#. type: Plain text
+#: original_texis/internals.texi:648
+msgid "Let's start with a precise explanation of the arguments to the @code{DEFUN} macro.  Here is a template for them:"
+msgstr "では@code{DEFUN}マクロの引数について詳細に説明しましょう。以下はそれらのテンプレートです:"
+
+#. type: example
+#: original_texis/internals.texi:651
+#, no-wrap
+msgid "DEFUN (@var{lname}, @var{fname}, @var{sname}, @var{min}, @var{max}, @var{interactive}, @var{doc})\n"
+msgstr "DEFUN (@var{lname}, @var{fname}, @var{sname}, @var{min}, @var{max}, @var{interactive}, @var{doc})\n"
+
+#. type: item
+#: original_texis/internals.texi:654
+#, no-wrap
+msgid "lname"
+msgstr "lname"
+
+#. type: table
+#: original_texis/internals.texi:657
+msgid "This is the name of the Lisp symbol to define as the function name; in the example above, it is @code{or}."
+msgstr "これは関数名として定義するLispシンボル名。上記例では@code{or}。"
+
+#. type: item
+#: original_texis/internals.texi:658
+#, no-wrap
+msgid "fname"
+msgstr "fname"
+
+#. type: table
+#: original_texis/internals.texi:664
+msgid "This is the C function name for this function.  This is the name that is used in C code for calling the function.  The name is, by convention, @samp{F} prepended to the Lisp name, with all dashes (@samp{-}) in the Lisp name changed to underscores.  Thus, to call this function from C code, call @code{For}."
+msgstr "これは関数のC関数名。これはCコードでその関数を呼び出すために使用される名前。名前は慣習として@samp{F}の後にLisp名をつけて、Lisp名のすべてのダッシュ(@samp{-})をアンダースコアに変更する。つまりCコードから呼び出す場合には@code{For}を呼び出す。"
+
+#. type: item
+#: original_texis/internals.texi:665
+#, no-wrap
+msgid "sname"
+msgstr "sname"
+
+#. type: table
+#: original_texis/internals.texi:672
+msgid "This is a C variable name to use for a structure that holds the data for the subr object that represents the function in Lisp.  This structure conveys the Lisp symbol name to the initialization routine that will create the symbol and store the subr object as its definition.  By convention, this name is always @var{fname} with @samp{F} replaced with @samp{S}."
+msgstr "これはLispでその関数を表すsubrオブジェクト用にデータ保持のための構造体に使用されるC変数名。この構造体はそのシンボルを作成してそれの定義にsubrオブジェクトを格納する初期化ルーチンでLispシンボル名を伝達する。慣習により常に@var{fname}の@samp{F}を@samp{S}に置き換えた名前になる。"
+
+#. type: item
+#: original_texis/internals.texi:673
+#, no-wrap
+msgid "min"
+msgstr "min"
+
+#. type: table
+#: original_texis/internals.texi:676
+msgid "This is the minimum number of arguments that the function requires.  The function @code{or} allows a minimum of zero arguments."
+msgstr "これは関数が要求する引数の最小個数。関数@code{or}は最小で0個の引数を受け入れる。"
+
+#. type: item
+#: original_texis/internals.texi:677
+#, no-wrap
+msgid "max"
+msgstr "max"
+
+#. type: table
+#: original_texis/internals.texi:685
+msgid "This is the maximum number of arguments that the function accepts, if there is a fixed maximum.  Alternatively, it can be @code{UNEVALLED}, indicating a special form that receives unevaluated arguments, or @code{MANY}, indicating an unlimited number of evaluated arguments (the equivalent of @code{&rest}).  Both @code{UNEVALLED} and @code{MANY} are macros.  If @var{max} is a number, it must be more than @var{min} but less than 8."
+msgstr "これは関数が受け入れる引数の最大個数が定数なら引数の最大個数。あるいは@code{UNEVALLED}なら未評価の引数を受け取るスペシャルフォーム、@code{MANY}なら評価される引数の個数に制限がないことを意味する(@code{&rest}と等価)。@code{UNEVALLED}と@code{MANY}はいずれもマクロ。@var{max}が数字なら@var{min}より大きく8より小さいこと。"
+
+#. type: cindex
+#: original_texis/internals.texi:686
+#, no-wrap
+msgid "interactive specification in primitives"
+msgstr "interactive specification in primitives"
+
+#. type: item
+#: original_texis/internals.texi:687
+#, no-wrap
+msgid "interactive"
+msgstr "interactive"
+
+#. type: table
+#: original_texis/internals.texi:695
+msgid "This is an interactive specification, a string such as might be used as the argument of @code{interactive} in a Lisp function.  In the case of @code{or}, it is 0 (a null pointer), indicating that @code{or} cannot be called interactively.  A value of @code{\"\"} indicates a function that should receive no arguments when called interactively.  If the value begins with a @samp{\"(}, the string is evaluated as a Lisp form.  For example:"
+msgstr "これはLisp関数で@code{interactive}の引数として使用されるようなインタラクティブ仕様(文字列)。@code{or}の場合は0(nullポインター)であり、それは@code{or}がインタラクティブに呼び出せないことを示す。値@code{\"\"}はインタラクティブに呼び出す際に関数が引数を引き受けるべきではないことを示す。値が@samp{\"(}で始まる場合には、その文字列はLispフォームとして評価される。たとえば:"
+
+#. type: group
+#: original_texis/internals.texi:703
+#, no-wrap
+msgid ""
+"DEFUN (\"foo\", Ffoo, Sfoo, 0, UNEVALLED,\n"
+"       \"(list (read-char-by-name \\\"Insert character: \\\")\\\n"
+"              (prefix-numeric-value current-prefix-arg)\\\n"
+"              t))\",\n"
+"  doc: /* @dots{} /*)\n"
+msgstr ""
+"DEFUN (\"foo\", Ffoo, Sfoo, 0, UNEVALLED,\n"
+"       \"(list (read-char-by-name \\\"Insert character: \\\")\\\n"
+"              (prefix-numeric-value current-prefix-arg)\\\n"
+"              t))\",\n"
+"  doc: /* @dots{} /*)\n"
+
+#. type: item
+#: original_texis/internals.texi:706
+#, no-wrap
+msgid "doc"
+msgstr "doc"
+
+#. type: table
+#: original_texis/internals.texi:713
+msgid "This is the documentation string.  It uses C comment syntax rather than C string syntax because comment syntax requires nothing special to include multiple lines.  The @samp{doc:} identifies the comment that follows as the documentation string.  The @samp{/*} and @samp{*/} delimiters that begin and end the comment are not part of the documentation string."
+msgstr "これはドキュメント文字列。複数行を含むために特別なことを要しないので、これにはCの文字列構文ではなくCコメント構文を使用する。@samp{doc:}の後のコメントはドキュメント文字列として認識される。コメントの開始と終了の区切り文字@samp{/*}と@samp{*/}はドキュメント文字列の一部にはならない。"
+
+#. type: table
+#: original_texis/internals.texi:720
+msgid "If the last line of the documentation string begins with the keyword @samp{usage:}, the rest of the line is treated as the argument list for documentation purposes.  This way, you can use different argument names in the documentation string from the ones used in the C code.  @samp{usage:} is required if the function has an unlimited number of arguments."
+msgstr "ドキュメント文字列の最後の行がキーワード@samp{usage:}で始まる場合には、その行の残りの部分は引数リストをドキュメント化するためのものとして扱われる。この方法によりCコード内で使用される引数名とは異なる引数名をドキュメント文字列内で使用することができる。その関数の引数の個数に制限がなければ@samp{usage:}は必須。"
+
+#. type: table
+#: original_texis/internals.texi:724
+msgid "All the usual rules for documentation strings in Lisp code (@pxref{Documentation Tips}) apply to C code documentation strings too."
+msgstr "Lispコードでのドキュメント文字列にたいするすべての通常ルール(@ref{Documentation Tips}を参照)はCコードのドキュメント文字列にも適用される。"
+
+#. type: Plain text
+#: original_texis/internals.texi:741
+msgid "After the call to the @code{DEFUN} macro, you must write the argument list for the C function, including the types for the arguments.  If the primitive accepts a fixed maximum number of Lisp arguments, there must be one C argument for each Lisp argument, and each argument must be of type @code{Lisp_Object}.  (Various macros and functions for creating values of type @code{Lisp_Object} are declared in the file @file{lisp.h}.)  If the primitive has no upper limit on the number of Lisp arguments, it must have exactly two C arguments: the first is the number of Lisp arguments, and the second is the address of a block containing their values.  These have types @code{int} and @w{@code{Lisp_Object *}} respectively.  Since @code{Lisp_Object} can hold any Lisp object of any data type, you can determine the actual data type only at run time; so if you want a primitive to accept only a certain type of argument, you must check the type explicitly using a suitable predicate (@pxref{Type Predicates})."
+msgstr "@code{DEFUN}マクロ呼び出しの後には、そのC関数にたいする引数リストを引数のタイプを含めて記述しなければなりません。そのプリミティブがLispで固定された最大個数をもつ引数を受け入れるならLisp引数それぞれにたいして1つのC引数をもち、各引数のタイプは@code{Lisp_Object}でなければなりません(ファイル@file{lisp.h}ではタイプ@code{Lisp_Object}の値を作成する種々のマクロと関数が宣言されている)。そのプリミティブのLispの最大引数個数に上限がなければ正確に2つのC引数をもたなければなりません。1つ目はLisp引数の個数で、2つ目はそれらの値を含むブロックのアドレスです。これらはそれぞれ@code{int}、@w{@code{Lisp_Object *}}のタイプをもちます。@code{Lisp_Object}は任意のデータ型と任意のLispオブジェクトを保持できるので実行時のみ実際のデータ型を判断できます。特定のタイプの引数だけを受け入れるプリミティブを記述したければ適切な述語を使用してタイプを明確にチェックしなければなりません(@ref{Type Predicates}を参照)。"
+
+#. type: cindex
+#: original_texis/internals.texi:741
+#, no-wrap
+msgid "type checking internals"
+msgstr "type checking internals"
+
+#. type: cindex
+#: original_texis/internals.texi:743
+#, no-wrap
+msgid "@code{GCPRO} and @code{UNGCPRO}"
+msgstr "@code{GCPRO} and @code{UNGCPRO}"
+
+#. type: cindex
+#: original_texis/internals.texi:744
+#, no-wrap
+msgid "protect C variables from garbage collection"
+msgstr "protect C variables from garbage collection"
+
+#. type: Plain text
+#: original_texis/internals.texi:754
+msgid "Within the function @code{For} itself, note the use of the macros @code{GCPRO1} and @code{UNGCPRO}.  These macros are defined for the sake of the few platforms which do not use Emacs' default stack-marking garbage collector.  The @code{GCPRO1} macro ``protects'' a variable from garbage collection, explicitly informing the garbage collector that that variable and all its contents must be as accessible.  GC protection is necessary in any function which can perform Lisp evaluation by calling @code{eval_sub} or @code{Feval} as a subroutine, either directly or indirectly."
+msgstr "関数@code{For}自身の中では、マクロ@code{GCPRO1}と@code{UNGCPRO}の使用に注意してください。これらのマクロは、Emacsのデフォルトであるスタックマーキングを使用したガーベージコレクションを使用しない、いくつかのプラットフォームのために定義されています。@code{GCPRO1}マクロは、ガーベージコレクションにその変数とコンテンツすべてがアクセス可能でなければならないと、明示的にガーベージコレクションに通知して、ガーベージコレクションから変数を``保護''します。直接または間接的に、サブルーチンとして@code{eval_sub}か@code{Feval}を呼び出してLisp評価を行うかもしれないすべての関数で、GC保護は必要です。"
+
+#. type: Plain text
+#: original_texis/internals.texi:761
+msgid "It suffices to ensure that at least one pointer to each object is GC-protected.  Thus, a particular local variable can do without protection if it is certain that the object it points to will be preserved by some other pointer (such as another local variable that has a @code{GCPRO}).  Otherwise, the local variable needs a @code{GCPRO}."
+msgstr "各オブジェクトにたいして、それを指すポインターが少なくとも1つあれば、GCからの保護を確実に満足することができます。つまり、ある特定のローカル変数が、(@code{GCPRO}をもつ別のローカル変数のような)別のポインターにより保護されるであろうオブジュクトを指すことが確実なら、保護なしでこれを行うことができます。それ以外なら、そのローカル変数には@code{GCPRO}が必要になります。"
+
+#. type: Plain text
+#: original_texis/internals.texi:769
+msgid "The macro @code{GCPRO1} protects just one local variable.  If you want to protect two variables, use @code{GCPRO2} instead; repeating @code{GCPRO1} will not work.  Macros @code{GCPRO3}, @code{GCPRO4}, @code{GCPRO5}, and @code{GCPRO6} also exist.  All these macros implicitly use local variables such as @code{gcpro1}; you must declare these explicitly, with type @code{struct gcpro}.  Thus, if you use @code{GCPRO2}, you must declare @code{gcpro1} and @code{gcpro2}."
+msgstr "マクロ@code{GCPRO1}は、ただ1つのローカル変数を保護します。2つの変数を保護したい場合には、かわりに@code{GCPRO2}を使用します。@code{GCPRO1}を繰り返しても、機能しないでしょう。@code{GCPRO3}、@code{GCPRO4}、@code{GCPRO5}、@code{GCPRO6}のマクロもあります。これらのマクロのすべては、@code{gcpro1}のようなローカル変数を暗黙に使用します。あなたはこれらをタイプ@code{struct gcpro}で、明示的に宣言しなければなりません。つまり@code{GCPRO2}を使用するなら、@code{gcpro1}と@code{gcpro2}を宣言しなければなりません。"
+
+#. type: Plain text
+#: original_texis/internals.texi:773
+msgid "@code{UNGCPRO} cancels the protection of the variables that are protected in the current function.  It is necessary to do this explicitly."
+msgstr "@code{UNGCPRO}は、カレントの関数内で保護された、変数の保護を取り消します。これは明示的に行う必要があります。"
+
+#. type: Plain text
+#: original_texis/internals.texi:779
+msgid "You must not use C initializers for static or global variables unless the variables are never written once Emacs is dumped.  These variables with initializers are allocated in an area of memory that becomes read-only (on certain operating systems) as a result of dumping Emacs.  @xref{Pure Storage}."
+msgstr "Emacsが一度ダンプされた後に変数に何か書き込まれているときには、その静的変数やグローバル変数にCの初期化を使用してはなりません。初期化されたこれらの変数はEmacsのダンプの結果として、(特定のオペレーティングシステムでは)読み取り専用となるメモリーエリアに割り当てられます。@ref{Pure Storage}を参照してください。"
+
+#. type: cindex
+#: original_texis/internals.texi:780
+#, no-wrap
+msgid "@code{defsubr}, Lisp symbol for a primitive"
+msgstr "@code{defsubr}, Lisp symbol for a primitive"
+
+#. type: Plain text
+#: original_texis/internals.texi:785
+msgid "Defining the C function is not enough to make a Lisp primitive available; you must also create the Lisp symbol for the primitive and store a suitable subr object in its function cell.  The code looks like this:"
+msgstr "C関数の定義だけではLispプリミティブを利用可能にするのに十分ではありません。そのプリミティブにたいしてLispシンボルを作成して関数セルに適切なsubrオブジェクトを格納しなければなりません。このコードは以下のようになるでしょう:"
+
+#. type: example
+#: original_texis/internals.texi:788
+#, no-wrap
+msgid "defsubr (&@var{sname});\n"
+msgstr "defsubr (&@var{sname});\n"
+
+#. type: Plain text
+#: original_texis/internals.texi:792
+msgid "Here @var{sname} is the name you used as the third argument to @code{DEFUN}."
+msgstr "ここで@var{sname}は@code{DEFUN}の3つ目の引数として使用する名前です。"
+
+#. type: Plain text
+#: original_texis/internals.texi:801
+msgid "If you add a new primitive to a file that already has Lisp primitives defined in it, find the function (near the end of the file) named @code{syms_of_@var{something}}, and add the call to @code{defsubr} there.  If the file doesn't have this function, or if you create a new file, add to it a @code{syms_of_@var{filename}} (e.g., @code{syms_of_myfile}).  Then find the spot in @file{emacs.c} where all of these functions are called, and add a call to @code{syms_of_@var{filename}} there."
+msgstr "すでにLispプリミティブが定義されたファイルにプリミティブを追加する場合には、(そのファイル終端付近にある)@code{syms_of_@var{something}}という名前の関数を探して@code{defsubr}の呼び出しを追加してください。ファイルにこの関数がない、または新たなファイルを作成する場合には@code{syms_of_@var{filename}} (例: @code{syms_of_myfile})を追加します。それから@file{emacs.c}でそれらの関数が呼び出されるすべての箇所を探して@code{syms_of_@var{filename}}の呼び出しを追加してください。"
+
+#. type: anchor{#1}
+#: original_texis/internals.texi:803
+msgid "Defining Lisp variables in C"
+msgstr "Defining Lisp variables in C"
+
+#. type: vindex
+#: original_texis/internals.texi:803
+#, no-wrap
+msgid "byte-boolean-vars"
+msgstr "byte-boolean-vars"
+
+#. type: cindex
+#: original_texis/internals.texi:804
+#, no-wrap
+msgid "defining Lisp variables in C"
+msgstr "defining Lisp variables in C"
+
+#. type: cindex
+#: original_texis/internals.texi:805
+#, no-wrap
+msgid "@code{DEFVAR_INT}, @code{DEFVAR_LISP}, @code{DEFVAR_BOOL}"
+msgstr "@code{DEFVAR_INT}, @code{DEFVAR_LISP}, @code{DEFVAR_BOOL}"
+
+#. type: Plain text
+#: original_texis/internals.texi:815
+msgid "The function @code{syms_of_@var{filename}} is also the place to define any C variables that are to be visible as Lisp variables.  @code{DEFVAR_LISP} makes a C variable of type @code{Lisp_Object} visible in Lisp.  @code{DEFVAR_INT} makes a C variable of type @code{int} visible in Lisp with a value that is always an integer.  @code{DEFVAR_BOOL} makes a C variable of type @code{int} visible in Lisp with a value that is either @code{t} or @code{nil}.  Note that variables defined with @code{DEFVAR_BOOL} are automatically added to the list @code{byte-boolean-vars} used by the byte compiler."
+msgstr "関数@code{syms_of_@var{filename}}はLisp変数として可視となるすべてのC変数を定義する場所でもあります。@code{DEFVAR_LISP}はタイプ@code{Lisp_Object}のC変数をLispから可視にします。@code{DEFVAR_INT}はタイプ@code{int}のC変数を常に整数となる値をもつようにしてLispから可視にします。@code{DEFVAR_BOOL}はタイプ@code{int}のC変数を常に@code{t}か@code{nil}のいずれかとなる値をもつようにしてLispから可視にします。@code{DEFVAR_BOOL}で定義された変数はバイトコンパイラーに使用されるリスト@code{byte-boolean-vars}に自動的に追加されることに注意してください。"
+
+#. type: cindex
+#: original_texis/internals.texi:816
+#, no-wrap
+msgid "defining customization variables in C"
+msgstr "defining customization variables in C"
+
+#. type: Plain text
+#: original_texis/internals.texi:820
+msgid "If you want to make a Lisp variables that is defined in C behave like one declared with @code{defcustom}, add an appropriate entry to @file{cus-start.el}."
+msgstr "Cで定義されたLisp変数を@code{defcustom}で宣言された変数のように振る舞わせたければ@file{cus-start.el}に適切なエントリーを追加してください。"
+
+#. type: cindex
+#: original_texis/internals.texi:821
+#, no-wrap
+msgid "@code{staticpro}, protection from GC"
+msgstr "@code{staticpro}, protection from GC"
+
+#. type: Plain text
+#: original_texis/internals.texi:825
+msgid "If you define a file-scope C variable of type @code{Lisp_Object}, you must protect it from garbage-collection by calling @code{staticpro} in @code{syms_of_@var{filename}}, like this:"
+msgstr "タイプ@code{Lisp_Object}のファイルをスコープとするC変数を定義する場合には、以下のように@code{syms_of_@var{filename}}内で@code{staticpro}を呼び出してガーベージコレクションから保護しなければなりません:"
+
+#. type: example
+#: original_texis/internals.texi:828
+#, no-wrap
+msgid "staticpro (&@var{variable});\n"
+msgstr "staticpro (&@var{variable});\n"
+
+#. type: Plain text
+#: original_texis/internals.texi:833
+msgid "Here is another example function, with more complicated arguments.  This comes from the code in @file{window.c}, and it demonstrates the use of macros and functions to manipulate Lisp objects."
+msgstr "以下はより複雑な引数をもつ別の関数例です。これは@file{window.c}からのコードであり、Lispオブジェクトを操作するためのマクロと関数の使用を示すものです。"
+
+#. type: group
+#: original_texis/internals.texi:840
+#, no-wrap
+msgid ""
+"DEFUN (\"coordinates-in-window-p\", Fcoordinates_in_window_p,\n"
+"  Scoordinates_in_window_p, 2, 2, 0,\n"
+"  doc: /* Return non-nil if COORDINATES are in WINDOW.\n"
+"  ...\n"
+msgstr ""
+"DEFUN (\"coordinates-in-window-p\", Fcoordinates_in_window_p,\n"
+"  Scoordinates_in_window_p, 2, 2, 0,\n"
+"  doc: /* Return non-nil if COORDINATES are in WINDOW.\n"
+"  ...\n"
+
+#. type: group
+#: original_texis/internals.texi:849
+#, no-wrap
+msgid ""
+"  or `right-margin' is returned.  */)\n"
+"  (register Lisp_Object coordinates, Lisp_Object window)\n"
+"@{\n"
+"  struct window *w;\n"
+"  struct frame *f;\n"
+"  int x, y;\n"
+"  Lisp_Object lx, ly;\n"
+msgstr ""
+"  or `right-margin' is returned.  */)\n"
+"  (register Lisp_Object coordinates, Lisp_Object window)\n"
+"@{\n"
+"  struct window *w;\n"
+"  struct frame *f;\n"
+"  int x, y;\n"
+"  Lisp_Object lx, ly;\n"
+
+#. type: group
+#: original_texis/internals.texi:862
+#, no-wrap
+msgid ""
+"  CHECK_LIVE_WINDOW (window);\n"
+"  w = XWINDOW (window);\n"
+"  f = XFRAME (w->frame);\n"
+"  CHECK_CONS (coordinates);\n"
+"  lx = Fcar (coordinates);\n"
+"  ly = Fcdr (coordinates);\n"
+"  CHECK_NUMBER_OR_FLOAT (lx);\n"
+"  CHECK_NUMBER_OR_FLOAT (ly);\n"
+"  x = FRAME_PIXEL_X_FROM_CANON_X (f, lx) + FRAME_INTERNAL_BORDER_WIDTH(f);\n"
+"  y = FRAME_PIXEL_Y_FROM_CANON_Y (f, ly) + FRAME_INTERNAL_BORDER_WIDTH(f);\n"
+msgstr ""
+"  CHECK_LIVE_WINDOW (window);\n"
+"  w = XWINDOW (window);\n"
+"  f = XFRAME (w->frame);\n"
+"  CHECK_CONS (coordinates);\n"
+"  lx = Fcar (coordinates);\n"
+"  ly = Fcdr (coordinates);\n"
+"  CHECK_NUMBER_OR_FLOAT (lx);\n"
+"  CHECK_NUMBER_OR_FLOAT (ly);\n"
+"  x = FRAME_PIXEL_X_FROM_CANON_X (f, lx) + FRAME_INTERNAL_BORDER_WIDTH(f);\n"
+"  y = FRAME_PIXEL_Y_FROM_CANON_Y (f, ly) + FRAME_INTERNAL_BORDER_WIDTH(f);\n"
+
+#. type: group
+#: original_texis/internals.texi:869
+#, no-wrap
+msgid ""
+"  switch (coordinates_in_window (w, x, y))\n"
+"    @{\n"
+"    case ON_NOTHING:            /* NOT in window at all. */\n"
+"      return Qnil;\n"
+msgstr ""
+"  switch (coordinates_in_window (w, x, y))\n"
+"    @{\n"
+"    case ON_NOTHING:            /* NOT in window at all. */\n"
+"      return Qnil;\n"
+
+#. type: smallexample
+#: original_texis/internals.texi:872 original_texis/internals.texi:879
+#, no-wrap
+msgid ""
+"    ...\n"
+"\n"
+msgstr ""
+"    ...\n"
+"\n"
+
+#. type: group
+#: original_texis/internals.texi:876
+#, no-wrap
+msgid ""
+"    case ON_MODE_LINE:          /* In mode line of window. */\n"
+"      return Qmode_line;\n"
+msgstr ""
+"    case ON_MODE_LINE:          /* In mode line of window. */\n"
+"      return Qmode_line;\n"
+
+#. type: group
+#: original_texis/internals.texi:884
+#, no-wrap
+msgid ""
+"    case ON_SCROLL_BAR:         /* On scroll-bar of window.  */\n"
+"      /* Historically we are supposed to return nil in this case.  */\n"
+"      return Qnil;\n"
+msgstr ""
+"    case ON_SCROLL_BAR:         /* On scroll-bar of window.  */\n"
+"      /* Historically we are supposed to return nil in this case.  */\n"
+"      return Qnil;\n"
+
+#. type: group
+#: original_texis/internals.texi:891
+#, no-wrap
+msgid ""
+"    default:\n"
+"      abort ();\n"
+"    @}\n"
+"@}\n"
+msgstr ""
+"    default:\n"
+"      abort ();\n"
+"    @}\n"
+"@}\n"
+
+#. type: Plain text
+#: original_texis/internals.texi:904
+msgid "Note that C code cannot call functions by name unless they are defined in C@.  The way to call a function written in Lisp is to use @code{Ffuncall}, which embodies the Lisp function @code{funcall}.  Since the Lisp function @code{funcall} accepts an unlimited number of arguments, in C it takes two: the number of Lisp-level arguments, and a one-dimensional array containing their values.  The first Lisp-level argument is the Lisp function to call, and the rest are the arguments to pass to it.  Since @code{Ffuncall} can call the evaluator, you must protect pointers from garbage collection around the call to @code{Ffuncall}."
+msgstr "Cコードは、それらがCで記述されていなければ、名前で呼び出すことはできないことに注意してください。Lispで記述された関数を呼び出すには、関数@code{funcall}を具現化した@code{Ffuncall}を使用します。Lisp関数@code{funcall}は個数制限なしの引数を受け付けるので、Cでの引数はLispレベルでの引数個数と、それらの値を含む1次元配列という、2個の引数になります。Lispレベルでの1つ目の引数は呼び出す関数で、残りはそれに渡す引数です。@code{Ffuncall}は評価機能(evaluator)を呼び出すかもしれないので、@code{Ffuncall}の呼び出し前後でガーベージコレクションからポインターを保護しなければなりません。"
+
+#. type: Plain text
+#: original_texis/internals.texi:908
+msgid "The C functions @code{call0}, @code{call1}, @code{call2}, and so on, provide handy ways to call a Lisp function conveniently with a fixed number of arguments.  They work by calling @code{Ffuncall}."
+msgstr "C関数@code{call0}、@code{call1}、@code{call2}、...は個数が固定された引数でLisp関数を手軽に呼び出す便利な方法を提供します。これらは@code{Ffuncall}を呼び出すことにより機能します。"
+
+#. type: Plain text
+#: original_texis/internals.texi:912
+msgid "@file{eval.c} is a very good file to look through for examples; @file{lisp.h} contains the definitions for some important macros and functions."
+msgstr "@file{eval.c}は例を探すのに適したファイルです。@file{lisp.h}には重要なマクロと関数の定義がいくつか含まれています。"
+
+#. type: Plain text
+#: original_texis/internals.texi:917
+msgid "If you define a function which is side-effect free, update the code in @file{byte-opt.el} that binds @code{side-effect-free-fns} and @code{side-effect-and-error-free-fns} so that the compiler optimizer knows about it."
+msgstr "副作用をもたない関数を定義する場合には、コンパイラーのオプティマイザーに知らせるために@code{side-effect-free-fns}と@code{side-effect-and-error-free-fns}をバインドする@file{byte-opt.el}内のコードを更新してください。"
+
+#. type: cindex
+#: original_texis/internals.texi:920
+#, no-wrap
+msgid "object internals"
+msgstr "object internals"
+
+#. type: Plain text
+#: original_texis/internals.texi:930
+msgid "Emacs Lisp provides a rich set of the data types.  Some of them, like cons cells, integers and strings, are common to nearly all Lisp dialects.  Some others, like markers and buffers, are quite special and needed to provide the basic support to write editor commands in Lisp.  To implement such a variety of object types and provide an efficient way to pass objects between the subsystems of an interpreter, there is a set of C data structures and a special type to represent the pointers to all of them, which is known as @dfn{tagged pointer}."
+msgstr "Emacs Lispは豊富なデータタイプのセットを提供します。コンスセル、整数、文字列のようにこれらのいくつかは、ほとんどすべてのLisp方言で一般的です。マーカやバッファーのようなそれ以外のものはLisp内でエディターコマンドを記述するための基本的サポートを提供するために極めて特別かつ必要なものです。そのような種々のオブジェクトタイプを実装してインタープリターのサブシステムとの間でオブジェクトを渡す効果的な方法を提供するために、Cデータ構造体セットとそれらすべてにたいするポインターを表す@dfn{タグ付きポインター(tagged pointer)}と呼ばれる特別なタイプが存在します。"
+
+#. type: Plain text
+#: original_texis/internals.texi:947
+msgid "In C, the tagged pointer is an object of type @code{Lisp_Object}.  Any initialized variable of such a type always holds the value of one of the following basic data types: integer, symbol, string, cons cell, float, vectorlike or miscellaneous object.  Each of these data types has the corresponding tag value.  All tags are enumerated by @code{enum Lisp_Type} and placed into a 3-bit bitfield of the @code{Lisp_Object}.  The rest of the bits is the value itself.  Integers are immediate, i.e., directly represented by those @dfn{value bits}, and all other objects are represented by the C pointers to a corresponding object allocated from the heap.  Width of the @code{Lisp_Object} is platform- and configuration-dependent: usually it's equal to the width of an underlying platform pointer (i.e., 32-bit on a 32-bit machine and 64-bit on a 64-bit one), but also there is a special configuration where @code{Lisp_Object} is 64-bit but all pointers are 32-bit.  The latter trick was designed to overcome the limited range of values for Lisp integers on a 32-bit system by using 64-bit @code{long long} type for @code{Lisp_Object}."
+msgstr "Cではタグ付きポインターはタイプ@code{Lisp_Object}のオブジェクトです。そのようなタイプの初期化された変数は基本的なデータタイプである整数、シンボル、文字列、コンスセル、浮動小数点数、ベクター類似オブジェクトや、その他の雑多なオブジェクトのいずれかを値として常に保持します。これらのデータタイプのそれぞれは対応するタグ値をもちます。すべてのタグは@code{enum Lisp_Type}により列挙されており、@code{Lisp_Object}の3ビットのビットフィールドに配置されます。残りのビットはそれ自身の値です。整数は即値(@dfn{値ビット}で直接表される)、他のすべてのオブジェクトはヒープに割り当てられた対応するオブジェクトへのCポインターで表されます。@code{Lisp_Object}のサイズはプラットフォームと設定に依存します。これは通常は背景プラットフォームのポインターと同一(32ビットマシンなら32ビット、64ビットマシンなら64ビット)ですが@code{Lisp_Object}が64ビットでも、すべてのポインターが32ビットのような特別な構成もあります。後者は@code{Lisp_Object}にたいして64ビットの@code{long long}タイプを使用することにより、32ビットシステム上のLisp整数にたいする値範囲の制限を乗り越えるためにデザインされたトリックです。"
+
+#. type: Plain text
+#: original_texis/internals.texi:950
+msgid "The following C data structures are defined in @file{lisp.h} to represent the basic data types beyond integers:"
+msgstr "以下のCデータ構造体は整数ではない基本的なデータタイプを表すために@file{lisp.h}で定義されています:"
+
+#. type: item
+#: original_texis/internals.texi:952
+#, no-wrap
+msgid "struct Lisp_Cons"
+msgstr "struct Lisp_Cons"
+
+#. type: table
+#: original_texis/internals.texi:954
+msgid "Cons cell, an object used to construct lists."
+msgstr "コンスセル。リストを構築するために使用されるオブジェクト。"
+
+#. type: item
+#: original_texis/internals.texi:955
+#, no-wrap
+msgid "struct Lisp_String"
+msgstr "struct Lisp_String"
+
+#. type: table
+#: original_texis/internals.texi:957
+msgid "String, the basic object to represent a sequence of characters."
+msgstr "文字列。文字シーケンスを表す基本的オブジェクト。"
+
+#. type: item
+#: original_texis/internals.texi:958
+#, no-wrap
+msgid "struct Lisp_Vector"
+msgstr "struct Lisp_Vector"
+
+#. type: table
+#: original_texis/internals.texi:960
+msgid "Array, a fixed-size set of Lisp objects which may be accessed by an index."
+msgstr "配列。インデックスによりアクセスできる固定サイズのLispオブジェクトのセット。"
+
+#. type: item
+#: original_texis/internals.texi:961
+#, no-wrap
+msgid "struct Lisp_Symbol"
+msgstr "struct Lisp_Symbol"
+
+#. type: table
+#: original_texis/internals.texi:963
+msgid "Symbol, the unique-named entity commonly used as an identifier."
+msgstr "シンボル。一般的に識別子として使用される一意な名前のエンティティ。"
+
+#. type: item
+#: original_texis/internals.texi:964
+#, no-wrap
+msgid "struct Lisp_Float"
+msgstr "struct Lisp_Float"
+
+#. type: table
+#: original_texis/internals.texi:966
+msgid "Floating-point value."
+msgstr "Floating-point value."
+
+#. type: item
+#: original_texis/internals.texi:967
+#, no-wrap
+msgid "union Lisp_Misc"
+msgstr "union Lisp_Misc"
+
+#. type: table
+#: original_texis/internals.texi:969
+msgid "Miscellaneous kinds of objects which don't fit into any of the above."
+msgstr "上記のいずれにも適合しない雑多な種類のオブジェクト。"
+
+#. type: Plain text
+#: original_texis/internals.texi:978
+msgid "These types are the first-class citizens of an internal type system.  Since the tag space is limited, all other types are the subtypes of either @code{Lisp_Vectorlike} or @code{Lisp_Misc}.  Vector subtypes are enumerated by @code{enum pvec_type}, and nearly all complex objects like windows, buffers, frames, and processes fall into this category.  The rest of special types, including markers and overlays, are enumerated by @code{enum Lisp_Misc_Type} and form the set of subtypes of @code{Lisp_Misc}."
+msgstr "これらのタイプは内部的タイプシステムのファーストクラスの市民です。タグスペースは限られているので他のすべてのタイプは@code{Lisp_Vectorlike}か@code{Lisp_Misc}のサブクラスです。サブタイプのベクターは@code{enum pvec_type}により列挙されておりウィンドウ、バッファー、フレーム、プロセスのようなほとんどすべての複雑なオブジェクトはこのカテゴリーに分類されます。マーカーとオーバーレイを含む残りのスペシャルタイプは@code{enum Lisp_Misc_Type}により列挙されており、@code{Lisp_Misc}のサブタイプセットを形成します。"
+
+#. type: Plain text
+#: original_texis/internals.texi:986
+msgid "Below there is a description of a few subtypes of @code{Lisp_Vectorlike}.  Buffer object represents the text to display and edit.  Window is the part of display structure which shows the buffer or used as a container to recursively place other windows on the same frame.  (Do not confuse Emacs Lisp window object with the window as an entity managed by the user interface system like X; in Emacs terminology, the latter is called frame.)  Finally, process object is used to manage the subprocesses."
+msgstr "@code{Lisp_Vectorlike}のいくつかのサブタイプを説明します。バッファーオブジェクトは表示と編集を行うテキストを表します。ウィンドウはバッファーを表示したり同一フレーム上で再帰的に他のウィンドウを配置するためのコンテナーに使用される表示構造の一部です(Emacs LispのウィンドウオブジェクトとXのようなユーザーインターフェースシステムに管理されるエンティティとしてのウィンドウを混同しないこと。Emacsの用語では後者はフレームと呼ばれる)。最後にプロセスオブジェクトはサブプロセスの管理に使用されます。"
+
+#. type: subsection
+#: original_texis/internals.texi:991 original_texis/internals.texi:993
+#: original_texis/internals.texi:994
+#, no-wrap
+msgid "Buffer Internals"
+msgstr "Buffer Internals"
+
+#. type: menuentry
+#: original_texis/internals.texi:991
+msgid "Components of a buffer structure."
+msgstr "バッファー構造体の構成子。"
+
+#. type: subsection
+#: original_texis/internals.texi:991 original_texis/internals.texi:1261
+#: original_texis/internals.texi:1262
+#, no-wrap
+msgid "Window Internals"
+msgstr "Window Internals"
+
+#. type: menuentry
+#: original_texis/internals.texi:991
+msgid "Components of a window structure."
+msgstr "ウィンドウ構造体の構成子。"
+
+#. type: subsection
+#: original_texis/internals.texi:991 original_texis/internals.texi:1468
+#: original_texis/internals.texi:1469
+#, no-wrap
+msgid "Process Internals"
+msgstr "Process Internals"
+
+#. type: menuentry
+#: original_texis/internals.texi:991
+msgid "Components of a process structure."
+msgstr "プロセス構造体の構成子。"
+
+#. type: cindex
+#: original_texis/internals.texi:995
+#, no-wrap
+msgid "internals, of buffer"
+msgstr "internals, of buffer"
+
+#. type: cindex
+#: original_texis/internals.texi:996
+#, no-wrap
+msgid "buffer internals"
+msgstr "buffer internals"
+
+#. type: Plain text
+#: original_texis/internals.texi:1003
+msgid "Two structures (see @file{buffer.h}) are used to represent buffers in C@.  The @code{buffer_text} structure contains fields describing the text of a buffer; the @code{buffer} structure holds other fields.  In the case of indirect buffers, two or more @code{buffer} structures reference the same @code{buffer_text} structure."
+msgstr "Cでバッファーを表すために2つの構造体(@file{buffer.h}を参照)が使用されます。@code{buffer_text}構造体にはバッファーのテキストを記述するフィールドが含まれます。@code{buffer}構造体は他のフィールドを保持します。インダイレクトバッファーの場合には、2つ以上の@code{buffer}構造体が同じ@code{buffer_text}構造体を参照します。"
+
+#. type: Plain text
+#: original_texis/internals.texi:1005
+msgid "Here are some of the fields in @code{struct buffer_text}:"
+msgstr "以下に@code{struct buffer_text}内のフィールドをいくつか示します:"
+
+#. type: item
+#: original_texis/internals.texi:1007
+#, no-wrap
+msgid "beg"
+msgstr "beg"
+
+#. type: table
+#: original_texis/internals.texi:1009
+msgid "The address of the buffer contents."
+msgstr "バッファーコンテンツのアドレス。"
+
+#. type: item
+#: original_texis/internals.texi:1010
+#, no-wrap
+msgid "gpt"
+msgstr "gpt"
+
+#. type: itemx
+#: original_texis/internals.texi:1011
+#, no-wrap
+msgid "gpt_byte"
+msgstr "gpt_byte"
+
+#. type: table
+#: original_texis/internals.texi:1014
+msgid "The character and byte positions of the buffer gap.  @xref{Buffer Gap}."
+msgstr "バッファーのギャップの文字位置とバイト位置。@ref{Buffer Gap}を参照のこと。"
+
+#. type: item
+#: original_texis/internals.texi:1015
+#, no-wrap
+msgid "z"
+msgstr "z"
+
+#. type: itemx
+#: original_texis/internals.texi:1016
+#, no-wrap
+msgid "z_byte"
+msgstr "z_byte"
+
+#. type: table
+#: original_texis/internals.texi:1018
+msgid "The character and byte positions of the end of the buffer text."
+msgstr "バッファーテキストの終端の文字位置とバイト位置。"
+
+#. type: item
+#: original_texis/internals.texi:1019
+#, no-wrap
+msgid "gap_size"
+msgstr "gap_size"
+
+#. type: table
+#: original_texis/internals.texi:1021
+msgid "The size of buffer's gap.  @xref{Buffer Gap}."
+msgstr "バッファーのギャップのサイズ。@ref{Buffer Gap}を参照のこと。"
+
+#. type: item
+#: original_texis/internals.texi:1022
+#, no-wrap
+msgid "modiff"
+msgstr "modiff"
+
+#. type: itemx
+#: original_texis/internals.texi:1023
+#, no-wrap
+msgid "save_modiff"
+msgstr "save_modiff"
+
+#. type: itemx
+#: original_texis/internals.texi:1024
+#, no-wrap
+msgid "chars_modiff"
+msgstr "chars_modiff"
+
+#. type: itemx
+#: original_texis/internals.texi:1025
+#, no-wrap
+msgid "overlay_modiff"
+msgstr "overlay_modiff"
+
+#. type: table
+#: original_texis/internals.texi:1034
+msgid "These fields count the number of buffer-modification events performed in this buffer.  @code{modiff} is incremented after each buffer-modification event, and is never otherwise changed; @code{save_modiff} contains the value of @code{modiff} the last time the buffer was visited or saved; @code{chars_modiff} counts only modifications to the characters in the buffer, ignoring all other kinds of changes; and @code{overlay_modiff} counts only modifications to the overlays."
+msgstr "これらのフィールドはバッファーで行われたバッファー変更イベントの数をカウントする。@code{modiff}はバッファー変更イベントのたびに増分されて、それ以外では決して変化しない。@code{save_modiff}にはバッファーが最後にvisitまたは保存されたときの@code{modiff}の値が含まれる。@code{chars_modiff}はバッファー内の文字にたいする変更だけをカウントして、その他すべての種類の変更を無視する。@code{overlay_modiff}はオーバーレイにたいする変更だけをカウントする。"
+
+#. type: item
+#: original_texis/internals.texi:1035
+#, no-wrap
+msgid "beg_unchanged"
+msgstr "beg_unchanged"
+
+#. type: itemx
+#: original_texis/internals.texi:1036
+#, no-wrap
+msgid "end_unchanged"
+msgstr "end_unchanged"
+
+#. type: table
+#: original_texis/internals.texi:1039
+msgid "The number of characters at the start and end of the text that are known to be unchanged since the last complete redisplay."
+msgstr "最後の再表示完了以降に未変更だと解っているテキスト、開始と終了の箇所での文字数。"
+
+#. type: item
+#: original_texis/internals.texi:1040
+#, no-wrap
+msgid "unchanged_modified"
+msgstr "unchanged_modified"
+
+#. type: itemx
+#: original_texis/internals.texi:1041
+#, no-wrap
+msgid "overlay_unchanged_modified"
+msgstr "overlay_unchanged_modified"
+
+#. type: table
+#: original_texis/internals.texi:1047
+msgid "The values of @code{modiff} and @code{overlay_modiff}, respectively, after the last complete redisplay.  If their current values match @code{modiff} or @code{overlay_modiff}, that means @code{beg_unchanged} and @code{end_unchanged} contain no useful information."
+msgstr "それぞれ最後に再表示が完了した後の@code{modiff}と@code{overlay_modiff}の値。これらのカレント値が@code{modiff}や@code{overlay_modiff}とマッチしたら、それは@code{beg_unchanged}と@code{end_unchanged}に有用な情報が含まれないことを意味する。"
+
+#. type: item
+#: original_texis/internals.texi:1048
+#, no-wrap
+msgid "markers"
+msgstr "markers"
+
+#. type: table
+#: original_texis/internals.texi:1052
+msgid "The markers that refer to this buffer.  This is actually a single marker, and successive elements in its marker @code{chain} are the other markers referring to this buffer text."
+msgstr "このバッファーを参照するマーカー。これは実際には単一のマーカーであり、自身のマーカー``チェーン''内の一連の要素がバッファー内のテキストを参照する他のマーカーになる。"
+
+#. type: item
+#: original_texis/internals.texi:1053
+#, no-wrap
+msgid "intervals"
+msgstr "intervals"
+
+#. type: table
+#: original_texis/internals.texi:1055
+msgid "The interval tree which records the text properties of this buffer."
+msgstr "そのバッファーのテキストプロパティを記録するインターバルツリー。"
+
+#. type: Plain text
+#: original_texis/internals.texi:1058
+msgid "Some of the fields of @code{struct buffer} are:"
+msgstr "@code{struct buffer}のいくつかのフィールドを以下に示します:"
+
+#. type: item
+#: original_texis/internals.texi:1060
+#, no-wrap
+msgid "header"
+msgstr "header"
+
+#. type: table
+#: original_texis/internals.texi:1063
+msgid "A header of type @code{struct vectorlike_header} is common to all vectorlike objects."
+msgstr "タイプ@code{struct vectorlike_header}のヘッダーはベクター類似のすべてのオブジェクトに共通。"
+
+#. type: item
+#: original_texis/internals.texi:1064
+#, no-wrap
+msgid "own_text"
+msgstr "own_text"
+
+#. type: table
+#: original_texis/internals.texi:1067
+msgid "A @code{struct buffer_text} structure that ordinarily holds the buffer contents.  In indirect buffers, this field is not used."
+msgstr "構造体@code{struct buffer_text}は通常はバッファーのコンテンツを保持する。このフィールドはインダイレクトバッファーでは使用されない。"
+
+#. type: item
+#: original_texis/internals.texi:1068
+#, no-wrap
+msgid "text"
+msgstr "text"
+
+#. type: table
+#: original_texis/internals.texi:1072
+msgid "A pointer to the @code{buffer_text} structure for this buffer.  In an ordinary buffer, this is the @code{own_text} field above.  In an indirect buffer, this is the @code{own_text} field of the base buffer."
+msgstr "そのバッファーの@code{buffer_text}構造体へのポインター。通常のバッファーでは上述の@code{own_text}フィールド。インダイレクトバッファーではベースバッファーの@code{own_text}フィールド。"
+
+#. type: item
+#: original_texis/internals.texi:1073 original_texis/internals.texi:1296
+#, no-wrap
+msgid "next"
+msgstr "next"
+
+#. type: table
+#: original_texis/internals.texi:1077
+msgid "A pointer to the next buffer, in the chain of all buffers, including killed buffers.  This chain is used only for allocation and garbage collection, in order to collect killed buffers properly."
+msgstr "killされたバッファーを含むすべてのバッファーのチェーン内において次のバッファーへのポインター。このチェーンはkillされたバッファーを正しく回収するために割り当てとガーベージコレクションのためだけに使用される。"
+
+#. type: item
+#: original_texis/internals.texi:1078
+#, no-wrap
+msgid "pt"
+msgstr "pt"
+
+#. type: itemx
+#: original_texis/internals.texi:1079
+#, no-wrap
+msgid "pt_byte"
+msgstr "pt_byte"
+
+#. type: table
+#: original_texis/internals.texi:1081
+msgid "The character and byte positions of point in a buffer."
+msgstr "バッファー内のポイントの文字位置とバイト位置。"
+
+#. type: item
+#: original_texis/internals.texi:1082
+#, no-wrap
+msgid "begv"
+msgstr "begv"
+
+#. type: itemx
+#: original_texis/internals.texi:1083
+#, no-wrap
+msgid "begv_byte"
+msgstr "begv_byte"
+
+#. type: table
+#: original_texis/internals.texi:1086
+msgid "The character and byte positions of the beginning of the accessible range of text in the buffer."
+msgstr "そのバッファー内のアクセス可能範囲の先頭位置の文字位置とバイト位置。"
+
+#. type: item
+#: original_texis/internals.texi:1087
+#, no-wrap
+msgid "zv"
+msgstr "zv"
+
+#. type: itemx
+#: original_texis/internals.texi:1088
+#, no-wrap
+msgid "zv_byte"
+msgstr "zv_byte"
+
+#. type: table
+#: original_texis/internals.texi:1091
+msgid "The character and byte positions of the end of the accessible range of text in the buffer."
+msgstr "そのバッファー内のアクセス可能範囲の終端位置の文字位置とバイト位置。"
+
+#. type: item
+#: original_texis/internals.texi:1092
+#, no-wrap
+msgid "base_buffer"
+msgstr "base_buffer"
+
+#. type: table
+#: original_texis/internals.texi:1095
+msgid "In an indirect buffer, this points to the base buffer.  In an ordinary buffer, it is null."
+msgstr "インダイレクトバッファーではベースバッファーのポイント。通常のバッファーではnull。"
+
+#. type: item
+#: original_texis/internals.texi:1096
+#, no-wrap
+msgid "local_flags"
+msgstr "local_flags"
+
+#. type: table
+#: original_texis/internals.texi:1102
+msgid "This field contains flags indicating that certain variables are local in this buffer.  Such variables are declared in the C code using @code{DEFVAR_PER_BUFFER}, and their buffer-local bindings are stored in fields in the buffer structure itself.  (Some of these fields are described in this table.)"
+msgstr "このフィールドはバッファー内でローカルな変数にたいしてそれを示すフラグを含む。そのような変数はCコードでは@code{DEFVAR_PER_BUFFER}を使用して宣言され、それらのバッファーローカルなバインディングはバッファー構造体自身内のフィールドに格納される(これらのフィールドのいくつかはこのテーブル内で説明している)。"
+
+#. type: item
+#: original_texis/internals.texi:1103
+#, no-wrap
+msgid "modtime"
+msgstr "modtime"
+
+#. type: table
+#: original_texis/internals.texi:1108
+msgid "The modification time of the visited file.  It is set when the file is written or read.  Before writing the buffer into a file, this field is compared to the modification time of the file to see if the file has changed on disk.  @xref{Buffer Modification}."
+msgstr "visitされているファイルの変更時刻。これはファイルの書き込みと読み込み時にセットされる。そのバッファーをファイルに書き込む前にファイルがディスク上で変更されていないことを確認するために、このフィールドとそのファイルの変更時刻を比較する。@ref{Buffer Modification}を参照のこと。"
+
+#. type: item
+#: original_texis/internals.texi:1109
+#, no-wrap
+msgid "auto_save_modified"
+msgstr "auto_save_modified"
+
+#. type: table
+#: original_texis/internals.texi:1111
+msgid "The time when the buffer was last auto-saved."
+msgstr "そのバッファーが最後に自動保存されたときの時刻。"
+
+#. type: item
+#: original_texis/internals.texi:1112
+#, no-wrap
+msgid "last_window_start"
+msgstr "last_window_start"
+
+#. type: table
+#: original_texis/internals.texi:1115
+msgid "The @code{window-start} position in the buffer as of the last time the buffer was displayed in a window."
+msgstr "そのバッファーが最後にウィンドウに表示されたときのバッファー内での@code{window-start}位置。"
+
+#. type: item
+#: original_texis/internals.texi:1116
+#, no-wrap
+msgid "clip_changed"
+msgstr "clip_changed"
+
+#. type: table
+#: original_texis/internals.texi:1119
+msgid "This flag indicates that narrowing has changed in the buffer.  @xref{Narrowing}."
+msgstr "このフラグはバッファーでのナローイングが変更されているかを示す。@ref{Narrowing}を参照のこと。"
+
+#. type: item
+#: original_texis/internals.texi:1120
+#, no-wrap
+msgid "prevent_redisplay_optimizations_p"
+msgstr "prevent_redisplay_optimizations_p"
+
+#. type: table
+#: original_texis/internals.texi:1123
+msgid "This flag indicates that redisplay optimizations should not be used to display this buffer."
+msgstr "このフラグはバッファーの表示において再表示最適化が使用されるべきではないことを示す。"
+
+#. type: item
+#: original_texis/internals.texi:1124
+#, no-wrap
+msgid "overlay_center"
+msgstr "overlay_center"
+
+#. type: table
+#: original_texis/internals.texi:1127
+msgid "This field holds the current overlay center position.  @xref{Managing Overlays}."
+msgstr "このフィールドはカレントオーバーレイの中心位置を保持する。@ref{Managing Overlays}を参照のこと。"
+
+#. type: item
+#: original_texis/internals.texi:1128
+#, no-wrap
+msgid "overlays_before"
+msgstr "overlays_before"
+
+#. type: itemx
+#: original_texis/internals.texi:1129
+#, no-wrap
+msgid "overlays_after"
+msgstr "overlays_after"
+
+#. type: table
+#: original_texis/internals.texi:1136
+msgid "These fields hold, respectively, a list of overlays that end at or before the current overlay center, and a list of overlays that end after the current overlay center.  @xref{Managing Overlays}.  @code{overlays_before} is sorted in order of decreasing end position, and @code{overlays_after} is sorted in order of increasing beginning position."
+msgstr "これらのフィールドはカレントオーバーレイ中心、またはその前で終わるオーバーレイのリスト、およびカレントオーバーレイの後で終わるオーバーレイのリスト。@ref{Managing Overlays}を参照のこと。@code{overlays_before}は終端位置の記述順、@code{overlays_after}は先頭位置増加順で格納される。"
+
+#. type: item
+#: original_texis/internals.texi:1139 original_texis/internals.texi:1477
+#, no-wrap
+msgid "name"
+msgstr "name"
+
+#. type: table
+#: original_texis/internals.texi:1142
+msgid "A Lisp string that names the buffer.  It is guaranteed to be unique.  @xref{Buffer Names}."
+msgstr "そのバッファーを命名するLisp文字列。これは一意であることが保証されている。@ref{Buffer Names}を参照のこと。"
+
+#. type: item
+#: original_texis/internals.texi:1143
+#, no-wrap
+msgid "save_length"
+msgstr "save_length"
+
+#. type: table
+#: original_texis/internals.texi:1148
+msgid "The length of the file this buffer is visiting, when last read or saved.  This and other fields concerned with saving are not kept in the @code{buffer_text} structure because indirect buffers are never saved."
+msgstr "そのバッファーがvisitしているファイルを最後に読み込みか保存したときの長さ。インダイレクトバッファーは決して保存されることはないので、保存に関してはこのフィールドとその他のフィールドは@code{buffer_text}構造体で維持されない。"
+
+#. type: item
+#: original_texis/internals.texi:1149
+#, no-wrap
+msgid "directory"
+msgstr "directory"
+
+#. type: table
+#: original_texis/internals.texi:1152
+msgid "The directory for expanding relative file names.  This is the value of the buffer-local variable @code{default-directory} (@pxref{File Name Expansion})."
+msgstr "相対ファイル名を展開するディレクトリー。これはバッファーローカル変数@code{default-directory}の値(@ref{File Name Expansion}を参照)。"
+
+#. type: item
+#: original_texis/internals.texi:1153
+#, no-wrap
+msgid "filename"
+msgstr "filename"
+
+#. type: table
+#: original_texis/internals.texi:1157
+msgid "The name of the file visited in this buffer, or @code{nil}.  This is the value of the buffer-local variable @code{buffer-file-name} (@pxref{Buffer File Name})."
+msgstr "そのバッファーがvisitしているファイルの名前。これはバッファーローカル変数@code{buffer-file-name}の値(@ref{Buffer File Name}を参照)。"
+
+#. type: item
+#: original_texis/internals.texi:1158
+#, no-wrap
+msgid "undo_list"
+msgstr "undo_list"
+
+#. type: itemx
+#: original_texis/internals.texi:1159
+#, no-wrap
+msgid "backed_up"
+msgstr "backed_up"
+
+#. type: itemx
+#: original_texis/internals.texi:1160
+#, no-wrap
+msgid "auto_save_file_name"
+msgstr "auto_save_file_name"
+
+#. type: itemx
+#: original_texis/internals.texi:1161
+#, no-wrap
+msgid "auto_save_file_format"
+msgstr "auto_save_file_format"
+
+#. type: itemx
+#: original_texis/internals.texi:1162
+#, no-wrap
+msgid "read_only"
+msgstr "read_only"
+
+#. type: itemx
+#: original_texis/internals.texi:1163
+#, no-wrap
+msgid "file_format"
+msgstr "file_format"
+
+#. type: itemx
+#: original_texis/internals.texi:1164
+#, no-wrap
+msgid "file_truename"
+msgstr "file_truename"
+
+#. type: itemx
+#: original_texis/internals.texi:1165
+#, no-wrap
+msgid "invisibility_spec"
+msgstr "invisibility_spec"
+
+#. type: itemx
+#: original_texis/internals.texi:1166
+#, no-wrap
+msgid "display_count"
+msgstr "display_count"
+
+#. type: itemx
+#: original_texis/internals.texi:1167
+#, no-wrap
+msgid "display_time"
+msgstr "display_time"
+
+#. type: table
+#: original_texis/internals.texi:1173
+msgid "These fields store the values of Lisp variables that are automatically buffer-local (@pxref{Buffer-Local Variables}), whose corresponding variable names have the additional prefix @code{buffer-} and have underscores replaced with dashes.  For instance, @code{undo_list} stores the value of @code{buffer-undo-list}."
+msgstr "これらのフィールドは自動的にバッファーローカル(@ref{Buffer-Local Variables}を参照)になるLisp変数の値を格納する。これらに対応する変数は名前に追加のプレフィクス@code{buffer-}がつき、アンダースコアがダッシュで置換される。たとえば@code{undo_list}は@code{buffer-undo-list}の値を格納する。"
+
+#. type: item
+#: original_texis/internals.texi:1174 original_texis/internals.texi:1503
+#, no-wrap
+msgid "mark"
+msgstr "mark"
+
+#. type: table
+#: original_texis/internals.texi:1177
+msgid "The mark for the buffer.  The mark is a marker, hence it is also included on the list @code{markers}.  @xref{The Mark}."
+msgstr "そのバッファーにたいするマーク。マークはマーカーなのでリスト@code{markers}内にも含まれる。@ref{The Mark}を参照のこと。"
+
+#. type: item
+#: original_texis/internals.texi:1178
+#, no-wrap
+msgid "local_var_alist"
+msgstr "local_var_alist"
+
+#. type: table
+#: original_texis/internals.texi:1183
+msgid "The association list describing the buffer-local variable bindings of this buffer, not including the built-in buffer-local bindings that have special slots in the buffer object.  (Those slots are omitted from this table.)  @xref{Buffer-Local Variables}."
+msgstr "この連想リストはバッファーのバッファーローカル変数のバインディングを記述する。これにはバッファーオブジェクト内に特別なスロットをもつ、ビルトインのバッファーローカルなバインディングは含まれない(このテーブルではそれらのスロットは省略している)。@ref{Buffer-Local Variables}を参照のこと。"
+
+#. type: item
+#: original_texis/internals.texi:1184
+#, no-wrap
+msgid "major_mode"
+msgstr "major_mode"
+
+#. type: table
+#: original_texis/internals.texi:1186
+msgid "Symbol naming the major mode of this buffer, e.g., @code{lisp-mode}."
+msgstr "そのバッファーのメジャーモードを命名するシンボル(例: @code{lisp-mode})。"
+
+#. type: item
+#: original_texis/internals.texi:1187
+#, no-wrap
+msgid "mode_name"
+msgstr "mode_name"
+
+#. type: table
+#: original_texis/internals.texi:1189
+msgid "Pretty name of the major mode, e.g., @code{\"Lisp\"}."
+msgstr "そのメジャーモードの愛称(例: @code{\"Lisp\"})。"
+
+#. type: item
+#: original_texis/internals.texi:1190
+#, no-wrap
+msgid "keymap"
+msgstr "keymap"
+
+#. type: itemx
+#: original_texis/internals.texi:1191
+#, no-wrap
+msgid "abbrev_table"
+msgstr "abbrev_table"
+
+#. type: itemx
+#: original_texis/internals.texi:1192
+#, no-wrap
+msgid "syntax_table"
+msgstr "syntax_table"
+
+#. type: itemx
+#: original_texis/internals.texi:1193
+#, no-wrap
+msgid "category_table"
+msgstr "category_table"
+
+#. type: item
+#: original_texis/internals.texi:1194 original_texis/internals.texi:1444
+#, no-wrap
+msgid "display_table"
+msgstr "display_table"
+
+#. type: table
+#: original_texis/internals.texi:1199
+msgid "These fields store the buffer's local keymap (@pxref{Keymaps}), abbrev table (@pxref{Abbrev Tables}), syntax table (@pxref{Syntax Tables}), category table (@pxref{Categories}), and display table (@pxref{Display Tables})."
+msgstr "これらのフィールドはバッファーのローカルキーマップ(@ref{Keymaps}を参照)、abbrevテーブル(@ref{Abbrev Tables}を参照)、構文テーブル(@ref{Syntax Tables}を参照)、カテゴリーテーブル(@ref{Categories}を参照)、ディスプレーテーブル(@ref{Display Tables}を参照)を格納する。"
+
+#. type: item
+#: original_texis/internals.texi:1200
+#, no-wrap
+msgid "downcase_table"
+msgstr "downcase_table"
+
+#. type: itemx
+#: original_texis/internals.texi:1201
+#, no-wrap
+msgid "upcase_table"
+msgstr "upcase_table"
+
+#. type: itemx
+#: original_texis/internals.texi:1202
+#, no-wrap
+msgid "case_canon_table"
+msgstr "case_canon_table"
+
+#. type: table
+#: original_texis/internals.texi:1206
+msgid "These fields store the conversion tables for converting text to lower case, upper case, and for canonicalizing text for case-fold search.  @xref{Case Tables}."
+msgstr "これらのフィールドはテキストを小文字、大文字、およびcase-fold検索でのテキストの正規化の変換テーブルを格納する。@ref{Case Tables}を参照のこと。"
+
+#. type: item
+#: original_texis/internals.texi:1207
+#, no-wrap
+msgid "minor_modes"
+msgstr "minor_modes"
+
+#. type: table
+#: original_texis/internals.texi:1209
+msgid "An alist of the minor modes of this buffer."
+msgstr "そのバッファーのマイナーモードのalist。"
+
+#. type: item
+#: original_texis/internals.texi:1210
+#, no-wrap
+msgid "pt_marker"
+msgstr "pt_marker"
+
+#. type: itemx
+#: original_texis/internals.texi:1211
+#, no-wrap
+msgid "begv_marker"
+msgstr "begv_marker"
+
+#. type: itemx
+#: original_texis/internals.texi:1212
+#, no-wrap
+msgid "zv_marker"
+msgstr "zv_marker"
+
+#. type: table
+#: original_texis/internals.texi:1217
+msgid "These fields are only used in an indirect buffer, or in a buffer that is the base of an indirect buffer.  Each holds a marker that records @code{pt}, @code{begv}, and @code{zv} respectively, for this buffer when the buffer is not current."
+msgstr "これらのフィールドはインダイレクトバッファー、またはインダイレクトバッファーのベースバッファーであるようなバッファーでのみ使用される。これらはそれぞれバッファーがカレントでないときにバッファーにたいする@code{pt}、@code{begv}、@code{zv}を記録するマーカーを保持する。"
+
+#. type: item
+#: original_texis/internals.texi:1218
+#, no-wrap
+msgid "mode_line_format"
+msgstr "mode_line_format"
+
+#. type: itemx
+#: original_texis/internals.texi:1219
+#, no-wrap
+msgid "header_line_format"
+msgstr "header_line_format"
+
+#. type: itemx
+#: original_texis/internals.texi:1220
+#, no-wrap
+msgid "case_fold_search"
+msgstr "case_fold_search"
+
+#. type: itemx
+#: original_texis/internals.texi:1221
+#, no-wrap
+msgid "tab_width"
+msgstr "tab_width"
+
+#. type: itemx
+#: original_texis/internals.texi:1222
+#, no-wrap
+msgid "fill_column"
+msgstr "fill_column"
+
+#. type: itemx
+#: original_texis/internals.texi:1223
+#, no-wrap
+msgid "left_margin"
+msgstr "left_margin"
+
+#. type: itemx
+#: original_texis/internals.texi:1224
+#, no-wrap
+msgid "auto_fill_function"
+msgstr "auto_fill_function"
+
+#. type: itemx
+#: original_texis/internals.texi:1225
+#, no-wrap
+msgid "truncate_lines"
+msgstr "truncate_lines"
+
+#. type: itemx
+#: original_texis/internals.texi:1226
+#, no-wrap
+msgid "word_wrap"
+msgstr "word_wrap"
+
+#. type: itemx
+#: original_texis/internals.texi:1227
+#, no-wrap
+msgid "ctl_arrow"
+msgstr "ctl_arrow"
+
+#. type: itemx
+#: original_texis/internals.texi:1228
+#, no-wrap
+msgid "bidi_display_reordering"
+msgstr "bidi_display_reordering"
+
+#. type: itemx
+#: original_texis/internals.texi:1229
+#, no-wrap
+msgid "bidi_paragraph_direction"
+msgstr "bidi_paragraph_direction"
+
+#. type: itemx
+#: original_texis/internals.texi:1230
+#, no-wrap
+msgid "selective_display"
+msgstr "selective_display"
+
+#. type: itemx
+#: original_texis/internals.texi:1231
+#, no-wrap
+msgid "selective_display_ellipses"
+msgstr "selective_display_ellipses"
+
+#. type: itemx
+#: original_texis/internals.texi:1232
+#, no-wrap
+msgid "overwrite_mode"
+msgstr "overwrite_mode"
+
+#. type: itemx
+#: original_texis/internals.texi:1233
+#, no-wrap
+msgid "abbrev_mode"
+msgstr "abbrev_mode"
+
+#. type: itemx
+#: original_texis/internals.texi:1234
+#, no-wrap
+msgid "mark_active"
+msgstr "mark_active"
+
+#. type: itemx
+#: original_texis/internals.texi:1235
+#, no-wrap
+msgid "enable_multibyte_characters"
+msgstr "enable_multibyte_characters"
+
+#. type: itemx
+#: original_texis/internals.texi:1236
+#, no-wrap
+msgid "buffer_file_coding_system"
+msgstr "buffer_file_coding_system"
+
+#. type: itemx
+#: original_texis/internals.texi:1237
+#, no-wrap
+msgid "cache_long_line_scans"
+msgstr "cache_long_line_scans"
+
+#. type: itemx
+#: original_texis/internals.texi:1238
+#, no-wrap
+msgid "point_before_scroll"
+msgstr "point_before_scroll"
+
+#. type: item
+#: original_texis/internals.texi:1239 original_texis/internals.texi:1376
+#, no-wrap
+msgid "left_fringe_width"
+msgstr "left_fringe_width"
+
+#. type: itemx
+#: original_texis/internals.texi:1240 original_texis/internals.texi:1377
+#, no-wrap
+msgid "right_fringe_width"
+msgstr "right_fringe_width"
+
+#. type: item
+#: original_texis/internals.texi:1241 original_texis/internals.texi:1381
+#, no-wrap
+msgid "fringes_outside_margins"
+msgstr "fringes_outside_margins"
+
+#. type: itemx
+#: original_texis/internals.texi:1242
+#, no-wrap
+msgid "scroll_bar_width"
+msgstr "scroll_bar_width"
+
+#. type: itemx
+#: original_texis/internals.texi:1243
+#, no-wrap
+msgid "indicate_empty_lines"
+msgstr "indicate_empty_lines"
+
+#. type: itemx
+#: original_texis/internals.texi:1244
+#, no-wrap
+msgid "indicate_buffer_boundaries"
+msgstr "indicate_buffer_boundaries"
+
+#. type: itemx
+#: original_texis/internals.texi:1245
+#, no-wrap
+msgid "fringe_indicator_alist"
+msgstr "fringe_indicator_alist"
+
+#. type: itemx
+#: original_texis/internals.texi:1246
+#, no-wrap
+msgid "fringe_cursor_alist"
+msgstr "fringe_cursor_alist"
+
+#. type: itemx
+#: original_texis/internals.texi:1247
+#, no-wrap
+msgid "scroll_up_aggressively"
+msgstr "scroll_up_aggressively"
+
+#. type: itemx
+#: original_texis/internals.texi:1248
+#, no-wrap
+msgid "scroll_down_aggressively"
+msgstr "scroll_down_aggressively"
+
+#. type: itemx
+#: original_texis/internals.texi:1249
+#, no-wrap
+msgid "cursor_type"
+msgstr "cursor_type"
+
+#. type: itemx
+#: original_texis/internals.texi:1250
+#, no-wrap
+msgid "cursor_in_non_selected_windows"
+msgstr "cursor_in_non_selected_windows"
+
+#. type: table
+#: original_texis/internals.texi:1255
+msgid "These fields store the values of Lisp variables that are automatically buffer-local (@pxref{Buffer-Local Variables}), whose corresponding variable names have underscores replaced with dashes.  For instance, @code{mode_line_format} stores the value of @code{mode-line-format}."
+msgstr "これらのフィールドは自動的にバッファーローカル(@ref{Buffer-Local Variables}を参照)になるLisp変数の値を格納する。これらに対応する変数は名前のアンダースコアがダッシュで置換される。たとえば@code{mode_line_format}は@code{mode-line-format}の値を格納する。"
+
+#. type: item
+#: original_texis/internals.texi:1256
+#, no-wrap
+msgid "last_selected_window"
+msgstr "last_selected_window"
+
+#. type: table
+#: original_texis/internals.texi:1259
+msgid "This is the last window that was selected with this buffer in it, or @code{nil} if that window no longer displays this buffer."
+msgstr "これは最後に選択されていたときにそのバッファーを表示していたウィンドウ、またはそのウィンドウがすでにそのバッファーを表示していなければ@code{nil}。"
+
+#. type: cindex
+#: original_texis/internals.texi:1263
+#, no-wrap
+msgid "internals, of window"
+msgstr "internals, of window"
+
+#. type: cindex
+#: original_texis/internals.texi:1264
+#, no-wrap
+msgid "window internals"
+msgstr "window internals"
+
+#. type: Plain text
+#: original_texis/internals.texi:1268
+msgid "The fields of a window (for a complete list, see the definition of @code{struct window} in @file{window.h}) include:"
+msgstr "ウィンドウのフィールドには以下が含まれます(完全なリストは@file{window.h}の@code{struct window}を参照):"
+
+#. type: item
+#: original_texis/internals.texi:1270
+#, no-wrap
+msgid "frame"
+msgstr "frame"
+
+#. type: table
+#: original_texis/internals.texi:1272
+msgid "The frame that this window is on."
+msgstr "そのウィンドウがあるフレーム。"
+
+#. type: item
+#: original_texis/internals.texi:1273
+#, no-wrap
+msgid "mini_p"
+msgstr "mini_p"
+
+#. type: table
+#: original_texis/internals.texi:1275
+msgid "Non-@code{nil} if this window is a minibuffer window."
+msgstr "そのウィンドウがミニバッファーウィンドウなら非@code{nil}。"
+
+#. type: item
+#: original_texis/internals.texi:1276
+#, no-wrap
+msgid "parent"
+msgstr "parent"
+
+#. type: table
+#: original_texis/internals.texi:1280
+msgid "Internally, Emacs arranges windows in a tree; each group of siblings has a parent window whose area includes all the siblings.  This field points to a window's parent."
+msgstr "Emacsは内部的にウィンドウをツリーにアレンジする。ウィンドウの兄弟グループは、そのエリアがすべての兄弟を含むような親ウィンドウをもつ。このフィールドはウィンドウの親を指す。"
+
+#. type: table
+#: original_texis/internals.texi:1285
+msgid "Parent windows do not display buffers, and play little role in display except to shape their child windows.  Emacs Lisp programs usually have no access to the parent windows; they operate on the windows at the leaves of the tree, which actually display buffers."
+msgstr "親ウィンドウはバッファーを表示せず子ウィンドウ形成を除いて表示では少ししか役割を果たさない。Emacs Lispプログラムからは通常は親ウィンドウへのアクセスがない。Emacs Lispプログラムでは実際にバッファーを表示するツリーの子ノードのウィンドウにたいして操作を行う。"
+
+#. type: item
+#: original_texis/internals.texi:1288
+#, no-wrap
+msgid "hchild"
+msgstr "hchild"
+
+#. type: itemx
+#: original_texis/internals.texi:1289
+#, no-wrap
+msgid "vchild"
+msgstr "vchild"
+
+#. type: table
+#: original_texis/internals.texi:1295
+msgid "These fields contain the window's leftmost child and its topmost child respectively.  @code{hchild} is used if the window is subdivided horizontally by child windows, and @code{vchild} if it is subdivided vertically.  In a live window, only one of @code{hchild}, @code{vchild}, and @code{buffer} (q.v.@:) is non-@code{nil}."
+msgstr "これらのフィールドはウィンドウの左端の子と上端の子を含む。子ウィンドウによりウィンドウが分割される場合には@code{hchild}、垂直に分割される場合には@code{vchild}が使用される。生きたウィンドウでは@code{hchild}、@code{vchild}、@code{buffer}のいずれか1つだけが非@code{nil}になる。"
+
+#. type: itemx
+#: original_texis/internals.texi:1297
+#, no-wrap
+msgid "prev"
+msgstr "prev"
+
+#. type: table
+#: original_texis/internals.texi:1302
+msgid "The next sibling and previous sibling of this window.  @code{next} is @code{nil} if the window is the right-most or bottom-most in its group; @code{prev} is @code{nil} if it is the left-most or top-most in its group."
+msgstr "そのウィンドウの次の兄弟と前の兄弟。自身のグループ内でそのウィンドウが右端か下端なら@code{next}は@code{nil}。自身のグループ内でそのウィンドウが左端か上端なら@code{prev}は@code{nil}。"
+
+#. type: item
+#: original_texis/internals.texi:1303
+#, no-wrap
+msgid "left_col"
+msgstr "left_col"
+
+#. type: table
+#: original_texis/internals.texi:1306
+msgid "The left-hand edge of the window, measured in columns, relative to the leftmost column in the frame (column 0)."
+msgstr "そのウィンドウの左端をフレームの最左列(列0)から相対的に数えた列数。"
+
+#. type: item
+#: original_texis/internals.texi:1307
+#, no-wrap
+msgid "top_line"
+msgstr "top_line"
+
+#. type: table
+#: original_texis/internals.texi:1310
+msgid "The top edge of the window, measured in lines, relative to the topmost line in the frame (line 0)."
+msgstr "そのウィンドウの上端をフレームの最上行(行0)から相対的に数えた行数。"
+
+#. type: item
+#: original_texis/internals.texi:1311
+#, no-wrap
+msgid "total_cols"
+msgstr "total_cols"
+
+#. type: itemx
+#: original_texis/internals.texi:1312
+#, no-wrap
+msgid "total_lines"
+msgstr "total_lines"
+
+#. type: table
+#: original_texis/internals.texi:1316
+msgid "The width and height of the window, measured in columns and lines respectively.  The width includes the scroll bar and fringes, and/or the separator line on the right of the window (if any)."
+msgstr "列数と行数で数えたウィンドウの幅と高さ。幅にはスクロールバーとフリンジおよび/または(もしあれば)ウィンドウ右側のセパレーターラインが含まれる。"
+
+#. type: item
+#: original_texis/internals.texi:1317 original_texis/internals.texi:1491
+#, no-wrap
+msgid "buffer"
+msgstr "buffer"
+
+#. type: table
+#: original_texis/internals.texi:1319
+msgid "The buffer that the window is displaying."
+msgstr "そのウィンドウが表示しているバッファー。"
+
+#. type: item
+#: original_texis/internals.texi:1320
+#, no-wrap
+msgid "start"
+msgstr "start"
+
+#. type: table
+#: original_texis/internals.texi:1323
+msgid "A marker pointing to the position in the buffer that is the first character displayed in the window."
+msgstr "そのウィンドウ内に表示されるバッファーでウィンドウに最初に表示される文字の位置を指すマーカー。"
+
+#. type: item
+#: original_texis/internals.texi:1324
+#, no-wrap
+msgid "pointm"
+msgstr "pointm"
+
+#. type: cindex
+#: original_texis/internals.texi:1325
+#, no-wrap
+msgid "window point internals"
+msgstr "window point internals"
+
+#. type: table
+#: original_texis/internals.texi:1328
+msgid "This is the value of point in the current buffer when this window is selected; when it is not selected, it retains its previous value."
+msgstr "これはウィンドウが選択されているときのカレントバッファーのポイント値。選択されていなければ前の値が保たれる。"
+
+#. type: item
+#: original_texis/internals.texi:1329
+#, no-wrap
+msgid "force_start"
+msgstr "force_start"
+
+#. type: table
+#: original_texis/internals.texi:1335
+msgid "If this flag is non-@code{nil}, it says that the window has been scrolled explicitly by the Lisp program.  This affects what the next redisplay does if point is off the screen: instead of scrolling the window to show the text around point, it moves point to a location that is on the screen."
+msgstr "このフラグが非@code{nil}ならLispプログラムによりそのウィンドウが明示的にスクロールされたことを示す。これはポイントがスクリーン外にある場合の次回再表示に影響を与える。影響とはポイント周辺のテキストを表示するためにウィンドウをスクロールするかわりに、スクリーン上にある位置にポイントを移動するというものである。"
+
+#. type: item
+#: original_texis/internals.texi:1336
+#, no-wrap
+msgid "frozen_window_start_p"
+msgstr "frozen_window_start_p"
+
+#. type: table
+#: original_texis/internals.texi:1340
+msgid "This field is set temporarily to 1 to indicate to redisplay that @code{start} of this window should not be changed, even if point gets invisible."
+msgstr "このフィールドは再表示にたいして、たとえポイントが不可視になったとしてもウィンドウの@code{start}を変更するべきではないことを示すために一時的に1にセットされる。"
+
+#. type: item
+#: original_texis/internals.texi:1341
+#, no-wrap
+msgid "start_at_line_beg"
+msgstr "start_at_line_beg"
+
+#. type: table
+#: original_texis/internals.texi:1344
+msgid "Non-@code{nil} means current value of @code{start} was the beginning of a line when it was chosen."
+msgstr "非@code{nil}は@code{start}のカレント値がウィンドウ選択時に先頭行だったことを意味する。"
+
+#. type: item
+#: original_texis/internals.texi:1345
+#, no-wrap
+msgid "use_time"
+msgstr "use_time"
+
+#. type: table
+#: original_texis/internals.texi:1348
+msgid "This is the last time that the window was selected.  The function @code{get-lru-window} uses this field."
+msgstr "これはウィンドウが最後に選択された時刻。関数@code{get-lru-window}はこの値を使用する。"
+
+#. type: item
+#: original_texis/internals.texi:1349
+#, no-wrap
+msgid "sequence_number"
+msgstr "sequence_number"
+
+#. type: table
+#: original_texis/internals.texi:1351
+msgid "A unique number assigned to this window when it was created."
+msgstr "そのウィンドウ作成時に割り当てられた一意な番号。"
+
+#. type: item
+#: original_texis/internals.texi:1352
+#, no-wrap
+msgid "last_modified"
+msgstr "last_modified"
+
+#. type: table
+#: original_texis/internals.texi:1355
+msgid "The @code{modiff} field of the window's buffer, as of the last time a redisplay completed in this window."
+msgstr "前回のそのウィンドウの再表示完了時のウィンドウのバッファーの@code{modiff}フィールド。"
+
+#. type: item
+#: original_texis/internals.texi:1356
+#, no-wrap
+msgid "last_overlay_modified"
+msgstr "last_overlay_modified"
+
+#. type: table
+#: original_texis/internals.texi:1359
+msgid "The @code{overlay_modiff} field of the window's buffer, as of the last time a redisplay completed in this window."
+msgstr "前回のウィンドウの再表示完了時のウィンドウのバッファーの@code{overlay_modiff}フィールド。"
+
+#. type: item
+#: original_texis/internals.texi:1360
+#, no-wrap
+msgid "last_point"
+msgstr "last_point"
+
+#. type: table
+#: original_texis/internals.texi:1363
+msgid "The buffer's value of point, as of the last time a redisplay completed in this window."
+msgstr "前回のウィンドウの再表示完了時のウィンドウのバッファーのポイント値。"
+
+#. type: item
+#: original_texis/internals.texi:1364
+#, no-wrap
+msgid "last_had_star"
+msgstr "last_had_star"
+
+#. type: table
+#: original_texis/internals.texi:1367
+msgid "A non-@code{nil} value means the window's buffer was ``modified'' when the window was last updated."
+msgstr "非@code{nil}値は、そのウィンドウが最後に更新されたとき、そのウィンドウのバッファーが``変更''されたことを意味する。"
+
+#. type: item
+#: original_texis/internals.texi:1368
+#, no-wrap
+msgid "vertical_scroll_bar"
+msgstr "vertical_scroll_bar"
+
+#. type: table
+#: original_texis/internals.texi:1370
+msgid "This window's vertical scroll bar."
+msgstr "そのウィンドウの垂直スクロールバー。"
+
+#. type: item
+#: original_texis/internals.texi:1371
+#, no-wrap
+msgid "left_margin_cols"
+msgstr "left_margin_cols"
+
+#. type: itemx
+#: original_texis/internals.texi:1372
+#, no-wrap
+msgid "right_margin_cols"
+msgstr "right_margin_cols"
+
+#. type: table
+#: original_texis/internals.texi:1375
+msgid "The widths of the left and right margins in this window.  A value of @code{nil} means no margin."
+msgstr "そのウィンドウの左マージンと右マージンの幅。値@code{nil}はマージンがないことを意味する。"
+
+#. type: table
+#: original_texis/internals.texi:1380
+msgid "The widths of the left and right fringes in this window.  A value of @code{nil} or @code{t} means use the values of the frame."
+msgstr "そのウィンドウの左フリンジと右フリンジの幅。値@code{nil}と@code{t}はフレームの値の使用を意味する。"
+
+#. type: table
+#: original_texis/internals.texi:1384
+msgid "A non-@code{nil} value means the fringes outside the display margins; othersize they are between the margin and the text."
+msgstr "非@code{nil}値はディスプレーマージン外側のフリンジ、それ以外ならフリンジはマージンとテキストの間にあることを意味する。"
+
+#. type: item
+#: original_texis/internals.texi:1385
+#, no-wrap
+msgid "window_end_pos"
+msgstr "window_end_pos"
+
+#. type: table
+#: original_texis/internals.texi:1389
+msgid "This is computed as @code{z} minus the buffer position of the last glyph in the current matrix of the window.  The value is only valid if @code{window_end_valid} is not @code{nil}."
+msgstr "これは@code{z}からウィンドウのカレントマトリクス内の最後のグリフのバッファー位置を減じて算出される。この値は@code{window_end_valid}が非@code{nil}のときだけ有効。"
+
+#. type: item
+#: original_texis/internals.texi:1390
+#, no-wrap
+msgid "window_end_bytepos"
+msgstr "window_end_bytepos"
+
+#. type: table
+#: original_texis/internals.texi:1392
+msgid "The byte position corresponding to @code{window_end_pos}."
+msgstr "@code{window_end_pos}に対応するバイト位置。"
+
+#. type: item
+#: original_texis/internals.texi:1393
+#, no-wrap
+msgid "window_end_vpos"
+msgstr "window_end_vpos"
+
+#. type: table
+#: original_texis/internals.texi:1396
+msgid "The window-relative vertical position of the line containing @code{window_end_pos}."
+msgstr "@code{window_end_pos}を含む行のウィンドウに相対的な垂直位置。"
+
+#. type: item
+#: original_texis/internals.texi:1397
+#, no-wrap
+msgid "window_end_valid"
+msgstr "window_end_valid"
+
+#. type: table
+#: original_texis/internals.texi:1402
+msgid "This field is set to a non-@code{nil} value if @code{window_end_pos} is truly valid.  This is @code{nil} if nontrivial redisplay is pre-empted, since in that case the display that @code{window_end_pos} was computed for did not get onto the screen."
+msgstr "このフィールドは@code{window_end_pos}が真に有効なら非@code{nil}値にセットされる。これは重要な再表示が先に割り込んだ場合には、@code{window_end_pos}を算出した表示がスクリーン上に出現しなくなるので@code{nil}となる。"
+
+#. type: item
+#: original_texis/internals.texi:1403
+#, no-wrap
+msgid "cursor"
+msgstr "cursor"
+
+#. type: table
+#: original_texis/internals.texi:1405
+msgid "A structure describing where the cursor is in this window."
+msgstr "そのウィンドウ内でカーソルがどこにあるかを記述する構造体。"
+
+#. type: item
+#: original_texis/internals.texi:1406
+#, no-wrap
+msgid "last_cursor"
+msgstr "last_cursor"
+
+#. type: table
+#: original_texis/internals.texi:1408
+msgid "The value of @code{cursor} as of the last redisplay that finished."
+msgstr "完了した最後の表示での@code{cursor}の値。"
+
+#. type: item
+#: original_texis/internals.texi:1409
+#, no-wrap
+msgid "phys_cursor"
+msgstr "phys_cursor"
+
+#. type: table
+#: original_texis/internals.texi:1411
+msgid "A structure describing where the cursor of this window physically is."
+msgstr "そのウィンドウのカーソルが物理的にどこにあるかを記述する構造体。"
+
+#. type: item
+#: original_texis/internals.texi:1412
+#, no-wrap
+msgid "phys_cursor_type"
+msgstr "phys_cursor_type"
+
+#. type: itemx
+#: original_texis/internals.texi:1415
+#, no-wrap
+msgid "phys_cursor_height"
+msgstr "phys_cursor_height"
+
+#. type: itemx
+#: original_texis/internals.texi:1416
+#, no-wrap
+msgid "phys_cursor_width"
+msgstr "phys_cursor_width"
+
+#. type: table
+#: original_texis/internals.texi:1419
+msgid "The type, height, and width of the cursor that was last displayed on this window."
+msgstr "そのウィンドウの最後の表示でのカーソルのタイプ、高さ、幅。"
+
+#. type: item
+#: original_texis/internals.texi:1420
+#, no-wrap
+msgid "phys_cursor_on_p"
+msgstr "phys_cursor_on_p"
+
+#. type: table
+#: original_texis/internals.texi:1422
+msgid "This field is non-zero if the cursor is physically on."
+msgstr "このフィールドはカーソルが物理的にオンなら非0。"
+
+#. type: item
+#: original_texis/internals.texi:1423
+#, no-wrap
+msgid "cursor_off_p"
+msgstr "cursor_off_p"
+
+#. type: table
+#: original_texis/internals.texi:1426
+msgid "Non-zero means the cursor in this window is logically off.  This is used for blinking the cursor."
+msgstr "非0はそのウィンドウのカーソルが論理的にオフであることを意味する。これはカーソルの点滅に使用される。"
+
+#. type: item
+#: original_texis/internals.texi:1427
+#, no-wrap
+msgid "last_cursor_off_p"
+msgstr "last_cursor_off_p"
+
+#. type: table
+#: original_texis/internals.texi:1430
+msgid "This field contains the value of @code{cursor_off_p} as of the time of the last redisplay."
+msgstr "このフィールドは最後の再表示時の@code{cursor_off_p}の値を含む。"
+
+#. type: item
+#: original_texis/internals.texi:1431
+#, no-wrap
+msgid "must_be_updated_p"
+msgstr "must_be_updated_p"
+
+#. type: table
+#: original_texis/internals.texi:1433
+msgid "This is set to 1 during redisplay when this window must be updated."
+msgstr "これはウィンドウを更新しなければならないとき、再表示の間は1にセットされる。"
+
+#. type: item
+#: original_texis/internals.texi:1434
+#, no-wrap
+msgid "hscroll"
+msgstr "hscroll"
+
+#. type: table
+#: original_texis/internals.texi:1437
+msgid "This is the number of columns that the display in the window is scrolled horizontally to the left.  Normally, this is 0."
+msgstr "これはウィンドウ内の表示が左へ水平スクロールされている列数。これは通常は0。"
+
+#. type: item
+#: original_texis/internals.texi:1438
+#, no-wrap
+msgid "vscroll"
+msgstr "vscroll"
+
+#. type: table
+#: original_texis/internals.texi:1440
+msgid "Vertical scroll amount, in pixels.  Normally, this is 0."
+msgstr "ピクセル単位での垂直スクロール量。これは通常は0。"
+
+#. type: item
+#: original_texis/internals.texi:1441
+#, no-wrap
+msgid "dedicated"
+msgstr "dedicated"
+
+#. type: table
+#: original_texis/internals.texi:1443
+msgid "Non-@code{nil} if this window is dedicated to its buffer."
+msgstr "そのウィンドウがそれのバッファー専用(dedicated)なら非@code{nil}。"
+
+#. type: table
+#: original_texis/internals.texi:1446
+msgid "The window's display table, or @code{nil} if none is specified for it."
+msgstr "そのウィンドウのディスプレーテーブル、何も指定されていなければ@code{nil}。"
+
+#. type: item
+#: original_texis/internals.texi:1447
+#, no-wrap
+msgid "update_mode_line"
+msgstr "update_mode_line"
+
+#. type: table
+#: original_texis/internals.texi:1449
+msgid "Non-@code{nil} means this window's mode line needs to be updated."
+msgstr "非@code{nil}はウィンドウのモードラインの更新が必要なことを意味する。"
+
+#. type: item
+#: original_texis/internals.texi:1450
+#, no-wrap
+msgid "base_line_number"
+msgstr "base_line_number"
+
+#. type: table
+#: original_texis/internals.texi:1453
+msgid "The line number of a certain position in the buffer, or @code{nil}.  This is used for displaying the line number of point in the mode line."
+msgstr "そのバッファーの特定の位置の行番号か@code{nil}。これはモードラインでポイントの行番号を表示するために使用される。"
+
+#. type: item
+#: original_texis/internals.texi:1454
+#, no-wrap
+msgid "base_line_pos"
+msgstr "base_line_pos"
+
+#. type: table
+#: original_texis/internals.texi:1458
+msgid "The position in the buffer for which the line number is known, or @code{nil} meaning none is known.  If it is a buffer, don't display the line number as long as the window shows that buffer."
+msgstr "行番号が既知であるバッファー位置、未知なら@code{nil}。これがバッファーならウィンドウがバッファーを表示するかぎり行番号は表示されない。"
+
+#. type: item
+#: original_texis/internals.texi:1459
+#, no-wrap
+msgid "column_number_displayed"
+msgstr "column_number_displayed"
+
+#. type: table
+#: original_texis/internals.texi:1462
+msgid "The column number currently displayed in this window's mode line, or @code{nil} if column numbers are not being displayed."
+msgstr "そのウィンドウのモードラインに表示されているカレント列番号、列番号が表示されていなければ@code{nil}。"
+
+#. type: item
+#: original_texis/internals.texi:1463
+#, no-wrap
+msgid "current_matrix"
+msgstr "current_matrix"
+
+#. type: itemx
+#: original_texis/internals.texi:1464
+#, no-wrap
+msgid "desired_matrix"
+msgstr "desired_matrix"
+
+#. type: table
+#: original_texis/internals.texi:1466
+msgid "Glyph matrices describing the current and desired display of this window."
+msgstr "そのウィンドウのカレント、および望まれる表示を記述するグリフ。"
+
+#. type: cindex
+#: original_texis/internals.texi:1470
+#, no-wrap
+msgid "internals, of process"
+msgstr "internals, of process"
+
+#. type: cindex
+#: original_texis/internals.texi:1471
+#, no-wrap
+msgid "process internals"
+msgstr "process internals"
+
+#. type: Plain text
+#: original_texis/internals.texi:1475
+msgid "The fields of a process (for a complete list, see the definition of @code{struct Lisp_Process} in @file{process.h}) include:"
+msgstr "プロセスのフィールドには以下が含まれます(完全なリストは@file{process.h}の@code{struct Lisp_Process}の定義を参照):"
+
+#. type: table
+#: original_texis/internals.texi:1479
+msgid "A string, the name of the process."
+msgstr "プロセス名(文字列)。"
+
+#. type: item
+#: original_texis/internals.texi:1480
+#, no-wrap
+msgid "command"
+msgstr "command"
+
+#. type: table
+#: original_texis/internals.texi:1484
+msgid "A list containing the command arguments that were used to start this process.  For a network or serial process, it is @code{nil} if the process is running or @code{t} if the process is stopped."
+msgstr "そのプロセスの開始に使用されたコマンド引数を含むリスト。ネットワークプロセスとシリアルプロセスではプロセスが実行中なら@code{nil}、停止していたら@code{t}。"
+
+#. type: item
+#: original_texis/internals.texi:1485
+#, no-wrap
+msgid "filter"
+msgstr "filter"
+
+#. type: table
+#: original_texis/internals.texi:1487
+msgid "A function used to accept output from the process."
+msgstr "そのプロセスから出力を受け取るために使用される関数。"
+
+#. type: item
+#: original_texis/internals.texi:1488
+#, no-wrap
+msgid "sentinel"
+msgstr "sentinel"
+
+#. type: table
+#: original_texis/internals.texi:1490
+msgid "A function called whenever the state of the process changes."
+msgstr "そのプロセスの状態が変化したら常に呼び出される関数。"
+
+#. type: table
+#: original_texis/internals.texi:1493
+msgid "The associated buffer of the process."
+msgstr "そのプロセスに関連付けられたバッファー。"
+
+#. type: item
+#: original_texis/internals.texi:1494
+#, no-wrap
+msgid "pid"
+msgstr "pid"
+
+#. type: table
+#: original_texis/internals.texi:1497
+msgid "An integer, the operating system's process @acronym{ID}.  Pseudo-processes such as network or serial connections use a value of 0."
+msgstr "オペレーティングシステムのプロセス@acronym{ID} (整数)。ネットワークプロセスやシリアルプロセスのような疑似プロセスでは値0を使用する。"
+
+#. type: item
+#: original_texis/internals.texi:1498
+#, no-wrap
+msgid "childp"
+msgstr "childp"
+
+#. type: table
+#: original_texis/internals.texi:1502
+msgid "A flag, @code{t} if this is really a child process.  For a network or serial connection, it is a plist based on the arguments to @code{make-network-process} or @code{make-serial-process}."
+msgstr "フラグ。実際に子プロセスなら@code{t}。ネットワークプロセスやシリアルプロセスでは@code{make-network-process}や@code{make-serial-process}にもとづくplist。"
+
+#. type: table
+#: original_texis/internals.texi:1507
+msgid "A marker indicating the position of the end of the last output from this process inserted into the buffer.  This is often but not always the end of the buffer."
+msgstr "そのプロセスの出力からバッファーに挿入された終端位置を示すマーカー。常にではないがこれはバッファー終端であることが多い。"
+
+#. type: item
+#: original_texis/internals.texi:1508
+#, no-wrap
+msgid "kill_without_query"
+msgstr "kill_without_query"
+
+#. type: table
+#: original_texis/internals.texi:1511
+msgid "If this is non-zero, killing Emacs while this process is still running does not ask for confirmation about killing the process."
+msgstr "これが非0ならプロセス実行中にEmacsをkillしてもプロセスのkillにたいして確認を求めない。"
+
+#. type: item
+#: original_texis/internals.texi:1512
+#, no-wrap
+msgid "raw_status"
+msgstr "raw_status"
+
+#. type: table
+#: original_texis/internals.texi:1514
+msgid "The raw process status, as returned by the @code{wait} system call."
+msgstr "システムコール@code{wait}がリターンするrawプロセス状態。"
+
+#. type: item
+#: original_texis/internals.texi:1515
+#, no-wrap
+msgid "status"
+msgstr "status"
+
+#. type: table
+#: original_texis/internals.texi:1517
+msgid "The process status, as @code{process-status} should return it."
+msgstr "@code{process-status}がリターンするようなプロセス状態。"
+
+#. type: item
+#: original_texis/internals.texi:1518
+#, no-wrap
+msgid "tick"
+msgstr "tick"
+
+#. type: itemx
+#: original_texis/internals.texi:1519
+#, no-wrap
+msgid "update_tick"
+msgstr "update_tick"
+
+#. type: table
+#: original_texis/internals.texi:1523
+msgid "If these two fields are not equal, a change in the status of the process needs to be reported, either by running the sentinel or by inserting a message in the process buffer."
+msgstr "これら2つのフィールドが等しくないなら、センチネル実行かプロセスバッファーへのメッセージ挿入によりプロセスの状態変更が報告される必要がある。"
+
+#. type: item
+#: original_texis/internals.texi:1524
+#, no-wrap
+msgid "pty_flag"
+msgstr "pty_flag"
+
+#. type: table
+#: original_texis/internals.texi:1527
+msgid "Non-@code{nil} if communication with the subprocess uses a pty; @code{nil} if it uses a pipe."
+msgstr "そのサブプロセスがptyを使用して対話する場合には非@code{nil}、パイプを使用する場合には@code{nil}。"
+
+#. type: item
+#: original_texis/internals.texi:1528
+#, no-wrap
+msgid "infd"
+msgstr "infd"
+
+#. type: table
+#: original_texis/internals.texi:1530
+msgid "The file descriptor for input from the process."
+msgstr "そのプロセスからの入力にたいするファイルディクリプター。"
+
+#. type: item
+#: original_texis/internals.texi:1531
+#, no-wrap
+msgid "outfd"
+msgstr "outfd"
+
+#. type: table
+#: original_texis/internals.texi:1533
+msgid "The file descriptor for output to the process."
+msgstr "そのプロセスへの出力にたいするファイルディクリプター。"
+
+#. type: item
+#: original_texis/internals.texi:1534
+#, no-wrap
+msgid "tty_name"
+msgstr "tty_name"
+
+#. type: table
+#: original_texis/internals.texi:1537
+msgid "The name of the terminal that the subprocess is using, or @code{nil} if it is using pipes."
+msgstr "そのサブプロセスが使用する端末の名前、パイプを使用する場合には@code{nil}。"
+
+#. type: item
+#: original_texis/internals.texi:1538
+#, no-wrap
+msgid "decode_coding_system"
+msgstr "decode_coding_system"
+
+#. type: table
+#: original_texis/internals.texi:1540
+msgid "Coding-system for decoding the input from this process."
+msgstr "そのプロセスからの入力のデコーディングにたいするコーディングシステム。"
+
+#. type: item
+#: original_texis/internals.texi:1541
+#, no-wrap
+msgid "decoding_buf"
+msgstr "decoding_buf"
+
+#. type: table
+#: original_texis/internals.texi:1543
+msgid "A working buffer for decoding."
+msgstr "デコーディング用の作業バッファー。"
+
+#. type: item
+#: original_texis/internals.texi:1544
+#, no-wrap
+msgid "decoding_carryover"
+msgstr "decoding_carryover"
+
+#. type: table
+#: original_texis/internals.texi:1546
+msgid "Size of carryover in decoding."
+msgstr "デコーディングでのキャリーオーバーのサイズ。"
+
+#. type: item
+#: original_texis/internals.texi:1547
+#, no-wrap
+msgid "encode_coding_system"
+msgstr "encode_coding_system"
+
+#. type: table
+#: original_texis/internals.texi:1549
+msgid "Coding-system for encoding the output to this process."
+msgstr "そのプロセスからの出力のエンコーディングにたいするコーディングシステム。"
+
+#. type: item
+#: original_texis/internals.texi:1550
+#, no-wrap
+msgid "encoding_buf"
+msgstr "encoding_buf"
+
+#. type: table
+#: original_texis/internals.texi:1552
+msgid "A working buffer for encoding."
+msgstr "エンコーディング用の作業バッファー。"
+
+#. type: item
+#: original_texis/internals.texi:1553
+#, no-wrap
+msgid "inherit_coding_system_flag"
+msgstr "inherit_coding_system_flag"
+
+#. type: table
+#: original_texis/internals.texi:1556
+msgid "Flag to set @code{coding-system} of the process buffer from the coding system used to decode process output."
+msgstr "プロセス出力のデコードに使用されるコーディングシステムからプロセスバッファーの@code{coding-system}をセットするフラグ。"
+
+#. type: item
+#: original_texis/internals.texi:1557
+#, no-wrap
+msgid "type"
+msgstr "type"
+
+#. type: table
+#: original_texis/internals.texi:1560
+msgid "Symbol indicating the type of process: @code{real}, @code{network}, @code{serial}."
+msgstr "プロセスのタイプを示す@code{real}、@code{network}、@code{serial}のいずれかのシンボル。"
+
+#. type: cindex
+#: original_texis/internals.texi:1565
+#, no-wrap
+msgid "integer types (C programming language)"
+msgstr "integer types (C programming language)"
+
+#. type: Plain text
+#: original_texis/internals.texi:1570
+msgid "Here are some guidelines for use of integer types in the Emacs C source code.  These guidelines sometimes give competing advice; common sense is advised."
+msgstr "以下はEmacsのCソースコード内で整数タイプを使用する際のガイドラインです。これらのガイドラインはときに相反するアドバイスを与えることがありますが一般的な常識に沿ったものがアドバイスです。"
+
+#. type: itemize
+#: original_texis/internals.texi:1576
+msgid "Avoid arbitrary limits.  For example, avoid @code{int len = strlen (s);} unless the length of @code{s} is required for other reasons to fit in @code{int} range."
+msgstr "任意の制限の使用を避ける。たとえば@code{s}の長さを@code{int}の範囲に収めることが要求されるのでなければ@code{int len = strlen (s);}を使用しないこと。"
+
+#. type: itemize
+#: original_texis/internals.texi:1583
+msgid "Do not assume that signed integer arithmetic wraps around on overflow.  This is no longer true of Emacs porting targets: signed integer overflow has undefined behavior in practice, and can dump core or even cause earlier or later code to behave ``illogically''.  Unsigned overflow does wrap around reliably, modulo a power of two."
+msgstr "符号付き整数の算術演算のオーバーフローのラップアラウンドを前提としてはならない。Emacsのポート対象先によっては、これは成り立たない。実際には、符号付き整数のオーバーフローは未定義であり、コアダンプや、早晩に``非論理的''な振る舞いさえ起こし得る。符号なし整数のオーバーフローは、2のべき乗の剰余に確実にラップアラウンドされることが保証されています。"
+
+#. type: itemize
+#: original_texis/internals.texi:1591
+msgid "Prefer signed types to unsigned, as code gets confusing when signed and unsigned types are combined.  Many other guidelines assume that types are signed; in the rarer cases where unsigned types are needed, similar advice may apply to the unsigned counterparts (e.g., @code{size_t} instead of @code{ptrdiff_t}, or @code{uintptr_t} instead of @code{intptr_t})."
+msgstr "符号なしタイプと符号付きタイプを組み合わせるとコードが混乱するので符号なしタイプより符号付きタイプを優先すること。他のガイドラインの多くはタイプが符号付きだとみなしている。符号なしタイプを要する稀なケースでは、符号付きの符号なし版(@code{ptrdiff_t}のかわりに@code{size_t}、@code{intptr_t}のかわりに@code{uintptr_t})にたいして同様のアドバイスを適用できる。"
+
+#. type: itemize
+#: original_texis/internals.texi:1594
+msgid "Prefer @code{int} for Emacs character codes, in the range 0 ..@: 0x3FFFFF."
+msgstr "Emacsの文字コードでは、0から0x3FFFFFを優先すること。"
+
+#. type: itemize
+#: original_texis/internals.texi:1603
+msgid "Prefer @code{ptrdiff_t} for sizes, i.e., for integers bounded by the maximum size of any individual C object or by the maximum number of elements in any C array.  This is part of Emacs's general preference for signed types.  Using @code{ptrdiff_t} limits objects to @code{PTRDIFF_MAX} bytes, but larger objects would cause trouble anyway since they would break pointer subtraction, so this does not impose an arbitrary limit."
+msgstr "サイズ(たとえばすべての個別のCオブジェクトの最大サイズや、すべてのC配列の最大要素数にバインドされる整数)にたいしては@code{ptrdiff_t}を優先すること。これは符号付きタイプにたいするEmacsの一般的な優先事項である。@code{ptrdiff_t}の使用によりオブジェクトは@code{PTRDIFF_MAX}に制限されるが、より大きいオブジェクトはポインター減算を破壊するかもしれず結局のところ問題を起こす可能性があるので、これは一方的に制限を課すものではない。"
+
+#. type: itemize
+#: original_texis/internals.texi:1611
+msgid "Prefer @code{intptr_t} for internal representations of pointers, or for integers bounded only by the number of objects that can exist at any given time or by the total number of bytes that can be allocated.  Currently Emacs sometimes uses other types when @code{intptr_t} would be better; fixing this is lower priority, as the code works as-is on Emacs's current porting targets."
+msgstr "ポインターの内部表現や与えられた任意のタイミングで存在可能なオブジェクト数や割り当て可能な総バイト数にのみバインドされる整数には@code{intptr_t}を優先すること。現在のことこEmacsは@code{intptr_t}を使用したほうがよいときに別のタイプを使用する場合がある。現在のEmacsのカレント移植先にたいして未修正でコードが動作するので修正の優先度は低い。"
+
+#. type: itemize
+#: original_texis/internals.texi:1616
+msgid "Prefer the Emacs-defined type @code{EMACS_INT} for representing values converted to or from Emacs Lisp fixnums, as fixnum arithmetic is based on @code{EMACS_INT}."
+msgstr "Emacs Lispのfixnumへの変換や逆変換を表す値ではfixnum演算が@code{EMACS_INT}にもとづくのでEmacsで定義されたタイプ@code{EMACS_INT}を優先すること。"
+
+#. type: itemize
+#: original_texis/internals.texi:1623
+msgid "When representing a system value (such as a file size or a count of seconds since the Epoch), prefer the corresponding system type (e.g., @code{off_t}, @code{time_t}).  Do not assume that a system type is signed, unless this assumption is known to be safe.  For example, although @code{off_t} is always signed, @code{time_t} need not be."
+msgstr "(ファイルサイズやエポック以降の経過秒数等の)システム値を表す際には、(@code{off_t}や@code{time_t}等の)システムタイプを優先すること。安全だと解っていなければシステムタイプが符号付きだと仮定してはならない。たとえば@code{off_t}は常に符号付きだが@code{time_t}は符号付きである必要はない。"
+
+#. type: itemize
+#: original_texis/internals.texi:1628
+msgid "Prefer the Emacs-defined type @code{printmax_t} for representing values that might be any signed integer that can be printed, using a @code{printf}-family function."
+msgstr "@code{printf}族の関数を使用してプリントされ得る任意の符号付き整数かもしれない値を表す場合にはEmacsの定義タイプ@code{printmax_t}を優先すること。"
+
+#. type: itemize
+#: original_texis/internals.texi:1632
+msgid "Prefer @code{intmax_t} for representing values that might be any signed integer value."
+msgstr "任意の符号付き整数かもしれない値を表す場合には@code{intmax_t}を優先すること。"
+
+#. type: itemize
+#: original_texis/internals.texi:1644
+msgid "Prefer @code{bool}, @code{false} and @code{true} for booleans.  Using @code{bool} can make programs easier to read and a bit faster than using @code{int}.  Although it is also OK to use @code{int}, @code{0} and @code{1}, this older style is gradually being phased out.  When using @code{bool}, respect the limitations of the replacement implementation of @code{bool}, as documented in the source file @file{lib/stdbool.in.h}, so that Emacs remains portable to pre-C99 platforms.  In particular, boolean bitfields should be of type @code{bool_bf}, not @code{bool}, so that they work correctly even when compiling Objective C with standard GCC."
+msgstr "ブーリーンには@code{bool}、@code{false}、@code{true}を使用すること。@code{bool}の使用によりプログラムの可読性が増し、@code{int}を使用するより若干高速になる。@code{int}、@code{0}、@code{1}を使用しても大丈夫だが、この旧スタイルは段階的に廃止される。@code{bool}を使用する際には、ソースファイル@file{lib/stdbool.in.h}に文書化されている@code{bool}の代替実装の制限を尊重すれば、C99以前のプラットフォームにたいするEmacsの可搬性か保たれる。特にブーリーンのビットフィールドは@code{bool}ではなく、@code{bool_bf}タイプであること。そうすれば標準のGCCでObjective Cをコンパイルするときでさえ、正しく機能する。"
+
+#. type: itemize
+#: original_texis/internals.texi:1650
+msgid "In bitfields, prefer @code{unsigned int} or @code{signed int} to @code{int}, as @code{int} is less portable: it might be signed, and might not be.  Single-bit bit fields should be @code{unsigned int} or @code{bool_bf} so that their values are 0 or 1."
+msgstr "ビットフィールドでは@code{int}は可搬性に劣るので、@code{int}より@code{unsigned int}か@code{signed int}を優先すること。単一ビットのビットフィールドの値は0か1なので@code{unsigned int}か@code{bool_bf}を使用すること。"
