@@ -1,17 +1,18 @@
 @c This is part of the Emacs manual.
-@c Copyright (C) 1985-1987, 1993-1995, 1997, 2000-2015 Free Software
+@c Copyright (C) 1985-1987, 1993-1995, 1997, 2000-2016 Free Software
 @c Foundation, Inc.
 @c See file emacs.texi for copying conditions.
 @iftex
 @chapter Miscellaneous Commands
 
   This chapter contains several brief topics that do not fit anywhere
-else: viewing ``document files'', reading Usenet news, running shell
-commands and shell subprocesses, using a single shared Emacs for
-utilities that expect to run an editor as a subprocess, printing
-hardcopy, sorting text, editing binary files, saving an Emacs session
-for later resumption, following hyperlinks, emulating other editors,
-and various diversions and amusements.
+else: reading Usenet news, host and network security,
+viewing PDFs and other such documents, web
+browsing, running shell commands and shell subprocesses, using a
+single shared Emacs for utilities that expect to run an editor as a
+subprocess, printing, sorting text, editing binary files, saving an
+Emacs session for later resumption, recursive editing level, following
+hyperlinks, and various diversions and amusements.
 
 @end iftex
 
@@ -249,6 +250,145 @@ Search forward for articles containing a match for @var{regexp}.
 Exit the summary buffer and return to the group buffer.
 @end table
 
+@node Host Security
+@section Host Security
+@cindex security
+
+Emacs runs inside an operating system such as GNU/Linux, and relies on
+the operating system to check security constraints such as accesses to
+files.  The default settings for Emacs are designed for typical use;
+they may require some tailoring in environments where security is more
+of a concern, or less of a concern, than usual.  For example,
+file-local variables can be risky, and you can set the variable
+@code{enable-local-variables} to @code{:safe} or (even more
+conservatively) to @code{nil}; conversely, if your files can all be
+trusted and the default checking for these variables is irritating,
+you can set @code{enable-local-variables} to @code{:all}.  @xref{Safe
+File Variables}.
+
+@xref{Security Considerations,,, elisp, The Emacs Lisp Reference
+Manual}, for more information about security considerations when using
+Emacs as part of a larger application.
+
+@node Network Security
+@section Network Security
+@cindex network security manager
+@cindex NSM
+@cindex encryption
+@cindex SSL
+@cindex TLS
+@cindex STARTTLS
+
+Whenever Emacs establishes any network connection, it passes the
+established connection to the @dfn{Network Security Manager}
+(@acronym{NSM}).  @acronym{NSM} is responsible for enforcing the
+network security under your control.
+
+@vindex network-security-level
+The @code{network-security-level} variable determines the security
+level that @acronym{NSM} enforces.  If its value is @code{low}, no
+security checks are performed.
+
+If this variable is @code{medium} (which is the default), a number of
+checks will be performed.  If as result @acronym{NSM} determines that
+the network connection might not be trustworthy, it will make you
+aware of that, and will ask you what to do about the network
+connection.
+
+You can decide to register a permanent security exception for an
+unverified connection, a temporary exception, or refuse the connection
+entirely.
+
+Below is a list of the checks done on the @code{medium} level.
+
+@table @asis
+
+@item unable to verify a @acronym{TLS} certificate
+If the connection is a @acronym{TLS}, @acronym{SSL} or
+@acronym{STARTTLS} connection, @acronym{NSM} will check whether
+the certificate used to establish the identity of the server we're
+connecting to can be verified.
+
+While an invalid certificate is often the cause for concern (there
+could be a Man-in-the-Middle hijacking your network connection and
+stealing your password), there may be valid reasons for going ahead
+with the connection anyway.  For instance, the server may be using a
+self-signed certificate, or the certificate may have expired.  It's up
+to you to determine whether it's acceptable to continue with the
+connection.
+
+@item a self-signed certificate has changed
+If you've previously accepted a self-signed certificate, but it has
+now changed, that could mean that the server has just changed the
+certificate, but it might also mean that the network connection has
+been hijacked.
+
+@item previously encrypted connection now unencrypted
+If the connection is unencrypted, but it was encrypted in previous
+sessions, this might mean that there is a proxy between you and the
+server that strips away @acronym{STARTTLS} announcements, leaving the
+connection unencrypted.  This is usually very suspicious.
+
+@item talking to an unencrypted service when sending a password
+When connecting to an @acronym{IMAP} or @acronym{POP3} server, these
+should usually be encrypted, because it's common to send passwords
+over these connections.  Similarly, if you're sending email via
+@acronym{SMTP} that requires a password, you usually want that
+connection to be encrypted.  If the connection isn't encrypted,
+@acronym{NSM} will warn you.
+
+@end table
+
+If @code{network-security-level} is @code{high}, the following checks
+will be made, in addition to the above:
+
+@table @asis
+@item a validated certificate changes the public key
+Servers change their keys occasionally, and that is normally nothing
+to be concerned about.  However, if you are worried that your network
+connections are being hijacked by agencies who have access to pliable
+Certificate Authorities which issue new certificates for third-party
+services, you may want to keep track of these changes.
+
+@item Diffie-Hellman low prime bits
+When doing the public key exchange, the number of prime bits
+should be high to ensure that the channel can't be eavesdropped on by
+third parties.  If this number is too low, you will be warned.
+
+@item @acronym{RC4} stream cipher
+The @acronym{RC4} stream cipher is believed to be of low quality and
+may allow eavesdropping by third parties.
+
+@item @acronym{SSL1}, @acronym{SSL2} and @acronym{SSL3}
+The protocols older than @acronym{TLS1.0} are believed to be
+vulnerable to a variety of attacks, and you may want to avoid using
+these if what you're doing requires higher security.
+@end table
+
+Finally, if @code{network-security-level} is @code{paranoid}, you will
+also be notified the first time @acronym{NSM} sees any new
+certificate.  This will allow you to inspect all the certificates from
+all the connections that Emacs makes.
+
+The following additional variables can be used to control details of
+@acronym{NSM} operation:
+
+@table @code
+@item nsm-settings-file
+@vindex nsm-settings-file
+This is the file where @acronym{NSM} stores details about connections.
+It defaults to @file{~/.emacs.d/network-security.data}.
+
+@item nsm-save-host-names
+@vindex nsm-save-host-names
+By default, host names will not be saved for non-@code{STARTTLS}
+connections.  Instead a host/port hash is used to identify connections.
+This means that one can't casually read the settings file to see what
+servers the user has connected to.  If this variable is @code{t},
+@acronym{NSM} will also save host names in the nsm-settings-file.
+@end table
+
+
 @node Document View
 @section Document Viewing
 @cindex DVI file
@@ -464,6 +604,28 @@ using the command @kbd{M-x eww-open-file}.  You can use EWW as the
 web browser for @code{browse-url}, @pxref{Browse-URL}.  For full
 details, @pxref{Top, EWW,, eww, The Emacs Web Wowser Manual}.
 
+@node Embedded WebKit Widgets
+@section Embedded WebKit Widgets
+@cindex xwidget
+@cindex webkit widgets
+@cindex embedded widgets
+
+@findex xwidget-webkit-browse-url
+@findex xwidget-webkit-mode
+@cindex Xwidget-WebKit mode
+  If Emacs was compiled with the appropriate support packages, it is
+able to show browser widgets in its buffers.  The command @kbd{M-x
+xwidget-webkit-browse-url} asks for a URL to display in the browser
+widget.  The URL normally defaults to the URL at or before point, but
+if there is an active region (@pxref{Mark}), the default URL comes
+from the region instead, after removing any whitespace from it.  The
+command then creates a new buffer with the embedded browser showing
+the specified URL.  The buffer is put in the Xwidget-WebKit mode
+(similar to Image mode, @pxref{File Conveniences}), which provides
+one-key commands for scrolling the widget, changing its size, and
+reloading it.  Type @w{@kbd{C-h b}} in that buffer to see the key
+bindings.
+
 @node Shell
 @section Running Shell Commands from Emacs
 @cindex subshell
@@ -621,6 +783,10 @@ advancing point, and any terminal input for the subshell comes from
 text in the buffer.  To give input to the subshell, go to the end of
 the buffer and type the input, terminated by @key{RET}.
 
+  By default, when the subshell is invoked interactively, the
+@file{*shell*} buffer is displayed in a new window.  This behavior can
+be customized via @code{display-buffer-alist} (@pxref{Window Choice}).
+
   While the subshell is waiting or running a command, you can switch
 windows or buffers and perform other editing in Emacs.  Emacs inserts
 the output from the subshell into the Shell buffer whenever it has
@@ -667,15 +833,10 @@ also change the coding system for a running subshell by typing
 Coding}.
 
 @cindex @env{INSIDE_EMACS} environment variable
-@cindex @env{EMACS} environment variable
   Emacs sets the environment variable @env{INSIDE_EMACS} in the
 subshell to @samp{@var{version},comint}, where @var{version} is the
 Emacs version (e.g., @samp{24.1}).  Programs can check this variable
-to determine whether they are running inside an Emacs subshell.  (It
-also sets the @env{EMACS} environment variable to @code{t}, if that
-environment variable is not already defined.  However, this
-environment variable is deprecated; programs that use it should switch
-to using @env{INSIDE_EMACS} instead.)
+to determine whether they are running inside an Emacs subshell.
 
 @node Shell Mode
 @subsection Shell Mode
@@ -1056,7 +1217,7 @@ submit the copy as input with @key{RET}.  If you wish, you can edit
 the copy before resubmitting it.  If you use this command on an output
 line, it copies that line to the end of the buffer.
 
-@item Mouse-2
+@item mouse-2
 If @code{comint-use-prompt-regexp} is @code{nil} (the default), copy
 the old input command that you click on, inserting the copy at the end
 of the buffer (@code{comint-insert-input}).  If
@@ -1065,7 +1226,7 @@ not over old input, just yank as usual.
 @end table
 
   Moving to a previous input and then copying it with @kbd{C-c
-@key{RET}} or @kbd{Mouse-2} produces the same results---the same
+@key{RET}} or @kbd{mouse-2} produces the same results---the same
 buffer contents---that you would get by using @kbd{M-p} enough times
 to fetch that previous input from the history list.  However, @kbd{C-c
 @key{RET}} copies the text from the buffer, which can be different
@@ -1371,8 +1532,8 @@ this buffer just like it does with a terminal in ordinary Term mode.
 most common speed is 9600 bits per second.  You can change the speed
 interactively by clicking on the mode line.
 
-  A serial port can be configured even more by clicking on ``8N1'' in
-the mode line.  By default, a serial port is configured as ``8N1'',
+  A serial port can be configured even more by clicking on @samp{8N1} in
+the mode line.  By default, a serial port is configured as @samp{8N1},
 which means that each byte consists of 8 data bits, No parity check
 bit, and 1 stopbit.
 
@@ -1433,11 +1594,18 @@ variable to @samp{emacsclient +%d %s}.}
 
 @vindex server-name
   You can run multiple Emacs servers on the same machine by giving
-each one a unique ``server name'', using the variable
+each one a unique @dfn{server name}, using the variable
 @code{server-name}.  For example, @kbd{M-x set-variable @key{RET}
-server-name @key{RET} foo @key{RET}} sets the server name to
+server-name @key{RET} "foo" @key{RET}} sets the server name to
 @samp{foo}.  The @code{emacsclient} program can specify a server by
 name, using the @samp{-s} option (@pxref{emacsclient Options}).
+
+  If you want to run multiple Emacs daemons (@pxref{Initial Options}),
+you can give each daemon its own server name like this:
+
+@example
+  emacs --eval "(setq server-name \"foo\")" --daemon
+@end example
 
 @findex server-eval-at
   If you have defined a server by a unique server name, it is possible
@@ -1490,7 +1658,7 @@ still use Emacs to edit the file.
 @kbd{C-x #} (@code{server-edit}) in its buffer.  This saves the file
 and sends a message back to the @command{emacsclient} program, telling
 it to exit.  Programs that use @env{EDITOR} usually wait for the
-``editor''---in this case @command{emacsclient}---to exit before doing
+editor---in this case @command{emacsclient}---to exit before doing
 something else.
 
   You can also call @command{emacsclient} with multiple file name
@@ -1510,7 +1678,7 @@ create it.  However, if you set @code{server-kill-new-buffers} to
 @code{nil}, then a different criterion is used: finishing with a
 server buffer kills it if the file name matches the regular expression
 @code{server-temp-file-regexp}.  This is set up to distinguish certain
-``temporary'' files.
+temporary files.
 
   Each @kbd{C-x #} checks for other pending external requests to edit
 various files, and selects the next such file.  You can switch to a
@@ -1560,6 +1728,7 @@ precedence.
 
 @cindex client frame
 @item -c
+@itemx --create-frame
 Create a new graphical @dfn{client frame}, instead of using an
 existing Emacs frame.  See below for the special behavior of @kbd{C-x
 C-c} in a client frame.  If Emacs cannot create a new graphical frame
@@ -1600,8 +1769,8 @@ evaluate, @emph{not} as a list of files to visit.
 @cindex @env{EMACS_SERVER_FILE} environment variable
 Specify a @dfn{server file} for connecting to an Emacs server via TCP.
 
-An Emacs server usually uses an operating system feature called a
-``local socket'' to listen for connections.  Some operating systems,
+An Emacs server usually uses a
+local socket to listen for connections.  Some operating systems,
 such as Microsoft Windows, do not support local sockets; in that case,
 the server communicates with @command{emacsclient} via TCP.
 
@@ -1695,7 +1864,7 @@ print hardcopies from Dired (@pxref{Operating on Files}) and the diary
 (@pxref{Displaying the Diary}).  You can also ``print'' an Emacs
 buffer to HTML with the command @kbd{M-x htmlfontify-buffer}, which
 converts the current buffer to a HTML file, replacing Emacs faces with
-CSS-based markup.  Furthermore, Org mode allows you to ``print'' Org
+CSS-based markup.  Furthermore, Org mode allows you to print Org
 files to a variety of formats, such as PDF (@pxref{Org Mode}).
 
 @table @kbd
@@ -1716,7 +1885,7 @@ Like @code{lpr-buffer} but print only the current region.
 @findex lpr-region
 @vindex lpr-switches
 @vindex lpr-commands
-  On most operating system, the above hardcopy commands submit files
+  On most operating systems, the above hardcopy commands submit files
 for printing by calling the @command{lpr} program.  To change the
 printer program, customize the variable @code{lpr-command}.  To
 specify extra switches to give the printer program, customize the list
@@ -1868,7 +2037,7 @@ additional paper sizes by changing the variable
 @vindex ps-landscape-mode
   The variable @code{ps-landscape-mode} specifies the orientation of
 printing on the page.  The default is @code{nil}, which stands for
-``portrait'' mode.  Any non-@code{nil} value specifies ``landscape''
+portrait mode.  Any non-@code{nil} value specifies landscape
 mode.
 
 @vindex ps-number-of-columns
@@ -1935,7 +2104,7 @@ You can also type @kbd{M-x pr-interface @key{RET}}; this creates a
 @file{*Printing Interface*} buffer, similar to a customization buffer,
 where you can set the printing options.  After selecting what and how
 to print, you start the print job using the @samp{Print} button (click
-@kbd{Mouse-2} on it, or move point over it and type @key{RET}).  For
+@kbd{mouse-2} on it, or move point over it and type @key{RET}).  For
 further information on the various options, use the @samp{Interface
 Help} button.
 
@@ -2004,13 +2173,14 @@ to @code{sort-numeric-base}, but numbers beginning with @samp{0x} or
 
 @item M-x sort-columns
 Like @kbd{M-x sort-fields} except that the text within each line
-used for comparison comes from a fixed range of columns.  See below
-for an explanation.
+used for comparison comes from a fixed range of columns.  With a
+prefix argument, sort in reverse order.  See below for more details
+on this command.
 
 @findex reverse-region
 @item M-x reverse-region
 Reverse the order of the lines in the region.  This is useful for
-sorting into descending order by fields or columns, since those sort
+sorting into descending order by fields, since those sort
 commands do not have a feature for doing that.
 @end table
 
@@ -2115,10 +2285,10 @@ Insert a byte with a code typed in octal.
 Insert a byte with a code typed in hex.
 
 @item C-x [
-Move to the beginning of a 1k-byte ``page''.
+Move to the beginning of a 1k-byte page.
 
 @item C-x ]
-Move to the end of a 1k-byte ``page''.
+Move to the end of a 1k-byte page.
 
 @item M-g
 Move to an address specified in hex.
@@ -2199,7 +2369,7 @@ usually turned on.
 However, this may be slow if there are a lot of buffers in the
 desktop.  You can specify the maximum number of buffers to restore
 immediately with the variable @code{desktop-restore-eager}; the
-remaining buffers are restored ``lazily'', when Emacs is idle.
+remaining buffers are restored lazily, when Emacs is idle.
 
 @findex desktop-clear
 @vindex desktop-globals-to-clear
@@ -2274,7 +2444,7 @@ stack overflow) from time to time.  So remember to exit or abort the
 recursive edit when you no longer need it.
 
   In general, we try to minimize the use of recursive editing levels in
-GNU Emacs.  This is because they constrain you to ``go back'' in a
+GNU Emacs.  This is because they constrain you to go back in a
 particular order---from the innermost level toward the top level.  When
 possible, we present different activities in separate buffers so that
 you can switch between them as you please.  Some commands switch to a
@@ -2284,7 +2454,7 @@ the order you choose.
 
 @ignore
 @c Apart from edt and viper, this is all obsolete.
-@c (Can't believe we were saying ``most other editors'' into 2014!)
+@c (Can't believe we were saying "most other editors" into 2014!)
 @c There seems no point having a node just for those, which both have
 @c their own manuals.
 @node Emulation
@@ -2295,7 +2465,7 @@ the order you choose.
 @cindex vi
 @cindex WordStar
 
-  GNU Emacs can be programmed to emulate (more or less) some other
+  GNU Emacs can be programmed to emulate (more or less) most other
 editors.  Standard facilities can emulate these:
 
 @table @asis
@@ -2343,8 +2513,8 @@ Viper, viper}.
 @findex vi-mode
 @kbd{M-x vi-mode} enters a major mode that replaces the previously
 established major mode.  All of the vi commands that, in real vi, enter
-``input'' mode are programmed instead to return to the previous major
-mode.  Thus, ordinary Emacs serves as vi's ``input'' mode.
+input mode are programmed instead to return to the previous major
+mode.  Thus, ordinary Emacs serves as vi's input mode.
 
 Because vi emulation works through major modes, it does not work
 to switch buffers during emulation.  Return to normal Emacs first.
@@ -2355,7 +2525,7 @@ to the @code{vi-mode} command.
 @item vi (alternate emulator)
 @findex vip-mode
 @kbd{M-x vip-mode} invokes another vi emulator, said to resemble real vi
-more thoroughly than @kbd{M-x vi-mode}.  ``Input'' mode in this emulator
+more thoroughly than @kbd{M-x vi-mode}.  Input mode in this emulator
 is changed from ordinary Emacs so you can use @key{ESC} to go back to
 emulated vi command mode.  To get from emulated vi command mode back to
 ordinary Emacs, type @kbd{C-z}.
@@ -2443,8 +2613,8 @@ typing @kbd{M-x goto-address-mode}.  When this buffer-local minor mode
 is enabled, it finds all the URLs in the buffer, highlights them, and
 turns them into clickable buttons.  You can follow the URL by typing
 @kbd{C-c @key{RET}} (@code{goto-address-at-point}) while point is on
-its text; or by clicking with @kbd{Mouse-2}, or by clicking
-@kbd{Mouse-1} quickly (@pxref{Mouse References}).  Following a URL is
+its text; or by clicking with @kbd{mouse-2}, or by clicking
+@kbd{mouse-1} quickly (@pxref{Mouse References}).  Following a URL is
 done by calling @code{browse-url} as a subroutine
 (@pxref{Browse-URL}).
 
@@ -2517,12 +2687,12 @@ point (@code{dired-at-point}).
 @code{ffap-dired-other-frame}, analogous to @code{dired-other-frame}.
 @item M-x ffap-next
 Search buffer for next file name or URL, then find that file or URL.
-@item S-Mouse-3
-@kindex S-Mouse-3 @r{(FFAP)}
+@item S-mouse-3
+@kindex S-mouse-3 @r{(FFAP)}
 @code{ffap-at-mouse} finds the file guessed from text around the position
 of a mouse click.
-@item C-S-Mouse-3
-@kindex C-S-Mouse-3 @r{(FFAP)}
+@item C-S-mouse-3
+@kindex C-S-mouse-3 @r{(FFAP)}
 Display a menu of files and URLs mentioned in current buffer, then
 find the one you select (@code{ffap-menu}).
 @end table
@@ -2572,7 +2742,7 @@ character.  Keep dissociwords out of your documentation, if you want
 it to be well userenced and properbose.
 
 @findex dunnet
-  @kbd{M-x dunnet} runs an text-based adventure game.
+  @kbd{M-x dunnet} runs a text-based adventure game.
 
 @findex gomoku
 @cindex Go Moku
@@ -2587,7 +2757,7 @@ bored, try an argument of 9.  Sit back and watch.
 
 @findex life
 @cindex Life
-  @kbd{M-x life} runs Conway's ``Life'' cellular automaton.
+  @kbd{M-x life} runs Conway's Game of Life cellular automaton.
 
 @findex landmark
 @cindex landmark game
