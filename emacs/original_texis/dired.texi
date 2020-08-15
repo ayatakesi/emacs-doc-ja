@@ -1,5 +1,5 @@
 @c This is part of the Emacs manual.
-@c Copyright (C) 1985-1987, 1993-1995, 1997, 2000-2017 Free Software
+@c Copyright (C) 1985-1987, 1993-1995, 1997, 2000-2018 Free Software
 @c Foundation, Inc.
 @c See file emacs.texi for copying conditions.
 @node Dired
@@ -12,10 +12,12 @@
   Dired makes an Emacs buffer containing a listing of a directory, and
 optionally some of its subdirectories as well.  You can use the normal
 Emacs commands to move around in this buffer, and special Dired
-commands to operate on the listed files.
+commands to operate on the listed files.  Dired works with both local
+and remote directories.
 
-    The Dired buffer is read-only, and inserting text in it is not
-allowed.  Ordinary printing characters such as @kbd{d} and @kbd{x} are
+  The Dired buffer is normally read-only, and inserting text in it is
+not allowed (however, the Wdired mode allows that, @pxref{Wdired}).
+Ordinary printing characters such as @kbd{d} and @kbd{x} are
 redefined for special Dired commands.  Some Dired commands @dfn{mark}
 or @dfn{flag} the @dfn{current file} (that is, the file on the current
 line); other commands operate on the marked files or on the flagged
@@ -61,16 +63,28 @@ you to operate on the listed files.  @xref{Directories}.
 @kindex C-x d
 @vindex dired-listing-switches
   To invoke Dired, type @kbd{C-x d} (@code{dired}).  This reads a
-directory name using the minibuffer, and opens a @dfn{Dired buffer}
+directory's name using the minibuffer, and opens a @dfn{Dired buffer}
 listing the files in that directory.  You can also supply a wildcard
 file name pattern as the minibuffer argument, in which case the Dired
-buffer lists all files matching that pattern.  The usual history and
-completion commands can be used in the minibuffer; in particular,
-@kbd{M-n} puts the name of the visited file (if any) in the minibuffer
-(@pxref{Minibuffer History}).
+buffer lists all files matching that pattern.  A wildcard may appear
+in the directory part as well.
+For instance,
+
+@example
+C-x d  ~/foo/*.el  @key{RET}
+C-x d  ~/foo/*/*.el  @key{RET}
+@end example
+
+The former lists all the files with extension @samp{.el} in directory
+@samp{foo}.  The latter lists the files with extension @samp{.el}
+in all the subdirectories of @samp{foo}.
+
+The usual history and completion commands can be used in the minibuffer;
+in particular, @kbd{M-n} puts the name of the visited file (if any) in
+the minibuffer (@pxref{Minibuffer History}).
 
   You can also invoke Dired by giving @kbd{C-x C-f} (@code{find-file})
-a directory name.
+a directory's name.
 
   The variable @code{dired-listing-switches} specifies the options to
 give to @command{ls} for listing the directory; this string
@@ -96,8 +110,9 @@ default) means to perform the check; any other non-@code{nil} value
 means to use the @samp{--dired} option; and @code{nil} means not to
 use the @samp{--dired} option.
 
-  On MS-Windows and MS-DOS systems, Emacs emulates @command{ls}.
-@xref{ls in Lisp}, for options and peculiarities of this emulation.
+  On MS-Windows and MS-DOS systems, and also on some remote systems,
+Emacs emulates @command{ls}.  @xref{ls in Lisp}, for options and
+peculiarities of this emulation.
 
 @findex dired-other-window
 @kindex C-x 4 d
@@ -109,7 +124,7 @@ use the @samp{--dired} option.
 frame.
 
 @kindex q @r{(Dired)}
-@findex quit-window
+@findex quit-window@r{, in Dired buffers}
   Typing @kbd{q} (@code{quit-window}) buries the Dired buffer, and
 deletes its window if the window was created just for that buffer.
 
@@ -118,10 +133,13 @@ deletes its window if the window was created just for that buffer.
 
 @kindex C-n @r{(Dired)}
 @kindex C-p @r{(Dired)}
+@findex dired-next-line
+@findex dired-previous-line
   All the usual Emacs cursor motion commands are available in Dired
-buffers.  The keys @kbd{C-n} and @kbd{C-p} are redefined to put the
-cursor at the beginning of the file name on the line, rather than at
-the beginning of the line.
+buffers.  The keys @kbd{C-n} and @kbd{C-p} are redefined to run
+@code{dired-next-line} and @code{dired-previous-line}, respectively,
+and they put the cursor at the beginning of the file name on the line,
+rather than at the beginning of the line.
 
 @kindex SPC @r{(Dired)}
   For extra convenience, @key{SPC} and @kbd{n} in Dired are equivalent
@@ -222,14 +240,26 @@ the buffer, and no files actually deleted.
   You can delete empty directories just like other files, but normally
 Dired cannot delete directories that are nonempty.  If the variable
 @code{dired-recursive-deletes} is non-@code{nil}, then Dired can
-delete nonempty directories including all their contents.  That can
-be somewhat risky.
+delete nonempty directories including all their contents.  That can be
+somewhat risky.  If the value of the variable is @code{always}, Dired
+will delete nonempty directories recursively, which is even more
+risky.  Even if you have set @code{dired-recursive-deletes} to
+@code{nil}, you might want sometimes to delete recursively directories
+without being asked for confirmation for all of them.  This is handy
+when you have marked many directories for deletion and you are very
+sure that all of them can safely be deleted.  For every nonempty
+directory you are asked for confirmation; if you answer @code{all},
+then all the remaining directories will be deleted without more
+questions.
 
-@vindex delete-by-moving-to-trash
+@vindex delete-by-moving-to-trash@r{, and Dired}
   If you change the variable @code{delete-by-moving-to-trash} to
 @code{t}, the above deletion commands will move the affected files or
 directories into the operating system's Trash, instead of deleting
 them outright.  @xref{Misc File Ops}.
+
+  An alternative way of deleting files is to mark them with @kbd{m}
+and delete with @kbd{D}, see @ref{Operating on Files}.
 
 @node Flagging Many Files
 @section Flagging Many Files at Once
@@ -399,7 +429,9 @@ Mark the current file with @samp{*} (@code{dired-mark}).  If the
 region is active, mark all files in the region instead; otherwise, if
 a numeric argument @var{n} is supplied, mark the next @var{n} files
 instead, starting with the current file (if @var{n} is negative, mark
-the previous @minus{}@var{n} files).
+the previous @minus{}@var{n} files).  If invoked on a subdirectory
+header line (@pxref{Subdirectories in Dired}), this command marks all
+the files in that subdirectory.
 
 @item * *
 @kindex * * @r{(Dired)}
@@ -467,10 +499,11 @@ Remove all marks from all the files in this Dired buffer
 @kindex M-DEL @r{(Dired)}
 @findex dired-unmark-all-files
 Remove all marks that use the character @var{markchar}
-(@code{dired-unmark-all-files}).  The argument is a single
-character---do not use @key{RET} to terminate it.  See the description
-of the @kbd{* c} command below, which lets you replace one mark
-character with another.
+(@code{dired-unmark-all-files}).  If invoked with @kbd{M-@key{DEL}},
+the command prompts for @var{markchar}.  That @var{markchar} is a
+single character---do not use @key{RET} to terminate it.  See the
+description of the @kbd{* c} command below, which lets you replace one
+mark character with another.
 
 With a numeric argument, this command queries about each marked file,
 asking whether to remove its mark.  You can answer @kbd{y} meaning yes,
@@ -482,7 +515,7 @@ files without asking about them.
 @findex dired-next-marked-file
 @kindex * C-n @r{(Dired)}
 @kindex M-@} @r{(Dired)}
-Move down to the next marked file (@code{dired-next-marked-file})
+Move down to the next marked file (@code{dired-next-marked-file}).
 A file is ``marked'' if it has any kind of mark.
 
 @item * C-p
@@ -490,7 +523,7 @@ A file is ``marked'' if it has any kind of mark.
 @findex dired-prev-marked-file
 @kindex * C-p @r{(Dired)}
 @kindex M-@{ @r{(Dired)}
-Move up to the previous marked file (@code{dired-prev-marked-file})
+Move up to the previous marked file (@code{dired-prev-marked-file}).
 
 @item t
 @itemx * t
@@ -550,13 +583,17 @@ Mark (with @samp{*}) all files whose @emph{contents} contain a match for
 the regular expression @var{regexp}
 (@code{dired-mark-files-containing-regexp}).  This command is like
 @kbd{% m}, except that it searches the file contents instead of the file
-name.  Note that if a file is visited in an Emacs buffer, this command
-will look in the buffer without revisiting the file, so the results
-might be inconsistent with the file on disk if its contents has changed
-since it was last visited.  If you don't want this, you may wish
-reverting the files you have visited in your buffers, or turning on
-the @code{auto-revert} mode in those buffers, before invoking this
-command.  @xref{Reverting}.
+name.  Note that if a file is visited in an Emacs buffer,
+and @code{dired-always-read-filesystem} is @code{nil} (the default), this
+command will look in the buffer without revisiting the file, so the results
+might be inconsistent with the file on disk if its contents have changed
+since it was last visited.  If you don't want this, you may wish to
+revert the files you have visited in your buffers, or to turn on
+Auto-Revert mode in those buffers, before invoking this command.
+@xref{Reverting}.  If you prefer that this command should always
+revisit the file, without you having to revert the file or enable
+Auto-Revert mode, you might want to set
+@code{dired-always-read-filesystem} to non-@code{nil}.
 
 @item C-/
 @itemx C-x u
@@ -702,8 +739,8 @@ this.)
 
 @vindex dired-chown-program
 The variable @code{dired-chown-program} specifies the name of the
-program to use to do the work (different systems put @command{chown}
-in different places).
+program to use to do the work.  (This variable is necessary because
+different systems put @command{chown} in different places).
 
 @findex dired-do-touch
 @kindex T @r{(Dired)}
@@ -729,11 +766,12 @@ suitable guess made using the variables @code{lpr-command} and
 @item Z
 Compress the specified files (@code{dired-do-compress}).  If the file
 appears to be a compressed file already, uncompress it instead.  Each
-marked file is compressed into its own archive.
+marked file is compressed into its own archive.  This uses the
+@command{gzip} program if it is available, otherwise it uses
+@command{compress}.
 
 @findex dired-do-compress-to
 @kindex c @r{(Dired)}
-@cindex compressing files (in Dired)
 @item c
 Compress the specified files (@code{dired-do-compress-to}) into a
 single archive anywhere on the file system. The compression algorithm
@@ -872,25 +910,31 @@ treat it specially.
 
 @item
 Otherwise, if the command string contains @samp{?} surrounded by
-whitespace, Emacs runs the shell command once @emph{for each file},
-substituting the current file name for @samp{?} each time.  You can
-use @samp{?} more than once in the command; the same file name
-replaces each occurrence.
+whitespace or @samp{`?`}, Emacs runs the shell command once
+@emph{for each file}, substituting the current file name for @samp{?}
+and @samp{`?`} each time.  You can use both @samp{?} and @samp{`?`} more
+than once in the command; the same file name replaces each occurrence.
+If you mix them with @samp{*} the command signals an error.
 
 @item
-If the command string contains neither @samp{*} nor @samp{?}, Emacs
-runs the shell command once for each file, adding the file name at the
+If the command string contains neither @samp{*} nor @samp{?} nor @samp{`?`},
+Emacs runs the shell command once for each file, adding the file name at the
 end.  For example, @kbd{! uudecode @key{RET}} runs @code{uudecode} on
 each file.
 @end itemize
 
-  To iterate over the file names in a more complicated fashion, use an
-explicit shell loop.  For example, here is how to uuencode each file,
-making the output file name by appending @samp{.uu} to the input file
-name:
+  To iterate over the file names in a more complicated fashion, you might
+prefer to use an explicit shell loop.  For example, here is how to uuencode
+each file, making the output file name by appending @samp{.uu} to the input
+file name:
 
 @example
 for file in * ; do uuencode "$file" "$file" >"$file".uu; done
+@end example
+
+The same example with @samp{`?`} notation:
+@example
+uuencode ? ? > `?`.uu
 @end example
 
   The @kbd{!} and @kbd{&} commands do not attempt to update the Dired
@@ -1006,6 +1050,9 @@ minibuffer is the file at the mark (i.e., the ordinary Emacs mark,
 not a Dired mark; @pxref{Setting Mark}).  Otherwise, if the file at
 point has a backup file (@pxref{Backup}), that is the default.
 
+  You could also compare files using @code{ediff-files}, see
+@ref{Major Entry Points,,, ediff, Ediff User's Manual}.
+
 @node Subdirectories in Dired
 @section Subdirectories in Dired
 @cindex subdirectories in Dired
@@ -1106,7 +1153,7 @@ parent directory.
 @findex dired-next-dirline
 @kindex > @r{(Dired)}
 @item >
-Move down to the next directory-file line (@code{dired-prev-dirline}).
+Move down to the next directory-file line (@code{dired-next-dirline}).
 @end table
 
 @node Hiding Subdirectories
@@ -1143,7 +1190,7 @@ without having to remove the Dired marks on files in those
 subdirectories.
 
 @xref{Subdirectories in Dired}, for how to insert a subdirectory
-listing, and @pxref{Dired Updating} for how delete it.
+listing, and see @ref{Dired Updating}, for how to delete it.
 
 @node Dired Updating
 @section Updating the Dired Buffer
@@ -1198,7 +1245,7 @@ contents of the corresponding subdirectory.
   If you use @kbd{C-x d} or some other Dired command to visit a
 directory that is already being shown in a Dired buffer, Dired
 switches to that buffer but does not update it.  If the buffer is not
-up-to-date, Dired displays a warning telling you to type @key{g} to
+up-to-date, Dired displays a warning telling you to type @kbd{g} to
 update it.  You can also tell Emacs to revert each Dired buffer
 automatically when you revisit it, by setting the variable
 @code{dired-auto-revert-buffer} to a non-@code{nil} value.
@@ -1314,6 +1361,10 @@ relative).  To mark a file for deletion, delete the entire file name.
 To change the target of a symbolic link, edit the link target name
 which appears next to the link name.
 
+  If you edit the file names to create a new subdirectory, Wdired will
+automatically create these new directories.  To inhibit this behavior,
+set @code{wdired-create-parent-directories} to @code{nil}.
+
   The rest of the text in the buffer, such as the file sizes and
 modification dates, is marked read-only, so you can't edit it.
 However, if you set @code{wdired-allow-to-change-permissions} to
@@ -1324,8 +1375,8 @@ C-c}.
 
 @node Image-Dired
 @section Viewing Image Thumbnails in Dired
-@cindex image-dired mode
-@cindex image-dired
+@cindex @code{image-dired} mode
+@cindex @code{image-dired}
 
   Image-Dired is a facility for browsing image files.  It provides viewing
 the images either as thumbnails or in full size, either inside Emacs
@@ -1357,7 +1408,7 @@ display the next image.  Typing @key{DEL}
 the previous thumbnail and displays that instead.
 
 @vindex image-dired-external-viewer
-  To view and the image in its original size, either provide a prefix
+  To view the image in its original size, either provide a prefix
 argument (@kbd{C-u}) before pressing @key{RET}, or type
 @kbd{C-@key{RET}} (@code{image-dired-thumbnail-display-external}) to
 display the image in an external viewer.  You must first configure
@@ -1392,7 +1443,8 @@ a comment from Dired (@code{image-dired-dired-comment-files}).
   Image-Dired also provides simple image manipulation.  In the
 thumbnail buffer, type @kbd{L} to rotate the original image 90 degrees
 anti clockwise, and @kbd{R} to rotate it 90 degrees clockwise.  This
-rotation is lossless, and uses an external utility called JpegTRAN.
+rotation is lossless, and uses an external utility called
+@command{jpegtran}, which you need to install first.
 
 @node Misc Dired Features
 @section Other Dired Features
@@ -1400,7 +1452,7 @@ rotation is lossless, and uses an external utility called JpegTRAN.
 @kindex + @r{(Dired)}
 @findex dired-create-directory
   The command @kbd{+} (@code{dired-create-directory}) reads a
-directory name, and creates that directory.  It signals an error if
+directory's name, and creates that directory.  It signals an error if
 the directory already exists.
 
 @cindex searching multiple files via Dired
@@ -1429,7 +1481,7 @@ space.
 each marked file.  With just @kbd{C-u} as the prefix argument, it uses
 file names relative to the Dired buffer's default directory.  (This
 can still contain slashes if in a subdirectory.)  As a special case,
-if point is on a directory headerline, @kbd{w} gives you the absolute
+if point is on a directory header line, @kbd{w} gives you the absolute
 name of that directory.  Any prefix argument or marked files are
 ignored in this case.
 
@@ -1437,6 +1489,13 @@ ignored in this case.
 names into arguments for other Emacs commands.  It also displays what
 it added to the kill ring, so you can use it to display the list of
 currently marked files in the echo area.
+
+@kindex W @r{(Dired)}
+@findex browse-url-of-dired-file
+  If you have an HTML file in the file listing, it can be useful to
+view that file with a browser.  The @kbd{W}
+(@code{browse-url-of-dired-file}) command will use the standard
+configured browser to view that file.
 
 @kindex ( @r{(Dired)}
 @findex dired-hide-details-mode
@@ -1475,7 +1534,7 @@ function @code{file-attributes}).  This expression is evaluated for
 each pair of like-named files, and files differ if the expression's
 value is non-@code{nil}.
 
-  For instance, the sequence @code{M-x dired-compare-directories
+  For instance, the sequence @kbd{M-x dired-compare-directories
 @key{RET} (> mtime1 mtime2) @key{RET}} marks files newer in this
 directory than in the other, and marks files older in the other
 directory than in this one.  It also marks files with no counterpart,

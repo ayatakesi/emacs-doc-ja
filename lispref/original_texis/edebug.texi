@@ -1,6 +1,6 @@
 @comment -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1992-1994, 1998-1999, 2001-2017 Free Software
+@c Copyright (C) 1992-1994, 1998-1999, 2001-2018 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 
@@ -158,7 +158,7 @@ display a list of all Edebug commands.
 into it, to invoke Edebug at the proper places.
 
 @kindex C-M-x
-@findex eval-defun (Edebug)
+@findex eval-defun @r{(Edebug)}
   When you invoke command @kbd{C-M-x} (@code{eval-defun}) with a
 prefix argument on a function definition, it instruments the
 definition before evaluating it.  (This does not modify the source
@@ -209,16 +209,26 @@ session, it runs the hook @code{edebug-setup-hook}, then sets it to
 @code{nil}.  You can use this to load Edebug specifications
 associated with a package you are using, but only when you use Edebug.
 
+@cindex edebug, failure to instrument
+  If Edebug detects a syntax error while instrumenting, it leaves point
+at the erroneous code and signals an @code{invalid-read-syntax} error.
+@c FIXME?  I can't see that it "leaves point at the erroneous code".
+Example:
+
+@example
+@error{} Invalid read syntax: "Expected lambda expression"
+@end example
+
+  One potential reason for such a failure to instrument is that some
+macro definitions are not yet known to Emacs.  To work around this,
+load the file which defines the function you are about to instrument.
+
 @findex eval-expression @r{(Edebug)}
   To remove instrumentation from a definition, simply re-evaluate its
 definition in a way that does not instrument.  There are two ways of
 evaluating forms that never instrument them: from a file with
 @code{load}, and from the minibuffer with @code{eval-expression}
 (@kbd{M-:}).
-
-  If Edebug detects a syntax error while instrumenting, it leaves point
-at the erroneous code and signals an @code{invalid-read-syntax} error.
-@c FIXME?  I can't see that it "leaves point at the erroneous code".
 
   @xref{Edebug Eval}, for other evaluation functions available
 inside of Edebug.
@@ -244,7 +254,7 @@ least for a certain distance.
 @item S
 Stop: don't execute any more of the program, but wait for more
 Edebug commands (@code{edebug-stop}).
-@c FIXME Does not work. http://debbugs.gnu.org/9764
+@c FIXME Does not work. https://debbugs.gnu.org/9764
 
 @item @key{SPC}
 Step: stop at the next stop point encountered (@code{edebug-step-mode}).
@@ -383,6 +393,11 @@ just before the last sexp in the definition.  If that is where you are
 now, it returns from the function and then stops.  In other words, this
 command does not exit the currently executing function unless you are
 positioned after the last sexp.
+
+Normally, the @kbd{h}, @kbd{f}, and @kbd{o} commands display ``Break''
+and pause for @code{edebug-sit-for-seconds} before showing the result
+of the form just evaluated.  You can avoid this pause by setting
+@code{edebug-sit-on-break} to @code{nil}.  @xref{Edebug Options}.
 
 The @kbd{i} command steps into the function or macro called by the list
 form after point, and stops at its first stop point.  Note that the form
@@ -883,7 +898,7 @@ lines inserted.
 
 @cindex coverage testing (Edebug)
 @cindex frequency counts
-@cindex performance analysis
+@cindex performance analysis (Edebug)
   Edebug provides rudimentary coverage testing and display of execution
 frequency.
 
@@ -974,9 +989,13 @@ program.
 
 @itemize @bullet
 @item
-@code{max-lisp-eval-depth} and @code{max-specpdl-size} are both
-increased to reduce Edebug's impact on the stack.  You could, however,
-still run out of stack space when using Edebug.
+@vindex edebug-max-depth
+@code{max-lisp-eval-depth} (@pxref{Eval}) and @code{max-specpdl-size}
+(@pxref{Local Variables}) are both increased to reduce Edebug's impact
+on the stack.  You could, however, still run out of stack space when
+using Edebug.  You can also enlarge the value of
+@code{edebug-max-depth} if Edebug reaches the limit of recursion depth
+instrumenting code that contains very large quoted lists.
 
 @item
 The state of keyboard macro execution is saved and restored.  While
@@ -1130,14 +1149,17 @@ definition, but specifications are much more general than macro
 arguments.  @xref{Defining Macros}, for more explanation of
 the @code{declare} form.
 
-@c See, e.g., http://debbugs.gnu.org/10577
+@c See, e.g., https://debbugs.gnu.org/10577
 @c FIXME  Maybe there should be an Edebug option to get it to
 @c automatically load the entire source file containing the function
 @c being instrumented.  That would avoid this.
   Take care to ensure that the specifications are known to Edebug when
-you instrument code.  If you are instrumenting a function from a file
-that uses @code{eval-when-compile} to require another file containing
-macro definitions, you may need to explicitly load that file.
+you instrument code.  If you are instrumenting a function which uses a
+macro defined in another file, you may first need to either evaluate
+the @code{require} forms in the file containing your function, or
+explicitly load the file containing the macro.  If the definition of a
+macro is wrapped by @code{eval-when-compile}, you may need to evaluate
+it.
 
   You can also define an edebug specification for a macro separately
 from the macro definition with @code{def-edebug-spec}.  Adding
@@ -1222,13 +1244,17 @@ A single unevaluated Lisp object, which is not instrumented.
 @c an "expression" is not necessarily intended for evaluation.
 
 @item form
-A single evaluated expression, which is instrumented.
+A single evaluated expression, which is instrumented.  If your macro
+wraps the expression with @code{lambda} before it is evaluated, use
+@code{def-form} instead.  See @code{def-form} below.
 
 @item place
 A generalized variable.  @xref{Generalized Variables}.
 
 @item body
-Short for @code{&rest form}.  See @code{&rest} below.
+Short for @code{&rest form}.  See @code{&rest} below.  If your macro
+wraps its body of code with @code{lambda} before it is evaluated, use
+@code{def-body} instead.  See @code{def-body} below.
 
 @item function-form
 A function form: either a quoted function symbol, a quoted lambda
@@ -1283,11 +1309,16 @@ succeeds.
 
 @item &define
 @c @kindex &define @r{(Edebug)}
-Indicates that the specification is for a defining form.  The defining
-form itself is not instrumented (that is, Edebug does not stop before and
-after the defining form), but forms inside it typically will be
-instrumented.  The @code{&define} keyword should be the first element in
-a list specification.
+
+Indicates that the specification is for a defining form.  Edebug's
+definition of a defining form is a form containing one or more code
+forms which are saved and executed later, after the execution of the
+defining form.
+
+The defining form itself is not instrumented (that is, Edebug does not
+stop before and after the defining form), but forms inside it
+typically will be instrumented.  The @code{&define} keyword should be
+the first element in a list specification.
 
 @item nil
 This is successful when there are no more arguments to match at the
@@ -1543,6 +1574,14 @@ Use the command @kbd{M-x edebug-all-forms} to toggle the value of this
 option.  @xref{Instrumenting}.
 @end defopt
 
+@defopt edebug-eval-macro-args
+When this is non-@code{nil}, all macro arguments will be instrumented
+in the generated code.  For any macro, an @code{edebug-form-spec}
+overrides this option.  So to specify exceptions for macros that have
+some arguments evaluated and some not, use @code{def-edebug-spec} to
+specify an @code{edebug-form-spec}.
+@end defopt
+
 @defopt edebug-save-windows
 If this is non-@code{nil}, Edebug saves and restores the window
 configuration.  That takes some time, so if your program does not care
@@ -1601,6 +1640,21 @@ debugged.
 @xref{Edebug Execution Modes}.
 @end defopt
 
+@defopt edebug-print-length
+If non-@code{nil}, the default value of @code{print-length} for
+printing results in Edebug.  @xref{Output Variables}.
+@end defopt
+
+@defopt edebug-print-level
+If non-@code{nil}, the default value of @code{print-level} for
+printing results in Edebug.  @xref{Output Variables}.
+@end defopt
+
+@defopt edebug-print-circle
+If non-@code{nil}, the default value of @code{print-circle} for
+printing results in Edebug.  @xref{Output Variables}.
+@end defopt
+
 @defopt edebug-unwrap-results
 If non-@code{nil}, Edebug tries to remove any of its own
 instrumentation when showing the results of expressions.  This is
@@ -1646,4 +1700,15 @@ until the @emph{next} time Edebug is invoked via a new command.
 If non-@code{nil}, an expression to test for at every stop point.  If
 the result is non-@code{nil}, then break.  Errors are ignored.
 @xref{Global Break Condition}.
+@end defopt
+
+@defopt edebug-sit-for-seconds
+Number of seconds to pause when a breakpoint is reached and the execution
+mode is trace or continue.  @xref{Edebug Execution Modes}.
+@end defopt
+
+@defopt edebug-sit-on-break
+Whether or not to pause for @code{edebug-sit-for-seconds} on reaching
+a breakpoint.  Set to @code{nil} to prevent the pause, non-@code{nil}
+to allow it.
 @end defopt

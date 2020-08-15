@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990-1995, 1998-1999, 2001-2017 Free Software
+@c Copyright (C) 1990-1995, 1998-1999, 2001-2018 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Searching and Matching
@@ -327,7 +327,7 @@ expression.  Thus, @samp{fo*} has a repeating @samp{o}, not a repeating
 The matcher processes a @samp{*} construct by matching, immediately, as
 many repetitions as can be found.  Then it continues with the rest of
 the pattern.  If that fails, backtracking occurs, discarding some of the
-matches of the @samp{*}-modified construct in the hope that that will
+matches of the @samp{*}-modified construct in the hope that this will
 make it possible to match the rest of the pattern.  For example, in
 matching @samp{ca*ar} against the string @samp{caaar}, the @samp{a*}
 first tries to match all three @samp{a}s; but the rest of the pattern is
@@ -553,7 +553,11 @@ characters whose Unicode @samp{general-category} property
 (@pxref{Character Properties}) indicates they are alphabetic
 characters.
 @item [:blank:]
-This matches space and tab only.
+This matches horizontal whitespace, as defined by Annex C of the
+Unicode Technical Standard #18.  In particular, it matches spaces,
+tabs, and other characters whose Unicode @samp{general-category}
+property (@pxref{Character Properties}) indicates they are spacing
+separators.
 @item [:cntrl:]
 This matches any @acronym{ASCII} control character.
 @item [:digit:]
@@ -635,7 +639,15 @@ and nothing else.  @samp{c[ad]\@{3\@}r} matches string such as
 is a more general postfix operator that specifies repetition with a
 minimum of @var{m} repeats and a maximum of @var{n} repeats.  If @var{m}
 is omitted, the minimum is 0; if @var{n} is omitted, there is no
-maximum.
+maximum.  For both forms, @var{m} and @var{n}, if specified, may be no
+larger than
+@ifnottex
+2**15 @minus{} 1
+@end ifnottex
+@tex
+@math{2^{15}-1}
+@end tex
+.
 
 For example, @samp{c[ad]\@{1,2\@}r} matches the strings @samp{car},
 @samp{cdr}, @samp{caar}, @samp{cadr}, @samp{cdar}, and @samp{cddr}, and
@@ -946,7 +958,7 @@ for Font Lock mode@footnote{Note that @code{regexp-opt} does not
 guarantee that its result is absolutely the most efficient form
 possible.  A hand-tuned regular expression can sometimes be slightly
 more efficient, but is almost never worth the effort.}.
-@c E.g., see http://debbugs.gnu.org/2816
+@c E.g., see https://debbugs.gnu.org/2816
 
 The optional argument @var{paren} can be any of the following:
 
@@ -1090,6 +1102,8 @@ comes back" twice.
 @end example
 @end deffn
 
+@c This anchor is referenced by re-search-backward's docstring.
+@anchor{re-search-backward}
 @deffn Command re-search-backward regexp &optional limit noerror count
 This function searches backward in the current buffer for a string of
 text that is matched by the regular expression @var{regexp}, leaving
@@ -1216,7 +1230,7 @@ previous character cannot be part of a match for @var{regexp}.  When
 the match is extended, its starting position is allowed to occur
 before @var{limit}.
 
-@c http://debbugs.gnu.org/5689
+@c https://debbugs.gnu.org/5689
 As a general recommendation, try to avoid using @code{looking-back}
 wherever possible, since it is slow.  For this reason, there are no
 plans to add a @code{looking-back-p} function.
@@ -1739,13 +1753,14 @@ of matching @var{regexp} against a substring of @var{string}.
   If you want to write a command along the lines of @code{query-replace},
 you can use @code{perform-replace} to do the work.
 
-@defun perform-replace from-string replacements query-flag regexp-flag delimited-flag &optional repeat-count map start end
+@defun perform-replace from-string replacements query-flag regexp-flag delimited-flag &optional repeat-count map start end backward region-noncontiguous-p
 This function is the guts of @code{query-replace} and related
 commands.  It searches for occurrences of @var{from-string} in the
 text between positions @var{start} and @var{end} and replaces some or
 all of them.  If @var{start} is @code{nil} (or omitted), point is used
 instead, and the end of the buffer's accessible portion is used for
-@var{end}.
+@var{end}.  (If the optional argument @var{backward} is
+non-@code{nil}, the search starts at @var{end} and goes backward.)
 
 If @var{query-flag} is @code{nil}, it replaces all
 occurrences; otherwise, it asks the user what to do about each one.
@@ -1776,6 +1791,11 @@ Normally, the keymap @code{query-replace-map} defines the possible
 user responses for queries.  The argument @var{map}, if
 non-@code{nil}, specifies a keymap to use instead of
 @code{query-replace-map}.
+
+Non-@code{nil} @var{region-noncontiguous-p} means that the region
+between @var{start} and @var{end} is composed of noncontiguous pieces.
+The most common example of this is a rectangular region, where the
+pieces are separated by newline characters.
 
 This function uses one of two functions to search for the next
 occurrence of @var{from-string}.  These functions are specified by the
@@ -1837,6 +1857,14 @@ Answer this question and all subsequent questions in the series with
 
 @item backup
 Move back to the previous place that a question was asked about.
+
+@item undo
+Undo last replacement and move back to the place where that
+replacement was performed.
+
+@item undo-all
+Undo all replacements and move back to the place where the first
+replacement was performed.
 
 @item edit
 Enter a recursive edit to deal with this question---instead of any

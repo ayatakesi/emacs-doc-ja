@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990-1995, 1998-1999, 2001-2017 Free Software
+@c Copyright (C) 1990-1995, 1998-1999, 2001-2018 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Processes
@@ -515,20 +515,17 @@ inputinput@point{}
 @end smallexample
 
   For example, the @code{shell-command-on-region} command uses
-@code{call-process-region} in a manner similar to this:
+@code{call-shell-region} in a manner similar to this:
 
 @smallexample
 @group
-(call-process-region
+(call-shell-region
  start end
- shell-file-name      ; @r{name of program}
+ command              ; @r{shell command}
  nil                  ; @r{do not delete region}
- buffer               ; @r{send output to @code{buffer}}
- nil                  ; @r{no redisplay during output}
- "-c" command)        ; @r{arguments for the shell}
+ buffer)              ; @r{send output to @code{buffer}}
 @end group
 @end smallexample
-@c It actually uses shell-command-switch, but no need to mention that here.
 @end defun
 
 @defun call-process-shell-command command &optional infile destination display
@@ -546,6 +543,15 @@ This function is like @code{call-process-shell-command}, but uses
 convention allowed passing any number of additional arguments after
 @var{display}, which were concatenated to @var{command}; this is still
 supported, but strongly discouraged.
+@end defun
+
+@defun call-shell-region start end command &optional delete destination
+This function sends the text from @var{start} to @var{end} as
+standard input to an inferior shell running @var{command}.  This function
+is similar than @code{call-process-region}, with process being a shell.
+The arguments @code{delete}, @code{destination} and the return value
+are like in @code{call-process-region}.
+Note that this function doesn't accept additional arguments.
 @end defun
 
 @defun shell-command-to-string command
@@ -684,7 +690,7 @@ information, is available via the @code{process-contact} function.
 The current working directory of the subprocess is set to the current
 buffer's value of @code{default-directory} if that is local (as
 determined by `unhandled-file-name-directory'), or "~" otherwise.  If
-you want to run a process in a remote direcotry use
+you want to run a process in a remote directory use
 @code{start-file-process}.
 @end defun
 
@@ -722,8 +728,11 @@ Initialize the process query flag to @var{query-flag}.
 @xref{Query Before Exit}.
 
 @item :stop @var{stopped}
-If @var{stopped} is non-@code{nil}, start the process in the
-stopped state.
+If @var{stopped} is non-@code{nil}, start the process in the stopped
+state.  In the stopped state, a pipe process does not accept incoming
+data, but you can send outgoing data.  The stopped state is set by
+@code{stop-process} and cleared by @code{continue-process}
+(@pxref{Signals to Processes}).
 
 @item :filter @var{filter}
 Initialize the process filter to @var{filter}.  If not specified, a
@@ -1345,6 +1354,22 @@ integer); that allows you to send signals to processes that are not
 children of Emacs.  @xref{System Processes}.
 @end deffn
 
+Sometimes, it is necessary to send a signal to a non-local
+asynchronous process.  This is possible by writing an own
+@code{interrupt-process} implementation.  This function must be added
+then to @code{interrupt-process-functions}.
+
+@defvar interrupt-process-functions
+This variable is a list of functions to be called for
+@code{interrupt-process}.  The arguments of the functions are the same
+as for @code{interrupt-process}.  These functions are called in the
+order of the list, until one of them returns non-@code{nil}.  The
+default function, which shall always be the last in this list, is
+@code{internal-default-interrupt-process}.
+
+This is the mechanism, how Tramp implements @code{interrupt-process}.
+@end defvar
+
 @node Output from Processes
 @section Receiving Output from Processes
 @cindex process output
@@ -1403,6 +1428,7 @@ Emacs tries to read it.
 * Filter Functions::        Filter functions accept output from the process.
 * Decoding Output::         Filters can get unibyte or multibyte strings.
 * Accepting Output::        How to wait until process output arrives.
+* Processes and Threads::   How processes and threads interact.
 @end menu
 
 @node Process Buffers
@@ -1794,6 +1820,35 @@ got output from @var{process}, or from any process if @var{process} is
 arrived.
 @end defun
 
+@node Processes and Threads
+@subsection Processes and Threads
+@cindex processes, threads
+
+  Because threads were a relatively late addition to Emacs Lisp, and
+due to the way dynamic binding was sometimes used in conjunction with
+@code{accept-process-output}, by default a process is locked to the
+thread that created it.  When a process is locked to a thread, output
+from the process can only be accepted by that thread.
+
+  A Lisp program can specify to which thread a process is to be
+locked, or instruct Emacs to unlock a process, in which case its
+output can be processed by any thread.  Only a single thread will wait
+for output from a given process at one time---once one thread begins
+waiting for output, the process is temporarily locked until
+@code{accept-process-output} or @code{sit-for} returns.
+
+  If the thread exits, all the processes locked to it are unlocked.
+
+@defun process-thread process
+Return the thread to which @var{process} is locked.  If @var{process}
+is unlocked, return @code{nil}.
+@end defun
+
+@defun set-process-thread process thread
+Set the locking thread of @var{process} to @var{thread}.  @var{thread}
+may be @code{nil}, in which case the process is unlocked.
+@end defun
+
 @node Sentinels
 @section Sentinels: Detecting Process Status Changes
 @cindex process sentinel
@@ -1972,6 +2027,13 @@ shell process to avoid querying:
 @end group
 @end smallexample
 @end defun
+
+@defopt confirm-kill-processes
+If this user option is set to @code{t} (the default), then Emacs asks
+for confirmation before killing processes on exit.  If it is
+@code{nil}, Emacs kills processes without confirmation, i.e., the
+query flag of all processes is ignored.
+@end defopt
 
 @node System Processes
 @section Accessing Other Processes
@@ -2272,7 +2334,7 @@ server is stopped; a non-@code{nil} value means yes.
 Emacs can create encrypted network connections, using either built-in
 or external support.  The built-in support uses the GnuTLS
 Transport Layer Security Library; see
-@uref{http://www.gnu.org/software/gnutls/, the GnuTLS project page}.
+@uref{https://www.gnu.org/software/gnutls/, the GnuTLS project page}.
 If your Emacs was compiled with GnuTLS support, the function
 @code{gnutls-available-p} is defined and returns non-@code{nil}.  For
 more details, @pxref{Top,, Overview, emacs-gnutls, The Emacs-GnuTLS manual}.
@@ -2297,7 +2359,8 @@ associated with any buffer.
 
 The arguments @var{host} and @var{service} specify where to connect to;
 @var{host} is the host name (a string), and @var{service} is the name of
-a defined network service (a string) or a port number (an integer).
+a defined network service (a string) or a port number (an integer like
+@code{80} or an integer string like @code{"80"}).
 
 The remaining arguments @var{parameters} are keyword/argument pairs
 that are mainly relevant to encrypted connections:
@@ -2378,6 +2441,14 @@ If non-@code{nil}, the host's capability string.
 @item :type @var{symbol}
 The connection type: @samp{plain} or @samp{tls}.
 @end table
+
+@item :shell-command @var{string-or-nil}
+If the connection @code{type} is @code{shell}, this parameter will be
+interpreted as a format-spec string that will be executed to make the
+connection.  The specs available are @samp{%s} for the host name and
+@samp{%p} for the port number.  For instance, if you want to first ssh
+to @samp{gateway} before making a plain connection, then this
+parameter could be something like @samp{ssh gateway nc %s %p}.
 
 @end table
 
@@ -2521,8 +2592,9 @@ connecting to that address will be accepted.
 
 @item :service @var{service}
 @var{service} specifies a port number to connect to; or, for a server,
-the port number to listen on.  It should be a service name that
-translates to a port number, or an integer specifying the port number
+the port number to listen on.  It should be a service name like
+@samp{"http"} that translates to a port number, or an integer like @samp{80}
+or an integer string like @samp{"80"} that specifies the port number
 directly.  For a server, it can also be @code{t}, which means to let
 the system select an unused port number.
 
@@ -2533,6 +2605,12 @@ automatically for the given @var{host} and @var{service}.
 @code{local} specifies a Unix socket, in which case @var{host} is
 ignored.  @code{ipv4} and @code{ipv6} specify to use IPv4 and IPv6,
 respectively.
+
+@item :use-external-socket @var{use-external-socket}
+If @var{use-external-socket} is non-@code{nil} use any sockets passed
+to Emacs on invocation instead of allocating one.  This is used by the
+Emacs server code to allow on-demand socket activation.  If Emacs
+wasn't passed a socket, this option is silently ignored.
 
 @item :local @var{local-address}
 For a server process, @var{local-address} is the address to listen on.
@@ -2584,8 +2662,33 @@ without waiting for the connection to complete.  When the connection
 succeeds or fails, Emacs will call the sentinel function, with a
 second argument matching @code{"open"} (if successful) or
 @code{"failed"}.  The default is to block, so that
-@code{make-network-process} does not return until the connection
-has succeeded or failed.
+@code{make-network-process} does not return until the connection has
+succeeded or failed.
+
+If you're setting up an asynchronous TLS connection, you have to also
+provide the @code{:tls-parameters} parameter (see below).
+
+Depending on the capabilities of Emacs, how asynchronous
+@code{:nowait} is may vary.  The three elements that may (or may not)
+be done asynchronously are domain name resolution, socket setup, and
+(for TLS connections) TLS negotiation.
+
+Many functions that interact with process objects, (for instance,
+@code{process-datagram-address}) rely on them at least having a socket
+before they can return a useful value.  These functions will block
+until the socket has achieved the desired status.  The recommended way
+of interacting with asynchronous sockets is to place a sentinel on the
+process, and not try to interact with it before it has changed status
+to @samp{"run"}.  That way, none of these functions will block.
+
+@item :tls-parameters
+When opening a TLS connection, this should be where the first element
+is the TLS type (which should either be @code{gnutls-x509pki} or
+@code{gnutls-anon}, and the remaining elements should form a keyword
+list acceptable for @code{gnutls-boot}.  (This keyword list can be
+obtained from the @code{gnutls-boot-parameters} function.)  The TLS
+connection will then be negotiated after completing the connection to
+the host.
 
 @item :stop @var{stopped}
 If @var{stopped} is non-@code{nil}, start the network connection or
@@ -3263,90 +3366,34 @@ dotted notation.
 @node Bindat Examples
 @subsection Examples of Byte Unpacking and Packing
 @c FIXME?  This seems a very long example for something that is not used
-@c very often.  As of 24.1, gdb-mi.el is the only user of bindat.el in Emacs.
+@c very often.  As of 25.2, gdb-mi.el is the only user of bindat.el in Emacs.
 @c Maybe one or both of these examples should just be moved to the
 @c commentary of bindat.el.
 
-  Here is a complete example of byte unpacking and packing:
+  Here are two complete examples that use bindat.el.
+The first shows simple byte packing:
 
 @lisp
 (require 'bindat)
 
-(defvar fcookie-index-spec
-  '((:version  u32)
-    (:count    u32)
-    (:longest  u32)
-    (:shortest u32)
-    (:flags    u32)
-    (:delim    u8)
-    (:ignored  fill 3)
-    (:offset   repeat (:count) (:foo u32)))
-  "Description of a fortune cookie index file's contents.")
+(defun rfc868-payload ()
+  (bindat-pack
+   '((now-hi u16)
+     (now-lo u16))
+   ;; Emacs uses Unix epoch, while RFC868 epoch
+   ;; is 1900-01-01 00:00:00, which is 2208988800
+   ;; (or #x83aa7e80) seconds more.
+   (let ((now (time-add nil '(#x83aa #x7e80))))
+     `((now-hi . ,(car now))
+       (now-lo . ,(cadr now))))))
 
-(defun fcookie (cookies &optional index)
-  "Display a random fortune cookie from file COOKIES.
-Optional second arg INDEX specifies the associated index
-filename, by default \"COOKIES.dat\".  Display cookie text
-in buffer \"*Fortune Cookie: BASENAME*\", where BASENAME
-is COOKIES without the directory part."
-  (interactive "fCookies file: ")
-  (let* ((info (with-temp-buffer
-                 (insert-file-contents-literally
-                  (or index (concat cookies ".dat")))
-                 (bindat-unpack fcookie-index-spec
-                                (buffer-string))))
-         (sel (random (bindat-get-field info :count)))
-         (beg (cdar (bindat-get-field info :offset sel)))
-         (end (or (cdar (bindat-get-field info
-                                          :offset (1+ sel)))
-                  (nth 7 (file-attributes cookies)))))
-    (switch-to-buffer
-     (get-buffer-create
-      (format "*Fortune Cookie: %s*"
-              (file-name-nondirectory cookies))))
-    (erase-buffer)
-    (insert-file-contents-literally
-     cookies nil beg (- end 3))))
-
-(defun fcookie-create-index (cookies &optional index delim)
-  "Scan file COOKIES, and write out its index file.
-Optional arg INDEX specifies the index filename, which by
-default is \"COOKIES.dat\".  Optional arg DELIM specifies the
-unibyte character that, when found on a line of its own in
-COOKIES, indicates the border between entries."
-  (interactive "fCookies file: ")
-  (setq delim (or delim ?%))
-  (let ((delim-line (format "\n%c\n" delim))
-        (count 0)
-        (max 0)
-        min p q len offsets)
-    (unless (= 3 (string-bytes delim-line))
-      (error "Delimiter cannot be represented in one byte"))
-    (with-temp-buffer
-      (insert-file-contents-literally cookies)
-      (while (and (setq p (point))
-                  (search-forward delim-line (point-max) t)
-                  (setq len (- (point) 3 p)))
-        (setq count (1+ count)
-              max (max max len)
-              min (min (or min max) len)
-              offsets (cons (1- p) offsets))))
-    (with-temp-buffer
-      (set-buffer-multibyte nil)
-      (insert
-       (bindat-pack
-        fcookie-index-spec
-        `((:version . 2)
-          (:count . ,count)
-          (:longest . ,max)
-          (:shortest . ,min)
-          (:flags . 0)
-          (:delim . ,delim)
-          (:offset . ,(mapcar (lambda (o)
-                                (list (cons :foo o)))
-                              (nreverse offsets))))))
-      (let ((coding-system-for-write 'raw-text-unix))
-        (write-file (or index (concat cookies ".dat")))))))
+(let ((s (rfc868-payload)))
+  (list (multibyte-string-p s)
+        (mapconcat (lambda (byte)
+                     (format "%02x" byte))
+                   s " ")
+        (current-time-string)))
+     @result{} (nil "dc 6d 17 01" "Fri Mar 10 13:13:53 2017")
 @end lisp
 
 The following is an example of defining and unpacking a complex
