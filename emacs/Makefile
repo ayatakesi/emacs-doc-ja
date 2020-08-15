@@ -22,5 +22,6 @@ emacs:
 			japanese_texis \
 			TITLES \
 			"-ja"; \
+		rm -f japanese_texis/$${TEXI}
 	done
 
