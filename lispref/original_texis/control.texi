@@ -1,6 +1,6 @@
 @c -*- mode: texinfo; coding: utf-8 -*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990-1995, 1998-1999, 2001-2019 Free Software
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2020 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Control Structures
@@ -38,7 +38,7 @@ structure constructs (@pxref{Macros}).
 @menu
 * Sequencing::             Evaluation in textual order.
 * Conditionals::           @code{if}, @code{cond}, @code{when}, @code{unless}.
-* Combining Conditions::   @code{and}, @code{or}, @code{not}.
+* Combining Conditions::   @code{and}, @code{or}, @code{not}, and friends.
 * Pattern-Matching Conditional::  How to use @code{pcase} and friends.
 * Iteration::              @code{while} loops.
 * Generators::             Generic sequences and coroutines.
@@ -298,8 +298,8 @@ For example:
 @section Constructs for Combining Conditions
 @cindex combining conditions
 
-  This section describes three constructs that are often used together
-with @code{if} and @code{cond} to express complicated conditions.  The
+  This section describes constructs that are often used together with
+@code{if} and @code{cond} to express complicated conditions.  The
 constructs @code{and} and @code{or} can also be used individually as
 kinds of multiple conditional constructs.
 
@@ -418,6 +418,15 @@ This is not completely equivalent because it can evaluate @var{arg1} or
 @var{arg2} twice.  By contrast, @code{(or @var{arg1} @var{arg2}
 @var{arg3})} never evaluates any argument more than once.
 @end defspec
+
+@defun xor condition1 condition2
+This function returns the boolean exclusive-or of @var{condition1} and
+@var{condition2}.  That is, @code{xor} returns @code{nil} if either
+both arguments are @code{nil}, or both are non-@code{nil}.  Otherwise,
+it returns the value of that argument which is non-@code{nil}.
+
+Note that in contrast to @code{or}, both arguments are always evaluated.
+@end defun
 
 @node Pattern-Matching Conditional
 @section Pattern-Matching Conditional
@@ -618,6 +627,31 @@ To present a consistent environment (@pxref{Intro Eval})
 to @var{body-forms} (thus avoiding an evaluation error on match),
 if any of the sub-patterns let-binds a set of symbols,
 they @emph{must} all bind the same set of symbols.
+
+@ifnottex
+@anchor{rx in pcase}
+@item (rx @var{rx-expr}@dots{})
+Matches strings against the regexp @var{rx-expr}@dots{}, using the
+@code{rx} regexp notation (@pxref{Rx Notation}), as if by
+@code{string-match}.
+
+In addition to the usual @code{rx} syntax, @var{rx-expr}@dots{} can
+contain the following constructs:
+
+@table @code
+@item (let @var{ref} @var{rx-expr}@dots{})
+Bind the symbol @var{ref} to a submatch that matches
+@var{rx-expr}@enddots{}.  @var{ref} is bound in @var{body-forms} to
+the string of the submatch or nil, but can also be used in
+@code{backref}.
+
+@item (backref @var{ref})
+Like the standard @code{backref} construct, but @var{ref} can here
+also be a name introduced by a previous @code{(let @var{ref} @dots{})}
+construct.
+@end table
+@end ifnottex
+
 @end table
 
 @anchor{pcase-example-0}
@@ -801,7 +835,7 @@ the second and subsequent occurrences do not expand to re-binding,
 but instead expand to an equality test using @code{eq}.
 
 The following example features a @code{pcase} form
-with two clauses and two @var{seqpat}, A and B.
+with two clauses and two @var{seqpat}, A and B@.
 Both A and B first check that @var{expval} is a
 pair (using @code{pred}),
 and then bind symbols to the @code{car} and @code{cdr}
@@ -925,8 +959,9 @@ For example, the following is invalid:
 
 @example
 @group
+(require 'cl-lib)
 (pcase (read-number "Enter an integer: ")
-  ((or (and (pred evenp)
+  ((or (and (pred cl-evenp)
             e-num)      ; @r{bind @code{e-num} to @var{expval}}
        o-num)           ; @r{bind @code{o-num} to @var{expval}}
    (list e-num o-num)))
@@ -950,9 +985,10 @@ Reworking the above example:
 
 @example
 @group
+(require 'cl-lib)
 (pcase (read-number "Enter an integer: ")
   ((and num                                ; @r{line 1}
-        (or (and (pred evenp)              ; @r{line 2}
+        (or (and (pred cl-evenp)           ; @r{line 2}
                  (let spin 'even))         ; @r{line 3}
             (let spin 'odd)))              ; @r{line 4}
    (list spin num)))                       ; @r{line 5}
@@ -1095,12 +1131,10 @@ Matches if @var{expval} is a vector of length @var{m} whose
 
 @item @var{symbol}
 @itemx @var{keyword}
-@itemx @var{integer}
+@itemx @var{number}
 @itemx @var{string}
 Matches if the corresponding element of @var{expval} is
 @code{equal} to the specified literal object.
-Note that, aside from @var{symbol}, this is the same set of
-self-quoting literal objects that are acceptable as a core pattern.
 
 @item ,@var{pattern}
 Matches if the corresponding element of @var{expval}
@@ -1355,7 +1389,8 @@ This construct executes @var{body} once for each integer from 0
 (inclusive) to @var{count} (exclusive), binding the variable @var{var}
 to the integer for the current iteration.  Then it returns the value
 of evaluating @var{result}, or @code{nil} if @var{result} is omitted.
-Here is an example of using @code{dotimes} to do something 100 times:
+Use of @var{result} is deprecated.  Here is an example of using
+@code{dotimes} to do something 100 times:
 
 @example
 (dotimes (i 100)
@@ -1872,6 +1907,7 @@ variables precisely as they were at the time of the error.
 @subsubsection Writing Code to Handle Errors
 @cindex error handler
 @cindex handling errors
+@cindex handle Lisp errors
 @cindex forms for handling errors
 
   The usual effect of signaling an error is to terminate the command
@@ -1986,9 +2022,10 @@ error occurs during @var{protected-form}.
 Each of the @var{handlers} is a list of the form @code{(@var{conditions}
 @var{body}@dots{})}.  Here @var{conditions} is an error condition name
 to be handled, or a list of condition names (which can include @code{debug}
-to allow the debugger to run before the handler); @var{body} is one or more
-Lisp expressions to be executed when this handler handles an error.
-Here are examples of handlers:
+to allow the debugger to run before the handler).  A condition name of
+@code{t} matches any condition.  @var{body} is one or more Lisp
+expressions to be executed when this handler handles an error.  Here
+are examples of handlers:
 
 @example
 @group
@@ -2127,6 +2164,18 @@ Here's the example at the beginning of this subsection rewritten using
    (delete-file filename))
 @end group
 @end example
+@end defmac
+
+@defmac ignore-error condition body@dots{}
+This macro is like @code{ignore-errors}, but will only ignore the
+specific error condition specified.
+
+@example
+  (ignore-error end-of-file
+    (read ""))
+@end example
+
+@var{condition} can also be a list of error conditions.
 @end defmac
 
 @defmac with-demoted-errors format body@dots{}

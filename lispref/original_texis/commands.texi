@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990-1995, 1998-1999, 2001-2019 Free Software
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2020 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Command Loop
@@ -1047,12 +1047,9 @@ and meaning of input events in detail.
 This function returns non-@code{nil} if @var{object} is an input event
 or event type.
 
-Note that any symbol might be used as an event or an event type.
-@code{eventp} cannot distinguish whether a symbol is intended by Lisp
-code to be used as an event.  Instead, it distinguishes whether the
-symbol has actually been used in an event that has been read as input in
-the current Emacs session.  If a symbol has not yet been so used,
-@code{eventp} returns @code{nil}.
+Note that any non-@code{nil} symbol might be used as an event or an
+event type; @code{eventp} cannot distinguish whether a symbol is
+intended by Lisp code to be used as an event.
 @end defun
 
 @menu
@@ -1351,8 +1348,8 @@ button.  @xref{Repeat Events}.
 @var{position} slot of a click event, you should typically use the
 functions documented in @ref{Accessing Mouse}.  The explicit format of
 the list depends on where the click occurred.  For clicks in the text
-area, mode line, header line, or in the fringe or marginal areas, the
-mouse position list has the form
+area, mode line, header line, tab line, or in the fringe or marginal
+areas, the mouse position list has the form
 
 @example
 (@var{window} @var{pos-or-area} (@var{x} . @var{y}) @var{timestamp}
@@ -1371,8 +1368,9 @@ The window in which the click occurred.
 The buffer position of the character clicked on in the text area; or,
 if the click was outside the text area, the window area where it
 occurred.  It is one of the symbols @code{mode-line},
-@code{header-line}, @code{vertical-line}, @code{left-margin},
-@code{right-margin}, @code{left-fringe}, or @code{right-fringe}.
+@code{header-line}, @code{tab-line}, @code{vertical-line},
+@code{left-margin}, @code{right-margin}, @code{left-fringe}, or
+@code{right-fringe}.
 
 In one special case, @var{pos-or-area} is a list containing a symbol
 (one of the symbols listed above) instead of just the symbol.  This
@@ -1383,12 +1381,12 @@ by Emacs.  @xref{Key Sequence Input}.
 The relative pixel coordinates of the click.  For clicks in the text
 area of a window, the coordinate origin @code{(0 . 0)} is taken to be
 the top left corner of the text area.  @xref{Window Sizes}.  For
-clicks in a mode line or header line, the coordinate origin is the top
-left corner of the window itself.  For fringes, margins, and the
-vertical border, @var{x} does not have meaningful data.  For fringes
-and margins, @var{y} is relative to the bottom edge of the header
-line.  In all cases, the @var{x} and @var{y} coordinates increase
-rightward and downward respectively.
+clicks in a mode line, header line or tab line, the coordinate origin
+is the top left corner of the window itself.  For fringes, margins,
+and the vertical border, @var{x} does not have meaningful data.
+For fringes and margins, @var{y} is relative to the bottom edge of the
+header line.  In all cases, the @var{x} and @var{y} coordinates
+increase rightward and downward respectively.
 
 @item @var{timestamp}
 The time at which the event occurred, as an integer number of
@@ -1410,17 +1408,18 @@ The position in the string where the click occurred.
 @item @var{text-pos}
 For clicks on a marginal area or on a fringe, this is the buffer
 position of the first visible character in the corresponding line in
-the window.  For clicks on the mode line or the header line, this is
-@code{nil}.  For other events, it is the buffer position closest to
-the click.
+the window.  For clicks on the mode line, the header line or the tab
+line, this is @code{nil}.  For other events, it is the buffer position
+closest to the click.
 
 @item @var{col}, @var{row}
 These are the actual column and row coordinate numbers of the glyph
 under the @var{x}, @var{y} position.  If @var{x} lies beyond the last
 column of actual text on its line, @var{col} is reported by adding
-fictional extra columns that have the default character width.  Row 0
-is taken to be the header line if the window has one, or the topmost
-row of the text area otherwise.  Column 0 is taken to be the leftmost
+fictional extra columns that have the default character width.
+Row 0 is taken to be the header line if the window has one, or Row 1
+if the window also has the tab line, or the topmost row of
+the text area otherwise.  Column 0 is taken to be the leftmost
 column of the text area for clicks on a window text area, or the
 leftmost mode line or header line column for clicks there.  For clicks
 on fringes or vertical borders, these have no meaningful data.  For
@@ -1662,6 +1661,12 @@ events within its body.  Outside of @code{track-mouse} forms, Emacs
 does not generate events for mere motion of the mouse, and these
 events do not appear.  @xref{Mouse Tracking}.
 
+@defvar mouse-fine-grained-tracking
+When non-@code{nil}, mouse motion events are generated even for very
+small movements.  Otherwise, motion events are not generated as long
+as the mouse cursor remains pointing to the same glyph in the text.
+@end defvar
+
 @node Focus Events
 @subsection Focus Events
 @cindex focus event
@@ -1783,9 +1788,10 @@ additional data because signals do not carry additional information.
 They can be useful for debugging (@pxref{Error Debugging}).
 
 To catch a user signal, bind the corresponding event to an interactive
-command in the @code{special-event-map} (@pxref{Active Keymaps}).
+command in the @code{special-event-map} (@pxref{Controlling Active Maps}).
 The command is called with no arguments, and the specific signal event is
-available in @code{last-input-event}.  For example:
+available in @code{last-input-event} (@pxref{Event Input Misc}.  For
+example:
 
 @smallexample
 (defun sigusr-handler ()
@@ -2097,7 +2103,8 @@ computed values.)
 
 Note that @var{row} is counted from the top of the text area.  If the
 window given by @var{position} possesses a header line (@pxref{Header
-Lines}), it is @emph{not} included in the @var{row} count.
+Lines}) or a tab line, they are @emph{not} included in the @var{row}
+count.
 @end defun
 
 @defun posn-actual-col-row position
@@ -2455,12 +2462,14 @@ button-down events entirely.  It also reshuffles focus events and
 miscellaneous window events so that they never appear in a key sequence
 with any other events.
 
+@cindex @code{tab-line} prefix key
 @cindex @code{header-line} prefix key
 @cindex @code{mode-line} prefix key
 @cindex @code{vertical-line} prefix key
 @cindex @code{horizontal-scroll-bar} prefix key
 @cindex @code{vertical-scroll-bar} prefix key
 @cindex @code{menu-bar} prefix key
+@cindex @code{tab-bar} prefix key
 @cindex mouse events, in special parts of frame
 When mouse events occur in special parts of a window, such as a mode
 line or a scroll bar, the event type shows nothing special---it is the
@@ -2468,8 +2477,8 @@ same symbol that would normally represent that combination of mouse
 button and modifier keys.  The information about the window part is kept
 elsewhere in the event---in the coordinates.  But
 @code{read-key-sequence} translates this information into imaginary
-prefix keys, all of which are symbols: @code{header-line},
-@code{horizontal-scroll-bar}, @code{menu-bar}, @code{mode-line},
+prefix keys, all of which are symbols: @code{tab-line}, @code{header-line},
+@code{horizontal-scroll-bar}, @code{menu-bar}, @code{tab-bar}, @code{mode-line},
 @code{vertical-line}, and @code{vertical-scroll-bar}.  You can define
 meanings for mouse clicks in special window parts by defining key
 sequences using these imaginary prefix keys.
@@ -2499,6 +2508,9 @@ and key sequences read from keyboard macros being executed.
   The lowest level functions for command input are @code{read-event},
 @code{read-char}, and @code{read-char-exclusive}.
 
+If you need a function to read a character using the minibuffer, use
+@code{read-char-from-minibuffer} (@pxref{Multiple Queries}).
+
 @defun read-event &optional prompt inherit-input-method seconds
 This function reads and returns the next event of command input,
 waiting if necessary until an event is available.
@@ -2507,12 +2519,12 @@ The returned event may come directly from the user, or from a keyboard
 macro.  It is not decoded by the keyboard's input coding system
 (@pxref{Terminal I/O Encoding}).
 
-If the optional argument @var{prompt} is non-@code{nil}, it should be a
-string to display in the echo area as a prompt.  Otherwise,
-@code{read-event} does not display any message to indicate it is waiting
-for input; instead, it prompts by echoing: it displays descriptions of
-the events that led to or were read by the current command.  @xref{The
-Echo Area}.
+If the optional argument @var{prompt} is non-@code{nil}, it should be
+a string to display in the echo area as a prompt.  If @var{prompt} is
+@code{nil} or the string @samp{""}, @code{read-event} does not display
+any message to indicate it is waiting for input; instead, it prompts
+by echoing: it displays descriptions of the events that led to or were
+read by the current command.  @xref{The Echo Area}.
 
 If @var{inherit-input-method} is non-@code{nil}, then the current input
 method (if any) is employed to make it possible to enter a
@@ -2884,6 +2896,14 @@ command's key sequence (as returned by, e.g., @code{this-command-keys}),
 as the events will already have been added once as they were read for
 the first time.  An element of the form @w{@code{(t . @var{event})}}
 forces @var{event} to be added to the current command's key sequence.
+
+@cindex not recording input events
+@cindex input events, prevent recording
+Elements read from this list are normally recorded by the
+record-keeping features (@pxref{Recording Input}) and while defining a
+keyboard macro (@pxref{Keyboard Macros}).  However, an element of the
+form @w{@code{(no-record . @var{event})}} causes @var{event} to be
+processed normally without recording it.
 @end defvar
 
 @defun listify-key-sequence key
@@ -2949,7 +2969,7 @@ like this:
 
 @defvar while-no-input-ignore-events
 This variable allow setting which special events @code{while-no-input}
-should ignore.  It is a list of symbols.
+should ignore.  It is a list of event symbols (@pxref{Event Examples}).
 
 @end defvar
 
@@ -2999,7 +3019,7 @@ definition to find the actual event.
 user signals like @code{sigusr1} are normally handled in this way.
 The keymap which defines how to handle special events---and which
 events are special---is in the variable @code{special-event-map}
-(@pxref{Active Keymaps}).
+(@pxref{Controlling Active Maps}).
 
 @node Waiting
 @section Waiting for Elapsed Time or Input

@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990-1995, 1998-1999, 2001-2019 Free Software
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2020 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Syntax Tables
@@ -797,12 +797,13 @@ Hooks}).
   A @dfn{parser state} is a list of (currently) eleven elements
 describing the state of the syntactic parser, after it parses the text
 between a specified starting point and a specified end point in the
-buffer.  Parsing functions such as @code{syntax-ppss}
+buffer using @code{parse-partial-sexp} (@pxref{Low-Level Parsing}).
+Parsing functions such as @code{syntax-ppss}
 @ifnottex
 (@pxref{Position Parse})
 @end ifnottex
-return a parser state as the value.  Some parsing functions accept a
-parser state as an argument, for resuming parsing.
+also return a parser state as the value.  @code{parse-partial-sexp}
+can accept a parser state as an argument, for resuming parsing.
 
   Here are the meanings of the elements of the parser state:
 
@@ -866,11 +867,11 @@ escaped/char-quoted character pair), the @var{syntax-code}
 @end enumerate
 
   Elements 1, 2, and 6 are ignored in a state which you pass as an
-argument to continue parsing.  Elements 9 and 10 are mainly used
-internally by the parser code.
+argument to @code{parse-partial-sexp} to continue parsing.  Elements 9
+and 10 are mainly used internally by the parser code.
 
-  One additional piece of useful information is available from a
-parser state using this function:
+  Some additional useful information is available from a parser state
+using these functions:
 
 @defun syntax-ppss-toplevel-pos state
 This function extracts, from parser state @var{state}, the last
@@ -880,6 +881,11 @@ comments, or strings.
 
 The value is @code{nil} if @var{state} represents a parse which has
 arrived at a top level position.
+@end defun
+
+@defun syntax-ppss-context state
+Return @code{string} if the end position of the scan returning
+@var{state} is in a string, and @code{comment} if it's in a comment.
 @end defun
 
 @node Low-Level Parsing
@@ -1013,13 +1019,13 @@ corresponds to each syntax flag.
 @item
 @i{Prefix} @tab @i{Flag} @tab @i{Prefix} @tab @i{Flag}
 @item
-@samp{1} @tab @code{(lsh 1 16)} @tab @samp{p} @tab @code{(lsh 1 20)}
+@samp{1} @tab @code{(ash 1 16)} @tab @samp{p} @tab @code{(ash 1 20)}
 @item
-@samp{2} @tab @code{(lsh 1 17)} @tab @samp{b} @tab @code{(lsh 1 21)}
+@samp{2} @tab @code{(ash 1 17)} @tab @samp{b} @tab @code{(ash 1 21)}
 @item
-@samp{3} @tab @code{(lsh 1 18)} @tab @samp{n} @tab @code{(lsh 1 22)}
+@samp{3} @tab @code{(ash 1 18)} @tab @samp{n} @tab @code{(ash 1 22)}
 @item
-@samp{4} @tab @code{(lsh 1 19)} @tab @samp{c} @tab @code{(lsh 1 23)}
+@samp{4} @tab @code{(ash 1 19)} @tab @samp{c} @tab @code{(ash 1 23)}
 @end multitable
 
 @defun string-to-syntax desc
@@ -1112,9 +1118,9 @@ bidi-class}).
     ;; 'bidi-class' Unicode property is R, AL, or RLO --
     ;; these have a right-to-left directionality.
     (map-char-table
-     #'(lambda (key val)
-         (if (memq val '(R AL RLO))
-             (modify-category-entry key ?R category-table)))
+     (lambda (key val)
+       (if (memq val '(R AL RLO))
+           (modify-category-entry key ?R category-table)))
      uniprop-table)
     category-table))
 @end example

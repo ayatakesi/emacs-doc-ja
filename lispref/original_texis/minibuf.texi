@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990-1995, 1998-1999, 2001-2019 Free Software
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2020 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Minibuffers
@@ -141,6 +141,7 @@ However, if @var{read} is non-@code{nil}, @code{read-from-minibuffer}
 reads the text and returns the resulting Lisp object, unevaluated.
 (@xref{Input Functions}, for information about reading.)
 
+@cindex future history in minibuffer input
 The argument @var{default} specifies default values to make available
 through the history commands.  It should be a string, a list of
 strings, or @code{nil}.  The string or strings become the minibuffer's
@@ -332,6 +333,9 @@ default, it makes the following bindings:
 
 @item @key{RET}
 @code{exit-minibuffer}
+
+@item @key{M-<}
+@code{minibuffer-beginning-of-buffer}
 
 @item @kbd{C-g}
 @code{abort-recursive-edit}
@@ -543,7 +547,8 @@ to the minibuffer input function (@pxref{Initial Input}).
   If you don't specify @var{history}, then the default history list
 @code{minibuffer-history} is used.  For other standard history lists,
 see below.  You can also create your own history list variable; just
-initialize it to @code{nil} before the first use.
+initialize it to @code{nil} before the first use.  If the variable is
+buffer local, then each buffer will have its own input history list.
 
   Both @code{read-from-minibuffer} and @code{completing-read} add new
 elements to the history list automatically, and provide commands to
@@ -567,6 +572,7 @@ and returns the updated history list.  It limits the list length to
 the value of @var{maxelt} (if non-@code{nil}) or @code{history-length}
 (described below).  The possible values of @var{maxelt} have the same
 meaning as the values of @code{history-length}.
+@var{history-var} cannot refer to a lexical variable.
 
 Normally, @code{add-to-history} removes duplicate members from the
 history list if @code{history-delete-duplicates} is non-@code{nil}.
@@ -632,6 +638,12 @@ A history list for arguments that are Lisp expressions to evaluate.
 
 @defvar face-name-history
 A history list for arguments that are faces.
+@end defvar
+
+@findex read-variable@r{, history list}
+@defvar custom-variable-history
+A history list for variable-name arguments read by
+@code{read-variable}.
 @end defvar
 
 @c Less common: coding-system-history, input-method-history,
@@ -1240,6 +1252,14 @@ This is a sparse keymap that simply unbinds @key{SPC}; because
 filenames can contain spaces.  The function @code{read-file-name}
 combines this keymap with either @code{minibuffer-local-completion-map}
 or @code{minibuffer-local-must-match-map}.
+@end defvar
+
+@defvar minibuffer-beginning-of-buffer-movement
+If non-@code{nil}, the @kbd{M-<} command will move to the end of the
+prompt if point is after the end of the prompt.  If point is at or
+before the end of the prompt, move to the start of the buffer.  If
+this variable is @code{nil}, the command behaves like
+@code{beginning-of-buffer}.
 @end defvar
 
 
@@ -2002,29 +2022,27 @@ uses keyboard input.  You can force use either of the mouse or of keyboard
 input by binding @code{last-nonmenu-event} to a suitable value around
 the call.
 
-  Strictly speaking, @code{yes-or-no-p} uses the minibuffer and
-@code{y-or-n-p} does not; but it seems best to describe them together.
+  Both @code{yes-or-no-p} and @code{y-or-n-p} use the minibuffer.
 
 @defun y-or-n-p prompt
-This function asks the user a question, expecting input in the echo
-area.  It returns @code{t} if the user types @kbd{y}, @code{nil} if the
-user types @kbd{n}.  This function also accepts @key{SPC} to mean yes
-and @key{DEL} to mean no.  It accepts @kbd{C-]} to quit, like
-@kbd{C-g}, because the question might look like a minibuffer and for
-that reason the user might try to use @kbd{C-]} to get out.  The answer
-is a single character, with no @key{RET} needed to terminate it.  Upper
-and lower case are equivalent.
+This function asks the user a question, expecting input in the minibuffer.
+It returns @code{t} if the user types @kbd{y}, @code{nil} if the user
+types @kbd{n}.  This function also accepts @key{SPC} to mean yes and
+@key{DEL} to mean no.  It accepts @kbd{C-]} and @kbd{C-g} to quit,
+because the question uses the minibuffer and for that reason the user
+might try to use @kbd{C-]} to get out.  The answer is a single
+character, with no @key{RET} needed to terminate it.  Upper and lower
+case are equivalent.
 
-``Asking the question'' means printing @var{prompt} in the echo area,
+``Asking the question'' means printing @var{prompt} in the minibuffer,
 followed by the string @w{@samp{(y or n) }}.  If the input is not one of
 the expected answers (@kbd{y}, @kbd{n}, @kbd{@key{SPC}},
 @kbd{@key{DEL}}, or something that quits), the function responds
 @samp{Please answer y or n.}, and repeats the request.
 
-This function does not actually use the minibuffer, since it does not
-allow editing of the answer.  It actually uses the echo area (@pxref{The
-Echo Area}), which uses the same screen space as the minibuffer.  The
-cursor moves to the echo area while the question is being asked.
+This function actually uses the minibuffer, but does not allow editing
+of the answer.  The cursor moves to the minibuffer while the question
+is being asked.
 
 The answers and their meanings, even @samp{y} and @samp{n}, are not
 hardwired, and are specified by the keymap @code{query-replace-map}
@@ -2035,10 +2053,6 @@ special responses @code{recenter}, @code{scroll-up},
 @kbd{C-v}, @kbd{M-v}, @kbd{C-M-v} and @kbd{C-M-S-v} in
 @code{query-replace-map}), this function performs the specified window
 recentering or scrolling operation, and poses the question again.
-
-@noindent
-We show successive lines of echo area messages, but only one actually
-appears on the screen at a time.
 @end defun
 
 @defun y-or-n-p-with-timeout prompt seconds default
@@ -2054,7 +2068,7 @@ minibuffer.  It returns @code{t} if the user enters @samp{yes},
 @code{nil} if the user types @samp{no}.  The user must type @key{RET} to
 finalize the response.  Upper and lower case are equivalent.
 
-@code{yes-or-no-p} starts by displaying @var{prompt} in the echo area,
+@code{yes-or-no-p} starts by displaying @var{prompt} in the minibuffer,
 followed by @w{@samp{(yes or no) }}.  The user must type one of the
 expected responses; otherwise, the function responds @samp{Please answer
 yes or no.}, waits about two seconds and repeats the request.
@@ -2213,16 +2227,16 @@ the end of @var{question}.  The possible responses are provided in
 @noindent
 where @var{long-answer} is the complete text of the user response, a
 string; @var{short-answer} is a short form of the same response, a
-single character; and @var{help-message} is the text that describes
-the meaning of the answer.  If the variable @code{read-answer-short}
-is non-@code{nil}, the prompt will show the short variants of the
-possible answers and the user is expected to type the single
-characters shown in the prompt; otherwise the prompt will show the
-long variants of the answers, and the user is expected to type the
-full text of one of the answers and end by pressing @key{RET}.  If
-@code{use-dialog-box} is non-@code{nil}, and this function was invoked
-by mouse events, the question and the answers will be displayed in a
-GUI dialog box.
+single character or a function key; and @var{help-message} is the text
+that describes the meaning of the answer.  If the variable
+@code{read-answer-short} is non-@code{nil}, the prompt will show the
+short variants of the possible answers and the user is expected to
+type the single characters/keys shown in the prompt; otherwise the
+prompt will show the long variants of the answers, and the user is
+expected to type the full text of one of the answers and end by
+pressing @key{RET}.  If @code{use-dialog-box} is non-@code{nil}, and
+this function was invoked by mouse events, the question and the
+answers will be displayed in a GUI dialog box.
 
 The function returns the text of the @var{long-answer} selected by the
 user, regardless of whether long or short answers were shown in the
@@ -2241,6 +2255,14 @@ Here is an example of using this function:
 @end lisp
 @end defun
 
+@defun read-char-from-minibuffer prompt &optional chars history
+This function uses the minibuffer to read and return a single
+character.  Optionally, it ignores any input that is not a member of
+@var{chars}, a list of accepted characters.  The @var{history}
+argument specifies the history list symbol to use; if it is omitted or
+@code{nil}, this function doesn't use the history.
+@end defun
+
 @node Reading a Password
 @section Reading a Password
 @cindex passwords, reading
@@ -2252,7 +2274,7 @@ function @code{read-passwd}.
 @defun read-passwd prompt &optional confirm default
 This function reads a password, prompting with @var{prompt}.  It does
 not echo the password as the user types it; instead, it echoes
-@samp{.}  for each character in the password.  If you want to apply
+@samp{*}  for each character in the password.  If you want to apply
 another character to hide the password, let-bind the variable
 @code{read-hide-char} with that character.
 
@@ -2290,7 +2312,9 @@ This command replaces the minibuffer contents with the value of the
 
 @deffn Command next-history-element n
 This command replaces the minibuffer contents with the value of the
-@var{n}th more recent history element.
+@var{n}th more recent history element.  The position in the history
+can go beyond the current position and invoke ``future history''
+(@pxref{Text from Minibuffer}).
 @end deffn
 
 @deffn Command previous-matching-history-element pattern n
@@ -2317,6 +2341,14 @@ This command replaces the minibuffer contents with the value of the
 contents of the minibuffer before the point.
 @end deffn
 
+@deffn Command goto-history-element nabs
+This function puts element of the minibuffer history in the
+minibuffer.  The argument @var{nabs} specifies the absolute history
+position in descending order, where 0 means the current element and a
+positive number @var{n} means the @var{n}th previous element.  NABS
+being a negative number -@var{n} means the @var{n}th entry of ``future
+history.''
+@end deffn
 
 @node Minibuffer Windows
 @section Minibuffer Windows
@@ -2347,8 +2379,8 @@ minibuffer window according to the selected frame.
 
 @c Emacs 19 feature
 @defun window-minibuffer-p &optional window
-This function returns non-@code{nil} if @var{window} is a minibuffer
-window.  @var{window} defaults to the selected window.
+This function returns @code{t} if @var{window} is a minibuffer window.
+@var{window} defaults to the selected window.
 @end defun
 
 The following function returns the window showing the currently active
@@ -2396,6 +2428,25 @@ time, so let-binding them around code which produces echo-area messages
 will not work.  If you want to prevent resizing of minibuffer windows
 when displaying long messages, bind the @code{message-truncate-lines}
 variable instead (@pxref{Echo Area Customization}).
+
+The option @code{resize-mini-windows} does not affect the behavior of
+minibuffer-only frames (@pxref{Frame Layout}).  The following option
+allows to automatically resize such frames as well.
+
+@defopt resize-mini-frames
+If this is @code{nil}, minibuffer-only frames are never resized
+automatically.
+
+If this is a function, that function is called with the
+minibuffer-only frame to be resized as sole argument.  At the time
+this function is called, the buffer of the minibuffer window of that
+frame is the buffer whose contents will be shown the next time that
+window is redisplayed.  The function is expected to fit the frame to
+the buffer in some appropriate way.
+
+Any other non-@code{nil} value means to resize minibuffer-only frames
+by calling @code{fit-frame-to-buffer} (@pxref{Resizing Windows}).
+@end defopt
 
 
 @node Minibuffer Contents
@@ -2515,7 +2566,7 @@ locally inside the minibuffer (@pxref{Help Functions}).
 @anchor{Definition of minibuffer-scroll-window}
 If the value of this variable is non-@code{nil}, it should be a window
 object.  When the function @code{scroll-other-window} is called in the
-minibuffer, it scrolls this window.
+minibuffer, it scrolls this window (@pxref{Textual Scrolling}).
 @end defvar
 
 @defun minibuffer-selected-window
