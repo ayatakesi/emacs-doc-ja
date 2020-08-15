@@ -22,5 +22,6 @@ lispref:
 			japanese_texis \
 			TITLES \
 			"-ja"; \
+		rm -f japanese_texis/$$(basename $${TEXI}); \
 	done
 
