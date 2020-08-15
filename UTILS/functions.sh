@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+#
+# emacs本家のdoc/取得用
+#
 function run_once_for_checkout_UPSTREAM () {
     REPO=${1};
     cd ${REPO};
@@ -20,7 +23,9 @@ function checkout_by_ver_UPSTREAM () {
     git -C ${REPO} checkout "refs/tags/emacs-${VER}";
 }
 
+#
 # 【移行用】未翻訳とタイトル翻訳済のtexiからタイトル翻訳用po生成
+#
 function generate_titlezpo_by_translated_texi () {
     
     ORIGINAL_TEXI_DIR=$(realpath ${1}); # /.../original_texis
@@ -77,6 +82,9 @@ print "msgid \"${en}\"\nmsgstr \"${ja}\"\n\n";' >> ${TITLES_PO_DIR}/${TEXI}.po
     done
 }
 
+#
+# Makefileで使用
+#
 function translate_texi_except_titles () {
     
     TEXI0=$(realpath ${1}); # /.../xxx.texi
@@ -143,5 +151,29 @@ EOT
     
     rm -f ${RM_FILES}
 }
+
+function sed_for_L11N_namer_at_include () {
+    EN_TEXI_DIR=$(realpath ${1}); # /.../original_texis
+    JA_TEXI_DIR=$(realpath ${2}); # /.../japanese_texis
+    JA_TEXI_SUFFIX=${3}; # "", "-ja", ...
+    
+    test "${JA_TEXI_SUFFIX}"x == x && exit;
+    
+    echo -n "Processing ${FUNCNAME[0]}: ${JA_TEXI_DIR}/*${JA_TEXI_SUFFIX}.texi ... "
+    for EN_TEXI0 in ${EN_TEXI_DIR}/*.texi
+    do
+	EN_TEXI=$(basename ${EN_TEXI0}); # xxx.texi
+	JA_TEXI=$(basename ${EN_TEXI} .texi)${JA_TEXI_SUFFIX}.texi # xxx-ja.texi
+	sed -i -r "s/${EN_TEXI}/${JA_TEXI}/g" ${JA_TEXI_DIR}/*${JA_TEXI_SUFFIX}.texi
+    done
+    echo "done."
+}
+
+
+
+
+
+
+
 
 $*
