@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990-1995, 1998-1999, 2001-2018 Free Software
+@c Copyright (C) 1990-1995, 1998-1999, 2001-2019 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Buffers
@@ -587,6 +587,20 @@ in between the calls.  If @var{buffer} is @code{nil} (or omitted), the
 current buffer is used.
 @end defun
 
+Sometimes there's a need for modifying buffer in a way that doesn't
+really change its text, like if only its text properties are changed.
+If your program needs to modify a buffer without triggering any hooks
+and features that react to buffer modifications, use the
+@code{with-silent-modifications} macro.
+
+@defmac with-silent-modifications body@dots{}
+Execute @var{body} pretending it does not modify the buffer.  This
+includes checking whether the buffer's file is locked (@pxref{File
+Locks}), running buffer modification hooks (@pxref{Change Hooks}),
+etc.  Note that if @var{body} actually modifies the buffer text, its
+undo data may become corrupted.
+@end defmac
+
 @node Modification Time
 @section Buffer Modification Time
 @cindex comparing file modification time
@@ -647,7 +661,8 @@ visiting a file or if the time has been explicitly cleared by
 too.  For instance, in a Dired buffer listing a directory, it returns
 the last modification time of that directory, as recorded by Dired.
 
-If the buffer is not visiting a file, this function returns @minus{}1.
+If the buffer is visiting a file that doesn't exist, this function
+returns @minus{}1.
 @end defun
 
 @defun set-visited-file-modtime &optional time
@@ -925,6 +940,10 @@ This is a normal hook run whenever the buffer list changes.  Functions
 (@pxref{Creating Buffers}), @code{rename-buffer} (@pxref{Buffer Names}),
 @code{kill-buffer} (@pxref{Killing Buffers}), @code{bury-buffer} (see
 above) and @code{select-window} (@pxref{Selecting Windows}).
+
+Functions run by this hook should avoid calling @code{select-window}
+with a nil @var{norecord} argument or @code{with-temp-buffer} since
+either may lead to infinite recursion.
 @end defvar
 
 @node Creating Buffers
@@ -1167,10 +1186,10 @@ the current buffer's base buffer and copies the rest of the current
 buffer's attributes.  (If the current buffer is not indirect, it is
 used as the base buffer.)
 
-If @var{display-flag} is non-@code{nil}, that means to display the new
-buffer by calling @code{pop-to-buffer}.  If @var{norecord} is
-non-@code{nil}, that means not to put the new buffer to the front of
-the buffer list.
+If @var{display-flag} is non-@code{nil}, as it always is in
+interactive calls, that means to display the new buffer by calling
+@code{pop-to-buffer}.  If @var{norecord} is non-@code{nil}, that means
+not to put the new buffer to the front of the buffer list.
 @end deffn
 
 @defun buffer-base-buffer &optional buffer

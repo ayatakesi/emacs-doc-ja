@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990-1995, 1998-1999, 2001-2018 Free Software
+@c Copyright (C) 1990-1995, 1998-1999, 2001-2019 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node System Interface
@@ -96,24 +96,29 @@ if requested by environment variables such as @env{LANG}.
 It does some basic parsing of the command-line arguments.
 
 @vindex initial-window-system@r{, and startup}
-@vindex window-system-initialization-alist
+@findex window-system-initialization
 @item
 If not running in batch mode, it initializes the window system that
 the variable @code{initial-window-system} specifies (@pxref{Window
-Systems, initial-window-system}).  The initialization function for
-each supported window system is specified by
-@code{window-system-initialization-alist}.  If the value
-of @code{initial-window-system} is @var{windowsystem}, then the
-appropriate initialization function is defined in the file
-@file{term/@var{windowsystem}-win.el}.  This file should have been
-compiled into the Emacs executable when it was built.
+Systems, initial-window-system}).  The initialization function,
+@code{window-system-initialization}, is a @dfn{generic function}
+(@pxref{Generic Functions}) whose actual implementation is different
+for each supported window system.  If the value of
+@code{initial-window-system} is @var{windowsystem}, then the
+appropriate implementation of the initialization function is defined
+in the file @file{term/@var{windowsystem}-win.el}.  This file should
+have been compiled into the Emacs executable when it was built.
 
 @item
 It runs the normal hook @code{before-init-hook}.
 
 @item
-If appropriate, it creates a graphical frame.  This is not done in
-batch (noninteractive) or daemon mode.
+If appropriate, it creates a graphical frame.  As part of creating the
+graphical frame, it initializes the window system specified by
+@code{initial-frame-alist} and @code{default-frame-alist}
+(@pxref{Initial Parameters}) for the graphical frame, by calling the
+@code{window-system-initialization} function for that window system.
+This is not done in batch (noninteractive) or daemon mode.
 
 @item
 It initializes the initial frame's faces, and sets up the menu bar
@@ -1462,7 +1467,28 @@ integers (@pxref{Time of Day}).
 
 @defun date-to-time string
 This function parses the time-string @var{string} and returns the
-corresponding time value.
+corresponding time value.  The argument @var{string} should represent
+a date-time, and should be in one of the forms recognized by
+@code{parse-time-string} (see below).  This function assumes the GMT
+timezone if @var{string} lacks an explicit timezone information.
+@end defun
+
+@defun parse-time-string string
+This function parses the time-string @var{string} into a list of the
+following form:
+
+@example
+(@var{sec} @var{min} @var{hour} @var{day} @var{mon} @var{year} @var{dow} @var{dst} @var{tz})
+@end example
+
+@noindent
+The format of this list is the same as what @code{decode-time} accepts
+(@pxref{Time Conversion}), and is described in more detail there.  Any
+element that cannot be determined from the input will be set to
+@code{nil}.  The argument @var{string} should resemble an RFC 822 (or later) or
+ISO 8601 string, like ``Fri, 25 Mar 2016 16:24:56 +0100'' or
+``1998-09-12T12:21:54-0200'', but this function will attempt to parse
+less well-formed time strings as well.
 @end defun
 
 @defun format-time-string format-string &optional time zone
@@ -1766,7 +1792,7 @@ special object that stores the information about the next invocation
 times and the function to invoke.
 
 @defun timerp object
-This predicate function returns non-@code{nil} of @code{object} is a
+This predicate function returns non-@code{nil} if @code{object} is a
 timer.
 @end defun
 
@@ -3018,7 +3044,7 @@ Although Emacs normally respects access permissions of the underlying
 operating system, in some cases it handles accesses specially.  For
 example, file names can have handlers that treat the files specially,
 with their own access checking.  @xref{Magic File Names}.  Also, a
-buffer can be read-only even if the corresponding file is writeable,
+buffer can be read-only even if the corresponding file is writable,
 and vice versa, which can result in messages such as @samp{File passwd
 is write-protected; try to save anyway? (yes or no)}.  @xref{Read Only
 Buffers}.

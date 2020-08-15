@@ -1,6 +1,6 @@
 @c -*- coding: utf-8 -*-
 @c This is part of the Emacs manual.
-@c Copyright (C) 1985-1987, 1993-1995, 1997, 2000-2018 Free Software
+@c Copyright (C) 1985-1987, 1993-1995, 1997, 2000-2019 Free Software
 @c Foundation, Inc.
 @c See file emacs.texi for copying conditions.
 @node Customization
@@ -32,6 +32,8 @@ Reference Manual}.
                           By changing them, you can redefine keys.
 * Init File::           How to write common customizations in the
                           initialization file.
+* Authentication::      Keeping persistent authentication information.
+
 @end menu
 
 @node Easy Customization
@@ -1059,6 +1061,10 @@ local variable specifications; it automatically makes these variables
 local to the buffer, and sets them to the values specified in the
 file.
 
+  File local variables override directory local variables
+(@pxref{Directory Variables}), if any are specified for a file's
+directory.
+
 @menu
 * Specifying File Variables:: Specifying file local variables.
 * Safe File Variables::       Making sure file local variables are safe.
@@ -1309,7 +1315,12 @@ confirmation about processing @code{eval} variables.
   Sometimes, you may wish to define the same set of local variables to
 all the files in a certain directory and its subdirectories, such as
 the directory tree of a large software project.  This can be
-accomplished with @dfn{directory-local variables}.
+accomplished with @dfn{directory-local variables}.  File local
+variables override directory local variables, so if some of the files
+in a directory need specialized settings, you can specify the settings
+for the majority of the directory's files in directory variables, and
+then define file local variables in a few files which need the general
+settings overridden.
 
 @cindex @file{.dir-locals.el} file
   The usual way to define directory-local variables is to put a file
@@ -2600,3 +2611,40 @@ instance:
 
 @noindent
 Type @kbd{C-q}, followed by the key you want to bind, to insert @var{char}.
+
+@node Authentication
+@section Keeping Persistent Authentication Information
+
+  Some Emacs packages, which connect to other services, require
+authentication (@pxref{Passwords}), e.g., see @ref{Top, Gnus,, gnus, The
+Gnus Manual}, or @ref{Top, Tramp,, tramp, The Tramp Manual}.  Because
+it might be annoying to provide the same user name and password again
+and again, Emacs offers to keep this information persistent via the
+@file{auth-source} library.
+
+@cindex @file{~/.authinfo} file
+@cindex @file{~/.authinfo.gpg} file
+@cindex ~/.netrc file
+  By default, the authentication information is taken from the file
+@file{~/.authinfo} or @file{~/.authinfo.gpg} or @file{~/.netrc}.
+These files have a syntax similar to netrc files as known from the
+@command{ftp} program, like this:
+
+@example
+machine @var{mymachine} login @var{myloginname} password @var{mypassword} port @var{myport}
+@end example
+
+  Similarly, the @file{auth-source} library supports multiple storage
+backend, currently either the classic netrc backend, JSON files, the
+Secret Service API, and pass, the standard unix password manager.
+
+@vindex auth-sources
+  All these alternatives can be customized via the user option
+@code{auth-sources}, see @ref{Help for users, Emacs auth-source,,
+auth, Emacs auth-source}.
+
+@vindex auth-source-save-behavior
+  When a password is entered interactively, which is not found via the
+configured backend, some of the backends offer to save it
+persistently.  This can be changed by customizing the user option
+@code{auth-source-save-behavior}.

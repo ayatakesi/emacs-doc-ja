@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990-1995, 1998-1999, 2001-2018 Free Software
+@c Copyright (C) 1990-1995, 1998-1999, 2001-2019 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Files
@@ -16,7 +16,7 @@ described in @ref{Backups and Auto-Saving}.
 names.  A file name is a string.  Most of these functions expand file
 name arguments using the function @code{expand-file-name}, so that
 @file{~} is handled correctly, as are relative file names (including
-@file{../}).  @xref{File Name Expansion}.
+@file{../} and the empty string).  @xref{File Name Expansion}.
 
   In addition, certain @dfn{magic} file names are handled specially.
 For example, when a remote file name is specified, Emacs accesses the
@@ -712,6 +712,7 @@ with-temp-buffer,, The Current Buffer}.
 @section File Locks
 @cindex file locks
 @cindex lock file
+@cindex .#, lock file names
 
   When two users edit the same file at the same time, they are likely
 to interfere with each other.  Emacs tries to prevent this situation
@@ -720,8 +721,17 @@ modified.
 Emacs can then detect the first attempt to modify a buffer visiting a
 file that is locked by another Emacs job, and ask the user what to do.
 The file lock is really a file, a symbolic link with a special name,
-stored in the same directory as the file you are editing.  (On file
-systems that do not support symbolic links, a regular file is used.)
+stored in the same directory as the file you are editing.  The name is
+constructed by prepending @file{.#} to the filename of the buffer.
+The target of the symbolic link will be of the form
+@code{@var{user}@@@var{host}.@var{pid}:@var{boot}}, where @var{user}
+is replaced with the current username (from @code{user-login-name}),
+@var{host} with the name of the host where Emacs is running (from
+@code{system-name}), @var{pid} with Emacs's process id, and @var{boot}
+with the time since the last reboot.  @code{:@var{boot}} is omitted if
+the boot time is unavailable.  (On file systems that do not support
+symbolic links, a regular file is used instead, with contents of the
+form @code{@var{user}@@@var{host}.@var{pid}:@var{boot}}.)
 
   When you access files using NFS, there may be a small probability that
 you and another user will both lock the same file simultaneously.
@@ -2399,6 +2409,17 @@ This is for the sake of filesystems that have the concept of a
 superroot above the root directory @file{/}.  On other filesystems,
 @file{/../} is interpreted exactly the same as @file{/}.
 
+Expanding @file{.} or the empty string returns the default directory:
+
+@example
+@group
+(expand-file-name "." "/usr/spool/")
+     @result{} "/usr/spool"
+(expand-file-name "" "/usr/spool/")
+     @result{} "/usr/spool"
+@end group
+@end example
+
 Note that @code{expand-file-name} does @emph{not} expand environment
 variables; only @code{substitute-in-file-name} does that:
 
@@ -2509,9 +2530,9 @@ with @samp{/:}.
 @defmac file-name-quote name
 This macro adds the quotation prefix @samp{/:} to the file @var{name}.
 For a local file @var{name}, it prefixes @var{name} with @samp{/:}.
-If @var{name} is a remote file name, the local part of @var{name} is
-quoted.  If @var{name} is already a quoted file name, @var{name} is
-returned unchanged.
+If @var{name} is a remote file name, the local part of @var{name}
+(@pxref{Magic File Names}) is quoted.  If @var{name} is already a
+quoted file name, @var{name} is returned unchanged.
 
 @example
 @group
@@ -2563,10 +2584,10 @@ This function creates a temporary file and returns its name.  Emacs
 creates the temporary file's name by adding to @var{prefix} some
 random characters that are different in each Emacs job.  The result is
 guaranteed to be a newly created file, containing @var{text} if that's
-given as a string and empty otherwise. On MS-DOS, this function
-can truncate the @var{string} prefix to fit into the 8+3 file-name
-limits.  If @var{prefix} is a relative file name, it is expanded
-against @code{temporary-file-directory}.
+given as a string and empty otherwise. On MS-DOS, this function can
+truncate @var{prefix} to fit into the 8+3 file-name limits.  If
+@var{prefix} is a relative file name, it is expanded against
+@code{temporary-file-directory}.
 
 @example
 @group
@@ -2690,8 +2711,8 @@ that remote host.  If such a directory does not exist, or
 @code{temporary-file-directory} is returned.
 @end defun
 
-In order to extract the local part of the path name from a temporary
-file, @code{file-local-name} could be used.
+In order to extract the local part of the file's name of a temporary
+file, use @code{file-local-name} (@pxref{Magic File Names}).
 
 @node File Name Completion
 @subsection File Name Completion
@@ -2917,8 +2938,8 @@ are included.
 This is similar to @code{directory-files} in deciding which files
 to report on and how to report their names.  However, instead
 of returning a list of file names, it returns for each file a
-list @code{(@var{filename} . @var{attributes})}, where @var{attributes}
-is what @code{file-attributes} would return for that file.
+list @code{(@var{filename} @var{attributes})}, where @var{attributes}
+is what @code{file-attributes} returns for that file.
 The optional argument @var{id-format} has the same meaning as the
 corresponding argument to @code{file-attributes} (@pxref{Definition
 of file-attributes}).
@@ -3372,11 +3393,24 @@ non-magic directory to serve as its current directory, and this function
 is a good way to come up with one.
 @end defun
 
+@cindex local part of remote file name
 @defun file-local-name filename
-This function returns the local part of file @var{filename}.  For a
-remote @var{filename}, it returns a file name which could be used
-directly as argument of a remote process.  If @var{filename} is local,
-this function returns the file name.
+This function returns the @dfn{local part} of @var{filename}.  This is
+the part of the file's name that identifies it on the remote host, and
+is typically obtained by removing from the remote file name the parts
+that specify the remote host and the method of accessing it.  For
+example:
+
+@smallexample
+(file-local-name "/ssh:@var{user}@@@var{host}:/foo/bar")
+     @result{} "/foo/bar"
+@end smallexample
+
+For a remote @var{filename}, this function returns a file name which
+could be used directly as an argument of a remote process
+(@pxref{Asynchronous Processes}, and @pxref{Synchronous Processes}),
+and as the program to run on the remote host.  If @var{filename} is
+local, this function returns it unchanged.
 @end defun
 
 @defopt remote-file-name-inhibit-cache
