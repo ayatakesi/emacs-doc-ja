@@ -4,7 +4,7 @@
 all: lispref
 
 clean:
-	rm -f japanese_texis/*;
+	rm -f japanese_texis/*.texi;
 	rm -f TITLES/ja/LC_MESSAGES/*.mo;
 
 lispref:
