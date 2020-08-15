@@ -75,7 +75,7 @@ EOT
 	    perl -ne '
 chomp;
 ($en, $ja) = split "\t";
-$ja = \"\" if $en ne $ja;
+$ja = "" if $en eq $ja;
 print "msgid \"${en}\"\nmsgstr \"${ja}\"\n\n";' >> ${TITLES_PO_DIR}/${TEXI}.po
 	
 	rm -f ${RM_FILES}
