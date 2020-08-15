@@ -70,6 +70,7 @@ EOT
 	    perl -ne '
 chomp;
 ($en, $ja) = split "\t";
+$ja = \"\" if $en ne $ja;
 print "msgid \"${en}\"\nmsgstr \"${ja}\"\n\n";' >> ${TITLES_PO_DIR}/${TEXI}.po
 	
 	rm -f ${RM_FILES}
@@ -100,13 +101,6 @@ function translate_texi_except_titles () {
 	cp -p ${TEXI0} ${JA_TEXI_DIR}/${JA_TEXI}
     fi
 
-    if [ ${TEXI} != ${JA_TEXI} ]
-    then
-	# change @include filename according to JA_TEXI_SUFFIX
-	RE=$(printf 's/^(@include\s+)([^.]+).texi/\\1\\2%s.texi/' ${JA_TEXI_SUFFIX})
-	
-	sed -i -r ${RE} ${JA_TEXI_DIR}/${JA_TEXI}
-    fi
     echo "done."
 }
 
@@ -144,7 +138,7 @@ EOT
 
     cat ${JA_TEXI_DIR}/${EN_TEXI} |
 	LANGUAGE=ja perl ${PERL} > ${JA_TEXI_DIR}/${JA_TEXI}
-    
+
     echo "done."
     
     rm -f ${RM_FILES}
