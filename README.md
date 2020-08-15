@@ -9,10 +9,4 @@ GNU Emacsに同梱されているマニュアルを日本語化するための�
 
 # 利用方法
 日本語化した`*-ja.texi`は通常のtexiを処理するコマンドで処理して、種々フォーマットの文書を作成できます(例は`japanese_texis/Makefile.example`を参照)。
-
-## info
-texinfoのmakeinfoコマンドでinfoファイルを作成できます。
-   
-## html
-texinfoのtexi2anyコマンドでHTMLファイルを作成できます。
    
