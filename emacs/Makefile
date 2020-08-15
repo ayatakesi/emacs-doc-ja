@@ -4,7 +4,7 @@
 all: emacs
 
 clean:
-	rm -f japanese_texis/*;
+	rm -f japanese_texis/*.texi;
 	rm -f TITLES/ja/LC_MESSAGES/*.mo;
 
 emacs:
@@ -22,6 +22,6 @@ emacs:
 			japanese_texis \
 			TITLES \
 			"-ja"; \
-		rm -f japanese_texis/$${TEXI}
+		rm -f japanese_texis/$$(basename $${TEXI}); \
 	done
 
