@@ -1,5 +1,5 @@
 @c This is part of the Emacs manual.
-@c Copyright (C) 1985-1987, 1993-1995, 1997, 2000-2019 Free Software
+@c Copyright (C) 1985--1987, 1993--1995, 1997, 2000--2020 Free Software
 @c Foundation, Inc.
 @c See file emacs.texi for copying conditions.
 @node Dired
@@ -435,6 +435,12 @@ the previous @minus{}@var{n} files).  If invoked on a subdirectory
 header line (@pxref{Subdirectories in Dired}), this command marks all
 the files in that subdirectory.
 
+@item * N
+@kindex * N @r{(Dired)}
+@findex dired-number-of-marked-files
+Report what the number and size of the marked files are
+(@code{dired-number-of-marked-files}).
+
 @item * *
 @kindex * * @r{(Dired)}
 @findex dired-mark-executables
@@ -648,9 +654,15 @@ commands, use the same conventions to decide which files to work on.
   Commands which ask for a destination directory, such as those which
 copy and rename files or create links for them, try to guess the default
 target directory for the operation.  Normally, they suggest the Dired
-buffer's default directory, but if the variable @code{dired-dwim-target}
-is non-@code{nil}, and if there is another Dired buffer displayed in the
-next window, that other buffer's directory is suggested instead.
+buffer's default directory, but if the option @code{dired-dwim-target}
+is non-@code{nil}, and if there is another Dired buffer displayed in
+some window, that other buffer's directory is suggested instead.
+You can customize @code{dired-dwim-target} to prefer either the next
+window with a Dired buffer, or the most recently used window with
+a Dired buffer, or to use any other function.  When the value is
+a function, it will be called with no arguments and is expected to
+return a list of directories which will be used as defaults
+(i.e. default target and ``future history'').
 
   Here are the file-manipulating Dired commands that operate on files.
 
@@ -662,6 +674,14 @@ next window, that other buffer's directory is suggested instead.
 Copy the specified files (@code{dired-do-copy}).  The argument @var{new}
 is the directory to copy into, or (if copying a single file) the new
 name.  This is like the shell command @code{cp}.
+
+@vindex dired-create-destination-dirs
+The option @code{dired-create-destination-dirs} controls whether Dired
+should create non-existent directories in the destination while
+copying/renaming files.  The default value @code{nil} means Dired
+never creates such missing directories;  the value @code{always},
+means Dired automatically creates them; the value @code{ask}
+means Dired asks you for confirmation before creating them.
 
 @vindex dired-copy-preserve-time
 If @code{dired-copy-preserve-time} is non-@code{nil}, then copying
@@ -694,8 +714,22 @@ single file, the argument @var{new} is the new name of the file.  If
 you rename several files, the argument @var{new} is the directory into
 which to move the files (this is like the shell command @command{mv}).
 
+The option @code{dired-create-destination-dirs} controls whether Dired
+should create non-existent directories in @var{new}.
+
 Dired automatically changes the visited file name of buffers associated
 with renamed files so that they refer to the new names.
+
+@vindex dired-vc-rename-file
+If the value of the variable @code{dired-vc-rename-file} is non-@code{nil},
+files are renamed using the commands of the underlying VCS, via
+@ifnottex
+@code{vc-rename-file} (@pxref{VC Delete/Rename}).
+@end ifnottex
+@iftex
+@code{vc-rename-file} (@pxref{VC Delete/Rename,, Deleting and Renaming
+Version-Controlled Files, emacs-xtra, Specialized Emacs Features}).
+@end iftex
 
 @findex dired-do-hardlink
 @kindex H @r{(Dired)}
@@ -1388,7 +1422,8 @@ C-c}.
 
   Image-Dired is a facility for browsing image files.  It provides viewing
 the images either as thumbnails or in full size, either inside Emacs
-or through an external viewer.
+or through an external viewer.  This is different from Image mode
+(@pxref{Image Mode}) for visiting an image file in the Emacs buffer.
 
 @kindex C-t d @r{(Image-Dired)}
 @findex image-dired-display-thumbs
@@ -1462,6 +1497,11 @@ rotation is lossless, and uses an external utility called
   The command @kbd{+} (@code{dired-create-directory}) reads a
 directory's name, and creates that directory.  It signals an error if
 the directory already exists.
+
+@findex dired-create-empty-file
+  The command (@code{dired-create-empty-file}) reads a
+file name, and creates that file.  It signals an error if
+the file already exists.
 
 @cindex searching multiple files via Dired
 @kindex M-s a C-s @r{(Dired)}

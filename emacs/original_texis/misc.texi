@@ -1,5 +1,5 @@
 @c This is part of the Emacs manual.
-@c Copyright (C) 1985-1987, 1993-1995, 1997, 2000-2019 Free Software
+@c Copyright (C) 1985--1987, 1993--1995, 1997, 2000--2020 Free Software
 @c Foundation, Inc.
 @c See file emacs.texi for copying conditions.
 @iftex
@@ -302,7 +302,10 @@ the Transport Layer Security (@acronym{TLS}) features.
 @vindex network-security-level
 The @code{network-security-level} variable determines the security
 level that @acronym{NSM} enforces.  If its value is @code{low}, no
-security checks are performed.
+security checks are performed.  This is not recommended, and will
+basically mean that your network connections can't be trusted.
+However, the setting can be useful in limited circumstances, as when
+testing network issues.
 
 If this variable is @code{medium} (which is the default), a number of
 checks will be performed.  If as result @acronym{NSM} determines that
@@ -314,7 +317,27 @@ You can decide to register a permanent security exception for an
 unverified connection, a temporary exception, or refuse the connection
 entirely.
 
-Below is a list of the checks done on the @code{medium} level.
+@vindex network-security-protocol-checks
+In addition to the basic certificate correctness checks, several
+@acronym{TLS} algorithm checks are available.  Some encryption
+technologies that were previously thought to be secure have shown
+themselves to be fragile, so Emacs (by default) warns you about some
+of these problems.
+
+The protocol network checks is controlled via the
+@code{network-security-protocol-checks} variable.
+
+It's an alist where the first element of each association is the name
+of the check, and the second element is the security level where the
+check should be used.
+
+An element like @code{(rc4 medium)} will result in the function
+@code{nsm-protocol-check--rc4} being called like thus:
+@w{@code{(nsm-protocol-check--rc4 host port status settings)}}.
+The function should return non-@code{nil} if the connection should
+proceed and @code{nil} otherwise.
+
+Below is a list of the checks done on the default @code{medium} level.
 
 @table @asis
 
@@ -352,12 +375,44 @@ over these connections.  Similarly, if you're sending email via
 connection to be encrypted.  If the connection isn't encrypted,
 @acronym{NSM} will warn you.
 
+@item Diffie-Hellman low prime bits
+When doing the public key exchange, the number of prime bits should be
+high enough to ensure that the channel can't be eavesdropped on by third
+parties.  If this number is too low, Emacs will warn you.  (This is the
+@code{diffie-hellman-prime-bits} check in
+@code{network-security-protocol-checks}).
+
+@item @acronym{RC4} stream cipher
+The @acronym{RC4} stream cipher is believed to be of low quality and
+may allow eavesdropping by third parties.  (This is the @code{rc4}
+check in @code{network-security-protocol-checks}).
+
+@item @acronym{SHA1} in the host certificate or in intermediate certificates
+It is believed that if an intermediate certificate uses the
+@acronym{SHA1} hashing algorithm, then third parties can issue
+certificates pretending to be that issuing instance.  These
+connections are therefore vulnerable to man-in-the-middle attacks.
+(These are the @code{signature-sha1} and @code{intermediate-sha1}
+checks in @code{network-security-protocol-checks}).
+
+@item @acronym{SSL1}, @acronym{SSL2} and @acronym{SSL3}
+The protocols older than @acronym{TLS1.0} are believed to be
+vulnerable to a variety of attacks, and you may want to avoid using
+these if what you're doing requires higher security.  (This is the
+@code{ssl} check in @code{network-security-protocol-checks}).
+
 @end table
 
 If @code{network-security-level} is @code{high}, the following checks
 will be made, in addition to the above:
 
 @table @asis
+@item @acronym{3DES} cipher
+The @acronym{3DES} stream cipher provides at most 112 bits of
+effective security, which is considered to be towards the low end.
+(This is the @code{3des} check in
+@code{network-security-protocol-checks}).
+
 @item a validated certificate changes the public key
 Servers change their keys occasionally, and that is normally nothing
 to be concerned about.  However, if you are worried that your network
@@ -365,19 +420,6 @@ connections are being hijacked by agencies who have access to pliable
 Certificate Authorities which issue new certificates for third-party
 services, you may want to keep track of these changes.
 
-@item Diffie-Hellman low prime bits
-When doing the public key exchange, the number of prime bits
-should be high to ensure that the channel can't be eavesdropped on by
-third parties.  If this number is too low, you will be warned.
-
-@item @acronym{RC4} stream cipher
-The @acronym{RC4} stream cipher is believed to be of low quality and
-may allow eavesdropping by third parties.
-
-@item @acronym{SSL1}, @acronym{SSL2} and @acronym{SSL3}
-The protocols older than @acronym{TLS1.0} are believed to be
-vulnerable to a variety of attacks, and you may want to avoid using
-these if what you're doing requires higher security.
 @end table
 
 Finally, if @code{network-security-level} is @code{paranoid}, you will
@@ -402,6 +444,7 @@ This means that one can't casually read the settings file to see what
 servers the user has connected to.  If this variable is @code{t},
 @acronym{NSM} will also save host names in the
 @code{nsm-settings-file}.
+
 @end table
 
 
@@ -525,12 +568,15 @@ way (@code{doc-view-scroll-down-or-previous-page}).
 @findex doc-view-enlarge
 @findex doc-view-shrink
 @vindex doc-view-resolution
+@vindex doc-view-scale-internally
 @kindex + @r{(DocView mode)}
 @kindex - @r{(DocView mode)}
   You can enlarge or shrink the document with @kbd{+}
-(@code{doc-view-enlarge}) and @kbd{-} (@code{doc-view-shrink}).  These
-commands work by reconverting the document at the new size.  To
-specify the default size for DocView, customize the variable
+(@code{doc-view-enlarge}) and @kbd{-} (@code{doc-view-shrink}).  By
+default, these commands just rescale the already-rendered image.  If
+you instead want the image to be re-rendered at the new size, set
+@code{doc-view-scale-internally} to @code{nil}.  To specify the
+default size for DocView, customize the variable
 @code{doc-view-resolution}.
 
 @node DocView Searching
@@ -571,12 +617,12 @@ of pages to display.  A slice is a rectangle within the page area;
 once you specify a slice in DocView, it applies to whichever page you
 look at.
 
-  To specify the slice numerically, type @kbd{s s}
+  To specify the slice numerically, type @kbd{c s}
 (@code{doc-view-set-slice}); then enter the top left pixel position
 and the slice's width and height.
 @c ??? how does this work?
 
-  A more convenient graphical way to specify the slice is with @kbd{s
+  A more convenient graphical way to specify the slice is with @kbd{c
 m} (@code{doc-view-set-slice-using-mouse}), where you use the mouse to
 select the slice.  Simply press and hold the left mouse button at the
 upper-left corner of the region you want to have in the slice, then
@@ -585,10 +631,10 @@ button.
 
   The most convenient way is to set the optimal slice by using
 BoundingBox information automatically determined from the document by
-typing @kbd{s b} (@code{doc-view-set-slice-from-bounding-box}).
+typing @kbd{c b} (@code{doc-view-set-slice-from-bounding-box}).
 
 @findex doc-view-reset-slice
-  To cancel the selected slice, type @kbd{s r}
+  To cancel the selected slice, type @kbd{c r}
 (@code{doc-view-reset-slice}).  Then DocView shows the entire page
 including its entire margins.
 
@@ -694,10 +740,11 @@ creates the file @file{foo} and produces no terminal output.
 
   A numeric argument to @code{shell-command}, e.g., @kbd{M-1 M-!},
 causes it to insert terminal output into the current buffer instead of
-a separate buffer.  It puts point before the output, and sets the mark
-after the output.  For instance, @kbd{M-1 M-! gunzip < foo.gz
-@key{RET}} would insert the uncompressed form of the file
-@file{foo.gz} into the current buffer.
+a separate buffer.  By default, it puts point before the output, and
+sets the mark after the output (but a non-default value of
+@code{shell-command-dont-erase-buffer} can change that, see below).
+For instance, @kbd{M-1 M-! gunzip < foo.gz @key{RET}} would insert the
+uncompressed form of the file @file{foo.gz} into the current buffer.
 
   Provided the specified shell command does not end with @samp{&}, it
 runs @dfn{synchronously}, and you must wait for it to exit before
@@ -734,6 +781,18 @@ documentation for more possibilities.
 displayed only when the command generates output, set
 @code{async-shell-command-display-buffer} to @code{nil}.
 
+@vindex async-shell-command-width
+  The option @code{async-shell-command-width} defines the number of display
+columns available for output of asynchronous shell commands.
+A positive integer tells the shell to use that number of columns for
+command output.  The default value is @code{nil} that means to use
+the same number of columns as provided by the shell.
+
+@vindex shell-command-prompt-show-cwd
+  To make the above commands show the current directory in their
+prompts, customize the variable @code{shell-command-prompt-show-cwd}
+to a non-@code{nil} value.
+
 @kindex M-|
 @findex shell-command-on-region
   @kbd{M-|} (@code{shell-command-on-region}) is like @kbd{M-!}, but
@@ -754,6 +813,10 @@ to @command{gpg}.  This will output the list of keys to the
 name is relative, Emacs searches the directories listed in
 @code{exec-path} (@pxref{Shell}).
 
+  If the default directory is remote (@pxref{Remote Files}), the
+default value is @file{/bin/sh}.  This can be changed by declaring
+@code{shell-file-name} connection-local (@pxref{Connection Variables}).
+
   To specify a coding system for @kbd{M-!} or @kbd{M-|}, use the command
 @kbd{C-x @key{RET} c} immediately beforehand.  @xref{Communication Coding}.
 
@@ -764,12 +827,24 @@ the output buffer.  But if you change the value of the variable
 inserted into a buffer of that name.
 
 @vindex shell-command-dont-erase-buffer
-  By default, the output buffer is erased between shell commands.
-If you change the value of the variable
-@code{shell-command-dont-erase-buffer} to a non-@code{nil} value,
-the output buffer is not erased.  This variable also controls where to
-set the point in the output buffer after the command completes; see the
-documentation of the variable for details.
+  By default, the output buffer is erased between shell commands, except
+when the output goes to the current buffer.  If you change the value
+of the option @code{shell-command-dont-erase-buffer} to @code{erase},
+then the output buffer is always erased.  Other non-@code{nil} values
+prevent erasing of the output buffer, and---if the output buffer is
+not the current buffer---also control where to put point after
+inserting the output of the shell command:
+
+@table @code
+@item beg-last-out
+Puts point at the beginning of the last shell-command output.
+@item end-last-out
+Puts point at the end of the last shell-command output, i.e.@: at the
+end of the output buffer.
+@item save-point
+Restores the position of point as it was before inserting the
+shell-command output.
+@end table
 
 @node Interactive Shell
 @subsection Interactive Subshell
@@ -985,8 +1060,8 @@ Move backward across one shell command, but not beyond the current line
 Ask the shell for its working directory, and update the Shell buffer's
 default directory.  @xref{Directory Tracking}.
 
-@item M-x send-invisible @key{RET} @var{text} @key{RET}
-@findex send-invisible
+@item M-x comint-send-invisible @key{RET} @var{text} @key{RET}
+@findex comint-send-invisible
 Send @var{text} as input to the shell, after reading it without
 echoing.  This is useful when a shell command runs a program that asks
 for a password.
@@ -1047,7 +1122,8 @@ the directory tracking feature, and a few user commands.
 @findex comint-run
   You can use @kbd{M-x comint-run} to execute any program of your choice
 in a subprocess using unmodified Comint mode---without the
-specializations of Shell mode.
+specializations of Shell mode.  To pass arguments to the program, use
+@kbd{C-u M-x comint-run}.
 
 @node Shell Prompts
 @subsection Shell Prompts
@@ -1133,7 +1209,7 @@ Fetch the next subsequent command from the history
 
 @item C-c .
 @kindex C-c . @r{(Shell mode)}
-@findex comint-input-previous-argument
+@findex comint-insert-previous-argument
 Fetch one argument from an old shell command
 (@code{comint-input-previous-argument}).
 
@@ -1180,26 +1256,37 @@ you just repeated.  Then type @key{RET} to reexecute this command.  You
 can reexecute several successive commands by typing @kbd{C-c C-x
 @key{RET}} over and over.
 
-  The command @kbd{C-c .}@: (@code{comint-input-previous-argument})
+  The command @kbd{C-c .}@: (@code{comint-insert-previous-argument})
 copies an individual argument from a previous command, like
-@kbd{@key{ESC} .} in Bash.  The simplest use copies the last argument from the
-previous shell command.  With a prefix argument @var{n}, it copies the
-@var{n}th argument instead.  Repeating @kbd{C-c .} copies from an
-earlier shell command instead, always using the same value of @var{n}
-(don't give a prefix argument when you repeat the @kbd{C-c .}
-command).
+@kbd{@key{ESC} .}@: in Bash and @command{zsh}.  The simplest use
+copies the last argument from the previous shell command.  With a
+prefix argument @var{n}, it copies the @var{n}th argument instead.
+Repeating @kbd{C-c .} copies from an earlier shell commands, always
+using the same value of @var{n}  (don't give a prefix argument when
+you repeat the @kbd{C-c .} command).
+
+@vindex comint-insert-previous-argument-from-end
+  If you set @code{comint-insert-previous-argument-from-end} to a
+non-@code{nil} value, @kbd{C-c .}@: will instead copy the @var{n}th
+argument counting from the last one; this emulates @kbd{@key{ESC} .}@:
+in @command{zsh}.
 
   These commands get the text of previous shell commands from a special
 history list, not from the shell buffer itself.  Thus, editing the shell
 buffer, or even killing large parts of it, does not affect the history
 that these commands access.
 
-@vindex shell-input-ring-file-name
+@vindex comint-input-ring-file-name
   Some shells store their command histories in files so that you can
 refer to commands from previous shell sessions.  Emacs reads
 the command history file for your chosen shell, to initialize its own
 command history.  The file name is @file{~/.bash_history} for bash,
 @file{~/.sh_history} for ksh, and @file{~/.history} for other shells.
+
+@vindex tramp-histfile-override
+  If you run the shell on a remote host, this setting might be
+overwritten by the variable @code{tramp-histfile-override}.  It is
+recommended to set this variable to @code{nil}.
 
 @node Shell History Copying
 @subsubsection Shell History Copying
@@ -1726,10 +1813,10 @@ a specific server file, use the @samp{-f} or @samp{--server-file}
 option, or set the @env{EMACS_SERVER_FILE} environment variable
 (@pxref{emacsclient Options}).  If @code{server-auth-dir} is set to a
 non-standard value, or if @code{server-name} is set to an absolute
-file name, @command{emacsclient} needs an absolute file name
-to the server file, as the default @code{server-auth-dir} is
-hard-coded in @command{emacsclient} to be used as the directory for
-resolving relative filenames.
+file name, @command{emacsclient} needs an absolute file name to the
+server file, as the default @code{server-auth-dir} is hard-coded in
+@command{emacsclient} to be used as the directory for resolving
+relative filenames.
 
 @node Invoking emacsclient
 @subsection Invoking @code{emacsclient}
@@ -1881,12 +1968,12 @@ evaluate, @emph{not} as a list of files to visit.
 @item -f @var{server-file}
 @itemx --server-file=@var{server-file}
 Specify a server file (@pxref{TCP Emacs server}) for connecting to an
-Emacs server via TCP.  Alternatively, you can set the
+Emacs server via TCP@.  Alternatively, you can set the
 @env{EMACS_SERVER_FILE} environment variable to point to the server
 file.  (The command-line option overrides the environment variable.)
 
 An Emacs server usually uses a local socket to listen for connections,
-but also supports connections over TCP.  To connect to a TCP Emacs
+but also supports connections over TCP@.  To connect to a TCP Emacs
 server, @command{emacsclient} needs to read a @dfn{server file}
 containing the connection details of the Emacs server.  The name of
 this file is specified with this option, either as a file name
@@ -1928,6 +2015,10 @@ option to instruct @command{emacsclient} to connect to that server.
 You need to use this option if you started Emacs as daemon
 (@pxref{Initial Options}) and specified the name for the server
 started by the daemon.
+
+Alternatively, you can set the @env{EMACS_SOCKET_NAME} environment
+variable to point to the server socket.  (The command-line option
+overrides the environment variable.)
 
 @item -t
 @itemx --tty
@@ -2584,7 +2675,7 @@ e.g., the daemon cannot use GUI features, so parameters such as frame
 position, size, and decorations cannot be restored.  For that reason,
 you may wish to delay restoring the desktop in daemon mode until the
 first client connects, by calling @code{desktop-read} in a hook
-function that you add to @code{after-make-frame-functions}
+function that you add to @code{server-after-make-frame-hook}
 (@pxref{Creating Frames,,, elisp, The Emacs Lisp Reference Manual}).
 
 @node Recursive Edit
@@ -2791,8 +2882,8 @@ widget.  The URL normally defaults to the URL at or before point, but
 if there is an active region (@pxref{Mark}), the default URL comes
 from the region instead, after removing any whitespace from it.  The
 command then creates a new buffer with the embedded browser showing
-the specified URL.  The buffer is put in the Xwidget-WebKit mode
-(similar to Image mode, @pxref{File Conveniences}), which provides
+the specified URL@.  The buffer is put in the Xwidget-WebKit mode
+(similar to Image mode, @pxref{Image Mode}), which provides
 one-key commands for scrolling the widget, changing its size, and
 reloading it.  Type @w{@kbd{C-h b}} in that buffer to see the key
 bindings.
@@ -2859,9 +2950,8 @@ done by calling @code{browse-url} as a subroutine
 
   It can be useful to add @code{goto-address-mode} to mode hooks and
 hooks for displaying an incoming message
-(e.g., @code{rmail-show-message-hook} for Rmail, and
-@code{mh-show-mode-hook} for MH-E).  This is not needed for Gnus,
-which has a similar feature of its own.
+(e.g., @code{rmail-show-message-hook} for Rmail).  This is not needed
+for Gnus or MH-E, which have similar features of their own.
 
 @node FFAP
 @subsection Finding Files and URLs at Point
