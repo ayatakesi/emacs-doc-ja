@@ -7,9 +7,8 @@ function run_once_for_checkout_UPSTREAM () {
     REPO=${1};
     cd ${REPO};
     git clone \
-	--filter=blob:none \
 	--no-checkout \
-	https://github.com/emacs-mirror/emacs.git;
+	https://git.savannah.gnu.org/git/emacs.git;
     
     git -C emacs sparse-checkout init --cone;
     git -C emacs sparse-checkout set /doc;
