@@ -1,11 +1,22 @@
 .PHONY: clean
 .PHONY: emacs
+.PHONY: update
 
 all: emacs
 
 clean:
 	rm -f japanese_texis/*.texi;
 	rm -f TITLES/ja/LC_MESSAGES/*.mo;
+
+update:
+	../UTILS/functions.sh \
+		msgmerge_newtexi_and_oldpo \
+		original_texis \
+		.;
+	../UTILS/functions.sh \
+		msgmerge_newtexi_and_oldtitle \
+		original_texis \
+		TITLES/ja/LC_MESSAGES;
 
 emacs:
 	for TEXI in original_texis/*.texi; \
@@ -14,7 +25,7 @@ emacs:
 		translate_texi_except_titles \
 		$${TEXI} \
 		japanese_texis \
-		. \
+x		. \
 		""; \
 		../UTILS/functions.sh \
 		translate_title_by_gettext \
