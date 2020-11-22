@@ -23,44 +23,58 @@ function checkout_by_ver_UPSTREAM () {
 }
 
 #
-# 【移行用】未翻訳とタイトル翻訳済のtexiからタイトル翻訳用po生成
+# 新版への以降
 #
-function generate_titlezpo_by_translated_texi () {
-    
-    ORIGINAL_TEXI_DIR=$(realpath ${1}); # /.../original_texis
-    JAPANESE_TEXI_DIR=$(realpath ${2}); # /.../japanese_texis
-    TITLES_ROOT_DIR=$(realpath ${3}); # /.../TITLES
-    JAPANESE_TEXI_SUFFIX=${4}; # "", "-ja", ...
 
-    # create out dir
-    TITLES_PO_DIR=${TITLES_ROOT_DIR}/ja/LC_MESSAGES;
-    if [ -d ${TITLES_PO_DIR} ]
-    then
-	mkdir -p ${TITLES_PO_DIR}
-    fi
-    
-    for TEXI0 in ${ORIGINAL_TEXI_DIR}/*.texi
+# タイトル以外の本文
+function msgmerge_newtexi_and_oldpo () {
+    ORIGINAL_TEXIS_DIR=$(realpath ${1}); # /.../original_texis 
+    PO_DIR=$(realpath ${2}); # /.../.
+    for TEXI0 in ${ORIGINAL_TEXIS_DIR}/*.texi
     do
-	RM_FILES=; # for rm -f ${RM_FILES}
-	TEXI=$(basename ${TEXI0}); # xxx.texi
-	TEXI_NAME=$(basename ${TEXI} .texi) # xxx
-	JAPANESE_TEXI=${TEXI_NAME}${JAPANESE_TEXI_SUFFIX}.texi
-	JAPANESE_TEXI0=${JAPANESE_TEXI_DIR}/${JAPANESE_TEXI}
-	# xtract not-translated-titles
-	EN_TITLE=$(mktemp); RM_FILES+="${EN_TITLE} "
-	grep -E '^@((chapter)|((sub)*(section))|(appendix)(sub)*(sec)?)' ${TEXI0} > ${EN_TITLE}
-	
-	# xtract translated-titles
-	JA_TITLE=$(mktemp); RM_FILES=+="${JA_TITLE} "
-	grep -E '^@((chapter)|((sub)*(section))|(appendix)(sub)*(sec)?)' ${JAPANESE_TEXI0} > ${JA_TITLE}
+	TEXI=$(basename ${TEXI0});
+	PO=${PO_DIR}/${TEXI}.po;
+	if [ -f ${PO} ]
+	then
+	    POT=${PO}t;
+	    MERGED_TMP=$(mktemp);
+	    po4a-gettextize -M utf8 \
+			    -f texinfo \
+			    -m ${TEXI0} \
+			    -p ${POT};
+	    
+	    msgmerge --previous \
+		     --compendium ${PO} \
+		     -o - /dev/null ${POT} |
+		msgcat --no-wrap - > ${MERGED_TMP};
+	    
+	    cp -p ${MERGED_TMP} ${PO};
+	    rm -f ${MERGED_TMP} ${POT};
+	fi
+    done
+}
 
-	# create po-seed
-	cat <<'EOT' > ${TITLES_PO_DIR}/${TEXI}.po
+# タイトル
+function msgmerge_newtexi_and_oldtitle() {
+    ORIGINAL_TEXIS_DIR=$(realpath ${1}); # /.../original_texis
+    TITLES_PO_DIR=$(realpath ${2}); # /.../TITLES/ja/LC_MESSAGES
+    for TEXI0 in ${ORIGINAL_TEXIS_DIR}/*.texi
+    do
+	TEXI=$(basename ${TEXI0});
+	PO=${TITLES_PO_DIR}/${TEXI}.po;
+	POT=${PO}t;
+	GREP_OUT=$(mktemp);
+	GREP_STRING='^@((chapter)|((sub)*(section))|(appendix)(sub)*(sec)?)';
+	grep -E ${GREP_STRING} ${TEXI0} >${GREP_OUT};
+	if [ $? -eq 0 ]
+	then
+	    DATE_STRING=$(date --iso-8601=minutes | sed 's/T/ /');
+	    cat <<EOT > ${POT}
 msgid ""
 msgstr ""
 "Project-Id-Version: Emacs-XX.X\n"
-"POT-Creation-Date: 2020-08-15 00:00+0900\n"
-"PO-Revision-Date: 2020-08-15 00:00+0900\n"
+"POT-Creation-Date: ${DATE_STRING}\n"
+"PO-Revision-Date: ${DATE_STRING}\n"
 "Last-Translator: emacs-jp#translations\n"
 "Language-Team: emacs-jp#translations\n"
 "Language: ja\n"
@@ -69,15 +83,20 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 EOT
-	# join and filter to po-format
-	paste ${EN_TITLE} ${JA_TITLE} |
-	    perl -ne '
-chomp;
-($en, $ja) = split "\t";
-$ja = "" if $en eq $ja;
-print "msgid \"${en}\"\nmsgstr \"${ja}\"\n\n";' >> ${TITLES_PO_DIR}/${TEXI}.po
-	
-	rm -f ${RM_FILES}
+	    perl -ne 'chomp; print "msgid \"$_\"\nmsgstr \"\"\n\n";' ${GREP_OUT} >>${POT};
+
+	    MERGED_TMP=$(mktemp);
+	    msgmerge --previous \
+		     --compendium ${PO} \
+		     -o - /dev/null ${POT} |
+		msgcat --no-wrap - > ${MERGED_TMP};
+
+	    cp -p ${MERGED_TMP} ${PO};
+	    rm -f ${MERGED_TMP} ${POT}
+	    
+	fi
+
+	rm -f ${GREP_OUT};
     done
 }
 
@@ -151,7 +170,7 @@ EOT
     rm -f ${RM_FILES}
 }
 
-function sed_for_L11N_namer_at_include () {
+function sed_for_L11N_name_at_include () {
     EN_TEXI_DIR=$(realpath ${1}); # /.../original_texis
     JA_TEXI_DIR=$(realpath ${2}); # /.../japanese_texis
     JA_TEXI_SUFFIX=${3}; # "", "-ja", ...
