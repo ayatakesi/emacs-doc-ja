@@ -25,7 +25,7 @@ lispref:
 		rm -f japanese_texis/$$(basename $${TEXI}); \
 	done
 	../UTILS/functions.sh \
-	sed_for_L11N_namer_at_include \
+	sed_for_L11N_name_at_include \
 		original_texis \
 		japanese_texis \
 		"-ja";
