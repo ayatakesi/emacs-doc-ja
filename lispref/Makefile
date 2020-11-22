@@ -7,6 +7,16 @@ clean:
 	rm -f japanese_texis/*.texi;
 	rm -f TITLES/ja/LC_MESSAGES/*.mo;
 
+update:
+	../UTILS/functions.sh \
+		msgmerge_newtexi_and_oldpo \
+		original_texis \
+		.;
+	../UTILS/functions.sh \
+		msgmerge_newtexi_and_oldtitle \
+		original_texis \
+		TITLES/ja/LC_MESSAGES;
+
 lispref:
 	for TEXI in original_texis/*.texi; \
 	do \
