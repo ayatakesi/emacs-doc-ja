@@ -1,8 +1,13 @@
 .PHONY: emacs
 .PHONY: lispref
 .PHONY: clean
+.PHONY: update
 
 all: emacs lispref
+
+update:
+	$(MAKE) -C emacs update
+	$(MAKE) -C lispref update
 
 emacs:
 	$(MAKE) -C emacs emacs
