@@ -24,6 +24,7 @@ function checkout_by_ver_UPSTREAM () {
 
 #
 # 新版への以降
+# original_texis/*.texiを新版に更新後(手コピー)に実行
 #
 
 # タイトル以外の本文
