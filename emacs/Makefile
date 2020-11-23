@@ -25,7 +25,7 @@ emacs:
 		translate_texi_except_titles \
 		$${TEXI} \
 		japanese_texis \
-x		. \
+		. \
 		""; \
 		../UTILS/functions.sh \
 		translate_title_by_gettext \
