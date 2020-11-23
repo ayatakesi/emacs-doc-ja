@@ -146,7 +146,7 @@ function translate_title_by_gettext () {
     CTLG_DIR=${TITLES_ROOT_DIR}/ja/LC_MESSAGES;
     msgfmt -o ${CTLG_DIR}/${EN_TEXI}.mo \
 	   ${CTLG_DIR}/${EN_TEXI}.po
-    RM_FILES+=" ${CTLG_DIR}//${EN_TEXI}.mo"
+    RM_FILES+=" ${CTLG_DIR}/${EN_TEXI}.mo"
     
     # generate tmp i18n filter use above mo
     PERL=$(mktemp);
@@ -163,9 +163,10 @@ EOT
     printf "\tprint;\n}" >>${PERL}
     RM_FILES+=" ${PERL}"
 
-    cat ${JA_TEXI_DIR}/${JA_TEXI} |
+    OUTTMP=$(mktemp);
+    cat ${JA_TEXI_DIR}/${EN_TEXI} |
 	LANGUAGE=ja perl ${PERL} > ${JA_TEXI_DIR}/${JA_TEXI}
-
+    
     echo "done."
     
     rm -f ${RM_FILES}
