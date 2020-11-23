@@ -29,7 +29,7 @@ function checkout_by_ver_UPSTREAM () {
 
 # タイトル以外の本文
 function msgmerge_newtexi_and_oldpo () {
-    ORIGINAL_TEXIS_DIR=$(realpath ${1}); # /.../original_texis 
+    ORIGINAL_TEXIS_DIR=${1}; # ?/.../original_texis 
     PO_DIR=$(realpath ${2}); # /.../.
     for TEXI0 in ${ORIGINAL_TEXIS_DIR}/*.texi
     do
