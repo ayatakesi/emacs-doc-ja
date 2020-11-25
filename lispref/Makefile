@@ -25,7 +25,7 @@ lispref:
 		$${TEXI} \
 		japanese_texis \
 		. \
-		""; \
+		"-ja"; \
 		../UTILS/functions.sh \
 		translate_title_by_gettext \
 			$${TEXI} \
