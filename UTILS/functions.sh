@@ -160,12 +160,14 @@ EOT
     grep -E '^@((chapter)|((sub)*(section))|(appendix)(sub)*(sec)?)' ${EN_TEXI0} |
 	sed -r "s/'/\\\'/g" |
 	sed -r "s|(.+)$|\t\(\$en, \$ja\) = \(quotemeta\('&'\), __ '&'\); s/\$en/\$ja/;|" >>${PERL};
-    printf "\tprint;\n}" >>${PERL}
-    RM_FILES+=" ${PERL}"
+    printf "\tprint;\n}" >>${PERL};
+    RM_FILES+=" ${PERL}";
 
     OUTTMP=$(mktemp);
-    cat ${JA_TEXI_DIR}/${EN_TEXI} |
-	LANGUAGE=ja perl ${PERL} > ${JA_TEXI_DIR}/${JA_TEXI}
+    cat ${JA_TEXI_DIR}/${JA_TEXI} |
+	LANGUAGE=ja perl ${PERL} > ${OUTTMP};
+    cp -pf ${OUTTMP} ${JA_TEXI_DIR}/${JA_TEXI};
+    RM_FILES+=" ${OUTTMP}";
     
     echo "done."
     
