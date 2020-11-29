@@ -3048,6 +3048,16 @@ since there is no guarantee that an arbitrary caller of
 @code{display-buffer} will be able to handle the case that no window
 will display the buffer.  @code{display-buffer-no-window} is the only
 action function that cares about this entry.
+
+@vindex body-function@r{, a buffer display action alist entry}
+@item body-function
+The value must be a function taking one argument (a displayed window).
+This function can be used to fill the displayed window's body with
+some contents that might depend on dimensions of the displayed window.
+It is called @emph{after} the buffer is displayed, and @emph{before}
+the entries @code{window-height}, @code{window-width} and
+@code{preserve-size} are applied that could resize the window to fit
+it to the inserted contents.
 @end table
 
 By convention, the entries @code{window-height}, @code{window-width}
@@ -5859,13 +5869,16 @@ which window parameters (if any) are saved by this function.
 @xref{Window Parameters}.
 @end defun
 
-@defun set-window-configuration configuration
+@defun set-window-configuration configuration &optional dont-set-frame
 This function restores the configuration of windows and buffers as
 specified by @var{configuration}, for the frame that
 @var{configuration} was created for, regardless of whether that frame
 is selected or not.  The argument @var{configuration} must be a value
 that was previously returned by @code{current-window-configuration}
-for that frame.
+for that frame.  Normally the function also selects the frame which is
+recorded in the configuration, but if @var{dont-set-frame} is
+non-@code{nil}, it leaves selected the frame which was current at the
+start of the function.
 
 If the frame from which @var{configuration} was saved is dead, all
 this function does is to restore the value of the variable
@@ -5916,10 +5929,6 @@ This function compares two window configurations as regards the
 structure of windows, but ignores the values of point and the
 saved scrolling positions---it can return @code{t} even if those
 aspects differ.
-
-The function @code{equal} can also compare two window configurations; it
-regards configurations as unequal if they differ in any respect, even a
-saved point.
 @end defun
 
 @defun window-configuration-frame config

@@ -656,6 +656,16 @@ optional argument @var{ignore-case} is non-@code{nil}, the comparison
 ignores case differences.
 @end defun
 
+@defun string-search needle haystack &optional start-pos
+Return the position of the first instance of @var{needle} in
+@var{haystack}, both of which are strings.  If @var{start-pos} is
+non-@code{nil}, start searching from that position in @var{needle}.
+Return @code{nil} if no match was found.
+This function only considers the characters in the strings when doing
+the comparison; text properties are ignored.  Matching is always
+case-sensitive.
+@end defun
+
 @defun compare-strings string1 start1 end1 string2 start2 end2 &optional ignore-case
 This function compares a specified part of @var{string1} with a
 specified part of @var{string2}.  The specified part of @var{string1}
@@ -1157,7 +1167,7 @@ The function @code{format-spec} described in this section performs a
 similar function to @code{format}, except it operates on format
 control strings that use arbitrary specification characters.
 
-@defun format-spec template spec-alist &optional only-present
+@defun format-spec template spec-alist &optional ignore-missing
 This function returns a string produced from the format string
 @var{template} according to conversions specified in @var{spec-alist},
 which is an alist (@pxref{Association Lists}) of the form
@@ -1190,12 +1200,15 @@ The order of specifications in @var{template} need not correspond to
 the order of associations in @var{spec-alist}.
 @end itemize
 
-The optional argument @var{only-present} indicates how to handle
+The optional argument @var{ignore-missing} indicates how to handle
 specification characters in @var{template} that are not found in
 @var{spec-alist}.  If it is @code{nil} or omitted, the function
-signals an error.  Otherwise, those format specifications and any
-occurrences of @samp{%%} in @var{template} are left verbatim in the
-output, including their text properties, if any.
+signals an error; if it is @code{ignore}, those format specifications
+are left verbatim in the output, including their text properties, if
+any; if it is @code{delete}, those format specifications are removed
+from the output; any other non-@code{nil} value is handled like
+@code{ignore}, but any occurrences of @samp{%%} are also left verbatim
+in the output.
 @end defun
 
 The syntax of format specifications accepted by @code{format-spec} is
@@ -1243,7 +1256,7 @@ the right rather than the left.
 
 @item <
 This flag causes the substitution to be truncated on the left to the
-given width, if specified.
+given width and precision, if specified.
 
 @item >
 This flag causes the substitution to be truncated on the right to the
@@ -1262,15 +1275,29 @@ The result of using contradictory flags (for instance, both upper and
 lower case) is undefined.
 
 As is the case with @code{format}, a format specification can include
-a width, which is a decimal number that appears after any flags.  If a
-substitution contains fewer characters than its specified width, it is
-padded on the left:
+a width, which is a decimal number that appears after any flags, and a
+precision, which is a decimal-point @samp{.} followed by a decimal
+number that appears after any flags and width.
+
+If a substitution contains fewer characters than its specified width,
+it is padded on the left:
 
 @example
 @group
 (format-spec "%8a is padded on the left with spaces"
              '((?a . "alpha")))
      @result{} "   alpha is padded on the left with spaces"
+@end group
+@end example
+
+If a substitution contains more characters than its specified
+precision, it is truncated on the right:
+
+@example
+@group
+(format-spec "%.2a is truncated on the right"
+             '((?a . "alpha")))
+     @result{} "al is truncated on the right"
 @end group
 @end example
 

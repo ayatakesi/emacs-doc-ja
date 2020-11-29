@@ -214,22 +214,28 @@ speed is linked to how fast you move the wheel.  This mode also
 supports increasing or decreasing the height of the default face, by
 default bound to scrolling with the @key{Ctrl} modifier.
 
+@vindex mouse-wheel-scroll-amount-horizontal
+Emacs also supports horizontal scrolling with the @key{Shift}
+modifier.  Typing a numeric prefix arg (e.g., @kbd{M-5}) before
+starting horizontal scrolling changes its step value defined
+by the user option @code{mouse-wheel-scroll-amount-horizontal}.
+
 @vindex mouse-wheel-tilt-scroll
 @vindex mouse-wheel-flip-direction
-Emacs can also support horizontal scrolling if your mouse's wheel can
-be tilted, or if your touchpad supports it.  This feature is off by
-default; the variable @code{mouse-wheel-tilt-scroll} turns it on, if
-you customize it to a non-@code{nil} value.  By default, tilting the
-mouse wheel scrolls the window's view horizontally in the direction of
-the tilt: e.g., tilting to the right scrolls the window to the right,
-so that the text displayed in the window moves horizontally to the
-left.  If you'd like to reverse the direction of horizontal scrolling,
-customize the variable @code{mouse-wheel-flip-direction} to a
-non-@code{nil} value.
+If your mouse's wheel can be tilted, or if your touchpad supports it,
+then you can also enable horizontal scrolling by customizing the
+variable @code{mouse-wheel-tilt-scroll} to a non-@code{nil} value.
+By default, tilting the mouse wheel scrolls the window's view
+horizontally in the direction of the tilt: e.g., tilting to the right
+scrolls the window to the right, so that the text displayed in the
+window moves horizontally to the left.  If you'd like to reverse the
+direction of horizontal scrolling, customize the variable
+@code{mouse-wheel-flip-direction} to a non-@code{nil} value.
 
 When the mouse pointer is over an image in Image mode, @pxref{Image Mode},
 scrolling the mouse wheel with the @key{Ctrl} modifier scales the image
-under the mouse pointer.
+under the mouse pointer, and scrolling the mouse wheel with the
+@key{Shift} modifier scrolls the image horizontally.
 
 
 @node Word and Line Mouse
@@ -366,9 +372,13 @@ instead of running the @code{mouse-save-then-kill} command, rebind
 @kbd{mouse-3} by adding the following line to your init file
 (@pxref{Init Rebinding}):
 
-@c FIXME: `mouse-popup-menubar-stuff' is obsolete since 23.1.
 @smallexample
-(global-set-key [mouse-3] 'mouse-popup-menubar-stuff)
+(global-set-key [mouse-3]
+  '(menu-item "Menu Bar" ignore
+    :filter (lambda (_)
+              (if (zerop (or (frame-parameter nil 'menu-bar-lines) 0))
+                  (mouse-menu-bar-map)
+                (mouse-menu-major-mode-map)))))
 @end smallexample
 
 @node Mode Line Mouse
@@ -439,29 +449,40 @@ buffer to select:
 @kindex C-x 5 2
 @findex make-frame-command
 Create a new frame (@code{make-frame-command}).
+
 @item C-x 5 b @var{bufname} @key{RET}
 Select buffer @var{bufname} in another frame.  This runs
 @code{switch-to-buffer-other-frame}.
+
 @item C-x 5 f @var{filename} @key{RET}
 Visit file @var{filename} and select its buffer in another frame.  This
 runs @code{find-file-other-frame}.  @xref{Visiting}.
+
 @item C-x 5 d @var{directory} @key{RET}
 Select a Dired buffer for directory @var{directory} in another frame.
 This runs @code{dired-other-frame}.  @xref{Dired}.
+
 @item C-x 5 m
 Start composing a mail message in another frame.  This runs
 @code{compose-mail-other-frame}.  It is the other-frame variant of
 @kbd{C-x m}.  @xref{Sending Mail}.
+
 @item C-x 5 .
 Find the definition of an identifier in another frame.  This runs
 @code{xref-find-definitions-other-frame}, the multiple-frame variant
 of @kbd{M-.}.  @xref{Xref}.
+
 @item C-x 5 r @var{filename} @key{RET}
 @kindex C-x 5 r
 @findex find-file-read-only-other-frame
 Visit file @var{filename} read-only, and select its buffer in another
 frame.  This runs @code{find-file-read-only-other-frame}.
 @xref{Visiting}.
+
+@item C-x 5 5
+A more general prefix command affects the buffer displayed by the next
+command invoked immediately after this prefix command.  It requests
+the buffer of the next command to be displayed in another frame.
 @end table
 
   You can control the appearance and behavior of the newly-created
@@ -1316,6 +1337,11 @@ runs @code{find-file-other-tab}.  @xref{Visiting}.
 @item C-x t d @var{directory} @key{RET}
 Select a Dired buffer for directory @var{directory} in another tab.
 This runs @code{dired-other-tab}.  @xref{Dired}.
+
+@item C-x t t
+A more general prefix command affects the buffer displayed by the next
+command invoked immediately after this prefix command.  It requests
+the buffer of the next command to be displayed in another tab.
 @end table
 
 @vindex tab-bar-new-tab-choice
