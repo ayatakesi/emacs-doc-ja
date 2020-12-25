@@ -1077,19 +1077,12 @@ directories in a search path (as found in an environment variable).  Its
 value is @code{":"} for Unix and GNU systems, and @code{";"} for MS systems.
 @end defvar
 
-@defun path-separator
-This function returns the connection-local value of variable
-@code{path-separator}.  That is @code{";"} for MS systems and a local
-@code{default-directory}, and @code{":"} for Unix and GNU systems, or
-a remote @code{default-directory}.
-@end defun
-
 @defun parse-colon-path path
 This function takes a search path string such as the value of
 the @env{PATH} environment variable, and splits it at the separators,
 returning a list of directories.  @code{nil} in this list means
 the current directory.  Although the function's name says
-``colon'', it actually uses the value of variable @code{path-separator}.
+``colon'', it actually uses the value of @code{path-separator}.
 
 @example
 (parse-colon-path ":/foo:/bar")
@@ -1161,19 +1154,6 @@ in the system's terminal driver, before Emacs was started.
 @c FIXME?  Seems untrue since 23.1.  For me, it is 0.
 @c The value is @code{nil} if Emacs is running under a window system.
 @end defvar
-
-@defvar null-device
-This variable holds the system null device.  Its value is
-@code{"/dev/null"} for Unix and GNU systems, and @code{"NUL"} for MS
-systems.
-@end defvar
-
-@defun null-device
-This function returns the connection-local value of variable
-@code{null-device}.  That is @code{"NUL"} for MS systems and a local
-@code{default-directory}, and @code{"/dev/null"} for Unix and GNU
-systems, or a remote @code{default-directory}.
-@end defun
 
 @node User Identification
 @section User Identification
@@ -1721,8 +1701,7 @@ following form:
 @noindent
 The format of this list is the same as what @code{decode-time} accepts
 (@pxref{Time Conversion}), and is described in more detail there.  Any
-@code{dst} element that cannot be determined from the input is set to
-@minus{}1, and any other unknown element is set to
+element that cannot be determined from the input will be set to
 @code{nil}.  The argument @var{string} should resemble an RFC 822 (or later) or
 ISO 8601 string, like ``Fri, 25 Mar 2016 16:24:56 +0100'' or
 ``1998-09-12T12:21:54-0200'', but this function will attempt to parse
@@ -1921,10 +1900,7 @@ The integer number of hours.
 The integer number of minutes.
 @item %s
 @itemx %S
-The number of seconds.  If the optional @samp{,} parameter is used,
-it's a floating point number, and the number after the @samp{,}
-specifies how many decimals to be used.  @samp{%,2s} means ``use two
-decimals''.
+The integer number of seconds.
 @item %z
 Non-printing control flag.  When it is used, other specifiers must be
 given in the order of decreasing size, i.e., years before days, hours
@@ -2106,19 +2082,6 @@ run while waiting.  If a timer function needs to perform an action
 after a certain time has elapsed, it can do this by scheduling a new
 timer.
 
-  If a timer function performs a remote file operation, it can be in
-conflict with an already running remote file operation of the same
-connection.  Such conflicts are detected, and they result in a
-@code{remote-file-error} error (@pxref{Standard Errors}).  This should
-be protected by wrapping the timer function body with
-
-@lisp
-@group
-(ignore-error 'remote-file-error
-  @dots{})
-@end group
-@end lisp
-
   If a timer function calls functions that can change the match data,
 it should save and restore the match data.  @xref{Saving Match Data}.
 
@@ -2230,9 +2193,9 @@ cause anything special to happen.
 
 @findex list-timers
 The @code{list-timers} command lists all the currently active timers.
-The command @kbd{c} (@code{timer-list-cancel}) will cancel the timer
-on the line under point.  You can sort the list by column using the
-command @kbd{S} (@code{tabulated-list-sort}).
+There's only one command available in the buffer displayed: @kbd{c}
+(@code{timer-list-cancel}) that will cancel the timer on the line
+under point.
 
 @node Idle Timers
 @section Idle Timers
@@ -2723,9 +2686,9 @@ Emacs is restarted by the session manager.
 
 @group
 (defun save-yourself-test ()
-  (insert
-   (format "%S" '(with-current-buffer "*scratch*"
-                   (insert "I am restored"))))
+  (insert "(save-current-buffer
+  (switch-to-buffer \"*scratch*\")
+  (insert \"I am restored\"))")
   nil)
 @end group
 @end example
@@ -3174,7 +3137,7 @@ being reported.  For example:
 @end group
 
 @group
-(set-file-modes "/tmp/foo" (default-file-modes) 'nofollow)
+(set-file-modes "/tmp/foo" (default-file-modes))
      @result{} Event (35025468 attribute-changed "/tmp/foo")
 @end group
 @end example
