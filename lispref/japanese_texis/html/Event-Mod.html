@@ -1,0 +1,116 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Event Mod (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Event Mod (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Event Mod (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Reading-Input.html" rel="up" title="Reading Input">
+<link href="Invoking-the-Input-Method.html" rel="next" title="Invoking the Input Method">
+<link href="Reading-One-Event.html" rel="prev" title="Reading One Event">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Event-Mod"></span><div class="header">
+<p>
+Next: <a href="Invoking-the-Input-Method.html" accesskey="n" rel="next">Invoking the Input Method</a>, Previous: <a href="Reading-One-Event.html" accesskey="p" rel="prev">Reading One Event</a>, Up: <a href="Reading-Input.html" accesskey="u" rel="up">Reading Input</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Ru-Li-ibentonoBian-Geng-toBian-Huan-"></span><h4 class="subsection">21.8.3 入力イベントの変更と変換</h4>
+<span id="index-modifiers-of-events"></span>
+<span id="index-translating-input-events"></span>
+<span id="index-event-translation"></span>
+
+<p>Emacsは<code>extra-keyboard-modifiers</code>に合わせて読み取ったすべてのイベントを変更して<code>read-event</code>からリターンする前に、(もし適切なら)<code>keyboard-translate-table</code>を通じてそれを変換します。
+</p>
+<dl>
+<dt id="index-extra_002dkeyboard_002dmodifiers">Variable: <strong>extra-keyboard-modifiers</strong></dt>
+<dd><p>この変数はLispプログラムにキーボード上の修飾キーを&ldquo;押下&rdquo;させる。値は文字。文字の修飾子だけが対象となる。ユーザーがキーボードのキーを押下するたびに、その修飾キーがすでに押下されたかのように処理される。たとえば<code>extra-keyboard-modifiers</code>を<code>?\C-\M-a</code>にバインドすると、このバインディングのスコープ内にある間、すべてのキーボード入力文字はコントロール修飾とメタ修飾を適用されるだろう。文字<code>?\C-@</code>は0と等価なので、この目的にたいしてはコントロール文字として勘定されないが、修飾無しの文字として扱われる。したがって<code>extra-keyboard-modifiers</code>を0にセットすることによって、すべての修飾をキャンセルできる。
+</p>
+<p>ウィンドウシステムを利用していれば、この方法によってプログラムが任意の修飾キーを押下できる。それ以外では<tt class="key">CTL</tt>と<tt class="key">META</tt>のキーだけを仮想的に押下できる。
+</p>
+<p>この変数は実際にキーボードに由来するイベントだけに適用され、マウスイベントやその他のイベントには効果がないことに注意。
+</p></dd></dl>
+
+<dl>
+<dt id="index-keyboard_002dtranslate_002dtable">Variable: <strong>keyboard-translate-table</strong></dt>
+<dd><p>この端末ローカルな変数はキーボード文字にたいする変換テーブルである。これによりコマンドバインディングを変更することなく、キーボード上のキーを再配置できる。値は通常は文字テーブル、または<code>nil</code>(文字列かベクターも指定できるが時代遅れとされている)。
+</p>
+<p><code>keyboard-translate-table</code>が文字テーブル(<a href="Char_002dTables.html">Char-Tables</a>を参照)なら、キーボードから読み取られた各文字はその文字テーブルを調べる。非<code>nil</code>の値が見つかったら実際の入力文字のかわりにそれを使用する。
+</p>
+<p>この変換は文字が端末から読み取られた後、最初に発生することに注意。<code>recent-keys</code>のような記録保持機能や文字を記録するdribbleファイルは、この変換の後に処理される。
+</p>
+<p>さらにこの変換は入力メソッド(<a href="Input-Methods.html">Input Methods</a>を参照)に文字を提供する前に行われることにも注意。入力メソッド処理の後に文字を変換したいなら<code>translation-table-for-input</code>
+(<a href="Translation-of-Characters.html">Translation of Characters</a>を参照)を使用すること。
+</p></dd></dl>
+
+<dl>
+<dt id="index-keyboard_002dtranslate">Function: <strong>keyboard-translate</strong> <em>from to</em></dt>
+<dd><p>この関数は文字コード<var>from</var>を文字コード<var>to</var>に変換するために<code>keyboard-translate-table</code>を変更する。
+必要ならキーボード変換テーブルを作成する。
+</p></dd></dl>
+
+<p>以下は<kbd>C-x</kbd>でカット、<kbd>C-</kbd>でコピー、<kbd>C-v</kbd>でペーストを処理するように<code>keyboard-translate-table</code>を使用する例:
+</p>
+<div class="example">
+<pre class="example">(keyboard-translate ?\C-x 'control-x)
+(keyboard-translate ?\C-c 'control-c)
+(keyboard-translate ?\C-v 'control-v)
+(global-set-key [control-x] 'kill-region)
+(global-set-key [control-c] 'kill-ring-save)
+(global-set-key [control-v] 'yank)
+</pre></div>
+
+<p>拡張<acronym>ASCII</acronym>入力をサポートするグラフィカルな端末上では、シフトキーとともにタイプすることによって、標準的なEmacsにおける意味をこれらの文字から依然として取得することが可能です。これはキーボード変換が関与する文字とは異なりますが、それらは通常と同じ意味をもちます。
+</p>
+<p><code>read-key-sequence</code>のレベルでイベントシーケンスを変換するメカニズムについては、<a href="Translation-Keymaps.html">Translation Keymaps</a>を参照してください。
+</p>
+
+
+
+</body>
+</html>

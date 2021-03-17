@@ -1,0 +1,131 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Setting Generalized Variables (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Setting Generalized Variables (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Setting Generalized Variables (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Generalized-Variables.html" rel="up" title="Generalized Variables">
+<link href="Adding-Generalized-Variables.html" rel="next" title="Adding Generalized Variables">
+<link href="Generalized-Variables.html" rel="prev" title="Generalized Variables">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Setting-Generalized-Variables"></span><div class="header">
+<p>
+Next: <a href="Adding-Generalized-Variables.html" accesskey="n" rel="next">Adding Generalized Variables</a>, Up: <a href="Generalized-Variables.html" accesskey="u" rel="up">Generalized Variables</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="setfmakuro"></span><h4 class="subsection">12.17.1 <code>setf</code>マクロ</h4>
+
+<p><code>setf</code>マクロはジェネリック変数を操作するもっとも基本的な方法です。<code>setf</code>フォームは<code>setq</code>と似ていますが、シンボルだけでなく左辺の任意のplace
+formを受け入れます。たとえば<code>(setf (car a)
+b)</code>は<code>a</code>のcarを<code>b</code>にセットして<code>(setcar a
+b)</code>と同じ操作を行いますが、このタイプのplaceにセットやアクセスするために2つの関数を個別に覚える必要はありません。
+</p>
+<dl>
+<dt id="index-setf">Macro: <strong>setf</strong> <em>[place form]&hellip;</em></dt>
+<dd><p>このマクロは<var>form</var>を評価して、それを<var>place</var>に格納する。<var>place</var>は有効なジェネリック変数フォームでなければならない。複数の<var>place</var>/<var>form</var>ペアーがある場合、割り当ては<code>setq</code>の場合と同様。<code>setf</code>は最後の<var>form</var>の値をリターンする。
+</p></dd></dl>
+
+<p>以下のLispフォームはEmacsではジェネリック変数として機能するフォームなので、<code>setf</code>の<var>place</var>引数にすることができます:
+</p>
+<ul>
+<li> シンボル。言い換えると、<code>(setf x y)</code>は完全に<code>(setq x
+y)</code>と正に等しく、厳密に言うと<code>setq</code>自体は<code>setf</code>が存在するので冗長です。これは純粋にスタイルと歴史的な理由によりますが、ほとんどのプログラマーは依然として単純な変数へのセットには<code>setq</code>の方を好みます。マクロ<code>(setf
+x y)</code>は実際には<code>(setq x y)</code>に展開されるので、コンパイルされたコードでこれを使用することにパフォーマンス的な不利はありません。
+
+</li><li> 以下の標準的なLisp関数の呼び出し:
+
+<div class="example">
+<pre class="example">aref      cddr      symbol-function
+car       elt       symbol-plist
+caar      get       symbol-value
+cadr      gethash
+cdr       nth
+cdar      nthcdr
+</pre></div>
+
+</li><li> 以下のEmacs特有な関数の呼び出し:
+
+<div class="example">
+<pre class="example">alist-get                     process-get
+frame-parameter               process-sentinel
+terminal-parameter            window-buffer
+keymap-parent                 window-display-table
+match-data                    window-dedicated-p
+overlay-get                   window-hscroll
+overlay-start                 window-parameter
+overlay-end                   window-point
+process-buffer                window-start
+process-filter                default-value
+</pre></div>
+</li></ul>
+
+<p>どのように処理すれば良いか未知な<var>place</var>フォームを渡すと、<code>setf</code>はエラーをシグナルします。
+</p>
+<p><code>nthcdr</code>の場合、関数のリスト引数はそれ自体が有効な<var>place</var>フォームでなければならないことに注意してください。たとえば<code>(setf
+(nthcdr 0 foo) 7)</code>は、<code>foo</code>自体に7をセットするでしょう。
+</p>
+<p>マクロ<code>push</code>(<a href="List-Variables.html">List Variables</a>を参照)と<code>pop</code>(<a href="List-Elements.html">List Elements</a>を参照)は、リストだけでなくジェネリック変数を操作できます。<code>(pop
+<var>place</var>)</code>は<var>place</var>内に格納されたリストの最初の要素を削除してリターンします。これは<code>(prog1 (car
+<var>place</var>) (setf <var>place</var> (cdr
+<var>place</var>)))</code>と似ていますが、すべてのサブフォームを一度だけ評価します。<code>(push <var>x</var>
+<var>place</var>)</code>は<var>place</var>内に格納されたリストの1番前に<var>x</var>を挿入します。これは<code>(setf
+<var>place</var> (cons <var>x</var>
+<var>place</var>))</code>と似ていますが、サブフォームの評価が異なります。<code>nthcdr</code>
+placeへの<code>push</code>と<code>pop</code>は、リスト内の任意の位置での挿入ち削除に使用できることに注意してください。
+</p>
+<p><samp>cl-lib</samp>ライブラリーでは追加の<code>setf</code>
+placeを含む、ジェネリック変数にたいするさまざまな拡張が定義されています。<a href="https://www.gnu.org/software/emacs/manual/html_node/cl/Generalized-Variables.html#Generalized-Variables">Generalized Variables</a> in <cite>Common Lisp Extensions</cite>を参照してください。
+</p>
+
+
+
+
+</body>
+</html>

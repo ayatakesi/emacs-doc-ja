@@ -1,0 +1,120 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Subprocess Creation (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Subprocess Creation (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Subprocess Creation (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Processes.html" rel="up" title="Processes">
+<link href="Shell-Arguments.html" rel="next" title="Shell Arguments">
+<link href="Processes.html" rel="prev" title="Processes">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Subprocess-Creation"></span><div class="header">
+<p>
+Next: <a href="Shell-Arguments.html" accesskey="n" rel="next">Shell Arguments</a>, Up: <a href="Processes.html" accesskey="u" rel="up">Processes</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="sabupurosesuwoZuo-Cheng-suruGuan-Shu-"></span><h3 class="section">38.1 サブプロセスを作成する関数</h3>
+<span id="index-create-subprocess"></span>
+<span id="index-process-creation"></span>
+
+<p>内部でプログラムを実行するサブプロセスを作成するために3つのプリミティブが存在します。それらの1つは<code>make-process</code>であり、これは非同期プロセスを作成してプロセスオブジェクトをリターンします(<a href="Asynchronous-Processes.html">Asynchronous Processes</a>を参照)。他の2つは<code>call-process</code>と<code>call-process-region</code>です。これらは同期プロセスを作成してプロセスオブジェクとをリターンしません(<a href="Synchronous-Processes.html">Synchronous Processes</a>を参照)。特定のタイプのプロセスを実行するために、これらのプリミティブを利用するさまざまな高レベル関数が存在します。
+</p>
+<p>同期プロセスと非同期プロセスについては、以降のセクションで説明します。この3つの関数はすべて類似した様式で呼び出されるので、ここではそれらに共通の引数について説明します。
+</p>
+<span id="index-execute-program"></span>
+<span id="index-PATH-environment-variable"></span>
+<span id="index-HOME-environment-variable"></span>
+<p>すべての場合において、関数は実行するプログラムを指定します。ファイルが見つからなかったり実行できなければエラーがシグナルされます。ファイル名が相対的なら、検索するディレクトリーのリストは変数<code>exec-path</code>に格納されています。Emacsは起動の際に環境変数<code>PATH</code>の値にもとづいて<code>exec-path</code>を初期化します。<code>exec-path</code>内では標準的なファイル名構成要素&lsquo;<samp>~</samp>&rsquo;、&lsquo;<samp>.</samp>&rsquo;、&lsquo;<samp>..</samp>&rsquo;は通常どおりに解釈されますが、環境変数の置換(&lsquo;<samp>$HOME</samp>&rsquo;等)は認識されません。それらの置換を行うには<code>substitute-in-file-name</code>を使用してください(<a href="File-Name-Expansion.html">File Name Expansion</a>を参照)。このリスト内で<code>nil</code>は<code>default-directory</code>を参照します。
+</p>
+<p>プログラムの実行では指定された名前にサフィックスの追加を試みることもできます:
+</p>
+<dl>
+<dt id="index-exec_002dsuffixes">User Option: <strong>exec-suffixes</strong></dt>
+<dd><p>この変数は指定されたプログラムファイル名への追加を試みるためのサフィックス(文字列)のリスト。指定されたとおりの名前を試みたいならリストに<code>&quot;&quot;</code>を含めること。デフォルト値はシステム依存。
+</p></dd></dl>
+
+<p><strong>注意してください:</strong>
+引数<var>program</var>にはプログラムのファイル名だけが含まれて、コマンドライン引数を含めることはできない。これらを提供するために以下で説明する別の引数<var>args</var>を使用しなければならない。
+</p>
+<p>サブプロセス作成関数にはそれぞれ<var>buffer-or-name</var>引数があります。これはプログラムの出力の行き先を指定します。これはバッファーかバッファー名であるべきです。バッファー名の場合には、もしそのバッファーがまだ作成されていなければバッファーを作成します。<code>nil</code>を指定することもでき、その場合にはカスタム製のフィルター関数が出力を処理するのでなければ出力を破棄するよう指示します(<a href="Filter-Functions.html">Filter Functions</a>と<a href="Read-and-Print.html">Read and Print</a>を参照)。通常は出力がランダムに混在してしまうために、同一バッファーに複数プロセスの出力を送信するのは避けるべきです。同期プロセスにたいしてはバッファーのかわりにファイルに出力を送信できます(したがって対応する引数はより適切な<var>destination</var>という名前で呼ばれる)。デフォルトでは標準出力と標準エラーの両ストリームの行き先(destination)は同じだが、3つのプリミティブはすべてオプションで標準エラーストリームに別の行き先を指定できる。
+</p>
+<span id="index-program-arguments"></span>
+<p>これら3つのサブプロセス作成関数は、すべて実行するプロセスにコマンドライン引数を指定できます。<code>call-process</code>と<code>call-process-region</code>では、これらは<code>&amp;rest</code>形式の引数<var>args</var>で与えられます。<code>make-process</code>では実行するプログラムとコマンドライン引数はいずれも文字列のリストとして指定されます。コマンドライン引数はすべて文字列でなければならず、それらは別個の引数文字列としてプログラムに与えられます。文字列は指定されたプログラムに直接渡されるので、ワイルドカード文字やその他のshell構文はこれらの文字列内では特別な意味をもちません。
+</p>
+<span id="index-environment-variables_002c-subprocesses"></span>
+<p>サブプロセスはその環境をEmacsから継承しますが、<code>process-environment</code>でそれをオーバーラードするよう指定することができます。<a href="System-Environment.html">System Environment</a>を参照してください。サブプロセスは自身のカレントディレクトリーを<code>default-directory</code>の値から取得します。
+</p>
+<dl>
+<dt id="index-exec_002ddirectory">Variable: <strong>exec-directory</strong></dt>
+<dd><span id="index-movemail"></span>
+<p>この変数の値はGNU
+Emacsとともに配布されて、Emacsにより呼び出されることを意図したプログラムを含むディレクトリーの名前(文字列)。プログラム<code>movemail</code>はそのようなプログラムの例であり、Rmailはinboxから新しいメールを読み込むためにこのプログラムを使用する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-exec_002dpath-1">User Option: <strong>exec-path</strong></dt>
+<dd><p>この変数の値はサブプロセス内で実行するためのプログラムを検索するためのディレクトリーのリスト。要素はそれぞれディレクトリーの名前(文字列)、または<code>nil</code>のいずれか。<code>nil</code>はデフォルトディレクトリー(<code>default-directory</code>の値)を意味する。この検索の詳細は<a href="Locating-Files.html">executable-find</a>を参照のこと。
+<span id="index-program-directories"></span>
+</p>
+<p><code>exec-path</code>の値は、<var>program</var>引数が絶対ファイル名でないときに<code>call-process</code>と<code>start-process</code>により使用される。
+</p>
+<p>一般的には<code>exec-path</code>を直接変更するべきではない。かわりにEmacs起動前に環境変数<code>PATH</code>が適切にセットされているか確認すること。<code>PATH</code>とは独立に<code>exec-path</code>の変更を試みると混乱した結果へと導かれ得る。
+</p></dd></dl>
+
+<dl>
+<dt id="index-exec_002dpath">Function: <strong>exec-path</strong></dt>
+<dd><p>この関数は変数<code>exec-path</code>の拡張である。<code>default-directory</code>がリモートパスを示す場合には、この関数は対応するリモートホスト上でプログラム検索に使用するデジレクトリーのリストをリターンする。<code>default-directory</code>がローカルにあれば、この関数は単に変数<code>exec-path</code>の値をリターンする。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Advice Combinators (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Advice Combinators (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Advice Combinators (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Advising-Functions.html" rel="up" title="Advising Functions">
+<link href="Porting-Old-Advice.html" rel="next" title="Porting Old Advice">
+<link href="Advising-Named-Functions.html" rel="prev" title="Advising Named Functions">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Advice-Combinators"></span><div class="header">
+<p>
+Next: <a href="Porting-Old-Advice.html" accesskey="n" rel="next">Porting Old Advice</a>, Previous: <a href="Advising-Named-Functions.html" accesskey="p" rel="prev">Advising Named Functions</a>, Up: <a href="Advising-Functions.html" accesskey="u" rel="up">Advising Functions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="adobaisunoGou-Zhu-Fang-Fa-"></span><h4 class="subsection">13.11.3 アドバイスの構築方法</h4>
+
+<p>以下は<code>add-function</code>と<code>advice-add</code>の<var>where</var>引数に可能な値であり、そのアドバイス<var>function</var>と元の関数が構成される方法を指定します。
+</p>
+<dl compact="compact">
+<dt><code>:before</code></dt>
+<dd><p>古い関数の前に<var>function</var>を呼び出す。関数は両方とも同じ引数を受け取り、2つの関数の結合のリターン値は古い関数のリターン値である。より正確に言うと2つの関数の結合は以下のように振る舞う:
+</p><div class="example">
+<pre class="example">(lambda (&amp;rest r) (apply <var>function</var> r) (apply <var>oldfun</var> r))
+</pre></div>
+<p><code>(add-function :before <var>funvar</var>
+<var>function</var>)</code>はノーマルフックにたいする<code>(add-hook '<var>hookvar</var>
+<var>function</var>)</code>のような1関数のフックと同等。
+</p>
+</dd>
+<dt><code>:after</code></dt>
+<dd><p>古い関数の後に<var>function</var>を呼び出す。関数は両方とも同じ引数を受け取り、2つの関数の結合のリターン値は古い関数のリターン値である。より正確に言うと2つの関数の結合は以下のように振る舞う:
+</p><div class="example">
+<pre class="example">(lambda (&amp;rest r) (prog1 (apply <var>oldfun</var> r) (apply <var>function</var> r)))
+</pre></div>
+<p><code>(add-function :after <var>funvar</var>
+<var>function</var>)</code>はノーマルフックにたいする<code>(add-hook '<var>hookvar</var> <var>function</var>
+'append)</code>のような1関数のフックと同等。
+</p>
+</dd>
+<dt><code>:override</code></dt>
+<dd><p>これは古い関数を新しい関数に完全に置き換える。もちろん<code>remove-function</code>を呼び出した後に古い関数が復元される。
+</p>
+</dd>
+<dt><code>:around</code></dt>
+<dd><p>古い関数のかわりに<var>function</var>を呼び出すが、古い関数は<var>function</var>の追加の引数になる。これはもっとも柔軟な結合である。たとえば古い関数を異なる引数で呼び出したり、複数回呼び出したり、letバインディングで呼び出したり、あるときは古い関数に処理を委譲し、またあるときは完全にオーバーライドすることが可能になる。より正確に言うと2つの関数の結合は以下のように振る舞う:
+</p><div class="example">
+<pre class="example">(lambda (&amp;rest r) (apply <var>function</var> <var>oldfun</var> r))
+</pre></div>
+
+</dd>
+<dt><code>:before-while</code></dt>
+<dd><p>古い関数の前に<var>function</var>を呼び出し、<var>function</var>が<code>nil</code>をリターンしたら古い関数を呼び出さない。関数は両方とも同じ引数を受け取り、2つの関数の結合のリターン値は古い関数のリターン値である。より正確に言うと2つの関数の結合は以下のように振る舞う:
+</p><div class="example">
+<pre class="example">(lambda (&amp;rest r) (and (apply <var>function</var> r) (apply <var>oldfun</var> r)))
+</pre></div>
+<p><code>(add-function :before-while <var>funvar</var>
+<var>function</var>)</code>は<code>run-hook-with-args-until-failure</code>を通じて<var>hookvar</var>が実行されたときの<code>(add-hook
+'<var>hookvar</var> <var>function</var>)</code>のような1関数のフックと同等。
+</p>
+</dd>
+<dt><code>:before-until</code></dt>
+<dd><p>古い関数の前に<var>function</var>を呼び出し、<var>function</var>が<code>nil</code>をリターンした場合だけ古い関数を呼び出す。より正確に言うと2つの関数の結合は以下のように振る舞う:
+</p><div class="example">
+<pre class="example">(lambda (&amp;rest r) (or (apply <var>function</var> r) (apply <var>oldfun</var> r)))
+</pre></div>
+<p><code>(add-function :before-until <var>funvar</var>
+<var>function</var>)</code>は<code>run-hook-with-args-until-success</code>を通じて<var>hookvar</var>が実行されたときの<code>(add-hook
+'<var>hookvar</var> <var>function</var>)</code>のような1関数のフックと同等。
+</p>
+</dd>
+<dt><code>:after-while</code></dt>
+<dd><p>古い関数が非<code>nil</code>をリターンした場合だけ、古い関数の後に<var>function</var>を呼び出す。関数は両方とも同じ引数を受け取り、2つの関数の結合のリターン値は<var>function</var>のリターン値である。より正確に言うと2つの関数の結合は以下のように振る舞う:
+</p><div class="example">
+<pre class="example">(lambda (&amp;rest r) (and (apply <var>oldfun</var> r) (apply <var>function</var> r)))
+</pre></div>
+<p><code>(add-function :after-while <var>funvar</var>
+<var>function</var>)</code>は<code>run-hook-with-args-until-failure</code>を通じて<var>hookvar</var>が実行されたときの<code>(add-hook
+'<var>hookvar</var> <var>function</var> 'append)</code>のような1関数のフックと同等。
+</p>
+</dd>
+<dt><code>:after-until</code></dt>
+<dd><p>古い関数が<code>nil</code>をリターンした場合だけ、古い関数の後に<var>function</var>を呼び出す。より正確に言うと2つの関数の結合は以下のように振る舞う:
+</p><div class="example">
+<pre class="example">(lambda (&amp;rest r) (or  (apply <var>oldfun</var> r) (apply <var>function</var> r)))
+</pre></div>
+<p><code>(add-function :after-until <var>funvar</var>
+<var>function</var>)</code>は<code>run-hook-with-args-until-success</code>を通じて<var>hookvar</var>が実行されたときの<code>(add-hook
+'<var>hookvar</var> <var>function</var> 'append)</code>のような1関数のフックと同等。
+</p>
+</dd>
+<dt><code>:filter-args</code></dt>
+<dd><p>最初に<var>function</var>を呼び出し、その結果(リスト)を新たな引数として古い関数に渡す。より正確に言うと2つの関数の結合は以下のように振る舞う:
+</p><div class="example">
+<pre class="example">(lambda (&amp;rest r) (apply <var>oldfun</var> (funcall <var>function</var> r)))
+</pre></div>
+
+</dd>
+<dt><code>:filter-return</code></dt>
+<dd><p>最初に古い関数を呼び出し、その結果を<var>function</var>に渡す。より正確に言うと2つの関数の結合は以下のように振る舞う:
+</p><div class="example">
+<pre class="example">(lambda (&amp;rest r) (funcall <var>function</var> (apply <var>oldfun</var> r)))
+</pre></div>
+</dd>
+</dl>
+
+
+
+
+
+</body>
+</html>

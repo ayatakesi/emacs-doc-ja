@@ -1,0 +1,156 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Unique File Names (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Unique File Names (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Unique File Names (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="File-Names.html" rel="up" title="File Names">
+<link href="File-Name-Completion.html" rel="next" title="File Name Completion">
+<link href="File-Name-Expansion.html" rel="prev" title="File Name Expansion">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Unique-File-Names"></span><div class="header">
+<p>
+Next: <a href="File-Name-Completion.html" accesskey="n" rel="next">File Name Completion</a>, Previous: <a href="File-Name-Expansion.html" accesskey="p" rel="prev">File Name Expansion</a>, Up: <a href="File-Names.html" accesskey="u" rel="up">File Names</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="YiYi-nahuairuMing-noSheng-Cheng-"></span><h4 class="subsection">25.9.5 一意なファイル名の生成</h4>
+<span id="index-unique-file-names"></span>
+<span id="index-temporary-files"></span>
+
+<p>一時ファイルに書き込む必要があるプログラムがいくつかあります。以下は、そのようなファイルを構築する便利な方法です:
+</p>
+<div class="example">
+<pre class="example">(make-temp-file <var>name-of-application</var>)
+</pre></div>
+
+<p><code>make-temp-file</code>の役目は、2人の異なるユーザーやジョブが完全に一致する名前のファイルの使用を防ぐことです。
+</p>
+<dl>
+<dt id="index-make_002dtemp_002dfile">Function: <strong>make-temp-file</strong> <em>prefix &amp;optional dir-flag suffix text</em></dt>
+<dd><p>この関数は一時ファイルを作成して、その名前をリターンする。EmacsはEmacsの各ジョブごとに異なるランダムないくつかの文字を<var>prefix</var>に追加することにより一時ファイルの名前を作成する。結果として文字列として<var>text</var>が与えられた場合にはそれを含むファイル、それ以外は空ファイルが新たに作成されることが保障される。MS-DOSでは、8+3のファイル名制限に適合するように、文字列<var>string</var>が切り詰められる可能性がある。<var>prefix</var>が相対ファイル名なら<code>temporary-file-directory</code>にたいして展開される。
+</p>
+<div class="example">
+<pre class="example">(make-temp-file &quot;foo&quot;)
+     &rArr; &quot;/tmp/foo232J6v&quot;
+</pre></div>
+
+<p><code>make-temp-file</code>がリターンした際には、一時ファイルは空で作成される。この時点でそのファイルに意図するコンテンツを書き込むこと。
+</p>
+<p><var>dir-flag</var>が<code>nil</code>なら、<code>make-temp-file</code>は空のファイルのかわりに空のディレクトリーを作成する。これはディレクトリー名ではなく、ディレクトリーのファイル名をリターンする。<a href="Directory-Names.html">Directory Names</a>を参照のこと。
+</p>
+<p><var>suffix</var>が非<code>nil</code>なら、<code>make-temp-file</code>はそれをファイル名の最後に追加する。
+</p>
+<p><var>text</var>が文字列なら<code>make-temp-file</code>はそれをファイルに挿入する。
+</p>
+<p>同じEmacs内で実行される異なるライブラリー間での競合を防ぐために、<code>make-temp-file</code>を使用する各Lispプログラムがプログラム自身の<var>prefix</var>を使用すること。<var>prefix</var>の最後に追加される数字は、異なるEmacsジョブ内で実行される同じアプリケーションを区別する。追加される文字により、同一のEmacsジョブ内でも多数の名前を区別することが可能になる。
+</p></dd></dl>
+
+<p>一時ファイル用のデフォルトディレクトリーは変数<code>temporary-file-directory</code>により制御されます。この変数によりすべての一時ファイルにたいして、ユーザーがディレクトリーを指定する一貫した方法が与えられます。<code>small-temporary-file-directory</code>が非<code>nil</code>なら、かわりにそれを使うプログラムもいくつかあります。これを使う場合には、<code>make-temp-file</code>を呼び出す前に正しいディレクトリーにたいしてプレフィックスを展開するべきです。
+</p>
+<dl>
+<dt id="index-temporary_002dfile_002ddirectory-1">User Option: <strong>temporary-file-directory</strong></dt>
+<dd><span id="index-TMPDIR-environment-variable"></span>
+<span id="index-TMP-environment-variable"></span>
+<span id="index-TEMP-environment-variable"></span>
+<p>この変数は一時ファイル作成用のディレクトリー名を指定する。値はディレクトリー名であるべきだが、もし値がディレクトリーのファイル名(<a href="Directory-Names.html">Directory Names</a>を参照)ならば、Lispプログラムがかわりに対処すればよい。<code>expand-file-name</code>の2つ目の引数としてその値を使用するのは、それを達成するよい方法である。
+</p>
+<p>デフォルト値はオペレーティングシステムにたいして適切な方法により決定される。これは環境変数<code>TMPDIR</code>、<code>TMP</code>、<code>TEMP</code>にもとづく値で、これらの変数が定義されていなければシステム依存の名前にフォールバックする。
+</p>
+<p>一時ファイルの作成に<code>make-temp-file</code>を使用しない場合でも、一時ファイルを置くディレクトリーを判断するために依然としてこの変数を使用するべきである。しかし一時ファイルが小さくなることを求める場合には、<code>small-temporary-file-directory</code>が非<code>nil</code>ならそれを使用すること。
+</p></dd></dl>
+
+<dl>
+<dt id="index-small_002dtemporary_002dfile_002ddirectory">User Option: <strong>small-temporary-file-directory</strong></dt>
+<dd><p>この変数はサイズが小さいと予想される特定の一時ファイル作成用のディレクトリー名を指定する。
+</p>
+<p>小さくなるかもしれない一時ファイルに書き込みたいなら、以下のようにディレクトリーを計算すること:
+</p>
+<div class="example">
+<pre class="example">(make-temp-file
+  (expand-file-name <var>prefix</var>
+                    (or small-temporary-file-directory
+                        temporary-file-directory)))
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-make_002dtemp_002dname">Function: <strong>make-temp-name</strong> <em>base-name</em></dt>
+<dd><p>この関数は一意なファイル名として使用できる文字列を生成する。この名前は<var>base-name</var>で始まり、それに各Emacsジョブごとに異なる複数のランダムな文字を追加したものである。これは<code>make-temp-file</code>と似ているが、(i)名前だけを作成してファイルは作成せず、(ii)<var>base-name</var>はマジックファイル名ではない絶対ファイル名であること、(iii)リターンされるファイル名がマジックファイル名なら既存のファイルかもしれない、という点が異なる(MS-DOSシステムでは8+3ファイル名制限に適合するように<var>base-name</var>が切り詰められる)。
+</p>
+<p><strong>警告:</strong> この関数を使用するべきではない。かわりに<code>make-temp-file</code>を使用すること!
+この関数は競合状態の影響を受けやすい。<code>make-temp-name</code>呼び出しと一時ファイル作成のタイムラグはセキュリティーホールとなり得る。
+</p></dd></dl>
+
+<p>リモートホストやマウントされたディレクトリーで一時ファイルの作成を要する場合があります。以下の2つの関数はそれをサポートします。
+</p>
+<span id="index-temporary-file-on-a-remote-host"></span>
+<dl>
+<dt id="index-make_002dnearby_002dtemp_002dfile">Function: <strong>make-nearby-temp-file</strong> <em>prefix &amp;optional dir-flag suffix</em></dt>
+<dd><p>この関数は<code>make-temp-file</code>と同様だができ得るかぎり<code>default-directory</code>に近接した一時ファイルを作成する点が異なる。<var>prefix</var>が相対ファイル名で<code>default-directory</code>がリモートファイル名かマウントされたファイルシステムに配置されていれば、一時ファイルは関数<code>temporary-file-directory</code>がリターンするディレクトリー内に作成される。それ以外なら関数<code>make-temp-file</code>を使用する。<var>prefix</var>、<var>dir-flag</var>、<var>suffix</var>の意味は<code>make-temp-file</code>の場合と同様。
+</p>
+<div class="example">
+<pre class="example">(let ((default-directory &quot;/ssh:remotehost:&quot;))
+  (make-nearby-temp-file &quot;foo&quot;))
+     &rArr; &quot;/ssh:remotehost:/tmp/foo232J6v&quot;
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-temporary_002dfile_002ddirectory">Function: <strong>temporary-file-directory</strong></dt>
+<dd><p><code>make-nearby-temp-file</code>を通じて一時ファイルを書き込むディレクトリー。<code>default-directory</code>がリモートの場合にはリモートホスト上の一時ファイル用のディレクトリー。そのようなディレクトリーが存在しない、または<code>default-directory</code>がマウントされるファイルシステム上に配置される場合(<code>mounted-file-systems</code>を参照)には、この関数は<code>default-directory</code>をリターンする。リモートでもマウントされたファイルシステムでもない<code>default-directory</code>では<code>temporary-file-directory</code>の値がリターンされる。
+</p></dd></dl>
+
+<p>一時ファイルのファイル名のローカル部分を抽出するためには<code>file-local-name</code>を使用してください(<a href="Magic-File-Names.html">Magic File Names</a>を参照)。
+</p>
+
+
+
+</body>
+</html>

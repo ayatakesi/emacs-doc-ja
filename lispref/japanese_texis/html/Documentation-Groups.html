@@ -1,0 +1,207 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Documentation Groups (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Documentation Groups (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Documentation Groups (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Documentation.html" rel="up" title="Documentation">
+<link href="Files.html" rel="next" title="Files">
+<link href="Help-Functions.html" rel="prev" title="Help Functions">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Documentation-Groups"></span><div class="header">
+<p>
+Previous: <a href="Help-Functions.html" accesskey="p" rel="prev">Help Functions</a>, Up: <a href="Documentation.html" accesskey="u" rel="up">Documentation</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Documentation-Groups-1"></span><h3 class="section">24.7 Documentation Groups</h3>
+<span id="index-documentation-groups"></span>
+<span id="index-groups-of-functions"></span>
+<span id="index-function-groups"></span>
+
+<p>Emacsは種々のグループにもとづいて関数をリストできます。たとえば<code>string-trim</code>や<code>mapconcat</code>などは&ldquo;string(文字列)&rdquo;の関数ですが、<kbd>M-x
+shortdoc-display-group RET string RET</kbd>によって文字列を操作する関数の概要を得ることができます。
+</p>
+<p>ドキュメンテーショングループは<code>define-short-documentation-group</code>マクロにより作成されます。
+</p>
+<dl>
+<dt id="index-define_002dshort_002ddocumentation_002dgroup">Macro: <strong>define-short-documentation-group</strong> <em>group &amp;rest functions</em></dt>
+<dd><p>関数グループとして<var>group</var>を定義して、それらの関数の使用に関する短いサマリーを提供する。オプション引数<var>functions</var>は要素が以下の形式であるようなリスト:
+</p>
+<div class="lisp">
+<pre class="lisp">(<var>func</var> <var>keyword</var> <var>val</var> &hellip;)
+</pre></div>
+
+<p>以下のキーワードが認識される:
+</p>
+<dl compact="compact">
+<dt><code>:eval</code></dt>
+<dd><p>値は評価時の副作用をもたないフォームであること。このフォームはドキュメント内で<code>prin1</code>でプリントして使用されることになる(<a href="Output-Functions.html">Output Functions</a>を参照)。しかしこのフォームが文字列ならそのまま挿入されてから、フォームを生成するために<code>read</code>される。いずれのケースでも、その後にフォームは評価されて結果が使用される。たとえば:
+</p>
+<div class="example">
+<pre class="example">:eval (concat &quot;foo&quot; &quot;bar&quot; &quot;zot&quot;)
+:eval &quot;(make-string 5 ?x)&quot;
+</pre></div>
+
+<p>は以下のようにプリントされる
+</p>
+<div class="example">
+<pre class="example">(concat &quot;foo&quot; &quot;bar&quot; &quot;zot&quot;)
+&rArr; &quot;foobarzot&quot;
+(make-string 5 ?x)
+&rArr; &quot;xxxxx&quot;
+</pre></div>
+
+<p>(Lispフォームと文字列の両方を受け付けるのは、特定のフォーム表現が望まれるいくつかのケースにおいてプリントのコントロールを可能にするのが理由。この例では&lsquo;<samp>?x</samp>&rsquo;が文字列に含まれていなければ&lsquo;<samp>120</samp>&rsquo;としてプリントされるだろう。)
+</p>
+</dd>
+<dt><code>:no-eval</code></dt>
+<dd>
+<p>これは<code>:eval</code>と似ているが、フォームを評価しない点が異なる。この場合では何らかの類の<code>:result</code>要素が含まれている必要がある。
+</p>
+<div class="example">
+<pre class="example">:no-eval (file-symlink-p &quot;/tmp/foo&quot;)
+:eg-result t
+</pre></div>
+
+</dd>
+<dt><code>:no-eval*</code></dt>
+<dd><p><code>:no-eval</code>と同様だが、常に&lsquo;<samp>[it depends]</samp>&rsquo;を結果として挿入する。
+</p>
+<div class="example">
+<pre class="example">:no-eval* (buffer-string)
+</pre></div>
+
+<p>は以下の結果になる:
+</p>
+<div class="example">
+<pre class="example">(buffer-string)
+&rarr; [it depends]
+</pre></div>
+
+</dd>
+<dt><code>:no-value</code></dt>
+<dd><p><code>:no-eval</code>と同様だが、対象となっている関数が明確に定義されたリターン値をもち、副作用のためだけに使用される際に用いられる。
+</p>
+</dd>
+<dt><code>:result</code></dt>
+<dd><p>評価されないフォーム例の結果を出力するために使用される。
+</p>
+<div class="example">
+<pre class="example">:no-eval (setcar list 'c)
+:result c
+</pre></div>
+
+</dd>
+<dt><code>:eg-result</code></dt>
+<dd><p>評価されないフォーム例の結果例を出力するために使用される。
+</p>
+<div class="example">
+<pre class="example">:no-eval (looking-at &quot;f[0-9]&quot;)
+:eg-result t
+</pre></div>
+
+</dd>
+<dt><code>:result-string</code></dt>
+<dt><code>:eg-result-string</code></dt>
+<dd><p>これら2つはそれぞれ<code>:result</code>や<code>:eg-result</code>と同じだが、そのまま挿入される。これは結果が読めなかったり、特定の形式が要求される際に有用:
+</p>
+<div class="example">
+<pre class="example">:no-eval (find-file &quot;/tmp/foo&quot;)
+:eg-result-string &quot;#&lt;buffer foo&gt;&quot;
+:no-eval (default-file-modes)
+:eg-result-string &quot;#o755&quot;
+</pre></div>
+
+</dd>
+<dt><code>:no-manual</code></dt>
+<dd><p>その関数がマニュアルにドキュメントされていないことを示す。
+</p>
+</dd>
+<dt><code>:args</code></dt>
+<dd><p>デフォルトではその関数の実際の引数リストが表示される。<code>:args</code>が与えられたら、かわりにそれらが使用される。
+</p>
+<div class="example">
+<pre class="example">:args (regexp string)
+</pre></div>
+
+</dd>
+</dl>
+
+<p>以下に非常に短い例を示す:
+</p>
+<div class="lisp">
+<pre class="lisp">(define-short-documentation-group string
+  &quot;Creating Strings&quot;
+  (substring
+   :eval (substring &quot;foobar&quot; 0 3)
+   :eval (substring &quot;foobar&quot; 3))
+  (concat
+   :eval (concat &quot;foo&quot; &quot;bar&quot; &quot;zot&quot;)))
+</pre></div>
+
+<p>1つ目の引数は定義するグループ名、その後に任意個数の関数説明が続く。
+</p>
+</dd></dl>
+
+<p>関数は任意個数のドキュメンテーショングループに所属できます。
+</p>
+<p>このリストは関数説明に加えて、ドキュメントからセクションへの分割に使用される文字列要素ももつことができます。
+</p>
+<dl>
+<dt id="index-shortdoc_002dadd_002dfunction">Function: <strong>shortdoc-add-function</strong> <em>shortdoc-add-function group section elem</em></dt>
+<dd><p>Lispパッケージはこのコマンで関数をグループに追加できる。<var>elem</var>はそれぞれ上述したような関数説明であること。<var>group</var>は関数グループ、<var>section</var>は関数を挿入する関数グループのセクション。
+</p>
+<p><var>group</var>が存在しなければ作成する。<var>section</var>が存在しなければ、その関数グループの最後に追加される。
+</p></dd></dl>
+
+
+
+</body>
+</html>

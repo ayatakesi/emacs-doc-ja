@@ -1,0 +1,93 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Unloading (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Unloading (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Unloading (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Loading.html" rel="up" title="Loading">
+<link href="Hooks-for-Loading.html" rel="next" title="Hooks for Loading">
+<link href="Where-Defined.html" rel="prev" title="Where Defined">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Unloading"></span><div class="header">
+<p>
+Next: <a href="Hooks-for-Loading.html" accesskey="n" rel="next">Hooks for Loading</a>, Previous: <a href="Where-Defined.html" accesskey="p" rel="prev">Where Defined</a>, Up: <a href="Loading.html" accesskey="u" rel="up">Loading</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="anrodo"></span><h3 class="section">16.9 アンロード</h3>
+<span id="index-unloading-packages"></span>
+
+<p>他のLispオブジェクト用にメモリーを回収するために、ライブラリーによりロードされた関数や変数を破棄することができます。これを行うには関数<code>unload-feature</code>を使用します:
+</p>
+<dl>
+<dt id="index-unload_002dfeature">Command: <strong>unload-feature</strong> <em>feature &amp;optional force</em></dt>
+<dd><p>このコマンドはフィーチャ<var>feature</var>をプロバイドしていたライブラリーをアンロードする。そのライブラリー内の<code>defun</code>、<code>defalias</code>、<code>defsubst</code>、<code>defmacro</code>、<code>defconst</code>、<code>defvar</code>、<code>defcustom</code>によって定義されたすべての関数、マクロ、変数は未定義になる。その後に、それらのシンボルにたいして事前に関連付けられていたオートロードをリストアする(ロードはシンボルの<code>autoload</code>プロパティにこれらを保存している)。
+</p>
+<p>以前の定義をリストアする前に、特定のフックからそのライブラリーが定義する関数を取り除くために、<code>unload-feature</code>は<code>remove-hook</code>を実行する。これらのフックには名前が&lsquo;<samp>-hook</samp>&rsquo;(または廃止されたサフィックス&lsquo;<samp>-hooks</samp>&rsquo;)で終わる変数、加えて<code>unload-feature-special-hooks</code>、同様に<code>auto-mode-alist</code>にリストされた変数も含まれる。これは重要なフックがすでに定義されていない関数を参照をすることにより、Emacsの機能が停止することを防ぐためである。
+</p>
+<p>標準的なアンロードアクティビティでは、そのライブラリー内の関数のELPプロファイリング、そのライブラリーによりプロバイドされたフィーチャ、そのライブラリーで定義された変数に保持されたタイマーをアンドゥする。
+</p>
+<span id="index-feature_002dunload_002dfunction"></span>
+<p>これらの基準が機能不全を防ぐのに十分でなければ、ライブラリーは<code><var>feature</var>-unload-function</code>という名前の明示的なアンローダーを定義できる。そのシンボルが関数として定義されていたら、<code>unload-feature</code>は何かを行う前にまず引数なしでそれを呼び出す。これはライブラリーのアンロードのために適切なすべてのことを行うことができる。これが<code>nil</code>をリターンしたら、<code>unload-feature</code>は通常のアンロードアクションを処理する。それ以外ならアンロード処理は完了したとみなす。
+</p>
+<p><code>unload-feature</code>は通常は他のライブラリーが依存するライブラリーのアンロードを拒絶する(ライブラリー<var>b</var>にたいする<code>require</code>がライブラリー<var>a</var>に含まれるなら、<var>a</var>は<var>b</var>に依存している)。オプション引数<var>force</var>が非<code>nil</code>なら依存関係は無視されて、どのようなライブラリーもアンロードできる。
+</p></dd></dl>
+
+<p><code>unload-feature</code>関数はLispで記述されており、その動作は変数<code>load-history</code>にもとづきます。
+</p>
+<dl>
+<dt id="index-unload_002dfeature_002dspecial_002dhooks">Variable: <strong>unload-feature-special-hooks</strong></dt>
+<dd><p>この変数はライブラリー内で定義された関数を取り除くために、ライブラリーをアンロードする前にスキャンするフックのリストを保持する。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Remapping Commands (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Remapping Commands (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Remapping Commands (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Keymaps.html" rel="up" title="Keymaps">
+<link href="Translation-Keymaps.html" rel="next" title="Translation Keymaps">
+<link href="Changing-Key-Bindings.html" rel="prev" title="Changing Key Bindings">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Remapping-Commands"></span><div class="header">
+<p>
+Next: <a href="Translation-Keymaps.html" accesskey="n" rel="next">Translation Keymaps</a>, Previous: <a href="Changing-Key-Bindings.html" accesskey="p" rel="prev">Changing Key Bindings</a>, Up: <a href="Keymaps.html" accesskey="u" rel="up">Keymaps</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="komandonorimatupu"></span><h3 class="section">22.13 コマンドのリマップ</h3>
+<span id="index-remapping-commands"></span>
+
+<p>あるコマンドから他のコマンドへの<em>リマップ(remap)</em>には、特別な種類のキーバインディングが使用できます。この機能を使用するためには、ダミーイベント<code>remap</code>で始まり、その後にリマップしたいコマンド名が続くようなキーシーケンスにたいするキーバインディングを作成します。そしてそのバインディングにたいしては、新たな定義(通常はコマンド名だがキーバインディングにたいして有効な他の任意の定義を指定可能)を指定します。
+</p>
+<p>たとえばMyモードというモードが、<code>kill-line</code>のかわりに呼び出される<code>my-kill-line</code>という特別なコマンドを提供するとします。これを設定するには、このモードのキーマップに以下のようなリマッピングが含まれるはずです:
+</p>
+<div class="example">
+<pre class="example">(define-key my-mode-map [remap kill-line] 'my-kill-line)
+</pre></div>
+
+<p>その後は<code>my-mode-map</code>がアクティブなときは常に、ユーザーが<kbd>C-k</kbd>
+(<code>kill-line</code>にたいするデフォルトのグローバルキーシーケンス)をタイプするとEmacsはかわりに<code>my-kill-line</code>を実行するでしょう。
+</p>
+<p>リマップはアクティブなキーマップでのみ行なわれることに注意してください。たとえば<code>ctl-x-map</code>のようなプレフィクスキーマップ内にリマッピングを置いても、そのようなキーマップはそれ自体がアクティブでないので通常は効果がありません。それに加えてリマップは1レベルを通じてのみ機能します。以下の例では、
+</p>
+<div class="example">
+<pre class="example">(define-key my-mode-map [remap kill-line] 'my-kill-line)
+(define-key my-mode-map [remap my-kill-line] 'my-other-kill-line)
+</pre></div>
+
+<p>これは<code>kill-line</code>を<code>my-other-kill-line</code>にリマップ<em>しません</em>。かわりに通常のキーバインディングが<code>kill-line</code>を指定する場合には、それが<code>my-kill-line</code>にリマップされます。通常のバインディングが<code>my-kill-line</code>を指定すると、<code>my-other-kill-line</code>にリマップされます。
+</p>
+<p>コマンドのリマップをアンドゥするには、以下のようにそれを<code>nil</code>にリマップします：
+</p>
+<div class="example">
+<pre class="example">(define-key my-mode-map [remap kill-line] nil)
+</pre></div>
+
+<dl>
+<dt id="index-command_002dremapping">Function: <strong>command-remapping</strong> <em>command &amp;optional position keymaps</em></dt>
+<dd><p>この関数はカレントアクティブキーマップによって与えられる<var>command</var>(シンボル)にたいするリマッピングをリターンする。<var>command</var>がリマップされていない(これは普通の状況である)、あるいはシンボル以外なら、この関数は<code>nil</code>をリターンする。<code>position</code>は<code>key-binding</code>の場合と同様、使用するキーマップを決定するためにバッファー位置かイベント位置をオプションで指定できる。
+</p>
+<p>オプション引数<code>keymaps</code>が非<code>nil</code>なら、それは検索するキーマップのリストを指定する。この引数は<code>position</code>が非<code>nil</code>なら無視される。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

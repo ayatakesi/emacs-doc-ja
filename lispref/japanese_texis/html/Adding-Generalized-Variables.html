@@ -1,0 +1,157 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Adding Generalized Variables (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Adding Generalized Variables (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Adding Generalized Variables (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Generalized-Variables.html" rel="up" title="Generalized Variables">
+<link href="Functions.html" rel="next" title="Functions">
+<link href="Setting-Generalized-Variables.html" rel="prev" title="Setting Generalized Variables">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Adding-Generalized-Variables"></span><div class="header">
+<p>
+Previous: <a href="Setting-Generalized-Variables.html" accesskey="p" rel="prev">Setting Generalized Variables</a>, Up: <a href="Generalized-Variables.html" accesskey="u" rel="up">Generalized Variables</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Xin-tanasetfhuomu"></span><h4 class="subsection">12.17.2 新たな<code>setf</code>フォーム</h4>
+
+<p>このセクションでは、<code>setf</code>が操作できる新たなフォームの定義方法を説明します。
+</p>
+<dl>
+<dt id="index-gv_002ddefine_002dsimple_002dsetter">Macro: <strong>gv-define-simple-setter</strong> <em>name setter &amp;optional fix-return</em></dt>
+<dd><p>このマクロは単純なケースで<code>setf</code>メソッドを簡単に定義することを可能にする。<var>name</var>は関数、マクロ、スペシャルフォームの名前。<var>name</var>がそれを更新するための対応する<var>setter</var>関数をもつなら、このマクロを使用できる(たとえば<code>(gv-define-simple-setter
+car setcar)</code>)。
+</p>
+<p>このマクロは以下のフォームの呼び出しを
+</p>
+<div class="example">
+<pre class="example">(setf (<var>name</var> <var>args</var>&hellip;) <var>value</var>)
+</pre></div>
+
+<p>以下のように変換する。
+</p><div class="example">
+<pre class="example">(<var>setter</var> <var>args</var>&hellip; <var>value</var>)
+</pre></div>
+
+<p>このような<code>setf</code>の呼び出しは<var>value</var>をリターンするとドキュメントされている。これは<code>car</code>と<code>setcar</code>では問題はない。<code>setcar</code>はそれがセットする値をリターンするからである。<var>setter</var>関数が<var>value</var>をリターンしない場合には、<code>gv-define-simple-setter</code>の<var>fix-return</var>引数に、非<code>nil</code>値を使用すること。これは以下のようなものに展開される
+</p><div class="example">
+<pre class="example">(let ((temp <var>value</var>))
+  (<var>setter</var> <var>args</var>&hellip; temp)
+  temp)
+</pre></div>
+<p>これで正しい結果がリターンされることが保証される。
+</p></dd></dl>
+
+
+<dl>
+<dt id="index-gv_002ddefine_002dsetter">Macro: <strong>gv-define-setter</strong> <em>name arglist &amp;rest body</em></dt>
+<dd><p>このマクロは上述のフォームより複雑な<code>setf</code>展開を可能にする。たとえば呼び出すべきシンプルなsetter関数が存在しないときや、もしそれが存在してもplaceフォームとは異なる引数を要求するなら、このフォームを使う必要があるかもしれない。
+</p>
+<p>このマクロは最初に<code>setf</code>引数フォーム<code>(<var>value</var>
+<var>args</var>&hellip;)</code>を<var>arglist</var>にバインドして、その後<var>body</var>を実行することによって、フォーム<code>(setf
+(<var>name</var> <var>args</var>&hellip;)
+<var>value</var>)</code>を展開する。<var>body</var>は割り当てを行うLispフォームをリターンして、最終的にはセットされた値をリターンすること。以下はこのマクロの使用例:
+</p>
+<div class="example">
+<pre class="example">(gv-define-setter caar (val x) `(setcar (car ,x) ,val))
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-gv_002ddefine_002dexpander">Macro: <strong>gv-define-expander</strong> <em>name handler</em></dt>
+<dd><p>展開をより詳細に制御するために<code>gv-define-expander</code>マクロが使用できる。たとえばセット可能な<code>substring</code>は以下の方法で実装できる:
+</p>
+<div class="example">
+<pre class="example">(gv-define-expander substring
+  (lambda (do place from &amp;optional to)
+    (gv-letplace (getter setter) place
+      (macroexp-let2* nil ((start from) (end to))
+        (funcall do `(substring ,getter ,start ,end)
+                 (lambda (v)
+                   (macroexp-let2 nil v v
+                     `(progn
+                        ,(funcall setter `(cl--set-substring
+                                           ,getter ,start ,end ,v))
+                        ,v))))))))
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-gv_002dletplace">Macro: <strong>gv-letplace</strong> <em>(getter setter) place &amp;rest body</em></dt>
+<dd><p>マクロ<code>gv-letplace</code>は<code>setf</code>のような処理を行うマクロを定義するのに有用。たとえばCommon
+Lispの<code>incf</code>マクロは以下の方法で実装できる:
+</p>
+<div class="example">
+<pre class="example">(defmacro incf (place &amp;optional n)
+  (gv-letplace (getter setter) place
+    (macroexp-let2 nil v (or n 1)
+      (funcall setter `(+ ,v ,getter)))))
+</pre></div>
+
+<p><var>getter</var>は<var>place</var>の値をリターンするコピー可能な式にバインドされる。<var>setter</var>は式<var>v</var>を受け取り、<var>place</var>に<var>v</var>をセットする新たな式をリターンする関数にセットされる。<var>body</var>は<var>getter</var>と<var>setter</var>を介して<var>place</var>を操作するEmacs
+Lisp式をリターンすること。
+</p></dd></dl>
+
+<p>詳細は<samp>gv.el</samp>のソースファイルを参照。
+</p>
+<span id="index-CL-note_002d_002d_002dno-setf-functions"></span>
+<blockquote>
+<p><b>Common Lispに関する注意:</b> Common
+Lispは関数としての<code>setf</code>、すなわち関数名がシンボルではなくリスト<code>(setf
+<var>name</var>)</code>であるような<code>setf</code>関数の挙動を指定するために別の方法を定義する。たとえば<code>(defun (setf
+foo)
+&hellip;)</code>は、<code>setf</code>が<code>foo</code>に適用されるときに使用される関数を定義する。Emacsはこれをサポートしない。適切な展開が定義されていないフォームに<code>setf</code>を使用するとコンパイル時エラーとなる。Common
+Lispでは後で関数<code>(setf <var>func</var>)</code>が定義されるのでエラーにならない。
+</p></blockquote>
+
+
+
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Making Backups (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Making Backups (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Making Backups (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Backup-Files.html" rel="up" title="Backup Files">
+<link href="Rename-or-Copy.html" rel="next" title="Rename or Copy">
+<link href="Backup-Files.html" rel="prev" title="Backup Files">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Making-Backups"></span><div class="header">
+<p>
+Next: <a href="Rename-or-Copy.html" accesskey="n" rel="next">Rename or Copy</a>, Up: <a href="Backup-Files.html" accesskey="u" rel="up">Backup Files</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="batukuatupuhuairunoZuo-Cheng-"></span><h4 class="subsection">26.1.1 バックアップファイルの作成</h4>
+<span id="index-making-backup-files"></span>
+
+<dl>
+<dt id="index-backup_002dbuffer">Function: <strong>backup-buffer</strong></dt>
+<dd><p>この関数は、もしそれが適切ならカレントバッファーにvisitされているファイルのバックアップを作成する。これは最初のバッファー保存を行う前に<code>save-buffer</code>により呼び出される。
+</p>
+<p>リネームによりバックアップが作成されると、リターン値は(<var>modes</var> <var>extra-alist</var>
+<var>backupname</var>)という形式のコンスセルになる。ここで<var>modes</var>は<code>file-modes</code>
+(<a href="Testing-Accessibility.html">Testing Accessibility</a>を参照)でリターンされるような元ファイルのモードビット、<var>extra-alist</var>は<code>file-extended-attributes</code>
+(<a href="Extended-Attributes.html">Extended Attributes</a>を参照)によりリターンされるような元ファイルの拡張属性を示すalist、そして<var>backupname</var>はバックアップの名前。
+</p>
+<p>他のすべての場合(コピーによりバックアップが作成された、またはバックアップが作成されなかった)には、この関数は<code>nil</code>をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-buffer_002dbacked_002dup">Variable: <strong>buffer-backed-up</strong></dt>
+<dd><p>このバッファーローカル変数は、そのバッファーのファイルがバッファーによりバックアップされたかどうかを明示する。非<code>nil</code>ならバックアップファイルは書き込み済み、それ以外なら(バックアップが有効なら)次回保存時にファイルはバックアップされる。この変数は永続的にローカルであり<code>kill-all-local-variables</code>はこれを変更しない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-make_002dbackup_002dfiles">User Option: <strong>make-backup-files</strong></dt>
+<dd><p>この変数はバックアップファイルを作成するかどうかを決定する。非<code>nil</code>なら、Emacsは初回保存時にすべてのファイルのバックアップを作成する
+&mdash; ただし<code>backup-inhibited</code>が<code>nil</code>の場合(以下参照)。
+</p>
+<p>以下の例はRmailバッファーだけで変数<code>make-backup-files</code>を変更して、それ以外では変更しない方法を示す。この変数を<code>nil</code>にセットすると、Emacsはそれらのファイルのバックアップ作成をストップするのでディスク容量の消費を節約するだろう(あなたはこのコードをinitファイルに配置したいと思うかもしれない)。
+</p>
+<div class="example">
+<pre class="example">(add-hook 'rmail-mode-hook
+          (lambda () (setq-local make-backup-files nil)))
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-backup_002denable_002dpredicate">Variable: <strong>backup-enable-predicate</strong></dt>
+<dd><p>この変数の値は、あるファイルがバックアップファイルをもつべきかどうかを決定するために、特定のタイミングで呼び出される関数ある。この関数は判断対象の絶対ファイル名という1つの引数を受け取る。この関数が<code>nil</code>をリターンすると、そのファイルにたいするバックアップは無効になる。それ以外なら、このセクション内の他の変数がバックアップ作成の是非と方法を指定する。
+</p>
+<span id="index-normal_002dbackup_002denable_002dpredicate"></span>
+<p>デフォルト値は<code>normal-backup-enable-predicate</code>で、これは<code>temporary-file-directory</code>と<code>small-temporary-file-directory</code>内のファイルをチェックする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-backup_002dinhibited">Variable: <strong>backup-inhibited</strong></dt>
+<dd><p>この変数が非<code>nil</code>ならバックアップは抑制される。これはvisitされているファイル名にたいする<code>backup-enable-predicate</code>のテスト結果を記録する。さらにvisitされているファイルにたいするバックアップ抑制にもとづいたその他の機構からも使用され得る。たとえばVCはバージョンコントロールシステムに管理されるファイルのバックアップを防ぐために、この変数を非<code>nil</code>にセットする。
+</p>
+<p>これは永続的にローカルなのでメジャーモード変更により値は失われない。メジャーモードはこの変数ではなく、かわりに<code>make-backup-files</code>をセットすること。
+</p></dd></dl>
+
+<dl>
+<dt id="index-backup_002ddirectory_002dalist">User Option: <strong>backup-directory-alist</strong></dt>
+<dd><p>この変数の値はファイル名パターンとバックアップディレクトリーのalist。各要素は以下の形式をもつ
+</p><div class="example">
+<pre class="example">(<var>regexp</var> . <var>directory</var>)
+</pre></div>
+
+<p>この場合には名前が<var>regexp</var>にマッチするファイルのバックアップが、<var>directory</var>内に作成されるだろう。<var>directory</var>には相対ディレクトリーか絶対ディレクトリーを指定できる。絶対ディレクトリーなら、マッチするすべてのファイルが同じディレクトリー内にバックアップされる。このディレクトリー内でのファイル名はクラッシュを避けるために、バックアップされるファイルの完全名のすべてのディレクトリー区切りが&lsquo;<samp>!</samp>&rsquo;に変更される。結果の名前を切り詰めるファイルシステムでは、これは正しく機能しないだろう。
+</p>
+<p>すべてのバックアップが単一のディレクトリーで行われる一般的なケースでは、alistは&lsquo;<samp>&quot;.&quot;</samp>&rsquo;と適切なディレクトリーからなるペアーという単一の要素を含むこと。
+</p>
+<p>この変数が<code>nil</code>(デフォルト)、またはファイル名のマッチに失敗するとバックアップは元のファイルのディレクトリーに作成される。
+</p>
+<p>長いファイル名がないMS-DOSファイルシステムでは、この変数は常に無視される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-make_002dbackup_002dfile_002dname_002dfunction">User Option: <strong>make-backup-file-name-function</strong></dt>
+<dd><p>この変数の値はバックアップファイル名を作成する関数。関数<code>make-backup-file-name</code>はこれを呼び出す。<a href="Backup-Names.html">Naming Backup Files</a>を参照のこと。
+</p>
+<p>特定のファイルにたいして特別なことを行うために、これをバッファーローカルにすることもできる。変更する場合には、<code>backup-file-name-p</code>と<code>file-name-sans-versions</code>を変更する必要もあるかもしれない。
+</p></dd></dl>
+
+
+
+
+
+</body>
+</html>

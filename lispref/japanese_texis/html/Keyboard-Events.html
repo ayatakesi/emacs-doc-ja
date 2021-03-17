@@ -1,0 +1,134 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Keyboard Events (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Keyboard Events (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Keyboard Events (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Input-Events.html" rel="up" title="Input Events">
+<link href="Function-Keys.html" rel="next" title="Function Keys">
+<link href="Input-Events.html" rel="prev" title="Input Events">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Keyboard-Events"></span><div class="header">
+<p>
+Next: <a href="Function-Keys.html" accesskey="n" rel="next">Function Keys</a>, Up: <a href="Input-Events.html" accesskey="u" rel="up">Input Events</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="kibodoibento"></span><h4 class="subsection">21.7.1 キーボードイベント</h4>
+<span id="index-keyboard-events"></span>
+
+<span id="index-character-event"></span>
+<p>キーボードから取得できる入力には2つの種類があります。それは通常のキーとファンクションキーです。通常のキーは文字に対応しており(修飾されているかもしれない)、それらが生成するイベントはLisp内では文字で表現されます。文字イベントのイベント型は文字自身(整数)であり、何らかの修飾ビットがセットされているかもしれません。<a href="Classifying-Events.html">Classifying Events</a>を参照してください。
+</p>
+<span id="index-modifier-bits-_0028of-input-character_0029"></span>
+<span id="index-basic-code-_0028of-input-character_0029"></span>
+<p>入力文字イベントは0から524287までの<em>基本コード(basic code)</em>に加えて、以下の<em>修飾ビット(modifier
+bits)</em>の一部、またはすべてによって構成されます:
+</p>
+<dl compact="compact">
+<dt>meta</dt>
+<dd><p>文字イベントコードのビット
+2**27
+はメタキーが押下された状態で文字がタイプされたことを示す。
+</p>
+</dd>
+<dt>control</dt>
+<dd><p>文字イベントコードのビット
+2**26
+は非<acronym>ASCII</acronym>コントロール文字を示す。
+</p>
+<p><kbd>C-a</kbd>のような非<small>ASCII</small>コントロール文字は、自身が特別な基本コードをもつため、それらを示すためにEmacsは特別なビットを必要としない。つまり<kbd>C-a</kbd>のコードは単なる1である。
+</p>
+<p>しかし<kbd>%</kbd>のような非<acronym>ASCII</acronym>とコントロールを組み合わせてタイプすると取得される数値は<kbd>%</kbd>に
+2**26
+を加えた値となる(端末が非<acronym>ASCII</acronym>コントロール文字、すなわち27番目のビットがセットされた文字をサポートすると仮定する)。
+</p>
+</dd>
+<dt>shift</dt>
+<dd><p>文字イベントコードのビット
+2**25
+(26番目のビット)はシフトキーが押下された状態で<acronym>ASCII</acronym>コントロール文字がタイプされたことを示す。
+</p>
+<p>アルファベット文字にたいしては、基本コード自身が大文字か小文字かを示す。数字と句読点文字にたいしてシフトキーは、異なる基本コードをもつ完全に違う文字を選択する。可能な限り<acronym>ASCII</acronym>文字として保つために、Emacsはこれらの文字にたいしてビット
+2**25
+を使用しない。
+</p>
+<p>しかし<acronym>ASCII</acronym>は<kbd>C-A</kbd>と<kbd>C-a</kbd>を区別する方法を提供しないので、Emacsは<kbd>C-A</kbd>にたいしてビット
+2**25
+を使用し、<kbd>C-a</kbd>には使用しない。
+</p>
+</dd>
+<dt>hyper</dt>
+<dd><p>文字イベントコードのビット
+2**24
+はハイパーキーが押下された状態で文字がタイプされたことを示す。
+</p>
+</dd>
+<dt>super</dt>
+<dd><p>文字イベントコードのビット
+2**23
+はスーパーキーが押下された状態で文字がタイプされたことを示す。
+</p>
+</dd>
+<dt>alt</dt>
+<dd><p>文字イベントコードのビット
+2**22
+はアルトキーが押下された状態で文字がタイプされたことを示す(ほとんどのキーボードで<tt class="key">Alt</tt>とラベルされたキーは、実際にはアルトキーではなくメタキーとして扱われる)。
+</p></dd>
+</dl>
+
+<p>プログラム内での特定のビット数値の記述は避けるのが最善の方法です。文字の修飾ビットをテストするためには、関数<code>event-modifiers</code>
+(<a href="Classifying-Events.html">Classifying Events</a>を参照)を使用してください。キーバインディングを作成するときは、修飾ビットつきの文字にたいする読み取り構文を使用できます(&lsquo;<samp>\C-</samp>&rsquo;、&lsquo;<samp>\M-</samp>&rsquo;、...など)。<code>define-key</code>でのキーバインディング作成では、文字を指定するために<code>(control
+hyper ?x)</code>のようなリストを使用できます(<a href="Changing-Key-Bindings.html">Changing Key Bindings</a>を参照)。関数<code>event-convert-list</code>はそのようなリストをイベント型に変換します(<a href="Classifying-Events.html">Classifying Events</a>を参照)。
+</p>
+
+
+
+</body>
+</html>

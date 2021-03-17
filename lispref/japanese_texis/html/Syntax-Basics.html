@@ -1,0 +1,96 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Syntax Basics (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Syntax Basics (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Syntax Basics (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Syntax-Tables.html" rel="up" title="Syntax Tables">
+<link href="Syntax-Descriptors.html" rel="next" title="Syntax Descriptors">
+<link href="Syntax-Tables.html" rel="prev" title="Syntax Tables">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Syntax-Basics"></span><div class="header">
+<p>
+Next: <a href="Syntax-Descriptors.html" accesskey="n" rel="next">Syntax Descriptors</a>, Up: <a href="Syntax-Tables.html" accesskey="u" rel="up">Syntax Tables</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Gou-WenteburunoGai-Nian-"></span><h3 class="section">35.1 構文テーブルの概念</h3>
+
+<p>構文テーブルは、それぞれの文字の<em>構文クラス(syntax
+class)</em>やその他の構文的プロパティを照合するために使用できるデータ構造です。構文テーブルはテキストを横断したスキャンや移動のためにLispプログラムから使用されます。
+</p>
+<p>構文テーブルは内部的には文字テーブルです(<a href="Char_002dTables.html">Char-Tables</a>を参照)。インデックス<var>c</var>の要素はコード<var>c</var>の文字を記述します。値は該当する文字の構文を指定するコンスセルです。詳細は<a href="Syntax-Table-Internals.html">Syntax Table Internals</a>を参照してください。しかし構文テーブルの内容を変更や確認するために<code>aset</code>や<code>aref</code>を使用するかわりに、通常は高レベルな関数<code>char-syntax</code>や<code>modify-syntax-entry</code>を使用するべきです。これらについては<a href="Syntax-Table-Functions.html">Syntax Table Functions</a>で説明します。
+</p>
+<dl>
+<dt id="index-syntax_002dtable_002dp">Function: <strong>syntax-table-p</strong> <em>object</em></dt>
+<dd><p>この関数は<var>object</var>が構文テーブルなら<code>t</code>をリターンする。
+</p></dd></dl>
+
+<p>バッファーはそれぞれ自身のメジャーモードをもち、それぞれのメジャーモードはさまざまな文字の構文クラスにたいして独自の考えをもっています。たとえばLisモードでは文字&lsquo;<samp>;</samp>&rsquo;はコメントの開始ですが、Cモードでは命令文の終端になります。これらのバリエーションをサポートするために、構文テーブルはそれぞれのバッファーにたいしてローカルです。一般的に各メジャーモードは自身の構文テーブルをもち、そのモードを使用するすべてのバッファーにそれがインストールされます。たとえば変数<code>emacs-lisp-mode-syntax-table</code>はEmacsのLispモードが使用する構文テーブル、<code>c-mode-syntax-table</code>はCモードが使用する構文テーブルを保持します。あるメジャーモードの構文テーブルを変更すると、そのモードのバッファー、およびその後でそのモードに置かれるすべてのバッファーの構文も同様に変更されます。複数の類似するモードが1つの構文テーブルを共有することがときおりあります。構文テーブルをセットアップする方法の例は<a href="Example-Major-Modes.html">Example Major Modes</a>を参照してください。
+</p>
+<span id="index-standard-syntax-table"></span>
+<span id="index-inheritance_002c-syntax-table"></span>
+<p>別の構文テーブルから構文テールを<em>継承(inherit)</em>できます。これを<em>親構文テーブル(parent syntax
+table)</em>と呼びます。構文テーブルは、ある文字にたいして構文クラス&ldquo;inherit&rdquo;を与えることにより、構文クラスを未指定にしておくことができます。そのような文字は親構文テーブルが指定する構文クラスを取得します(<a href="Syntax-Class-Table.html">Syntax Class Table</a>を参照)。Emacsは<em>標準構文テーブル(standard syntax
+table)</em>を定義します。これはデフォルトとなる親構文テーブルであり、Fundamentalモードが使用する構文テーブルでもあります。
+</p>
+<dl>
+<dt id="index-standard_002dsyntax_002dtable">Function: <strong>standard-syntax-table</strong></dt>
+<dd><p>この関数は標準構文テーブルをリターンする。これはFundamentalモードが使用する構文テーブルである。
+</p></dd></dl>
+
+<p>Emacs
+Lispリーダーは変更不可な独自のビルトイン構文ルールをもつので、構文テーブルは使用しません(いくつかのLispシステムはリード構文を再定義する手段を提供するが、わたしたちは単純化のためこの機能をEmacs
+Lisp外部に留める決定をした)。
+</p>
+
+
+
+</body>
+</html>

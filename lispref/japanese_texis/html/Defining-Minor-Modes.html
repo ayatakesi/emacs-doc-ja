@@ -1,0 +1,222 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Defining Minor Modes (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Defining Minor Modes (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Defining Minor Modes (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Minor-Modes.html" rel="up" title="Minor Modes">
+<link href="Mode-Line-Format.html" rel="next" title="Mode Line Format">
+<link href="Keymaps-and-Minor-Modes.html" rel="prev" title="Keymaps and Minor Modes">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Defining-Minor-Modes"></span><div class="header">
+<p>
+Previous: <a href="Keymaps-and-Minor-Modes.html" accesskey="p" rel="prev">Keymaps and Minor Modes</a>, Up: <a href="Minor-Modes.html" accesskey="u" rel="up">Minor Modes</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="mainamodonoDing-Yi-"></span><h4 class="subsection">23.3.3 マイナーモードの定義</h4>
+
+<p>マクロ<code>define-minor-mode</code>は、自己完結した単一定義内にモードを実装する便利な方法を提供します。
+</p>
+<dl>
+<dt id="index-define_002dminor_002dmode">Macro: <strong>define-minor-mode</strong> <em>mode doc [init-value [lighter [keymap]]] keyword-args&hellip; body&hellip;</em></dt>
+<dd><p>このマクロは名前が<var>mode</var>(シンボル)の新たなマイナーモードを定義する。これはドキュメント文字列として<var>doc</var>をもつマイナーモードをトグルするために<var>mode</var>という名前のコマンドを定義する。
+</p>
+<p>トグルコマンドは1つのオプション(プレフィクス)引数を受け取る。引数なしでinteractiveに呼び出されると、そのモードのオンとオフをトグルする。正のプレフィクス引数はモードを有効にして、それ以外のプレフィクス引数はモードを無効にする。Lispから呼び出すと引数が<code>toggle</code>ならモードをトグルして、引数が省略か<code>nil</code>ならモードを有効にする。これはたとえばメジャーモードフック内でマイナーモードを有効にするのを簡便にする。<var>doc</var>が<code>nil</code>なら、このマクロは上記を記述したデフォルトのドキュメント文字列を提供する。
+</p>
+<p>デフォルトではこれはモードを有効にすると<code>t</code>、無効にすると<code>nil</code>にセットされる、<var>mode</var>という名前の変数も定義する。この変数は<var>init-value</var>に初期化される。通常(以下参照)はこの値は<code>nil</code>でなければならない。
+</p>
+<p>文字列<var>lighter</var>はモード有効時にモードライン内に何を表示するか指定する。これが<code>nil</code>ならこのモードはモードライン内に表示されない。
+</p>
+<p>オプション引数<var>keymap</var>はそのマイナーモードにたいするキーマップを指定する。非<code>nil</code>なら、それは(値がキーマップであるような)変数の名前かキーマップ、または以下の形式のalistであること
+</p>
+<div class="example">
+<pre class="example">(<var>key-sequence</var> . <var>definition</var>)
+</pre></div>
+
+<p>ここで<var>key-sequence</var>と<var>definition</var>は<code>define-key</code>に渡すのに適した引数である(<a href="Changing-Key-Bindings.html">Changing Key Bindings</a>を参照)。<var>keymap</var>はキーマップかalistであり、これは変数<code><var>mode</var>-map</code>も定義する。
+</p>
+<p>上記の3つの引数<var>init-value</var>、<var>lighter</var>、<var>keymap</var>は<var>keyword-args</var>が使用されたときは(部分的に)省略できる。<var>keyword-args</var>はキーワードとその後の対応する値により構成され、いくつかのキーワードは特別な意味をもつ:
+</p>
+<dl compact="compact">
+<dt><code>:group <var>group</var></code></dt>
+<dd><p>生成されるすべての<code>defcustom</code>フォームで使用されるカスタムグループ名。<var>mode</var>
+(後に&lsquo;<samp>-mode</samp>&rsquo;がある場合はそれを除く)にたいするデフォルトである。<strong>警告:</strong>
+そのグループを定義するため<code>defgroup</code>を正しく記述していなければ、このデフォルトグループ名を使用してはならない。<a href="Group-Definitions.html">Group Definitions</a>を参照のこと。
+</p>
+</dd>
+<dt><code>:global <var>global</var></code></dt>
+<dd><p>非<code>nil</code>ならそのマイナーモードがバッファーローカルでなくグローバルであることを指定する。デフォルトは<code>nil</code>。
+</p>
+<p>マイナーモードをグローバルにしたときの効果の1つは、<var>mode</var>変数がカスタマイズ変数になることである。Customizeインターフェイスを通じてこの変数をトグルするとモードがオンやオフになり、変数の値は将来のEmacsセッション用に保存できるようになる(<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/Saving-Customizations.html#Saving-Customizations">Saving
+Customizations</a> in <cite>The GNU Emacs
+Manual</cite>を参照)。保存された変数が機能するためにはEmacsが開始されるたびに<code>define-minor-mode</code>フォームが確実に評価されるようにすること。Emacsの一部ではないパッケージにたいしては、<code>:require</code>キーワードを指定するのがこれを行う一番簡単な方法である。
+</p>
+</dd>
+<dt><code>:init-value <var>init-value</var></code></dt>
+<dd><p>これは<var>init-value</var>引数を指定するのと等しい。
+</p>
+</dd>
+<dt><code>:lighter <var>lighter</var></code></dt>
+<dd><p>これは<var>lighter</var>引数を指定するのと等しい。
+</p>
+</dd>
+<dt><code>:keymap <var>keymap</var></code></dt>
+<dd><p>これは<var>keymap</var>引数を指定するのと等しい。
+</p>
+</dd>
+<dt><code>:variable <var>place</var></code></dt>
+<dd><p>これはそのモードの状態を格納するために使用されるデフォルトの変数<var>mode</var>を置き換える。これを指定すると<var>mode</var>変数は定義されず、すべての<var>init-value</var>引数は使用されない。<var>place</var>は異なる名前の変数(あなた自身が定義しなければならない)、または<code>setf</code>関数とともに使用され得るすべてのもの(<a href="Generalized-Variables.html">Generalized Variables</a>を参照)。<var>place</var>にはコンス<code>(<var>get</var>
+.
+<var>set</var>)</code>も指定できる。ここで<var>get</var>はカレント状態をリターンする式であり、<var>set</var>はそれをセットする1つの引数(状態)をとる関数である。
+</p>
+</dd>
+<dt><code>:after-hook <var>after-hook</var></code></dt>
+<dd><p>これはモードフック実行後に評価される単一のLispフォームを定義する。これをクォートしないこと。
+</p></dd>
+</dl>
+
+<p>その他のすべてのキーワード引数は変数<var>mode</var>にたいして生成された<code>defcustom</code>に直接渡される。
+</p>
+<p><var>mode</var>という名前のコマンドは最初に<var>mode</var>という名前の変数をセットする等の標準的な動作を処理した後に、もしあれば<var>body</var>フォームを実行する。それからモードフック変数<code><var>mode</var>-hook</code>を実行してから<code>:after-hook</code>内のフォームを評価して終了する。(フックの実行を含むこれらすべては、モードの有効化および無効化時に行われることに注意)。
+</p></dd></dl>
+
+<p><var>init-value</var>の値は<code>nil</code>でなければなりません。ただし、(1)Emacsによりそのモードが事前ロードされている、または(2)たとえユーザーが要求しなくともモードを有効にするためにロードするのが容易な場合を除きます。たとえば他の何かが有効でなければそのモードの効果がなく、常にそのタイミングでロードされるような場合には、デフォルトでそのモードを有効にすることに害はありません。しかしこの状況は通常はあり得ません。通常は<var>init-value</var>の値は<code>nil</code>でなければなりません。
+</p>
+<span id="index-easy_002dmmode_002ddefine_002dminor_002dmode"></span>
+<p><code>easy-mmode-define-minor-mode</code>という名前はこのマクロにたいするエイリアスです。
+</p>
+<p>以下は<code>define-minor-mode</code>の使い方の例です:
+</p>
+<div class="example">
+<pre class="example">(define-minor-mode hungry-mode
+  &quot;Hungryモードをトグルする
+引数なしでinteractiveに呼び出すとモードをトグルする
+正のプレフィクス引数でモードを有効に、その他のプレフィクス引数で
+無効にする。Lispから呼び出す場合、引数を省略、またはnilなら
+モードを有効に、`toggle'なら状態をトグルする
+
+Hungryモードが有効なときは、C-DELキーは、
+最後を除く先行するすべての空白を飲み込む
+コマンド \\[hungry-electric-delete] を参照&quot;
+ ;; 初期値
+ nil
+ ;; モードラインの標示
+ &quot; Hungry&quot;
+ ;; マイナーモードのバインディング
+ '(([C-backspace] . hungry-electric-delete)))
+</pre></div>
+
+<p>これは&ldquo;Hungry
+mode&rdquo;という名前のマイナーモード、モードをトグルする<code>hungry-mode</code>という名前のコマンド、モードが有効かどうかを示す<code>hungry-mode</code>という名前の変数、モードが有効なときそのキーマップを保持する<code>hungry-mode-map</code>という名前の変数を定義します。これは<kbd>C-<span class="key">DEL</span></kbd>にたいするキーバインディングでキーマップを初期化します。<var>body</var>フォームはありません
+&mdash; 多くのマイナーモードはそれを必要としません。
+</p>
+<p>以下はこれを記述する等価な方法です:
+</p>
+<div class="example">
+<pre class="example">(define-minor-mode hungry-mode
+  &quot;Hungryモードをトグルする
+...省略...&quot;
+ ;; 初期値
+ :init-value nil
+ ;; モードラインへのインジケーター
+ :lighter &quot; Hungry&quot;
+ ;; マイナーモードのバインディング
+ :keymap
+ '(([C-backspace] . hungry-electric-delete)
+   ([C-M-backspace]
+    . (lambda ()
+        (interactive)
+        (hungry-electric-delete t)))))
+</pre></div>
+
+<dl>
+<dt id="index-define_002dglobalized_002dminor_002dmode">Macro: <strong>define-globalized-minor-mode</strong> <em>global-mode mode turn-on keyword-args&hellip; body&hellip;</em></dt>
+<dd><p>これは<var>global-mode</var>という名前をグローバルにトグルする。これは<var>mode</var>という名前のバッファーローカルなマイナーモードをすべて(または一部、以下参照)のバッファーで有効か無効にするということを意味する。<var>body</var>フォームの実行も行う。あるバッファー内でそのマイナーモードをオンにするには関数<var>turn-on</var>を使用する。マイナーモードをオフにするには-1を引数として<var>mode</var>を呼び出す。
+</p>
+<p>モードをグローバルに有効にすると、それ以降ファイルをvisitすることによって作成されるバッファーやFundamental以外のメジャーモードを使用するバッファーにも影響がある。しかしFundamentalで作成される新たなバッファーは検知しない。
+</p>
+<p>これはCustomizeインターフェイス内でそのマイナーモードのオン/オフを切り替えるカスタムオプション<var>global-mode</var>
+(<a href="Customization.html">Customization</a>を参照)を定義する。<code>define-minor-mode</code>と同様に、たとえば<code>:require</code>を与える等によってEmacs開始時に毎回確実に<code>define-globalized-minor-mode</code>フォームが評価されるようにすること。
+</p>
+<p>グローバルマイナーモードのモード変数にたいしてカスタムグループを指定するには<var>keyword-args</var>内で<code>:group
+<var>group</var></code>を使用する。
+</p>
+<p>一般的にはグローバル化されたマイナーモードを定義するときは、ユーザーがバッファーごとにモードを使用(または無効に)できるように非グローバル版も定義すること。これにより特定のメジャーモード内でそのモードのフックを使用すればグローバルに有効化されたマイナーモードを無効にすることができるようになる。
+</p>
+<p><code>:predicate</code>キーワードが与えられた場合には、ユーザーオプションはグローバルモード変数と同様に呼び出されるが、終端が<code>-modes</code>のかわりに<code>-mode</code>のものが作成される。この変数はマイナーモードをアクティブにするべきメジャーモードが何かを指定する述語として使用される。有効な値として<code>t</code>
+(すべてのメジャーモードで使用)、<code>nil</code>
+(どのメジャーモードでも使用されない)、またはモード名要素(同様に<code>t</code>と<code>nil</code>)からなるリスト(あるいは<code>(not
+mode-name ...)</code>のような否定)。
+</p>
+<div class="example">
+<pre class="example">(c-mode (not mail-mode message-mode) text-mode)
+</pre></div>
+
+<p>これは&ldquo;<code>c-mode</code>の派生モードで使用、<code>message-mode</code>や<code>mail-mode</code>の派生モードでは使用せず、<code>text-mode</code>の派生モードでは使用，それ以外に使用するモードはない&rdquo;ことを意味する。
+</p>
+<div class="example">
+<pre class="example">((not c-mode) t)
+</pre></div>
+
+<p>&ldquo;<code>c-mode</code>の派生モードでは使用しないが、それ以外なら使用する&rdquo;ことを意味する。
+</p>
+<div class="example">
+<pre class="example">(text-mode)
+</pre></div>
+
+<p>これは&ldquo;<code>text-mode</code>の派生モードでは使用するが他では使用しない&rdquo;ことを意味する(終端に<code>nil</code>要素が暗に存在する)。
+</p></dd></dl>
+
+
+
+
+
+</body>
+</html>

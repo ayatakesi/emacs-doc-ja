@@ -1,0 +1,135 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Module Nonlocal (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Module Nonlocal (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Module Nonlocal (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Writing-Dynamic-Modules.html" rel="up" title="Writing Dynamic Modules">
+<link href="Object-Internals.html" rel="next" title="Object Internals">
+<link href="Module-Misc.html" rel="prev" title="Module Misc">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Module-Nonlocal"></span><div class="header">
+<p>
+Previous: <a href="Module-Misc.html" accesskey="p" rel="prev">Module Misc</a>, Up: <a href="Writing-Dynamic-Modules.html" accesskey="u" rel="up">Writing Dynamic Modules</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="moziyurudenoFei-rokaruTuo-Chu-"></span><h4 class="subsection">E.8.5 モジュールでの非ローカル脱出</h4>
+<span id="index-nonlocal-exits_002c-in-modules"></span>
+
+<p>Emacs Lispは非ローカル脱出(nonlocal
+exits)をサポートしており、これによりプログラムの制御はプログラムのあるポイントから別の離れたポイントに転送されます。<a href="Nonlocal-Exits.html">Nonlocal Exits</a>を参照してください。したがってモジュールから呼び出されたLisp関数は<code>signal</code>や<code>throw</code>を呼び出して非ローカルにexitするかもしれず、そのような非ローカル脱出をモジュール関数は正しくハンドルしなければなりません。このようなハンドリングはCプログラムがリソースを自動的に解放せず、このような場合には別のクリーンアップを行うために必要になります。モジュールコードは自身でこれを行わなければなりません。そのための機能をモジュール<acronym>API</acronym>は提供しており、このサブセクションではそれを説明します。これらは一般的にはEmacs
+25以降で利用可能です。これ以降のリリースで利用可能になったものについては、<acronym>API</acronym>に含まれるようになった最初のEmacsのバージョンを付記します。
+</p>
+<p>モジュール関数から呼び出されたLispコードがエラーをシグナルしたりthrowを行う際には、非ローカル脱出はtrapされて保留中のexitと関連するデータは環境内に格納されます。環境内で非ローカル脱出が保留中の際には、環境へのポインターで呼び出されたすべてのモジュール<acronym>API</acronym>関数は何も処理を行わずに即座にリターンします(関数<code>non_local_exit_check</code>、<code>non_local_exit_get</code>、<code>non_local_exit_clear</code>はこのルールの例外)。モジュール関数が何も行わずにEmacsにリターンすれば、保留中の非ローカル脱出にたいしてEmacsがエラーをシグナルしたり、対応する<code>catch</code>へのthrowという対処を行うでしょう。
+</p>
+<p>したがって特別なことな何も行わずに、何事もなかったかのようにコードの残りを実行するのが、モジュール関数での非ローカル脱出にけるもっともシンプルな&ldquo;ハンドリング&rdquo;です。しかしこれは2つのクラスの問題を引き起こすかもしれません:
+</p>
+<ul class="no-bullet">
+<li>- 期待する値を生成することなく<acronym>API</acronym>関数は即座にリターンするので、初期化や定義が行われていない値をモジュール関数が使用するかもしれない。
+
+</li><li>- リソースを解放する機会がないかもしれないのでモジュールがリソースをリークするかもしれない。
+</li></ul>
+
+<p>したがってモジュール関数は以下に説明する関数を使用して、非ローカル脱出のコンディションのチェックとリカバリングを行うことを推奨します。
+</p>
+<dl>
+<dt id="index-emacs_005ffuncall_005fexit">Function: <em>enum</em> <strong>emacs_funcall_exit</strong> <em>non_local_exit_check (emacs_env *<var>env</var>)</em></dt>
+<dd><p>この関数は<var>env</var>に格納された非ローカル脱出のコンディションをリターンする。可能な値は:
+</p>
+<span id="index-emacs_005ffuncall_005fexit_002c-enumeration"></span>
+<dl compact="compact">
+<dt><code>emacs_funcall_exit_return</code>
+<span id="index-emacs_005ffuncall_005fexit_005freturn"></span>
+</dt>
+<dd><p>最後の<acronym>API</acronym>関数は正常にexitした。
+</p></dd>
+<dt><code>emacs_funcall_exit_signal</code>
+<span id="index-emacs_005ffuncall_005fexit_005fsignal"></span>
+</dt>
+<dd><p>最後の<acronym>API</acronym>関数はエラーをシグナルした。
+</p></dd>
+<dt><code>emacs_funcall_exit_throw</code>
+<span id="index-emacs_005ffuncall_005fexit_005fthrow"></span>
+</dt>
+<dd><p>最後の<acronym>API</acronym>関数は<code>throw</code>を通じてexitした。
+</p></dd>
+</dl>
+</dd></dl>
+
+<dl>
+<dt id="index-emacs_005ffuncall_005fexit-1">Function: <em>enum</em> <strong>emacs_funcall_exit</strong> <em>non_local_exit_get (emacs_env *<var>env</var>, emacs_value *<var>symbol</var>, emacs_value *<var>data</var>)</em></dt>
+<dd><p>この関数は<code>non_local_exit_check</code>が行うように<var>env</var>に格納された非ローカル脱出の種別をリターンするが、もしあれば非ローカル脱出に関する完全な情報もリターンする。リターン値が<code>emacs_funcall_exit_signal</code>なら関数は<code>*<var>symbol</var></code>にエラーシンボル、<code>*<var>data</var></code>にエラーデータを格納する(<a href="Signaling-Errors.html">Signaling Errors</a>を参照)。リターン値が<code>emacs_funcall_exit_throw</code>なら関数は<code>*<var>symbol</var></code>に<code>catch</code>されたたタグシンボル、<code>*<var>data</var></code>に<code>throw</code>された値を格納する。リターン値が<code>emacs_funcall_exit_return</code>なら関数はこれらの引数が指すメンモリー内に何も格納しない。
+</p></dd></dl>
+
+<p>何らかのリソースの割り当て前や解放を要するリソースの割り当て後、あるいは失敗がそれ以上の処理が不可能もしくは実行不能を意味するような場合のように、非ローカル脱出が問題になるようならチェックするべきです。
+</p>
+<p>モジュール関数が保留中の非ローカル脱出を一度検知すれば、(必要なローカルクリーンアップの実施後に)Emacsにリターンしたり、非ローカル脱出からのリカバリーを試みることができます。以下の<acronym>API</acronym>関数はこれらのタスクの助けとなるでしょう。
+</p>
+<dl>
+<dt id="index-non_005flocal_005fexit_005fclear">Function: <em>void</em> <strong>non_local_exit_clear</strong> <em>(emacs_env *<var>env</var>)</em></dt>
+<dd><p>この関数は保留中の非ローカル脱出のコンディションと<var>env</var>由来のデータをクリアーする。これの呼び出し後にはモジュール<acronym>API</acronym>関数は通常どおり機能するだろう。モジュール関数が呼び出したLisp関数の非ローカル脱出からリカバーして継続可能な場合、あるいは以下の2つの関数のいずれか(非ローカル脱出が保留中の際に他の<acronym>API</acronym>関数に意図した動作を行わせたい場合にはそれらの<acronym>API</acronym>関数も)を呼び出す前にもこの関数を使用すること
+</p></dd></dl>
+
+<dl>
+<dt id="index-non_005flocal_005fexit_005fthrow">Function: <em>void</em> <strong>non_local_exit_throw</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>tag</var>, emacs_value <var>value</var>)</em></dt>
+<dd><p>この関数は<var>tag</var>で表されるLispの<code>catch</code>シンボルにリターン値として<var>value</var>を渡してthrowを行う。モジュール関数は一般的にはこの関数の呼び出し後は即座にリターンすること。この関数は呼び出された<acronym>API</acronym>関数やLisp関数のいずれかから非ローカル脱出を再throwしたい際の1つの手段である。
+</p></dd></dl>
+
+<dl>
+<dt id="index-non_005flocal_005fexit_005fsignal">Function: <em>void</em> <strong>non_local_exit_signal</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>symbol</var>, emacs_value <var>data</var>)</em></dt>
+<dd><p>この関数はエラーシンボル<var>symbol</var>で表されるエラーを、指定したエラーデータ<var>data</var>とともにシグナルする。モジュール関数はこの関数の呼び出し後は即座にリターンすること。この関数はたとえばモジュール関数からEmacsにエラーをシグナルする際に有用かもしれない。
+</p></dd></dl>
+
+
+
+
+
+</body>
+</html>

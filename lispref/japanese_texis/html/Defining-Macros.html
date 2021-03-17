@@ -1,0 +1,103 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Defining Macros (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Defining Macros (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Defining Macros (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Macros.html" rel="up" title="Macros">
+<link href="Problems-with-Macros.html" rel="next" title="Problems with Macros">
+<link href="Compiling-Macros.html" rel="prev" title="Compiling Macros">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Defining-Macros"></span><div class="header">
+<p>
+Next: <a href="Problems-with-Macros.html" accesskey="n" rel="next">Problems with Macros</a>, Previous: <a href="Compiling-Macros.html" accesskey="p" rel="prev">Compiling Macros</a>, Up: <a href="Macros.html" accesskey="u" rel="up">Macros</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="makuronoDing-Yi-"></span><h3 class="section">14.4 マクロの定義</h3>
+<span id="index-defining-macros"></span>
+<span id="index-macro_002c-how-to-define"></span>
+
+<p>Lispのマクロオブジェクトは、<small>CAR</small>が<code>macro</code>で<small>CDR</small>が関数であるようなリストです。マクロの展開形はマクロ呼び出しから、<em>評価されていない</em>引数のリストに、(<code>apply</code>を使って)関数を適用することにより機能します。
+</p>
+<p>無名関数のように無名Lispマクロを使用することも可能ですが、無名マクロを<code>mapcar</code>のような関数に渡すことに意味がないので、これが行われることはありません。実際のところすべてのLispマクロは名前をもち、ほとんど常に<code>defmacro</code>マクロで定義されます。
+</p>
+<dl>
+<dt id="index-defmacro">Macro: <strong>defmacro</strong> <em>name args [doc] [declare] body&hellip;</em></dt>
+<dd><p><code>defmacro</code>はシンボル<var>name</var>(クォートはしない)を、以下のようなマクロとして定義する:
+</p>
+<div class="example">
+<pre class="example">(macro lambda <var>args</var> . <var>body</var>)
+</pre></div>
+
+<p>(このリストの<small>CDR</small>はラムダ式であることに注意。)
+このマクロオブジェクトは<var>name</var>の関数セルに格納される。<var>args</var>の意味は関数の場合と同じで、キーワード<code>&amp;rest</code>や<code>&amp;optional</code>が使用されることもある(<a href="Argument-List.html">Argument List</a>を参照)。<var>name</var>と<var>args</var>はどちらもクォートされるべきではない。<code>defmacro</code>のリターン値は未定義。
+</p>
+<p><var>doc</var>が与えられたら、それはマクロのドキュメント文字列を指定する文字列であること。<var>declare</var>が与えられたら、それはマクロのメタデータを指定する<code>declare</code>フォームであること(<a href="Declare-Form.html">Declare Form</a>を参照)。マクロを対話的に呼び出すことはできないので、インタラクティブ宣言をもつことはできないことに注意。
+</p></dd></dl>
+
+<p>マクロが定数部と非定数部の混合体から構築される巨大なリスト構造を必要とする場合があります。これを簡単に行うためには&lsquo;<samp>`</samp>&rsquo;構文(<a href="Backquote.html">Backquote</a>を参照)を使用します。たとえば:
+</p>
+<div class="example">
+<div class="example">
+<pre class="example">(defmacro t-becomes-nil (variable)
+  `(if (eq ,variable t)
+       (setq ,variable nil)))
+</pre><pre class="example">
+
+</pre><pre class="example">(t-becomes-nil foo)
+     &equiv; (if (eq foo t) (setq foo nil))
+</pre></div>
+</div>
+
+
+
+
+</body>
+</html>

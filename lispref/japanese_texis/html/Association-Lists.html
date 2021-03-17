@@ -1,0 +1,333 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Association Lists (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Association Lists (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Association Lists (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Lists.html" rel="up" title="Lists">
+<link href="Property-Lists.html" rel="next" title="Property Lists">
+<link href="Sets-And-Lists.html" rel="prev" title="Sets And Lists">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Association-Lists"></span><div class="header">
+<p>
+Next: <a href="Property-Lists.html" accesskey="n" rel="next">Property Lists</a>, Previous: <a href="Sets-And-Lists.html" accesskey="p" rel="prev">Sets And Lists</a>, Up: <a href="Lists.html" accesskey="u" rel="up">Lists</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Lian-Xiang-risuto"></span><h3 class="section">5.8 連想リスト</h3>
+<span id="index-association-list"></span>
+<span id="index-alist"></span>
+
+<p><em>連想配列(association
+list、短くはalist)</em>は、キーと値のマッピングを記録します。これは<em>連想(associations)</em>と呼ばれるコンスセルのリストです。各コンスセルにおいて<small>CAR</small>は<em>キー(key)</em>で、<small>CDR</small>は<em>連想値(associated
+value)</em>となります。<a id="DOCF5" href="#FOOT5"><sup>5</sup></a>
+</p>
+<p>以下はalistの例です。キー<code>pine</code>は値<code>cones</code>、キー<code>oak</code>は<code>acorns</code>、キー<code>maple</code>は<code>seeds</code>に関連付けられます。
+</p>
+<div class="example">
+<pre class="example">((pine . cones)
+ (oak . acorns)
+ (maple . seeds))
+</pre></div>
+
+<p>alist内の値とキーには、任意のLispオブジェクトを指定できます。たとえば以下のalist0では、シンボル<code>a</code>は数字<code>1</code>、文字列<code>&quot;b&quot;</code>は<em>リスト</em><code>(2
+3)</code>(alist要素の<small>CDR</small>)に関連付けられます。
+</p>
+<div class="example">
+<pre class="example">((a . 1) (&quot;b&quot; 2 3))
+</pre></div>
+
+<p>要素の<small>CDR</small>の<small>CAR</small>に連想値を格納するようにalistデザインするほうがよい場合があります。以下はそのようなalistです。
+</p>
+<div class="example">
+<pre class="example">((rose red) (lily white) (buttercup yellow))
+</pre></div>
+
+<p>この例では、<code>red</code>が<code>rose</code>に関連付けられる値だと考えます。この種のalistの利点は、<small>CDR</small>の<small>CDR</small>の中に他の関連する情報
+&mdash; 他のアイテムのリストでさえも &mdash;
+を格納することができることです。不利な点は、与えられた値を含む要素を見つけるために<code>rassq</code>(以下参照)を使用できないことです。これらを検討することが重要でない場合には、すべての与えられたalistにたいして一貫している限り、選択は好みの問題といえます。
+</p>
+<p>上記で示したのと同じalistは、要素の<small>CDR</small>に連想値をもつと考えることができます。この場合、<code>rose</code>に関連付けられる値はリスト<code>(red)</code>になるでしょう。
+</p>
+<p>連想リストは新しい連想値を簡単にリストの先頭に追加できるので、スタックに保持したいような情報を記録するのによく使用されます。連想リストから与えられたキーにたいして連想値を検索する場合、それが複数ある場合は、最初に見つかったものがreturnされます。
+</p>
+<p>Emacs
+Lispでは、連想リストがコンスセルでなくても、それは<em>エラーではありません</em>。alist検索関数は、単にそのような要素を無視します。多くの他のバージョンのLispでは、このような場合はエラーをシグナルします。
+</p>
+<p>いくつかの観点において、プロパティーリストは連想リストと似ていることに注意してください。それぞれのキーが一度だけ出現するような場合、プロパティーリストは連想リストと同様に振る舞います。プロパティーリストと連想リストの比較については、<a href="Property-Lists.html">Property Lists</a>を参照してください。
+</p>
+<dl>
+<dt id="index-assoc">Function: <strong>assoc</strong> <em>key alist &amp;optional testfn</em></dt>
+<dd><p>この関数はalist要素にたいして非<code>nil</code>なら<var>testfn</var>、それ以外ならを使用して、<var>alist</var>内から<var>key</var>をもつ最初の連想をリターンする。<small>CAR</small>が<var>key</var>と<code>equal</code>であるような連想値が<var>alist</var>になければ、この関数は<code>nil</code>をリターンする。たとえば:
+</p>
+<div class="example">
+<pre class="example">(setq trees '((pine . cones) (oak . acorns) (maple . seeds)))
+     &rArr; ((pine . cones) (oak . acorns) (maple . seeds))
+(assoc 'oak trees)
+     &rArr; (oak . acorns)
+(cdr (assoc 'oak trees))
+     &rArr; acorns
+(assoc 'birch trees)
+     &rArr; nil
+</pre></div>
+
+<p>以下はキーと値がシンボルでない場合の例である:
+</p>
+<div class="example">
+<pre class="example">(setq needles-per-cluster
+      '((2 &quot;Austrian Pine&quot; &quot;Red Pine&quot;)
+        (3 &quot;Pitch Pine&quot;)
+        (5 &quot;White Pine&quot;)))
+
+(cdr (assoc 3 needles-per-cluster))
+     &rArr; (&quot;Pitch Pine&quot;)
+(cdr (assoc 2 needles-per-cluster))
+     &rArr; (&quot;Austrian Pine&quot; &quot;Red Pine&quot;)
+</pre></div>
+</dd></dl>
+
+<p>関数<code>assoc-string</code>は<code>assoc</code>と似ていますが、文字列間の特定の違いを無視する点が異なります。<a href="Text-Comparison.html">Text Comparison</a>を参照してください。
+</p>
+<dl>
+<dt id="index-rassoc">Function: <strong>rassoc</strong> <em>value alist</em></dt>
+<dd><p>この関数は<var>alist</var>の中から値<var>value</var>をもつ最初の連想をリターンする。<small>CDR</small>が<var>value</var>と<code>equal</code>であるような連想値が<var>alist</var>になければ、この関数は<code>nil</code>をリターンする。
+</p>
+<p><code>rassoc</code>は<code>assoc</code>と似てイルが、<small>CAR</small>ではなく<var>alist</var>の連想値の<small>CDR</small>を比較する。この関数は与えられた値に対応するキーを探す、<code>assoc</code>の逆バージョンと考えることができよう。
+</p></dd></dl>
+
+<dl>
+<dt id="index-assq">Function: <strong>assq</strong> <em>key alist</em></dt>
+<dd><p>この関数は<var>alist</var>から<var>key</var>をもつ最初の連想値をリターンする点は<code>assoc</code>と同様だが、比較に<code>eq</code>を使用する点が異なる。<small>CAR</small>が<var>key</var>と<code>eq</code>であるような連想値が<var>alist</var>内に存在しなければ<code>assq</code>は<code>nil</code>をリターンする。<code>eq</code>は<code>equal</code>より高速であり、ほとんどのalistはキーにシンボルを使用するので、この関数は<code>assoc</code>より多用される。<a href="Equality-Predicates.html">Equality Predicates</a>を参照のこと。
+</p>
+<div class="example">
+<pre class="example">(setq trees '((pine . cones) (oak . acorns) (maple . seeds)))
+     &rArr; ((pine . cones) (oak . acorns) (maple . seeds))
+(assq 'pine trees)
+     &rArr; (pine . cones)
+</pre></div>
+
+<p>逆にキーがシンボルではないalistでは、通常は<code>assq</code>は有用ではない:
+</p>
+<div class="example">
+<pre class="example">(setq leaves
+      '((&quot;simple leaves&quot; . oak)
+        (&quot;compound leaves&quot; . horsechestnut)))
+
+(assq &quot;simple leaves&quot; leaves)
+     &rArr; <span class="roman">未定義; <code>nil</code>か<code>(&quot;simple leaves&quot; . oak)</code>かもしれない</span>
+(assoc &quot;simple leaves&quot; leaves)
+     &rArr; (&quot;simple leaves&quot; . oak)
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-alist_002dget">Function: <strong>alist-get</strong> <em>key alist &amp;optional default remove testfn</em></dt>
+<dd><p>この関数は<code>assq</code>と似ている。これは<var>alist</var>の要素の<var>key</var>を比較して最初の連想<code>(<var>key</var>&nbsp;.&nbsp;<var>value</var>)</code><!-- /@w -->を見つける。連想が見つからなければ、関数は<var>default</var>をリターンする。<var>alist</var>にたいする<var>key</var>の比較には<var>testfn</var>で指定された関数を使用する(デフォルトは<code>eq</code>)。
+</p>
+<p>これは<code>setf</code>での値の変更に使用できる汎変数(<a href="Generalized-Variables.html">Generalized Variables</a>を参照)。値の値へのセットにこれを使用する際にオプション引数<var>remove</var>が<code>nil</code>の場合は、新たな値が<var>default</var>と<code>eql</code>なら<var>alist</var>から<var>key</var>の連想を削除することを意味する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-rassq">Function: <strong>rassq</strong> <em>value alist</em></dt>
+<dd><p>この関数は、<var>alist</var>内から値<var>value</var>をもつ最初の連想値をリターンする。<var>alist</var>内に<small>CDR</small>が<var>value</var>と<code>eq</code>であるような連想値が存在しないなら<code>nil</code>をリターンする。
+</p>
+<p><code>rassq</code>は<code>assq</code>と似ていますが、<small>CAR</small>ではなく<var>alist</var>の各連想の<small>CDR</small>を比較します。この関数を、与えられた値に対応するキーを探す<code>assq</code>の逆バージョンと考えることができます。
+</p>
+<p>たとえば:
+</p>
+<div class="example">
+<pre class="example">(setq trees '((pine . cones) (oak . acorns) (maple . seeds)))
+
+(rassq 'acorns trees)
+     &rArr; (oak . acorns)
+(rassq 'spores trees)
+     &rArr; nil
+</pre></div>
+
+<p><code>rassq</code>は要素の<small>CDR</small>の<small>CAR</small>に保管された値の検索はできません:
+</p>
+<div class="example">
+<pre class="example">(setq colors '((rose red) (lily white) (buttercup yellow)))
+
+(rassq 'white colors)
+     &rArr; nil
+</pre></div>
+
+<p>この場合、連想<code>(lily
+white)</code>の<small>CDR</small>は<code>white</code>ではなくリスト<code>(white)</code>です。これは連想をドットペア表記で記述すると明確になります:
+</p>
+<div class="example">
+<pre class="example">(lily white) &equiv; (lily . (white))
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-assoc_002ddefault">Function: <strong>assoc-default</strong> <em>key alist &amp;optional test default</em></dt>
+<dd><p>この関数は、<var>key</var>にたいするマッチを<var>alist</var>から検索する。<var>alist</var>の各要素にたいして、この関数は<var>key</var>と要素(アトムの場合)、または要素の<small>CAR</small>(コンスの場合)を比較する。比較は<var>test</var>に2つの引数
+&mdash; 要素(か要素の<small>CAR</small>)と<var>key</var> &mdash;
+を与えて呼び出すことにより行なわれる。引数はこの順番で渡されるので、正規表現(<a href="Regexp-Search.html">Regexp Search</a>を参照)を含むalistでは、<code>string-match</code>を使用することにより有益な結果を得ることができる。<var>test</var>が省略または<code>nil</code>なら比較に<code>equal</code>が使用される。
+</p>
+<p>alistの要素がこの条件により<var>key</var>とマッチすると、<code>assoc-default</code>はその要素の値をリターンする。要素がコンスなら値は要素の<small>CDR</small>、それ以外ならリターン値は<var>default</var>となる。
+</p>
+<p><var>key</var>にマッチする要素がalistに存在しないければ、<code>assoc-default</code>は<code>nil</code>をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-copy_002dalist">Function: <strong>copy-alist</strong> <em>alist</em></dt>
+<dd><span id="index-copying-alists"></span>
+<p>この関数は深さのレベルが2の<var>alist</var>のコピーをリターンする。この関数は各連想の新しいコピーを作成するので、元のalistを変更せずに新しいalistを変更できる。
+</p>
+<div class="example">
+<pre class="example">(setq needles-per-cluster
+      '((2 . (&quot;Austrian Pine&quot; &quot;Red Pine&quot;))
+        (3 . (&quot;Pitch Pine&quot;))
+</pre><pre class="example">        (5 . (&quot;White Pine&quot;))))
+&rArr;
+((2 &quot;Austrian Pine&quot; &quot;Red Pine&quot;)
+ (3 &quot;Pitch Pine&quot;)
+ (5 &quot;White Pine&quot;))
+
+(setq copy (copy-alist needles-per-cluster))
+&rArr;
+((2 &quot;Austrian Pine&quot; &quot;Red Pine&quot;)
+ (3 &quot;Pitch Pine&quot;)
+ (5 &quot;White Pine&quot;))
+
+(eq needles-per-cluster copy)
+     &rArr; nil
+(equal needles-per-cluster copy)
+     &rArr; t
+(eq (car needles-per-cluster) (car copy))
+     &rArr; nil
+(cdr (car (cdr needles-per-cluster)))
+     &rArr; (&quot;Pitch Pine&quot;)
+</pre><pre class="example">(eq (cdr (car (cdr needles-per-cluster)))
+    (cdr (car (cdr copy))))
+     &rArr; t
+</pre></div>
+
+<p>以下の例は、どのようにして<code>copy-alist</code>が他に影響を与えずにコピーの連想を変更可能なのかを示す:
+</p>
+<div class="example">
+<pre class="example">(setcdr (assq 3 copy) '(&quot;Martian Vacuum Pine&quot;))
+(cdr (assq 3 needles-per-cluster))
+     &rArr; (&quot;Pitch Pine&quot;)
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-assq_002ddelete_002dall">Function: <strong>assq-delete-all</strong> <em>key alist</em></dt>
+<dd><p>この関数は、<code>delq</code>を使用してマッチする要素を1つずつ削除するときのように、<small>CAR</small>が<var>key</var>と<code>eq</code>であるようなすべての要素を<var>alist</var>から削除する。この関数は短くなったalistをリターンし、<var>alist</var>の元のリスト構造を変更することもよくある。正しい結果を得るために、<var>alist</var>に保存された値ではなく<code>assq-delete-all</code>のリターン値を使用すること。
+</p>
+<div class="example">
+<pre class="example">(setq alist (list '(foo 1) '(bar 2) '(foo 3) '(lose 4)))
+     &rArr; ((foo 1) (bar 2) (foo 3) (lose 4))
+(assq-delete-all 'foo alist)
+     &rArr; ((bar 2) (lose 4))
+alist
+     &rArr; ((foo 1) (bar 2) (lose 4))
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-assoc_002ddelete_002dall">Function: <strong>assoc-delete-all</strong> <em>key alist &amp;optional test</em></dt>
+<dd><p>この関数は<code>assq-delete-all</code>と同様だが、オプション引数<var>test</var> (
+<var>alist</var>内のキーを比較するための述語関数)を受け取る点が異なる。<var>test</var>が省略か<code>nil</code>ならデフォルトは<code>equal</code>。この関数は<code>assq-delete-all</code>のように、多くの場合は<var>alist</var>の元のリスト構造を変更する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-rassq_002ddelete_002dall">Function: <strong>rassq-delete-all</strong> <em>value alist</em></dt>
+<dd><p>この関数は、<var>alist</var>から<small>CDR</small>が<var>value</var>と<code>eq</code>であるようなすべての要素を削除する。この関数は短くなったリストをリターンし、<var>alist</var>の元のリスト構造を変更することもよくある。<code>rassq-delete-all</code>は<code>assq-delete-all</code>と似ているが、<small>CAR</small>ではなく<var>alist</var>の各連想の<small>CDR</small>を比較する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-let_002dalist">Macro: <strong>let-alist</strong> <em>alist body</em></dt>
+<dd><p>連想リスト<var>alist</var>のキーとして使用される先頭にドットを付したシンボルそれぞれにたいしてバインディングを作成する。これは同じ連想リスト内の複数のアイテムにアクセスする際に有用かもしれない。理解するためにもっともよいのは以下のシンプルな例だろう:
+</p>
+<div class="lisp">
+<pre class="lisp">(setq colors '((rose . red) (lily . white) (buttercup . yellow)))
+(let-alist colors
+  (if (eq .rose 'red)
+      .lily))
+=&gt; white
+</pre></div>
+
+<p><var>body</var>をコンパイル時に検査して、<var>body</var>内に出現する先頭文字として&lsquo;<samp>.</samp>&rsquo;を付したシンボルだけがバインドされる。キーの検索は<code>assq</code>、この<code>assq</code>のリターン値の<code>cdr</code>がそのバインディングにたいする値として割り当てられる。
+</p>
+<p>ネストされた連想リストをサポートする:
+</p>
+<div class="lisp">
+<pre class="lisp">(setq colors '((rose . red) (lily (belladonna . yellow) (brindisi . pink))))
+(let-alist colors
+  (if (eq .rose 'red)
+      .lily.belladonna))
+=&gt; yellow
+</pre></div>
+
+<p>互いに内部に<code>let-alist</code>をネストすることが可能だが、内側の<code>let-alist</code>は外側の<code>let-alist</code>がバインドする変数にはアクセスできない。
+</p></dd></dl>
+
+<div class="footnote">
+<hr>
+<h4 class="footnotes-heading">Footnotes</h4>
+
+<h5><a id="FOOT5" href="#DOCF5">(5)</a></h3>
+<p>ここでの&ldquo;キー(key)&rdquo;の使い方は、用語&ldquo;キーシーケンス(key
+sequence)&rdquo;とは関係ありません。キーはテーブルにあるアイテムを探すために使用される値という意味です。この場合、テーブルはalistでありalistはアイテムに関連付けられます。</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Property-Lists.html" accesskey="n" rel="next">Property Lists</a>, Previous: <a href="Sets-And-Lists.html" accesskey="p" rel="prev">Sets And Lists</a>, Up: <a href="Lists.html" accesskey="u" rel="up">Lists</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

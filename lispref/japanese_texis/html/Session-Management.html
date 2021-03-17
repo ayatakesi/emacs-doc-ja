@@ -1,0 +1,102 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Session Management (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Session Management (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Session Management (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="System-Interface.html" rel="up" title="System Interface">
+<link href="Desktop-Notifications.html" rel="next" title="Desktop Notifications">
+<link href="Batch-Mode.html" rel="prev" title="Batch Mode">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Session-Management"></span><div class="header">
+<p>
+Next: <a href="Desktop-Notifications.html" accesskey="n" rel="next">Desktop Notifications</a>, Previous: <a href="Batch-Mode.html" accesskey="p" rel="prev">Batch Mode</a>, Up: <a href="System-Interface.html" accesskey="u" rel="up">System Interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="setusiyonmaneziya"></span><h3 class="section">40.18 セッションマネージャー</h3>
+<span id="index-session-manager"></span>
+
+<p>Emacsはアプリケーションのサスペンドとリスタートに使用されるXセッション管理プロトコル(XSMP: X Session Management
+Protocol)をサポートしています。Xウィンドウシステムでは<em>セッションマネージャー(session
+manager)</em>と呼ばれるプログラムが実行中アプリケーション追跡の責を負います。Xサーバーのシャットダウン時にセッションマネージャーはアプリケーションに状態を保存するか尋ねて、それらが応答するまでシャットダウンを遅延します。アプリケーションがそのシャットダウンをキャンセルすることもできます。
+</p>
+<p>セッションマネージャーがサスペンドされたセッションをリスタートする際には、これらのアプリケーションにたいして保存された状態をリロードするように個別に指示します。これはリストアする保存済みセッションが何かを指定する特別なコマンドラインオプションを指定することにより行われます。これはEmacsでは&lsquo;<samp>--smid
+<var>session</var></samp>&rsquo;という引数です。
+</p>
+<dl>
+<dt id="index-emacs_002dsave_002dsession_002dfunctions">Variable: <strong>emacs-save-session-functions</strong></dt>
+<dd><span id="index-session-file"></span>
+<p>Emacsは<code>emacs-save-session-functions</code>と呼ばれるフックを介した状態の保存をサポートする。セッションマネージャーがウィンドウシステムのシャットダウンを告げた際にEmacsはこのフックを実行する。これらの関数はカレントバッファーを一時バッファーにセットして引数なしで呼び出される。それぞれの関数はバッファーにLispコードを追加するために<code>insert</code>を使用できる。最後にEmacsは<em>セッションファイル(session
+file)</em>と呼ばれるファイル内にそのバッファーを保存する。
+</p>
+<span id="index-emacs_002dsession_002drestore"></span>
+<p>その後でセッションマネージャーがEmacsを再開する際に、Emacsはセッションファイルを自動的にロードする(<a href="Loading.html">Loading</a>を参照)。これはスタートアップ中に呼び出される<code>emacs-session-restore</code>という名前の関数により処理される。<a href="Startup-Summary.html">Startup Summary</a>を参照のこと。
+</p>
+<p><code>emacs-save-session-functions</code>内の関数が非<code>nil</code>をリターンすると、Emacsはセッションマネージャーにシャットダウンのキャンセルを要求します。
+</p></dd></dl>
+
+<p>以下はセッションマネージャによりEmacsがリストアされる際に単に<samp>*scratch*</samp>にテキストを挿入する例です。
+</p>
+<div class="example">
+<pre class="example">(add-hook 'emacs-save-session-functions 'save-yourself-test)
+</pre><pre class="example">
+
+</pre><pre class="example">(defun save-yourself-test ()
+  (insert
+   (format &quot;%S&quot; '(with-current-buffer &quot;*scratch*&quot;
+                   (insert &quot;I am restored&quot;))))
+  nil)
+</pre></div>
+
+
+
+
+</body>
+</html>

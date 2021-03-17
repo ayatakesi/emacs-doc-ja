@@ -1,0 +1,159 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Displaying Messages (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Displaying Messages (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Displaying Messages (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="The-Echo-Area.html" rel="up" title="The Echo Area">
+<link href="Progress.html" rel="next" title="Progress">
+<link href="The-Echo-Area.html" rel="prev" title="The Echo Area">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Displaying-Messages"></span><div class="header">
+<p>
+Next: <a href="Progress.html" accesskey="n" rel="next">Progress</a>, Up: <a href="The-Echo-Area.html" accesskey="u" rel="up">The Echo Area</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="ekoeriahenometusezinoBiao-Shi"></span><h4 class="subsection">39.4.1 エコーエリアへのメッセージの表示</h4>
+<span id="index-display-message-in-echo-area"></span>
+
+<p>このセクションではエコーエリア内にメッセージを表示する標準的な関数を説明します。
+</p>
+<dl>
+<dt id="index-message">Function: <strong>message</strong> <em>format-string &amp;rest arguments</em></dt>
+<dd><p>この関数はエコーエリア内にメッセージを表示する。<code>format-message</code>関数(<a href="Formatting-Strings.html">Formatting Strings</a>を参照)の場合と同じように<var>format-string</var>はフォーマット文字列、<var>arguments</var>はそのフォーマット仕様にたいするオブジェクトである。フォーマットされた結果文字列はエコーエリア内に表示される。それに<code>face</code>テキストプロパティが含まれる場合には指定されたフェイスにより表示される(<a href="Faces.html">Faces</a>を参照)。この文字列は<samp>*Messages*</samp>バッファーにも追加されるがテキストプロパティは含まれない(<a href="Logging-Messages.html">Logging Messages</a>を参照)。
+</p>
+<p>フォーマット内のグレイヴアクセントとアポストロフィーは<tt>&quot;Missing `%s'&quot;</tt>から<tt>&quot;Missing
+‘foo’&quot;</tt>のように、通常は対応するcurved quoteとして結果内に変換される。この変換に影響を与えたり抑制する方法については<a href="Text-Quoting-Style.html">Text Quoting Style</a>を参照のこと。
+</p>
+<p>バッチモードでは後に改行が付加されたメッセージが標準エラーストリームにプリントされる。
+</p>
+<p><code>inhibit-message</code>が非<code>nil</code>のときはエコーエリアにはメッセージを何も表示せずに&lsquo;<samp>*Messages*</samp>&rsquo;へのロギングだけとなる。
+</p>
+<p><var>format-string</var>が<code>nil</code>か空文字列なら、<code>message</code>はエコーエリアをクリアーする。エコーエリアが自動的に拡張されていたら、これにより通常のサイズに復元される。ミニバッファーがアクティブなら、これによりスクリーン上に即座にミニバッファーのコンテンツが復元される。
+</p>
+<div class="example">
+<pre class="example">(message &quot;Reverting `%s'...&quot; (buffer-name))
+ -| Reverting ‘subr.el’...
+&rArr; &quot;Reverting ‘subr.el’...&quot;
+</pre><pre class="example">
+
+</pre><pre class="example">---------- Echo Area ----------
+Reverting ‘subr.el’...
+---------- Echo Area ----------
+</pre></div>
+
+<p>エコーエリアやポップバッファー内に自動的にメッセージを表示するには、そのサイズに応じて<code>display-message-or-buffer</code>
+(以下参照)を使用する。
+</p>
+<p><strong>警告:</strong> 逐語的なメッセージとして独自の文字列を使用したければ、単に<code>(message
+<var>string</var>)</code>と記述してはならない。<var>string</var>に&lsquo;<samp>%</samp>&rsquo;、&lsquo;<samp>`</samp>&rsquo;、&lsquo;<samp>'</samp>&rsquo;が含まれていると望まぬ結果に再フォーマットされるかもしれない。かわりに<code>(message
+&quot;%s&quot; <var>string</var>)</code>を使用すること。
+</p></dd></dl>
+
+<dl>
+<dt id="index-set_002dmessage_002dfunction">Variable: <strong>set-message-function</strong></dt>
+<dd><p>この変数が非<code>nil</code>なら、エコーエリア内に表示するためのメッセージテキストを単一の引数とする関数であること。その関数は<code>message</code>および関連する関数から呼び出されることになる。その関数が<code>nil</code>をリターンすると、通常どおりメッセージはエコーエリアに表示される。関数が文字列をリターンすると、その文字列が元メッセージのかわりにエコーエリアに表示される。その関数が他の非<code>nil</code>値をリターンした場合にはメッセージが処理済みであることを意味するので、<code>message</code>はエコーエリアに何も表示しない。その関数で表示されたメッセージのクリアーに使用可能な<code>clear-message-function</code>も参照のこと。
+</p>
+<p>デフォルト値はミニバッファーアクティブ時にミニバッファー終端にメッセージを表示する関数。しかしアクティブなミニバッファーに表示されるテキストの何らかの文字が<code>minibuffer-message</code>テキストプロパティ(<a href="Special-Properties.html">Special Properties</a>を参照)をもつ場合には、メッセージはそのプロパティをもつ最初の文字の前に表示される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-clear_002dmessage_002dfunction">Variable: <strong>clear-message-function</strong></dt>
+<dd><p>この変数が非<code>nil</code>の場合には、<code>message</code>および関連する関数は引数となるメッセージが<code>nil</code>か空文字列なら、それを引数なしで呼び出す。
+</p>
+<p>この関数は通常はエコーエリアメッセージの表示後、次の入力イベントの到着時に呼び出される。これは<code>set-message-function</code>により指定されたカウンターパートとなる関数が表示したメッセージのクリアーを期待される関数である。
+</p>
+<p>デフォルト値はアクティブなミニバッファーに表示されたメッセージをクリアーする関数。
+</p></dd></dl>
+
+<dl>
+<dt id="index-inhibit_002dmessage">Variable: <strong>inhibit-message</strong></dt>
+<dd><p>この変数が非<code>nil</code>なら、<code>message</code>および関連する関数はメッセージの表示にエコーエリアを使用しない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-with_002dtemp_002dmessage">Macro: <strong>with-temp-message</strong> <em>message &amp;rest body</em></dt>
+<dd><p>この構文は<var>body</var>実行の間にエコーエリア内にメッセージを一時的に表示する。これは<var>message</var>を表示して<var>body</var>を実行して、それからエコーエリアの前のコンテンツをリストアするとともにbodyの最後のフォームの値をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-message_002dor_002dbox">Function: <strong>message-or-box</strong> <em>format-string &amp;rest arguments</em></dt>
+<dd><p>この関数は<code>message</code>と同様にメッセージを表示するが、エコーエリアではなくダイアログボックスにメッセージを表示するかもしれない。この関数があるコマンド内からマウスを使用して呼び出されると
+&mdash; より正確には<code>last-nonmenu-event</code> (<a href="Command-Loop-Info.html">Command Loop Info</a>を参照)が<code>nil</code>かリストならメッセージの表示にダイアログボックスかポップアップメニュー、それ以外ならエコーエリアを使用する(これは<code>y-or-n-p</code>が同様の決定を行う際に使用する条件と同じ。<a href="Yes_002dor_002dNo-Queries.html">Yes-or-No Queries</a>を参照)。
+</p>
+<p>呼び出しの前後で<code>last-nonmenu-event</code>を適切な値にバインドすることによりエコーエリアでのマウスの使用を強制できる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-message_002dbox">Function: <strong>message-box</strong> <em>format-string &amp;rest arguments</em></dt>
+<dd><span id="message_002dbox"></span><p>この関数は<code>message</code>と同様にメッセージを表示するが、利用可能なら常にダイアログボックス(かポップアップメニュー)を使用する。端末がサポートしないためにダイアログボックスやポップアップメニューが使用できなければ、<code>message-box</code>は<code>message</code>と同様にエコーエリアを使用する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-display_002dmessage_002dor_002dbuffer">Function: <strong>display-message-or-buffer</strong> <em>message &amp;optional buffer-name action frame</em></dt>
+<dd><p>この関数はメッセージ<var>message</var>を表示する。<var>message</var>には文字列かバッファーを指定できる。これが<code>max-mini-window-height</code>で定義されるエコーエリアの最大高さより小さければ、<code>message</code>を使用してエコーエリアに表示される。それ以外ならメッセージを表示するために<code>display-buffer</code>はポップアップバッファーを使用する。
+</p>
+<p>エコーエリアに表示したメッセージ、またはポップアップバッファー使用時はその表示に使用したウィンドウをリターンする。
+</p>
+<p><var>message</var>が文字列ならオプション引数<var>buffer-name</var>はポップアップバッファー使用時にメッセージ表示に使用するバッファー名(デフォルトは<samp>*Message*</samp>)。<var>message</var>が文字列でエコーエリアに表示されていれば、いずれにせよコンテンツをバッファーに挿入するかどうかは指定されない。
+</p>
+<p>オプション引数<var>action</var>と<var>frame</var>は<code>display-buffer</code>の場合と同様に、バッファーが表示されている場合のみ使用される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-current_002dmessage">Function: <strong>current-message</strong></dt>
+<dd><p>この関数はエコーエリア内にカレントで表示されているメッセージ、またはそれが存在しなければ<code>nil</code>をリターンする。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

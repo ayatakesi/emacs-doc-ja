@@ -1,0 +1,104 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Watching Variables (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Watching Variables (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Watching Variables (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Variables.html" rel="up" title="Variables">
+<link href="Variable-Scoping.html" rel="next" title="Variable Scoping">
+<link href="Setting-Variables.html" rel="prev" title="Setting Variables">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Watching-Variables"></span><div class="header">
+<p>
+Next: <a href="Variable-Scoping.html" accesskey="n" rel="next">Variable Scoping</a>, Previous: <a href="Setting-Variables.html" accesskey="p" rel="prev">Setting Variables</a>, Up: <a href="Variables.html" accesskey="u" rel="up">Variables</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Bian-Shu-gaBian-Geng-saretatokiniShi-Xing-sareruGuan-Shu-_002e-"></span><h3 class="section">12.9 変数が変更されたときに実行される関数。</h3>
+<span id="index-variable-watchpoints"></span>
+<span id="index-watchpoints-for-Lisp-variables"></span>
+
+<p>変数の値が変化したときに何らかのアクションを行えれば便利なときがあります。<em>変数watchpoint(variable
+watchpoint)</em>機能はそのための機能を提供します。この機能の有効な利用方法としては変数セッティングと表示の同期、変数への予期せぬ変更を追跡するためのデバッガの呼び出しが含まれます(<a href="Variable-Debugging.html">Variable Debugging</a>を参照)。
+</p>
+<p>以下の関数は関数にたいするwatch関数の操作や問い合わせに使用できます。
+</p>
+<dl>
+<dt id="index-add_002dvariable_002dwatcher">Function: <strong>add-variable-watcher</strong> <em>symbol watch-function</em></dt>
+<dd><p>この関数は<var>symbol</var>が変化したときは常に<var>watch-function</var>が呼び出されるようにアレンジする。エイリアスを介した変更にも同じ効果をもつ(<a href="Variable-Aliases.html">Variable Aliases</a>を参照)。
+</p>
+<p><var>watch-function</var>は<var>symbol</var>の値の変更直前に<var>symbol</var>、<var>newval</var>、<var>operation</var>、<var>where</var>という4つの引数で呼び出される。<var>symbol</var>は変更される変数、<var>newval</var>は変更後の値(<var>watch-function</var>では<var>newval</var>に変更される前なので古い値は<var>symbol</var>の値で利用可能)、<var>operation</var>は変更の種類を表すシンボルであり<code>set</code>、<code>let</code>、<code>unlet</code>、<code>makunbound</code>、<code>defvaralias</code>のいずれか。<var>where</var>は変数のバッファーローカルな値が変更される場合にはバッファー、それ以外は<code>nil</code>。
+</p></dd></dl>
+
+<dl>
+<dt id="index-remove_002dvariable_002dwatcher">Function: <strong>remove-variable-watcher</strong> <em>symbol watch-function</em></dt>
+<dd><p>この関数は<var>symbol</var>のwatcherリストから<var>watch-function</var>を削除する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-get_002dvariable_002dwatchers">Function: <strong>get-variable-watchers</strong> <em>symbol</em></dt>
+<dd><p>この関数は<var>symbol</var>のアクティブなwatcher関数のリストをリターンする。
+</p></dd></dl>
+
+<span id="Zhi-Xian-"></span><h4 class="subsection">12.9.1 制限</h4>
+
+<p>watchpointをトリガーせずに変数が変更される(または少なくとも変更されたように見える)方法がいくつかあります。
+</p>
+<p>watchpointはシンボルにアタッチされるので変数内に含まれるオブジェクトの変更(リスト変更関数による変更。<a href="Modifying-Lists.html">Modifying Lists</a>を参照のこと)はこのメカニズムにより検出されません。
+</p>
+<p>さらにCのコードはwatchpointメカニズムをバイパスして変数の値を直接変更できます。
+</p>
+<p>繰り返しになりますがこれはシンボルをターゲットとするので、この機能のマイナーな制限はダイナミックなスコープをもつ変数だけをウォッチできるということです。レキシカル変数への変更は変数スコープ内のコードを調べれば容易に発見できるので、これが問題をもたらすことは稀でしょう(結局のところいかなるコードからも変更され得るダイナミック変数とは異なる。<a href="Variable-Scoping.html">Variable Scoping</a>を参照のこと)。
+</p>
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Yank Commands (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Yank Commands (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Yank Commands (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="The-Kill-Ring.html" rel="up" title="The Kill Ring">
+<link href="Low_002dLevel-Kill-Ring.html" rel="next" title="Low-Level Kill Ring">
+<link href="Yanking.html" rel="prev" title="Yanking">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Yank-Commands"></span><div class="header">
+<p>
+Next: <a href="Low_002dLevel-Kill-Ring.html" accesskey="n" rel="next">Low-Level Kill Ring</a>, Previous: <a href="Yanking.html" accesskey="p" rel="prev">Yanking</a>, Up: <a href="The-Kill-Ring.html" accesskey="u" rel="up">The Kill Ring</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="yankYong-noGuan-Shu-"></span><h4 class="subsection">32.8.4 yank用の関数</h4>
+
+<p>このセクションではyank用の高レベルなコマンドを説明します。これらのコマンドは主にユーザー用に意図されたものですが、Lispプログラム内での使用にたいしても有用です。<code>yank</code>と<code>yank-pop</code>はいずれも、変数<code>yank-excluded-properties</code>とテキストプロパティ<code>yank-handler</code>にしたがいます(<a href="Yanking.html">Yanking</a>を参照)。
+</p>
+<dl>
+<dt id="index-yank">Command: <strong>yank</strong> <em>&amp;optional arg</em></dt>
+<dd><span id="index-inserting-killed-text"></span>
+<p>このコマンドはkillリングの先頭にあるテキストをポイントの前に挿入する。これは<code>push-mark</code>(<a href="The-Mark.html">The Mark</a>を参照)を使用して、そのテキストの先頭にマークをセットする。
+</p>
+<p><var>arg</var>が非<code>nil</code>のリスト(これはユーザーがインタラクティブに数字を指定せずに<kbd>C-u</kbd>タイプ時に発生する)なら、<code>yank</code>は上述のようにテキストを挿入するがポイントはyankされたテキストの前、マークはyankされたテキストの後に置かれる。
+</p>
+<p><var>arg</var>が数字なら<code>yank</code>は<var>arg</var>番目に最近killされたテキスト、すなわちkillリングリストの<var>arg</var>番目の要素を挿入する。この順番はコマンドの目的にたいして1番目の要素としてみなされるリスト先頭の要素から巡回的に数えられる。
+</p>
+<p><code>yank</code>は、それが他のプログラムから提供されるテキストを使用しないかぎり(使用する場合はそのテキストをkillリングにpushする)、killリングのコンテンツを変更しない。しかし<var>arg</var>が非1の整数なら、killリングを転回(rotate)してyankされるテキストをリング先頭に置く。
+</p>
+<p><code>yank</code>は<code>nil</code>をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-yank_002dpop">Command: <strong>yank-pop</strong> <em>&amp;optional arg</em></dt>
+<dd><p>このコマンドはkillリング上の正にyankされたばかりのエントリーをkillリングの別エントリーで置き換える。
+</p>
+<p>このコマンドは<code>yank</code>か別の<code>yank-pop</code>の直後のみ機能する。そのような際にそのリージョンには、yankにより正に挿入されたテキストが含まれる。<code>yank-pop</code>はそのテキストを削除して、killされた別のテキスト片をその位置に挿入する。そのテキスト片はすでにkillリング内のどこか別の箇所にあるので、これは削除されたテキストをkillリングに追加しない。しかし新たにyankされたテキストが先頭になるように、killリングの転回は行う。
+</p>
+<p><var>arg</var>が<code>nil</code>なら置換テキストはkillリングの1つ前の要素。<var>arg</var>が数字なら置換テキストはkillリングの<var>arg</var>個前の要素である。<var>arg</var>が負なら、より最近のkillが置換される。
+</p>
+<p>killリング内のkillされたエントリーの順序はラップする。すなわちもっとも古いkillの次にもっとも新しいkill、もっとも新しいkillの前はもっとも古いkillとなる。
+</p>
+<p>リターン値は常に<code>nil</code>である。
+</p></dd></dl>
+
+<dl>
+<dt id="index-yank_002dundo_002dfunction">Variable: <strong>yank-undo-function</strong></dt>
+<dd><p>この変数が非<code>nil</code>なら、関数<code>yank-pop</code>は前の<code>yank</code>や<code>yank-pop</code>により挿入されたテキストを削除するために、<code>delete-region</code>のかわりにこの変数の値を使用する。値はカレントリージョンの開始と終了という2つの引数をとる関数でなければならない。
+</p>
+<p>関数<code>insert-for-yank</code>はテキストプロパティ<code>yank-handler</code>の要素<var>undo</var>に対応して、この変数を自動的にセットする。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

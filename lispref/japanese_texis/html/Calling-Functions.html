@@ -1,0 +1,178 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Calling Functions (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Calling Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Calling Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Functions.html" rel="up" title="Functions">
+<link href="Mapping-Functions.html" rel="next" title="Mapping Functions">
+<link href="Defining-Functions.html" rel="prev" title="Defining Functions">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Calling-Functions"></span><div class="header">
+<p>
+Next: <a href="Mapping-Functions.html" accesskey="n" rel="next">Mapping Functions</a>, Previous: <a href="Defining-Functions.html" accesskey="p" rel="prev">Defining Functions</a>, Up: <a href="Functions.html" accesskey="u" rel="up">Functions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Guan-Shu-noHu-biChu-si"></span><h3 class="section">13.5 関数の呼び出し</h3>
+<span id="index-function-invocation"></span>
+<span id="index-calling-a-function"></span>
+
+<p>関数を定義しただけでは半分しか終わっていません。関数はそれを<em>呼び出す(call)</em> &mdash;
+たとえば実行(run)するまでは何も行いません。関数のcallは<em>invocation</em>としても知られています。
+</p>
+<p>関数を呼び出すもっとも一般的な方法は、リストの評価によるものです。たとえばリスト<code>(concat &quot;a&quot;
+&quot;b&quot;)</code>を評価することにより、関数<code>concat</code>が引数<code>&quot;a&quot;</code>と<code>&quot;b&quot;</code>で呼び出されます。評価については<a href="Evaluation.html">Evaluation</a>を参照してください。
+</p>
+<p>プログラム内で式としてリストを記述するときは、プログラム内にテキストでどの関数を呼び出すか、いくつの引数を与えるかを指定します。通常はこれが行いたいことです。どの関数を呼び出すかを実行時に計算する必要がある場合もあります。これを行うには関数<code>funcall</code>を使用します。実行時にいくつの引数を渡すか決定する必要があるときは<code>apply</code>を使用します。
+</p>
+<dl>
+<dt id="index-funcall">Function: <strong>funcall</strong> <em>function &amp;rest arguments</em></dt>
+<dd><p><code>funcall</code>は関数<var>function</var>を引数<var>arguments</var>で呼び出して、<var>function</var>がリターンした値をリターンする。
+</p>
+<p><code>funcall</code>は関数なので、<var>function</var>を含むすべての引数は<code>funcall</code>の呼び出し前に評価される。これは呼び出される関数を得るために任意の式を使用できることを意味している。また<code>funcall</code>が<var>arguments</var>に記述した式ではなく、その値だけを見ることを意味している。これらの値は<var>function</var>呼び出し中では、2回目は<em>評価されない</em>。<code>funcall</code>の処理は関数の通常の呼び出し手続きと似ており、すでに評価された引数は評価されない。
+</p>
+<p>引数<var>function</var>はLisp関数かプリミティブ関数でなければならない。つまりスペシャルフォームやマクロは、未評価の引数式を与えられたときだけ意味があるので、指定することはできない。上述したように最初の場所で<code>funcall</code>がそれらを知らないので、<code>funcall</code>がそれらを提供することはできない。
+</p>
+<p>コマンドの呼び出しに<code>funcall</code>を使用して、それがインタラクティブに呼び出されたように振る舞うようにする必要があるなら、<code>funcall-interactively</code>を使用すること(<a href="Interactive-Call.html">Interactive Call</a>を参照)。
+</p>
+<div class="example">
+<pre class="example">(setq f 'list)
+     &rArr; list
+</pre><pre class="example">(funcall f 'x 'y 'z)
+     &rArr; (x y z)
+</pre><pre class="example">(funcall f 'x 'y '(z))
+     &rArr; (x y (z))
+</pre><pre class="example">(funcall 'and t nil)
+error&rarr; Invalid function: #&lt;subr and&gt;
+</pre></div>
+
+<p>これらの例を<code>apply</code>の例と比較されたい。
+</p></dd></dl>
+
+<dl>
+<dt id="index-apply">Function: <strong>apply</strong> <em>function &amp;rest arguments</em></dt>
+<dd><p><code>apply</code>は関数<var>function</var>を引数<var>arguments</var>で呼び出す。これは<code>funcall</code>と同様だが1つ違いがある。<var>arguments</var>の最後はオブジェクトのリストである。これは1つのリストではなく、個別の引数として<var>function</var>に渡される。わたしたちはこれを、<code>apply</code>がこのリストを<em>展開(spread)</em>(個々の要素が引数となるので)すると言う。
+</p>
+<p>単一の引数での<code>apply</code>は特別である。引数(非空のリスト)の最初の要素は、残りの要素を個別の引数に関数として呼び出される。2つ以上の引数を渡すほうが早くなるだろう。
+</p>
+<p><code>apply</code>は<var>function</var>を呼び出した結果をリターンする。<code>funcall</code>と同様、<var>function</var>はLisp関数かプリミティブ関数でなければならない。つまりスペシャルフォームやマクロは<code>apply</code>では意味をもたない。
+</p>
+<div class="example">
+<pre class="example">(setq f 'list)
+     &rArr; list
+</pre><pre class="example">(apply f 'x 'y 'z)
+error&rarr; Wrong type argument: listp, z
+</pre><pre class="example">(apply '+ 1 2 '(3 4))
+     &rArr; 10
+</pre><pre class="example">(apply '+ '(1 2 3 4))
+     &rArr; 10
+</pre><pre class="example">
+
+</pre><pre class="example">(apply 'append '((a b c) nil (x y z) nil))
+     &rArr; (a b c x y z)
+</pre><pre class="example">
+
+</pre><pre class="example">(apply '(+ 3 4))
+     &rArr; 7
+</pre></div>
+
+<p><code>apply</code>を使用した興味深い例は<a href="Mapping-Functions.html#Definition-of-mapcar">Definition of mapcar</a>を参照のこと。
+</p></dd></dl>
+
+<span id="index-partial-application-of-functions"></span>
+<span id="index-currying"></span>
+<p>ある関数にたいして、その関数のある引数を特定の値に固定して、他の引数は実際に呼びだされたときの値にできれば便利なことがあります。関数のいくつかの引数を固定することは、その関数の<em>部分適用(partial
+application)</em>と呼ばれます<a id="DOCF11" href="#FOOT11"><sup>11</sup></a>。これの結果は残りの引数をとる新たな関数で、すべての引数を合わせて元の関数を呼び出します。
+</p>
+<p>Emacs Lispで部分適用を行う方法を示します:
+</p>
+<dl>
+<dt id="index-apply_002dpartially">Function: <strong>apply-partially</strong> <em>func &amp;rest args</em></dt>
+<dd><p>この関数は新たな関数をリターンする。この新しい関数は呼びだされたときに<var>args</var>、および呼び出し時に指定された追加の引数から成る引数リストで<var>func</var>を呼び出す関数である。<var>func</var>に<var>n</var>個の引数を指定できる場合、<code><var>m</var>&nbsp;&lt;&nbsp;<var>n</var></code><!-- /@w -->個の引数で<code>apply-partially</code>を呼び出すと、<code><var>n</var>&nbsp;<span class="nolinebreak">-</span>&nbsp;<var>m</var></code><!-- /@w -->個の新たな関数を生成する。
+</p>
+<p>以下はビルトイン関数<code>1+</code>が存在しないものとして、<code>apply-partially</code>と他のビルトイン関数<code>+</code>を使用して<code>1+</code>を定義する例である:
+</p>
+<div class="example">
+<pre class="example">(defalias '1+ (apply-partially '+ 1)
+  &quot;Increment argument by one.&quot;)
+</pre><pre class="example">(1+ 10)
+     &rArr; 11
+</pre></div>
+</dd></dl>
+
+<span id="index-functionals"></span>
+<p>引数として関数を受け取ったり、データ構造(特にフック変数やプロパティーリスト)から関数を探す関数はLispでは一般的で、それらは<code>funcall</code>や<code>apply</code>を使用してそれらの関数を呼び出します。引数として関数をとる関数は、<em>ファンクショナル(functional)</em>と呼ばれるときもあります。
+</p>
+<p>ファンクショナルを呼び出すとき、引数としてno-op関数(何も行わない関数)を指定できると便利なときがあります。以下に２つの異なるno-op関数を示します:
+</p>
+<dl>
+<dt id="index-identity">Function: <strong>identity</strong> <em>argument</em></dt>
+<dd><p>この関数は<var>argument</var>をリターンする。副作用はない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-ignore">Function: <strong>ignore</strong> <em>&amp;rest arguments</em></dt>
+<dd><p>この関数はすべての<var>arguments</var>を無視して<code>nil</code>をリターンする。
+</p></dd></dl>
+
+<p>関数のいくつかはユーザーに可視な<em>コマンド</em>で、これらは(通常はキーシーケンスを介して)対話的に呼び出すことができます。そのようなコマンドは、<code>call-interactively</code>関数を使用することにより、対話的に呼びだされたときと同様に呼び出すことができます。<a href="Interactive-Call.html">Interactive Call</a>を参照してください。
+</p>
+<div class="footnote">
+<hr>
+<h4 class="footnotes-heading">Footnotes</h4>
+
+<h5><a id="FOOT11" href="#DOCF11">(11)</a></h3>
+<p>これは<em>カリー化(currying)</em>と関連しますが異なる機能です。カーリングは複数の引数を受け取る関数を、関数チェーンとして呼び出せるような１つの引数を取る個々の関数に変換するような方法です。</p>
+</div>
+
+
+
+</body>
+</html>

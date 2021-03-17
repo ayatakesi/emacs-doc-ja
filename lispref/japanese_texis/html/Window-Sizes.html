@@ -1,0 +1,268 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Window Sizes (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Window Sizes (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Window Sizes (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Windows.html" rel="up" title="Windows">
+<link href="Resizing-Windows.html" rel="next" title="Resizing Windows">
+<link href="Windows-and-Frames.html" rel="prev" title="Windows and Frames">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Window-Sizes"></span><div class="header">
+<p>
+Next: <a href="Resizing-Windows.html" accesskey="n" rel="next">Resizing Windows</a>, Previous: <a href="Windows-and-Frames.html" accesskey="p" rel="prev">Windows and Frames</a>, Up: <a href="Windows.html" accesskey="u" rel="up">Windows</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="uindounosaizu"></span><h3 class="section">28.3 ウィンドウのサイズ</h3>
+<span id="index-window-size"></span>
+<span id="index-size-of-window"></span>
+
+<p>以下の図は生きたウィンドウの構造を示しています:
+</p>
+<div class="example">
+<pre class="example">        ____________________________________________
+       |______________ Header Line ______________|RD| ^
+     ^ |LS|LM|LF|                       |RF|RM|RS|  | |
+     | |  |  |  |                       |  |  |  |  | |
+Window |  |  |  |       Text Area       |  |  |  |  | Window
+Body | |  |  |  |     (Window Body)     |  |  |  |  | Total
+Height |  |  |  |                       |  |  |  |  | Height
+     | |  |  |  |&lt;- Window Body Width -&gt;|  |  |  |  | |
+     v |__|__|__|_______________________|__|__|__|  | |
+       |_________ Horizontal Scroll Bar _________|  | |
+       |_______________ Mode Line _______________|__| |
+       |_____________ Bottom Divider _______________| v
+        &lt;---------- Window Total Width ------------&gt;
+
+</pre></div>
+
+<span id="index-window-body"></span>
+<span id="index-text-area-of-a-window"></span>
+<span id="index-body-of-a-window"></span>
+<p>ウィンドウの中央は<em>テキストエリア(text area: テキスト領域)</em>、または<em>ボディー(body:
+本体、本文)</em>と呼ばれるバッファーテキストが表示される場所です。テキストエリアは一連のオプションエリアで囲まれている可能性があります。左右には内側から外側に向かって図中にLFとRFで示される左右のフリンジ(<a href="Fringes.html">Fringes</a>を参照)、LMとRMで示される左右のマージン(<a href="Display-Margins.html">Display Margins</a>を参照)、そしてLSとRSはスクロールバー(<a href="Scroll-Bars.html">Scroll Bars</a>を参照)で、これは常に表示されるのはいずれか一方だけです。さらにRDで示されるのが右ディバイダー(<a href="Window-Dividers.html">Window Dividers</a>を参照)です。ウィンドウ上端にはヘッダーライン(<a href="Header-Lines.html">Header Lines</a>を参照)、ウィンドウ下端には水平スクロールバー(<a href="Scroll-Bars.html">Scroll Bars</a>を参照)、モードライン(<a href="Mode-Line-Format.html">Mode Line Format</a>を参照)、下端ディバイダー(<a href="Window-Dividers.html">Window Dividers</a>を参照)があります。
+</p>
+<p>Emacsはウィンドウの高さと幅を求めるためのさまざまな関数を提供します。これらの関数がリターンする値の多くはピクセル単位、または行単位と列単位のいずれかにより指定できます。グラフィカルなディスプレイでは後者は実際には<code>frame-char-height</code>と<code>frame-char-width</code>
+(<a href="Frame-Font.html">Frame Font</a>を参照)によりリターンされる、そのフレームのデフォルトフォントが指定するデフォルト文字の高さと幅に対応します。したがってあるウィンドウが異なるフォントやサイズでテキストを表示していると、そのウィンドウにたいして報告される行高さと列幅は、実際にウィンドウ内で表示されるテキスト行数と列数とは異なるかもしれません。
+</p>
+<span id="index-window-height"></span>
+<span id="index-height-of-a-window"></span>
+<span id="index-total-height-of-a-window"></span>
+<p><em>トータル高さ(total
+height)</em>とは、そのウィンドウのボディーを構成する行数、ヘッダーライン、水平スクロールバー、モードライン、(もしあれば)下端ディバイダーです。
+</p>
+<dl>
+<dt id="index-window_002dtotal_002dheight">Function: <strong>window-total-height</strong> <em>&amp;optional window round</em></dt>
+<dd><p>この関数はウィンドウ<var>window</var>のトータル高さを行数でリターンする。<var>window</var>が省略<code>nil</code>の場合のデフォルトは選択されたウィンドウ。<var>window</var>が内部ウィンドウなら、リターン値はそのウィンドウの子孫となるウィンドウにより占有されるトータル高さになる。
+</p>
+<p>ウィンドウのピクセル高さがそのウィンドウがあるフレームのデフォルト文字高さの整数倍でなければ、そのウィンドウが占有する行数が内部で丸められる。これはそのウィンドウが親ウィンドウの場合には、すべての子ウィンドウのトータル高さの合計が、親ウィンドウのトータル高さと内部的に等しくなるような方法により行われる。これはたとえ2つのウィンドウのピクセル高さが等しくでも、内部的なトータル高さは1行分異なるかもしれないことを意味する。さらにこれはそのウィンドウが垂直コンビネーションされていて、かつ次の兄弟をもつ場合には、その兄弟の上端行は、このウィンドウの上端行とトータル高さから計算されるかもしれないことも意味する(<a href="Coordinates-and-Windows.html">Coordinates and Windows</a>を参照)。
+</p>
+<p>オプション引数<var>round</var>が<code>ceiling</code>なら、この関数は<var>window</var>のピクセル高さをそのフレームの文字高さで除した数より大であるような最小の整数、<code>floor</code>なら除した数より小であるような最大の整数、それ以外の<var>round</var>にたいしては<var>windows</var>のトータル高さの内部値をリターンする。
+</p></dd></dl>
+
+<span id="index-window-width"></span>
+<span id="index-width-of-a-window"></span>
+<span id="index-total-width-of-a-window"></span>
+<p><em>トータル幅(total
+width)</em>とはそのウィンドウのボディーを構成する列数、マージン、フリンジ、スクロールバー、(もしあれば)右ディバイダーです。
+</p>
+<dl>
+<dt id="index-window_002dtotal_002dwidth">Function: <strong>window-total-width</strong> <em>&amp;optional window round</em></dt>
+<dd><p>この関数はウィンドウ<var>window</var>のトータル幅を列でリターンする。<var>window</var>が省略<code>nil</code>の場合のデフォルトは選択されたウィンドウ。<var>window</var>が内部ウィンドウならリターン値はその子孫のウィンドウが占有するトータル幅になる。
+</p>
+<p>ウィンドウのピクセル幅がそのウィンドウがあるフレームのデフォルト文字幅の整数倍でなければ、そのウィンドウが占有する列数が内部で丸められる。これはそのウィンドウが親ウィンドウの場合には、すべての子ウィンドウのトータル幅の合計が親ウィンドウのトータル幅と内部的に等しくなるような方法により行われる。これはたとえ2つのウィンドウのピクセル幅が等しくでも、内部的なトータル幅は1列分異なるかもしれないことを意味する。さらにこれはそのウィンドウが水平コンビネーションされていて、かつ次の兄弟をもつ場合、その兄弟の左端行はこのウィンドウの左端行とトータル幅から計算されるかもしれないことも意味する(<a href="Coordinates-and-Windows.html">Coordinates and Windows</a>を参照)。オプション引数<var>round</var>は<code>window-total-height</code>の場合と同様に振る舞う。
+</p></dd></dl>
+
+<dl>
+<dt id="index-window_002dtotal_002dsize">Function: <strong>window-total-size</strong> <em>&amp;optional window horizontal round</em></dt>
+<dd><p>この関数はウィンドウ<var>window</var>のトータル高さを行数、またはトータル幅を列数でリターンする。<var>horizontal</var>が省略または<code>nil</code>なら<var>window</var>にたいして<code>window-total-height</code>を呼び出すのと等価、それ以外では<var>window</var>にたいして<code>window-total-width</code>を呼び出すのと等価である。オプション引数<var>round</var>は<code>window-total-height</code>の場合と同様に振る舞う。
+</p></dd></dl>
+
+<p>以下の2つの関数はウィンドウのトータルサイズをピクセル単位で取得するために使用できます。
+</p>
+<span id="index-window-pixel-height"></span>
+<span id="index-pixel-height-of-a-window"></span>
+<span id="index-total-pixel-height-of-a-window"></span>
+
+<dl>
+<dt id="index-window_002dpixel_002dheight">Function: <strong>window-pixel-height</strong> <em>&amp;optional window</em></dt>
+<dd><p>この関数はウィンドウ<var>window</var>のトータル高さをピクセル単位でリターンする。<var>window</var>は有効なウィンドウでなければならずデフォルトは選択されたウィンドウ。
+</p>
+<p>リターン値には、(もしあれば)モードライン、ヘッダーライン、水平スクロールバー、下端ディバイダーが含まれる。<var>window</var>が内部ウィンドウなら、そのピクセル高さは子ウィンドウたちによりスパンされるスクリーン領域のピクセル高さになる。
+</p></dd></dl>
+
+<span id="index-window-pixel-width"></span>
+<span id="index-pixel-width-of-a-window"></span>
+<span id="index-total-pixel-width-of-a-window"></span>
+
+<dl>
+<dt id="index-window_002dpixel_002dwidth">Function: <strong>window-pixel-width</strong> <em>&amp;optional window</em></dt>
+<dd><p>この関数はウィンドウ<var>window</var>の幅をピクセル単位でリターンする。<var>window</var>は有効なウィンドウでなければならずデフォルトは選択されたウィンドウ。
+</p>
+<p>リターン値にはフリンジ、<var>window</var>のマージン、同様に<var>window</var>に属する垂直ディバイダーとスクロールバーが含まれる。<var>window</var>が内部ウィンドウなら、そのピクセル幅は子ウィンドウたちにより占有されるスクリーン領域の幅になる。
+</p></dd></dl>
+
+<span id="index-full_002dwidth-window"></span>
+<span id="index-full_002dheight-window"></span>
+<p>以下の関数は与えられたウィンドウに隣接するウィンドウがあるかどうかを判断するために使用できます。
+</p>
+<dl>
+<dt id="index-window_002dfull_002dheight_002dp">Function: <strong>window-full-height-p</strong> <em>&amp;optional window</em></dt>
+<dd><p>この関数はフレーム内で<var>window</var>の上下に他のウィンドウがなければ非<code>nil</code>をリターンする。より正確には、<var>window</var>のトータル高さがそのフレームのルートウィンドウの高さに等しいことを意味する。<var>window</var>が省略または<code>nil</code>の場合のデフォルトは選択されたウィンドウ。
+</p></dd></dl>
+
+<dl>
+<dt id="index-window_002dfull_002dwidth_002dp">Function: <strong>window-full-width-p</strong> <em>&amp;optional window</em></dt>
+<dd><p>この関数はフレーム内で<var>window</var>の左右に他のウィンドウがなければ非<code>nil</code>をリターンする(トータル幅がそのフレーム上のルートウィンドウと等しい)。<var>window</var>が省略または<code>nil</code>の場合のデフォルトは選択されたウィンドウ。
+</p></dd></dl>
+
+<span id="index-window-body-height"></span>
+<span id="index-body-height-of-a-window"></span>
+<p>ウィンドウの<em>ボディー高さ(body
+height)</em>とはモードライン、ヘッダーライン、水平スクロールバー、下端ディバイダーを含まないテキスト領域の高さです。
+</p>
+<dl>
+<dt id="index-window_002dbody_002dheight">Function: <strong>window-body-height</strong> <em>&amp;optional window pixelwise</em></dt>
+<dd><p>この関数はウィンドウ<var>window</var>のボディーの高さを行数でリターンする。<var>window</var>が省略または<code>nil</code>の場合のデフォルトは選択されたウィンドウ、それ以外なら生きたウィンドウでなければならない。
+</p>
+<p>オプション引数<var>pixelwise</var>が非<code>nil</code>なら、この関数はピクセルで計算<var>window</var>のボディー高さをリターンする。
+</p>
+<p><var>pixelwise</var>が<code>nil</code>の場合には、必要ならリターン値はもっとも近い整数に切り下げられる。これはテキスト領域の下端行が部分的に可視の場合にその行は計数されないこと、さらに任意のウィンドウのボディー高さは<code>window-total-height</code>によりリターンされるそのウィンドウのトータル高さ決して超過し得ないことも意味する。
+</p></dd></dl>
+
+<span id="index-window-body-width"></span>
+<span id="index-body-width-of-a-window"></span>
+<p>ウィンドウの<em>ボディー幅(body
+width)</em>とはスクロールバー、フリンジ、マージン、右ディバイダーを含まないテキスト領域の幅です。(幅を0にセットすることにより)一方または両方のフリンジが削除されたときには、継続と切り詰めのグリフを表示するためにディスプレーエンジンが文字セル2つを予約するので、テキスト表示にたいして2列少なくなることに注意してください(以下で説明する<code>window-max-chars-per-line</code>はこの特性を考慮する)。
+</p>
+<dl>
+<dt id="index-window_002dbody_002dwidth">Function: <strong>window-body-width</strong> <em>&amp;optional window pixelwise</em></dt>
+<dd><p>この関数はウィンドウ<var>window</var>のボディーの幅を列数でリターンする。<var>window</var>が省略または<code>nil</code>の場合のデフォルトは選択されたウィンドウ、それ以外なら生きたウィンドウでなければならない。
+</p>
+<p>オプション引数<var>pixelwise</var>が非<code>nil</code>なら、この関数は<var>window</var>のボディーの幅をピクセル単位でリターンする。
+</p>
+<p><var>pixelwise</var>が<code>nil</code>なら、リターン値は必要に応じてもっとも近い整数に切り下げられる。これはテキスト領域の右端の列が部分的に可視な場合にその列が計数されないことを意味する。さらにこれはウィンドウのボディーの幅が<code>window-total-width</code>によりリターンされるウィンドウのトータル幅を決して超過し得ないことをも意味する。
+</p></dd></dl>
+
+<span id="index-window-body-size"></span>
+<span id="index-body-size-of-a-window"></span>
+<dl>
+<dt id="index-window_002dbody_002dsize">Function: <strong>window-body-size</strong> <em>&amp;optional window horizontal pixelwise</em></dt>
+<dd><p>この関数は<var>window</var>のボディーの高さか幅をリターンする。<var>horizontal</var>が省略または<code>nil</code>なら<var>window</var>にたいして<code>window-body-height</code>、それ以外なら<code>window-body-width</code>を呼び出すのと同じ。いずれの場合もオプション引数<var>pixelwise</var>は呼び出された関数に渡される。
+</p></dd></dl>
+
+<p>以前のバージョンのEmacsとの互換性のために<code>window-height</code>は<code>window-total-height</code>、<code>window-width</code>は<code>window-body-width</code>にたいするエイリアスです。これらのエイリアス時代遅れと考えられていて将来は削除されるでしょう。
+</p>
+<p>ウィンドウのモードラインとヘッダーラインのピクセル高さは以下の関数により取得できます。それらのリターン値は、そのウィンドウが以前に表示されていない場合を除いて通常は加算されます。その場合のリターン値はそのウィンドウのフレームにたいして使用を予想されるフォントが元になります。
+</p>
+<dl>
+<dt id="index-window_002dmode_002dline_002dheight">Function: <strong>window-mode-line-height</strong> <em>&amp;optional window</em></dt>
+<dd><p>この関数は<var>window</var>モードラインの高さをピクセルでリターンする。<var>window</var>は生きたウィンドウでなければならずデフォルトは選択されたウィンドウ。<var>window</var>にモードラインがなければリターン値は0。
+</p></dd></dl>
+
+<dl>
+<dt id="index-window_002dheader_002dline_002dheight-1">Function: <strong>window-header-line-height</strong> <em>&amp;optional window</em></dt>
+<dd><p>この関数は<var>window</var>のヘッダーラインの高さをピクセル単位でリターンする。<var>window</var>は生きたウィンドウでなければならずデフォルトは選択されたウィンドウ。<var>window</var>にヘッダーラインがない場合のリターン値は0。
+</p></dd></dl>
+
+<p>ウィンドウディバイダー(<a href="Window-Dividers.html">Window Dividers</a>を参照)、フリンジ(<a href="Fringes.html">Fringes</a>を参照)、スクロールバー(<a href="Scroll-Bars.html">Scroll Bars</a>を参照)、ディスプレイマージン(<a href="Display-Margins.html">Display Margins</a>を参照)を取得する関数については、それぞれ対応するセクションで説明されています。
+</p>
+<p>Lispプログラムでレイアウト上の判断を要する場合には、以下の関数を有用と思うでしょう:
+</p>
+<dl>
+<dt id="index-window_002dmax_002dchars_002dper_002dline">Function: <strong>window-max-chars-per-line</strong> <em>&amp;optional window face</em></dt>
+<dd><p>この関数は指定されたウィンドウ<var>window</var>
+(生きたウィンドウであること)内で、指定されたフェイス<var>face</var>で表示される文字数をリターンする。<var>face</var>がリマップ(<a href="Face-Remapping.html">Face Remapping</a>を参照)されていたらリマップされたフェイスの情報がリターンされる。省略または<code>nil</code>の場合、<var>face</var>のデフォルトはデフォルトフェイス、<var>window</var>のデフォルトは選択されたウィンドウ。
+</p>
+<p>この関数は<code>window-body-width</code>と異なり、<var>window</var>のフレームの正準文字幅(canonical
+character
+width)の単位ではなく、<var>face</var>のフォントの実サイズを考慮する。また<var>window</var>の一方または両方のフリンジがなければ、継続グリフに使用されるスペースも考慮する。
+</p></dd></dl>
+
+<span id="index-fixed_002dsize-window"></span>
+<span id="index-window_002dmin_002dheight"></span>
+<span id="index-window_002dmin_002dwidth"></span>
+<p>ウィンドウのサイズを変更(<a href="Resizing-Windows.html">Resizing Windows</a>を参照)したりウィンドウを分割(split)するコマンド(<a href="Splitting-Windows.html">Splitting Windows</a>を参照)は、指定できるウィンドウの最小の高さと幅を指定する変数<code>window-min-height</code>と<code>window-min-width</code>にしたがう。これらのコマンドはウィンドウのサイズが<em>fixed(固定)</em>になる変数<code>window-size-fixed</code>にもしたがう(<a href="Preserving-Window-Sizes.html">Preserving Window Sizes</a>を参照)。
+</p>
+<dl>
+<dt id="index-window_002dmin_002dheight-1">User Option: <strong>window-min-height</strong></dt>
+<dd><p>このオプションは任意のウィンドウの最小のトータル高さを行で指定する。この値は最低でも1つのテキスト行、同様に(もしあれば)モードライン、ヘッダーライン、水平スクロールバー、下端ディバイダーに対応する必要がある。
+</p></dd></dl>
+
+<dl>
+<dt id="index-window_002dmin_002dwidth-1">User Option: <strong>window-min-width</strong></dt>
+<dd><p>このオプションはすべてのウィンドウの最小のトータル幅を列で指定する。この値は2つのテキスト列、同様に(もしあれば)マージン、フリンジ、スクロールバー、右ディバイダーに対応する必要がある。
+</p></dd></dl>
+
+<p>以下の関数は、ある特定の大きさのウィンドウにたいして、それの<code>window-min-height</code>と<code>window-min-width</code>、および<code>window-size-fixed</code>
+(<a href="Preserving-Window-Sizes.html">Preserving Window Sizes</a>を参照)の値と領域のサイズを示す。
+</p>
+<dl>
+<dt id="index-window_002dmin_002dsize">Function: <strong>window-min-size</strong> <em>&amp;optional window horizontal ignore pixelwise</em></dt>
+<dd><p>この関数は<var>window</var>の最小のサイズをリターンする。<var>window</var>は有効なウィンドウでなければならず、デフォルトは選択されたウィンドウ。オプション引数<var>horizontal</var>が非<code>nil</code>なら<var>window</var>の最小の列数、それ以外は<var>window</var>の最小の行数をリターンすることを意味する。
+</p>
+<p>このリターン値によって<var>window</var>のサイズが実際にその値にセットされた場合に<var>window</var>のすべてのコンポーネントが完全に可視にとどまることが保証される。<var>horizontal</var>が<code>nil</code>なら、(もしあれば)モードライン、ヘッダーライン、水平スクロールバー、下端ディバイダーが含まれる。<var>horizontal</var>が非<code>nil</code>なら、(もしあれば)マージン、フリンジ、垂直スクロールバー、右ディバイダーが含まれる。
+</p>
+<p>オプション引数<var>ignore</var>が非<code>nil</code>なら、<code>window-min-height</code>や<code>window-min-width</code>によりセットされる固定サイズのウィンドウに強いられる制限を無視することを意味する。<var>ignore</var>が<code>safe</code>なら、生きたウィンドウは可能な限り小さな<code>window-safe-min-height</code>の行、および<code>window-safe-min-width</code>の列を得る。<var>ignore</var>にウィンドウが指定されると、そのウィンドウにたいする制限だけを無視する。その他の非<code>nil</code>値では、すべてのウィンドウにたいする上記制限のすべてが無視されることを意味する。
+</p>
+<p>オプション引数<var>pixelwise</var>が非<code>nil</code>なら、<var>window</var>の最小サイズがピクセルで計数されてリターンされることを意味する。
+</p></dd></dl>
+
+
+<hr>
+<div class="header">
+<p>
+Next: <a href="Resizing-Windows.html" accesskey="n" rel="next">Resizing Windows</a>, Previous: <a href="Windows-and-Frames.html" accesskey="p" rel="prev">Windows and Frames</a>, Up: <a href="Windows.html" accesskey="u" rel="up">Windows</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Yanking (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Yanking (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Yanking (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="The-Kill-Ring.html" rel="up" title="The Kill Ring">
+<link href="Yank-Commands.html" rel="next" title="Yank Commands">
+<link href="Kill-Functions.html" rel="prev" title="Kill Functions">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Yanking"></span><div class="header">
+<p>
+Next: <a href="Yank-Commands.html" accesskey="n" rel="next">Yank Commands</a>, Previous: <a href="Kill-Functions.html" accesskey="p" rel="prev">Kill Functions</a>, Up: <a href="The-Kill-Ring.html" accesskey="u" rel="up">The Kill Ring</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="yank"></span><h4 class="subsection">32.8.3 yank</h4>
+
+<p>yankとはkillリングからテキストを挿入しますが、それが単なる挿入ではないことを意味します。<code>yank</code>とそれに関連するコマンドは、テキスト挿入前に特別な処理を施すために<code>insert-for-yank</code>を使用します。
+</p>
+<dl>
+<dt id="index-insert_002dfor_002dyank">Function: <strong>insert-for-yank</strong> <em>string</em></dt>
+<dd><p>この関数は<code>insert</code>と同様に機能するが、結果をカレントバッファーに挿入する前にテキストプロパティ<code>yank-handler</code>、同様に変数<code>yank-handled-properties</code>と<code>yank-excluded-properties</code>に応じて<var>string</var>内のテキストを処理する点が異なる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-insert_002dbuffer_002dsubstring_002das_002dyank">Function: <strong>insert-buffer-substring-as-yank</strong> <em>buf &amp;optional start end</em></dt>
+<dd><p>この関数は<code>insert-buffer-substring</code>と似ているが、<code>yank-handled-properties</code>と<code>yank-excluded-properties</code>に応じてテキストを処理する点が異なる(これは<code>yank-handler</code>プロパティを処理しないが、いずれにせよバッファー内のテキストでは通常は発生しない)。
+</p></dd></dl>
+
+<p>文字列の一部またはすべてにテキストプロパティ<code>yank-handler</code>をputすると、<code>insert-for-yank</code>が文字列を挿入する方法が変更されます。文字列の別の箇所が異なる<code>yank-handler</code>の値をもつ場合(比較は<code>eq</code>)、部分文字列はそれぞれ個別に処理されます。プロパティ値は以下の形式からなる1から4要素のリストでなければなりません(2番目以降の要素は省略可):
+</p>
+<div class="example">
+<pre class="example">(<var>function</var> <var>param</var> <var>noexclude</var> <var>undo</var>)
+</pre></div>
+
+<p>これらの要素が何を行うかを以下に示します:
+</p>
+<dl compact="compact">
+<dt><var>function</var></dt>
+<dd><p><var>function</var>が非<code>nil</code>なら、<code>insert</code>のかわりに文字列を挿入するために、挿入する文字列を単一の引数として、その関数が呼び出される。
+</p>
+</dd>
+<dt><var>param</var></dt>
+<dd><p>非<code>nil</code>の<var>param</var>が与えられた場合には、それは<var>string</var>
+(または処理される<var>string</var>の部分文字列)を置き換えるオブジェクトとして<var>function</var>
+(または<code>insert</code>)に渡される。たとえば<var>function</var>が<code>yank-rectangle</code>なら、<var>param</var>は矩形(rectangle)として挿入されるべき文字列のリスト。
+</p>
+</dd>
+<dt><var>noexclude</var></dt>
+<dd><p>非<code>nil</code>の<var>noexclude</var>が与えられたら、挿入される文字列にたいする<code>yank-handled-properties</code>と<code>yank-excluded-properties</code>の通常の動作を無効にする。
+</p>
+</dd>
+<dt><var>undo</var></dt>
+<dd><p>非<code>nil</code>の<var>undo</var>が与えられたら、それはカレントオブジェクトの挿入をundoするために<code>yank-pop</code>が呼び出す関数。この関数はカレントリージョンのstartとendという2つの引数で呼び出される。<var>function</var>は<code>yank-undo-function</code>をセットすることにより<var>undo</var>の値をオーバーライドできる。
+</p></dd>
+</dl>
+
+<span id="index-yanking-and-text-properties"></span>
+<dl>
+<dt id="index-yank_002dhandled_002dproperties">User Option: <strong>yank-handled-properties</strong></dt>
+<dd><p>この変数はyankされるテキストの状態を処理するスペシャルテキストプロパティを指定する。これは(通常の方法、または<code>yank-handler</code>を通じた)テキストの挿入後、<code>yank-excluded-properties</code>が効力をもつ前に効果を発揮する。
+</p>
+<p>値は要素が<code>(<var>prop</var>
+.
+<var>fun</var>)</code>であるようなalistであること。alistの各要素は順番に処理される。挿入されるテキストはテキスト範囲にたいして、テキストプロパティが<var>prop</var>と<code>eq</code>なものがスキャンされる。そのような範囲にたいしてプロパティの値、そのテキストの開始と終了の位置という3つの引数により<var>fun</var>が呼び出される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-yank_002dexcluded_002dproperties">User Option: <strong>yank-excluded-properties</strong></dt>
+<dd><p>この変数の値は挿入されるテキストから削除するためのプロパティのリスト。デフォルト値にはマウスに応答したりキーバインディングの指定を引き起こすテキストのような、煩わしい結果をもたらすかもしれないプロパティが含まれる。これは<code>yank-handled-properties</code>の後に効果を発揮する。
+</p></dd></dl>
+
+
+
+
+
+</body>
+</html>

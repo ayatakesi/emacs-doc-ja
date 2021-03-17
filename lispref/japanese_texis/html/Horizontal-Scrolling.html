@@ -1,0 +1,152 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Horizontal Scrolling (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Horizontal Scrolling (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Horizontal Scrolling (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Windows.html" rel="up" title="Windows">
+<link href="Coordinates-and-Windows.html" rel="next" title="Coordinates and Windows">
+<link href="Vertical-Scrolling.html" rel="prev" title="Vertical Scrolling">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Horizontal-Scrolling"></span><div class="header">
+<p>
+Next: <a href="Coordinates-and-Windows.html" accesskey="n" rel="next">Coordinates and Windows</a>, Previous: <a href="Vertical-Scrolling.html" accesskey="p" rel="prev">Vertical Scrolling</a>, Up: <a href="Windows.html" accesskey="u" rel="up">Windows</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Shui-Ping-sukuroru"></span><h3 class="section">28.23 水平スクロール</h3>
+<span id="index-horizontal-scrolling"></span>
+
+<p><em>水平スクロール(horizontal
+scrolling)</em>とは指定された通常文字幅の倍数でウィンドウ内のイメージを左右にシフトすることを意味します。ウィンドウはそれぞれ、決して0より小さくなることはない<em>水平スクロール位置(horizontal
+scroll
+position)</em>という数値をもっています。これはコンテンツをどれほど左にシフトするかを指定します。ウィンドウのコンテンツを左にシフトすることにより一般的には左にある文字のすべて、または一部が表示されなくなり右にある文字のすべて、または一部が表示されることを意味します。通常の値は0です。
+</p>
+<p>水平スクロール位置は通常の文字幅を単位として数えられます。したがって値が5なら、それはウィンドウのコンテンツは通常文字幅の5倍左にスクロールされることを意味します。左の何文字が表示されなくなるかは、それらの文字の文字幅とに依存していて、それは行ごとに異なります。
+</p>
+<p>読み取りを行う際には内側のループ(inner loop)で横方向、外側のループ(outer
+loop)で上から下に読み取るため、水平スクロールの効果はテキスト的スクロールや垂直スクロールとは異なります。テキスト的スクロールは表示するためのテキスト範囲の選択を引き起こし、垂直スクロールはウィンドウコンテンツを連続して移動します。しかし水平スクロールは<em>すべての行</em>の一部をスクリーン外へスクロールします。
+</p>
+<p>通常は水平スクロールは行われないので、ウィンドウ左端には最左列があります。この状態では右スクロールにより左端に新たに表示されるデータは存在しないので、右へのスクロールはできません。左スクロールによってテキストの1列目がウィンドウ端からウィンドウ外にスクロールされ、右端にはその前は切り詰められていた(truncated)列が新たに表示されるので左へのスクロールはできます。ウィンドウが左へ非0の値で水平スクロールされていれば右スクロールしてそれを戻すことができますが、正味の水平スクロールが0に減少するまでの間のみ右スクロールができます。左へどれほどスクロールできるかに制限はありませんが、最終的にはすべてのテキストが左端の外に消えるでしょう。
+</p>
+<span id="index-auto_002dhscroll_002dmode"></span>
+<p><code>auto-hscroll-mode</code>がセットされている場合には、再表示はポイントが常に可視となることを保証するために必要に応じて水平スクロールを自動的に変更する。とはいえ依然として水平スクロール位置を明示的に指定するのは可能である。指定した値は自動スクロールの下限値としての役目を果たす(自動スクロールは指定された値より小さい列にウィンドウをスクロールしない)。
+</p>
+<p><code>auto-hscroll-mode</code>のデフォルト値は<code>t</code>です。これを<code>current-line</code>にセットするとカーソルのある行だけがポイントが可視になるように水平スクロールされて、ウィンドウの残りはスクロールされないか<code>scroll-left</code>と<code>scroll-right</code>
+(以下参照)にセットされた最小量だけスクロールされる自動水平スクロールの変種がアクティブになります。
+</p>
+<dl>
+<dt id="index-scroll_002dleft">Command: <strong>scroll-left</strong> <em>&amp;optional count set-minimum</em></dt>
+<dd><p>この関数は選択されたウィンドウを左(
+<var>count</var>が負なら右)に<var>count</var>列スクロールする。<var>count</var>のデフォルトはウィンドウ幅から2を減じた値。
+</p>
+<p>リターン値は<code>window-hscroll</code>(以下参照)がリターンする値と同じように、変更後に実際に左に水平スクロールされたトータル量。
+</p>
+<p>基本方向がR2L(<a href="Bidirectional-Display.html">Bidirectional Display</a>を参照)のパラグラフ内のテキストは、正の<var>count</var>値で<code>scroll-left</code>が呼び出された際には右へと移動するように、反対方向に移動することに注意。
+</p>
+<p>ウィンドウを可能な限り右にスクロールした後は、左スクロールの合計が0であるような通常の位置に戻り、右へのそれ以上のスクロールの試みは効果をもたない。
+</p>
+<p><var>set-minimum</var>が非<code>nil</code>なら新たなスクロール量は自動スクロールの下限値となる。つまり自動スクロールはこの関数がリターンする値より小さい列にウィンドウをスクロールしないだろう。インタラクティブに呼び出すと<var>set-minimum</var>に非<code>nil</code>を渡す。
+</p></dd></dl>
+
+<dl>
+<dt id="index-scroll_002dright">Command: <strong>scroll-right</strong> <em>&amp;optional count set-minimum</em></dt>
+<dd><p>この関数は選択されたウィンドウを右(
+<var>count</var>が負なら左)に<var>count</var>列スクロールする。<var>count</var>のデフォルトはウィンドウ幅から2を減じた値。スクロール方向を除けばこれは<code>scroll-left</code>と同様に機能する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-window_002dhscroll">Function: <strong>window-hscroll</strong> <em>&amp;optional window</em></dt>
+<dd><p>この関数は<var>window</var>の左への水平スクロールのトータル(左マージンを超えて左にスクロールされた<var>window</var>内のテキスト列数)をリターンする(R2Lパラグラフでの値はかわりに右方向への総スクロール量となる)。<var>window</var>のデフォルトは選択されたウィンドウ。
+</p>
+<p>リターン値が負になることは決してない。<var>window</var>で水平スクロールが行われていない場合(これが通常)にはリターン値は0。
+</p>
+
+<div class="example">
+<pre class="example">(window-hscroll)
+     &rArr; 0
+</pre><pre class="example">(scroll-left 5)
+     &rArr; 5
+</pre><pre class="example">(window-hscroll)
+     &rArr; 5
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-set_002dwindow_002dhscroll">Function: <strong>set-window-hscroll</strong> <em>window columns</em></dt>
+<dd><p>この関数は<var>window</var>の水平スクロールをセットする。<var>columns</var>の値はスクロール量を左マージン(R2Lパラグラフでは右マージン)からの列数で指定する。引数<var>columns</var>は0または正の数であること。そうでない場合ニは0とみなされる。小数点数の<var>columns</var>値は現在のところサポートされない。
+</p>
+<p>シンプルに<kbd>M-:</kbd>を呼び出して評価する方法でテストすると、<code>set-window-hscroll</code>が機能していないように見えるかもしれないことに注意。ここで何が発生しているかというと、この関数は水平スクロール値をセットしてリターンするが、その後にポイントを可視にするために水平スクロールを調整するよう再表示が行なわれて、これが関数の行った処理をオーバーライドしている。この関数の効果は左マージンからポイントまでのスクロール量が、ポイントが可視のまま留まるように関数を呼び出すことにより観察できる。
+</p>
+<p>リターン値は<var>columns</var>。
+</p>
+<div class="example">
+<pre class="example">(set-window-hscroll (selected-window) 10)
+     &rArr; 10
+</pre></div>
+</dd></dl>
+
+<p>以下は与えられた位置<var>position</var>が水平スクロールによりスクリーン外にあるかどうかを判断する例です:
+</p>
+<div class="example">
+<pre class="example">(defun hscroll-on-screen (window position)
+  (save-excursion
+    (goto-char position)
+    (and
+     (&gt;= (- (current-column) (window-hscroll window)) 0)
+     (&lt; (- (current-column) (window-hscroll window))
+        (window-width window)))))
+</pre></div>
+
+
+
+
+
+</body>
+</html>

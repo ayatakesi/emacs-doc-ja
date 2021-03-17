@@ -1,0 +1,105 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Dynamic Loading (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Dynamic Loading (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Dynamic Loading (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Byte-Compilation.html" rel="up" title="Byte Compilation">
+<link href="Eval-During-Compile.html" rel="next" title="Eval During Compile">
+<link href="Docs-and-Compilation.html" rel="prev" title="Docs and Compilation">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Dynamic-Loading"></span><div class="header">
+<p>
+Next: <a href="Eval-During-Compile.html" accesskey="n" rel="next">Eval During Compile</a>, Previous: <a href="Docs-and-Compilation.html" accesskey="p" rel="prev">Docs and Compilation</a>, Up: <a href="Byte-Compilation.html" accesskey="u" rel="up">Byte Compilation</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Ge-_0022noGuan-Shu-nodainamitukurodo"></span><h3 class="section">17.4 個々の関数のダイナミックロード</h3>
+
+<span id="index-dynamic-loading-of-functions"></span>
+<span id="index-lazy-loading"></span>
+<p>ファイルをコンパイルするとき、オプションで<em>ダイナミック関数ロード(dynamic function
+loading)</em>機能(<em>laxyロード(lazy
+loading)とも呼ばれる</em>)を有効にできます。ダイナミック関数ロードでは、ファイルのロードでファイル内の関数定義は完全には読み込まれません。かわりに各関数定義にはそのファイルを参照するプレースホルダーが含まれます。それぞれ関数が最初に呼び出されるときにそのプレースホルダーを置き換えるために、ファイルから完全な定義が読み込まれます。
+</p>
+<p>ファイルのロードがより高速になるだろうというのがダイナミック関数ロードの利点です。ユーザーが呼び出せる関数を多く含むファイルにとって、それらの関数のうち1つを使用したら多分残りの関数も使用するというのでなければ、これは利点になります。多くのキーボードコマンドを提供する特化したモードは、このパターンの使い方をする場合があります。ユーザーはそのモードを呼び出すかもしれませんが、使用するのはそのモードが提供するコマンドのわずか一部です。
+</p>
+<p>ダイナミックロード機能には不利な点がいくつかあります:
+</p>
+<ul>
+<li> ロード後にコンパイル済みファイルの削除や移動を行うと、Emacsはまだロードされていない残りの関数定義をロードできなくなる。
+
+</li><li> (新しいバージョンのコンパイル等で)コンパイル済みファイルを変更した場合に、まだロードされていない関数のロードを試みると通常は無意味な結果となる。
+</li></ul>
+
+<p>このような問題は通常の状況でインストールされたEmacsファイルでは決して発生しません。しかしあなたが変更したLispファイルでは発生し得ます。それぞれのファイルをリコンパイルしたらすぐに新たなコンパイル済みファイルをリロードするのが、これらの問題を回避する一番簡単な方法です。
+</p>
+<p><em>ダイナミックな関数ロードの使用により提供される利点がほとんど計測できないという経験から、この機能はEmacs 27.1以降は廃止されます。</em>
+</p>
+<p>コンパイル時に変数<code>byte-compile-dynamic</code>が非<code>nil</code>なら、バイトコンパイラーはダイナミック関数ロード機能を使用します。ダイナミックロードが望ましいのは特定のファイルにたいしてだけなので、この変数をグローバルにセットしないでください。そのかわりに、特定のソースファイルのファイルローカル変数でこの機能を有効にしてください。たとえばソースファイルの最初の行に以下のテキストを記述することにより、これを行うことができます:
+</p>
+<div class="example">
+<pre class="example">-*-byte-compile-dynamic: t;-*-
+</pre></div>
+
+<dl>
+<dt id="index-byte_002dcompile_002ddynamic">Variable: <strong>byte-compile-dynamic</strong></dt>
+<dd><p>これが非<code>nil</code>なら、バイトコンパイラーはダイナミック関数ロード用にセットアップされたコンパイル済みファイルを生成する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-fetch_002dbytecode">Function: <strong>fetch-bytecode</strong> <em>function</em></dt>
+<dd><p><var>function</var>がバイトコード関数オブジェクトなら、それがまだ完全にロードされていなければ、バイトコンパイル済みのファイルからの<var>function</var>のバイトコードのロードを完了させる。それ以外なら何も行わない。この関数は常に<var>function</var>をリターンする。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Auto-Indentation (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Auto-Indentation (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Auto-Indentation (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Modes.html" rel="up" title="Modes">
+<link href="SMIE.html" rel="next" title="SMIE">
+<link href="Region-to-Refontify.html" rel="prev" title="Region to Refontify">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Auto_002dIndentation"></span><div class="header">
+<p>
+Next: <a href="Desktop-Save-Mode.html" accesskey="n" rel="next">Desktop Save Mode</a>, Previous: <a href="Font-Lock-Mode.html" accesskey="p" rel="prev">Font Lock Mode</a>, Up: <a href="Modes.html" accesskey="u" rel="up">Modes</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="kodonoZi-Dong-indento"></span><h3 class="section">23.7 コードの自動インデント</h3>
+
+<p>プログラミング言語のメジャーモードにとって、自動的なインデントの提供は重要な機能です。これには2つのパートがあります。1つ目は正しい行のインデントが何か、そして2つ目はいつ行を再インデントするかの判断です。デフォルトでは<code>electric-indent-chars</code>に含まれる文字(デフォルトでは改行のみ)をタイプしたとき、Emacsは常に行を再インデントします。メジャーモードはその言語の構文に合わせて<code>electric-indent-chars</code>に文字を追加できます。
+</p>
+<p>正しいインデントの決定は<code>indent-line-function</code>によりEmacs内で制御されます(<a href="Mode_002dSpecific-Indent.html">Mode-Specific Indent</a>を参照)。いくつかのモードでは<em>右</em>へのインデントは信頼性がないことが知られています。これは通常は複数のインデントが有効であり、それぞれが異なる意味をもつのでインデント自体が重要だからです。そのような場合には、そのモードは行が常にユーザーの意に反して行が毎回再インデントされないことを保証するために<code>electric-indent-inhibit</code>をセットするべきです。
+</p>
+<p>よいインデント関数の記述は難しく、その広範な領域において未だ黒魔術の域を脱していません。メジャーモード作者の多くは、単純なケース(たとえば前のテキスト行のインデントとの比較)にたいして機能する、単純な関数の記述からスタートすることでしょう。実際には行ベースではないほとんどのプログラミング言語にたいして、これは貧弱なスケールになりがちです。そのような関数にたいして、より多様な状況を処理するような改良を行うと関数はより一層複雑になり、最終的な結果は誰にも触れようとする気を起こさせない、巨大で複雑な保守不可能のインデント関数になる傾向があります。
+</p>
+<p>よいインデント関数は、通常はその言語の構文に応じて実際にテキストをパースする必要があるでしょう。幸運なことにこのテキストパースはコンパイラーが要するほど詳細である必要はないでしょうが、その一方でインデントコードに埋め込まれたパーサーは構文的に不正なコードにたいして、コンパイラーより幾分寛容な振る舞いを求められるでしょう。
+</p>
+<p>保守可能なよいインデント関数は、通常は2つのカテゴリーに落ち着きます。どちらも何らかの安全な開始ポイントから、関心のある位置まで前方か後方へパースを行います。この2つの方法は、いずれも一方が他方に明快に優る選択ではありません。後方へのパースはプログラミング言語が前方にパースされるようデザインされているため、前方へのパースに比べて難しいことが多々ありますが、インデントという目的においては安全な開始ポイントを推測する必要がないという利点があり、一般的にある行のインデントの判断のために分析を要するのは最小限のテキストだけという特性に恵まれているので、前の無関係なコード片内にある何らかの構文エラーの影響をインデントが受けにくくなる傾向があります。一方で前方へのパースは通常はより簡単であり、一度のパースでリージョン全体を効果的に再インデントすることが可能になるという利点があります。
+</p>
+<p>インデント関数をスクラッチから記述するよりも、既存のインデント関数の使用と再利用、または一般的なインデントエンジンに委ねるほうが優る場合がしばしばあります。しかしそのようなエンジンは悲しむべきほど少数しかありません。(C、C++、Java、Awk、およびその類のモードに使用される)CCモードのインデントコードは年月を経てより一般化されてきているので、あなたの言語にこれらの言語と何らかの類似点があるなら、このエンジンの使用を試みるかもしれません。もう一方のSMIEはLispのsexp精神によるアプローチを採用して、それを非Lisp言語に適応します。
+</p>
+<table class="menu" border="0" cellspacing="0">
+<tr><td align="left" valign="top">&bull; <a href="SMIE.html" accesskey="1">SMIE</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">SMIE: Simple Minded Indentation 
+                               Engine(純真なインデントエンジン)
+</td></tr>
+</table>
+
+
+
+
+</body>
+</html>

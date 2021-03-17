@@ -1,0 +1,242 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Multiple Terminals (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Multiple Terminals (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Multiple Terminals (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Frames.html" rel="up" title="Frames">
+<link href="Frame-Geometry.html" rel="next" title="Frame Geometry">
+<link href="Creating-Frames.html" rel="prev" title="Creating Frames">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Multiple-Terminals"></span><div class="header">
+<p>
+Next: <a href="Frame-Geometry.html" accesskey="n" rel="next">Frame Geometry</a>, Previous: <a href="Creating-Frames.html" accesskey="p" rel="prev">Creating Frames</a>, Up: <a href="Frames.html" accesskey="u" rel="up">Frames</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Fu-Shu-noDuan-Mo-"></span><h3 class="section">29.2 複数の端末</h3>
+<span id="index-multiple-terminals"></span>
+<span id="index-multi_002dtty"></span>
+<span id="index-multiple-X-displays"></span>
+<span id="index-displays_002c-multiple"></span>
+
+<p>Emacsはそれぞれの端末を<em>端末オブジェクト(terminal object)</em>というデータ型で表します(<a href="Terminal-Type.html">Terminal Type</a>を参照)。GNUおよびUnixシステムではEmacsはそれぞれのセッション内で複数の端末を同時に実行できます。その他のシステムでは単一の端末だけが使用できます。端末オブジェクトはそれぞれ以下の属性をもちます:
+</p>
+<ul>
+<li> その端末により使用されるデバイスの名前(たとえば&lsquo;<samp>:0.0</samp>&rsquo;や<samp>/dev/tty</samp> )。
+
+</li><li> その端末により使用される端末とキーボードのコーディングシステム。<a href="Terminal-I_002fO-Encoding.html">Terminal I/O Encoding</a>を参照のこと。
+
+</li><li> その端末に関連付けられたディスプレイの種類。これは関数<code>terminal-live-p</code>によりリターンされるシンボル(たとえば<code>x</code>、<code>t</code>、<code>w32</code>、<code>ns</code>、<code>pc</code>
+)。<a href="Frames.html">Frames</a>を参照のこと。
+
+</li><li> 端末パラメーターのリスト。<a href="Terminal-Parameters.html">Terminal Parameters</a>を参照のこと。
+</li></ul>
+
+<p>端末オブジェクトを作成するプリミティブはありません。<code>make-frame-on-display</code>
+(以下参照)を呼び出したときなどに、Emacsが必要に応じてそれらを作成します。
+</p>
+<dl>
+<dt id="index-terminal_002dname">Function: <strong>terminal-name</strong> <em>&amp;optional terminal</em></dt>
+<dd><p>この関数は<var>terminal</var>により使用されるデバイスのファイル名をリターンする。<var>terminal</var>が省略または<code>nil</code>の場合のデフォルトは選択されたフレームの端末。<var>terminal</var>はフレームでもよく、その場合はそのフレームの端末。
+</p></dd></dl>
+
+<dl>
+<dt id="index-terminal_002dlist">Function: <strong>terminal-list</strong></dt>
+<dd><p>この関数はすべての生きた端末オブジェクトのリストをリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-get_002ddevice_002dterminal">Function: <strong>get-device-terminal</strong> <em>device</em></dt>
+<dd><p>この関数は<var>device</var>により与えられたデバイス名の端末をリターンする。<var>device</var>が文字列なら端末デバイス名、または&lsquo;<samp><var>host</var>:<var>server</var>.<var>screen</var></samp>&rsquo;という形式のXディスプレイのいずれかを指定できる。<var>device</var>ならこの関数はそのフレームの端末をリターンする。<code>nil</code>は選択されたフレームを意味する。最後にもし<var>device</var>が生きた端末を表す端末オブジェクトなら、その端末がリターンされる。引数がこれらのいずれとも異なれば、この関数はエラーをシグナルする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-delete_002dterminal">Function: <strong>delete-terminal</strong> <em>&amp;optional terminal force</em></dt>
+<dd><p>この関数は<var>terminal</var>上のすべてのフレームを削除して、それらが使用していたリソースを解放する。これらはアブノーマルフック<code>delete-terminal-functions</code>を実行して、各関数の引数として<var>terminal</var>を渡す。
+</p>
+<p><var>terminal</var>が省略または<code>nil</code>の場合のデフォルトは選択されたフレームの端末。<var>terminal</var>はフレームでもよく、その場合はそのフレームの端末を意味する。
+</p>
+<p>この関数は通常は唯一アクティブな端末の削除を試みるとエラーをシグナルするが、<var>force</var>が非<code>nil</code>ならこれを行うことができる。端末上で最後のフレームを削除した際には、Emacsは自動的にこの関数を呼び出す(<a href="Deleting-Frames.html">Deleting Frames</a>を参照)。
+</p></dd></dl>
+
+<dl>
+<dt id="index-delete_002dterminal_002dfunctions">Variable: <strong>delete-terminal-functions</strong></dt>
+<dd><p><code>delete-terminal</code>により実行されるアブノーマルフック。各関数は<code>delete-terminal</code>に渡された<var>terminal</var>を唯一の引数として受け取る。技術的な詳細により、この関数は端末の削除の直前または直後のいずれかに呼び出される。
+</p></dd></dl>
+
+<span id="index-terminal_002dlocal-variables"></span>
+<p>数は多くありませんが、Lisp変数のいくつかは<em>端末ローカル(terminal-local)</em>です。つまりそれらは端末それぞれにたいして個別にバインディングをもちます。いかなるときも実際に効果をもつバインディングはカレントで選択されたフレームに属する端末にたいして1つだけです。これらの変数には<code>default-minibuffer-frame</code>、<code>defining-kbd-macro</code>、<code>last-kbd-macro</code>、<code>system-key-alist</code>が含まれます。これらは常に端末ローカルであり、決してバッファーローカル(<a href="Buffer_002dLocal-Variables.html">Buffer-Local Variables</a>を参照)にはできません。
+</p>
+<p>GNUおよびUnixシステムでは、Xディスプレイはそれぞれ別のグラフィカル端末になります。Xウィンドウシステム内でEmacsが開始された際は環境変数<code>DISPLAY</code>、または&lsquo;<samp>--display</samp>&rsquo;オプション(<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/Initial-Options.html#Initial-Options">Initial
+Options</a> in <cite>The GNU Emacs
+Manual</cite>を参照)により指定されたXディスプレイを使用します。Emacsはコマンド<code>make-frame-on-display</code>を通じて別のXディスプレイに接続できます。それぞれのXディスプレイは、それぞれが選択されたフレームとミニバッファーをもちます。しかしあらゆる瞬間(<a href="Input-Focus.html">Input Focus</a>を参照)において、それらのフレームのうちの1つだけが、<em>いわゆる</em>選択されたフレームになります。<code>emacsclient</code>との対話により、Emacsが別のテキスト端末と接続することさえ可能です。<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/Emacs-Server.html#Emacs-Server">Emacs
+Server</a> in <cite>The GNU Emacs Manual</cite>を参照してください。
+</p>
+<span id="index-X-display-names"></span>
+<span id="index-display-name-on-X"></span>
+<p>1つのXサーバーが1つ以上のディスプレイを処理できます。各Xディスプレイには&lsquo;<samp><var>hostname</var>:<var>displaynumber</var>.<var>screennumber</var></samp>&rsquo;という3つの部分からなる名前があります。1つ目の部分の<var>hostname</var>はその端末が物理的に接続されるマシン名です。2つ目の部分の<var>displaynumber</var>は同じキーボードとポインティングデバイス(マウスやタブレット等)を共有するマシンに接続された1つ以上のモニターを識別するための0基準の番号です。3つ目の部分の<var>screennumber</var>は、そのXサーバー上の単一のモニターコレクション(a
+single monitor
+collection)の一部である0基準のスクリーン番号(個別のモニター)です。1つのサーバー配下にある2つ以上のスクリーンを使用する際には、Emacsはそれらの名前の同一部分から、それらが単一のキーボードを共有することを知ることができるのです。
+</p>
+<p>MS-WindowsのようにXウィンドウシステムを使用しないシステムはXディスプレイの概念をサポートせず、各ホスト上には1つのディスプレイだけがあります。これらのシステム上のディスプレイ名は上述したような3つの部分からなる名前にしたがいません。たとえばMS-Windowsシステム上のディスプレイ名は文字列定数&lsquo;<samp>w32</samp>&rsquo;です。これは互換性のために存在するものであり、ディスプレイ名を期待する関数にこれを渡すことができます。
+</p>
+<dl>
+<dt id="index-make_002dframe_002don_002ddisplay">Command: <strong>make-frame-on-display</strong> <em>display &amp;optional parameters</em></dt>
+<dd><p>この関数は<var>display</var>上に新たにフレームを作成してそれをリターンする。その他のフレームパラメーターは、<var>parameters</var>というalistから取得する。<var>display</var>はXディスプレイの名前(文字列)であること。
+</p>
+<p>この関数はフレーム作成前にEmacsがグラフィックを表示するためにセットアップされることを保証する。(テキスト端末上で開始された等で)たとえばEmacsがXリソースを未処理ならこの時点で処理を行う。他のすべての点においては、この関数は<code>make-frame</code>(<a href="Creating-Frames.html">Creating Frames</a>を参照)と同様に振る舞う。
+</p></dd></dl>
+
+<dl>
+<dt id="index-x_002ddisplay_002dlist">Function: <strong>x-display-list</strong></dt>
+<dd><p>この関数はEmacsがどのXディスプレイに接続したかを識別するリストをリターンする。このリストの要素は文字列で、それぞれがディスプレイ名を表す。
+</p></dd></dl>
+
+<dl>
+<dt id="index-x_002dopen_002dconnection">Function: <strong>x-open-connection</strong> <em>display &amp;optional xrm-string must-succeed</em></dt>
+<dd><p>この関数はディスプレイ上にフレームを作成することなく、Xディスプレイ<var>display</var>への接続をオープンする。通常は<code>make-frame-on-display</code>が自動的に呼び出すので、Emacs
+Lispプログラムがこの関数を呼び出す必要はない。これを呼び出す唯一の理由は、与えられたXディスプレイにたいして通信を確立できるかどうかチェックするためである。
+</p>
+<p>オプション引数<var>xrm-string</var>が非<code>nil</code>なら、それは<samp>.Xresources</samp>ファイル内で使用されるフォーマットと同一なリソース名とリソース値。<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/X-Resources.html#X-Resources">X Resources</a> in <cite>The GNU Emacs
+Manual</cite>を参照のこと。これらの値はそのXサーバー上で記録されたリソース値をオーバーライドして、このディスプレイ上で作成されるすべてのEmacsフレームにたいして適用される。以下はこの文字列がどのようなものかを示す例:
+</p>
+<div class="example">
+<pre class="example">&quot;*BorderWidth: 3\n*InternalBorder: 2\n&quot;
+</pre></div>
+
+<p><var>must-succeed</var>が非<code>nil</code>なら、接続オープンの失敗によりEmacsが終了させられる。それ以外なら通常のLispエラーとなる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-x_002dclose_002dconnection">Function: <strong>x-close-connection</strong> <em>display</em></dt>
+<dd><p>この関数はディスプレイ<var>display</var>への接続をクローズする。これを行う前には、まずそのディスプレイ上でオープンしたすべてのフレームを削除しなければならない(<a href="Deleting-Frames.html">Deleting Frames</a>を参照)。
+</p></dd></dl>
+
+<span id="index-multi_002dmonitor"></span>
+<p>マルチモニターのセットアップにおいて、単一のXディスプレイが複数の物理モニターに出力される場合があります。そのようなセットアップを取得するために関数<code>display-monitor-attributes-list</code>と<code>frame-monitor-attributes</code>を使用できます。
+</p>
+<dl>
+<dt id="index-display_002dmonitor_002dattributes_002dlist">Function: <strong>display-monitor-attributes-list</strong> <em>&amp;optional display</em></dt>
+<dd><p>この関数は<var>display</var>上の物理モニターの属性のリストをリターンする。<var>display</var>にはディスプレイ名(文字列)、端末、フレームを指定でき、省略または<code>nil</code>の場合のデフォルトは選択されたフレームのディスプレイ。このリストの各要素は物理モニターの属性を表す連想リスト。1つ目の要素はプライマリーモニターである。以下は属性のキーと値:
+</p>
+<dl compact="compact">
+<dt>&lsquo;<samp>geometry</samp>&rsquo;</dt>
+<dd><p>&lsquo;<samp>(<var>x</var> <var>y</var> <var>width</var>
+<var>height</var>)</samp>&rsquo;のようなピクセル単位でのそのモニターのスクリーンの左上隅の位置とサイズ。そのモニターがプライマリーモニターでなければ、いくつかの座標が負になり得る。
+</p>
+</dd>
+<dt>&lsquo;<samp>workarea</samp>&rsquo;</dt>
+<dd><p>&lsquo;<samp>(<var>x</var> <var>y</var> <var>width</var>
+<var>height</var>)</samp>&rsquo;のようなピクセル単位でのワークエリア(使用可能なスペース)の左上隅の位置とサイズ。ウィンドウマネージャーのさまざまな機能(dock、taskbar等)によりそのスペースが占有される&lsquo;<samp>geometry</samp>&rsquo;とは異なり、これはワークエリアから除外され得る。そのような機能が実際にワークエリアから差し引かれるかどうかは、そのプラットフォームと環境に依存する。繰り返しになるが、そのモニターがプライマリーモニターでなければ、いくつかの座標は負になり得る。
+</p>
+</dd>
+<dt>&lsquo;<samp>mm-size</samp>&rsquo;</dt>
+<dd><p>&lsquo;<samp>(<var>width</var> <var>height</var>)</samp>&rsquo;&lt;のようなミリメートル単位での幅と高さ。
+</p>
+</dd>
+<dt>&lsquo;<samp>frames</samp>&rsquo;</dt>
+<dd><p>その物理モニターが支配(dominate)するフレームのリスト(以下参照)。
+</p>
+</dd>
+<dt>&lsquo;<samp>name</samp>&rsquo;</dt>
+<dd><p><var>string</var>のようなその物理モニターの名前。
+</p>
+</dd>
+<dt>&lsquo;<samp>source</samp>&rsquo;</dt>
+<dd><p><var>string</var>のようなマルチモニターの情報ソース(例: &lsquo;<samp>XRandr</samp>&rsquo;、&lsquo;<samp>Xinerama</samp>&rsquo;等)。
+</p></dd>
+</dl>
+
+<p><var>x</var>、<var>y</var>、<var>width</var>、<var>height</var>は整数。&lsquo;<samp>name</samp>&rsquo;と&lsquo;<samp>source</samp>&rsquo;は欠落しているかもしれない。
+</p>
+<p>あるモニター内にフレームの最大領域がある、または(フレームがどの物理モニターにも跨がらないなら)そのモニターがフレームに最も近いとき、フレームは物理モニターにより<em>支配(dominate)</em>される。グラフィカルなディスプレイ内の(ツールチップではない)すべてのフレームは、たとえそのフレームが複数の物理モニターに跨がる(または物理モニター上にない)としても、(可視か否かによらず)正確に1つの物理モニターにより支配される。
+</p>
+<p>以下は2つのモニターディスプレイ上でこの関数により生成されたデータの例:
+</p>
+<div class="lisp">
+<pre class="lisp">  (display-monitor-attributes-list)
+  &rArr;
+  (((geometry 0 0 1920 1080) ;; <span class="roman">左手側プライマリーモニター</span>
+    (workarea 0 0 1920 1050) ;; <span class="roman">タスクバーが幾分かの高さを占有</span>
+    (mm-size 677 381)
+    (name . &quot;DISPLAY1&quot;)
+    (frames #&lt;frame emacs@host *Messages* 0x11578c0&gt;
+            #&lt;frame emacs@host *scratch* 0x114b838&gt;))
+   ((geometry 1920 0 1680 1050) ;; <span class="roman">右手側モニター</span>
+    (workarea 1920 0 1680 1050) ;; <span class="roman">スクリーン全体を使用可</span>
+    (mm-size 593 370)
+    (name . &quot;DISPLAY2&quot;)
+    (frames)))
+</pre></div>
+
+</dd></dl>
+
+<dl>
+<dt id="index-frame_002dmonitor_002dattributes">Function: <strong>frame-monitor-attributes</strong> <em>&amp;optional frame</em></dt>
+<dd><p>この関数は<var>frame</var>を支配(上記参照)する物理モニターの属性をリターンする。 <var>frame</var>のデフォルトは選択されたフレーム。
+</p></dd></dl>
+
+<p>マルチモニターディスプレーではフレームを指定したモニター上にするためにコマンド<code>make-frame-on-monitor</code>を使用することが可能です。
+</p>
+<dl>
+<dt id="index-make_002dframe_002don_002dmonitor">Command: <strong>make-frame-on-monitor</strong> <em>monitor &amp;optional display parameters</em></dt>
+<dd><p>この関数は<var>display</var>上に配置される<var>monitor</var>に新たにフレームを作成してそれをリターンする。その他のフレームパラメーターは、<var>parameters</var>というalistから取得する。<var>monitor</var>は物理モニター名であり、<code>display-monitor-attributes-list</code>関数のリターン値の属性<code>name</code>の文字列と同一の文字列であること。<var>display</var>はXディスプレイの名前(文字列)であること。
+</p></dd></dl>
+
+<hr>
+<div class="header">
+<p>
+Next: <a href="Frame-Geometry.html" accesskey="n" rel="next">Frame Geometry</a>, Previous: <a href="Creating-Frames.html" accesskey="p" rel="prev">Creating Frames</a>, Up: <a href="Frames.html" accesskey="u" rel="up">Frames</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

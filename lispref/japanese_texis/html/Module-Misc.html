@@ -1,0 +1,138 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Module Misc (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Module Misc (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Module Misc (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Writing-Dynamic-Modules.html" rel="up" title="Writing Dynamic Modules">
+<link href="Module-Nonlocal.html" rel="next" title="Module Nonlocal">
+<link href="Module-Values.html" rel="prev" title="Module Values">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Module-Misc"></span><div class="header">
+<p>
+Next: <a href="Module-Nonlocal.html" accesskey="n" rel="next">Module Nonlocal</a>, Previous: <a href="Module-Values.html" accesskey="p" rel="prev">Module Values</a>, Up: <a href="Writing-Dynamic-Modules.html" accesskey="u" rel="up">Writing Dynamic Modules</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="sonoTa-noBian-Li-namoziyuruYong-Guan-Shu-"></span><h4 class="subsection">E.8.4 その他の便利なモジュール用関数</h4>
+
+<p>このサブセクションではモジュール<acronym>API</acronym>が提供する便利な関数をいくつか説明します。前のサブセクションで説明した関数と同じようにこれらの関数は実際には関数ポインターであり、<code>emacs_env</code>ポインターを介して呼び出す必要があります。Emacs
+25以降に導入された関数の説明はそれらが利用可能になった最初のバージョンを付記します。
+</p>
+<dl>
+<dt id="index-eq-1">Function: <em>bool</em> <strong>eq</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>a</var>, emacs_value <var>b</var>)</em></dt>
+<dd><p>この関数は<var>a</var>と<var>b</var>が表すLispオブジェクトが等しければ<code>true</code>、それ以外なら<code>false</code>をリターンする。これはLisp関数<code>eq</code>
+(<a href="Equality-Predicates.html">Equality Predicates</a>を参照)と同じだが、引数が表すオブジェクトのinternの要否を無視する。
+</p>
+<p>等価性に関する他の述語は<acronym>API</acronym>関数には存在しないので、より複雑な等価性のテストを行うためには、以下で説明する<code>intern</code>と<code>funcall</code>を使う必要がある。
+</p></dd></dl>
+
+<dl>
+<dt id="index-is_005fnot_005fnil">Function: <em>bool</em> <strong>is_not_nil</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>arg</var>)</em></dt>
+<dd><p>このえ関数は<var>arg</var>で表されるLispオブジェクトをテストして非<code>nil</code>なら<code>true</code>、それ以外は<code>false</code>をリターンする。
+</p>
+<p>等価性をテストするたに<code>intern</code>を使って<code>nil</code>を表す<code>emacs_value</code>を取得して、上述の<code>eq</code>を使用すれば自身で等価性テストを実装できることに注意。しかしこの関数を使用するほうが簡便だろう。
+</p></dd></dl>
+
+<dl>
+<dt id="index-type_005fof">Function: <em>emacs_value</em> <strong>type_of</strong> <em>(emacs_env *<var>env</var>, emacs_value <code>arg</code>)</em></dt>
+<dd><p>この関数はシンボルを表す値(文字列は<code>string</code>、整数は<code>integer</code>、プロセスなら<code>process</code>等)として<var>arg</var>のタイプをリターンする。<a href="Type-Predicates.html">Type Predicates</a>を参照のこと。オブジェクトのタイプにコードが依存する必要があれば、既知のタイプシンボルと比較するために<code>intern</code>と<code>eq</code>を使用できる。
+</p></dd></dl>
+
+<span id="intern"></span><dl>
+<dt id="index-intern-1">Function: <em>emacs_value</em> <strong>intern</strong> <em>(emacs_env *<var>env</var>, const char *name)</em></dt>
+<dd><p>この関数は名前が<var>name</var>
+(null終端された<acronym>ASCII</acronym>文字列であること)であるような、internされたEmacsシンボルをリターンする。すでに存在していなれば新たにシンボルを作成する。
+</p>
+<p>この関数は以下で説明する<code>funcall</code>と共に用いることにより、Lispで呼び出し可能なEmcas関数(名前が純粋な<acronym>ASCII</acronym>文字列である場合にかぎる)純粋な<acronym>ASCII</acronym>文字列であるようなを呼び出す手段を提供する。たとえば以下はより協力なEmacsの<code>intern</code>関数(<a href="Creating-Symbols.html">Creating Symbols</a>を参照)を呼び出すことにより、名前<code>name_str</code>が非<acronym>ASCII</acronym>であるようなシンボルをinternする方法:
+</p>
+<div class="example">
+<pre class="example">emacs_value fintern = env-&gt;intern (env, &quot;intern&quot;);
+emacs_value sym_name =
+  env-&gt;make_string (env, name_str, strlen (name_str));
+emacs_value symbol = env-&gt;funcall (env, fintern, 1, &amp;sym_name);
+</pre></div>
+
+</dd></dl>
+
+<dl>
+<dt id="index-funcall-1">Function: <em>emacs_value</em> <strong>funcall</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>func</var>, ptrdiff_t <var>nargs</var>, emacs_value *<var>args</var>)</em></dt>
+<dd><p>この関数は<var>args</var>が指す配列の<var>nargs</var>個の引数を渡して<var>func</var>の指定先を呼び出す。引数<var>func</var>は(上述の<code>intern</code>がリターンした)関数シンボル、<code>make_function</code>がリターンしたモジュール関数(<a href="Module-Functions.html">Module Functions</a>を参照)、Cで記述されたサブルーチン等。<var>nargs</var>が0なら<var>args</var>は<code>NULL</code>ポインターでもよい。
+</p>
+<p>この関数は<var>func</var>がリターンした値をリターンする。
+</p></dd></dl>
+
+<p>モジュールに長時間実行される可能性のあるコードが含まれる場合には、たとえば<kbd>C-g</kbd>をタイプする(<a href="Quitting.html">Quitting</a>を参照)等によりユーザーがquitを望むかどうかをコード内でときどきチェックするのはよいアイデアです。Emacs
+26.1から利用可能になった以下の関数は、この目的のために提供されました。
+</p>
+<span id="should_005fquit"></span><dl>
+<dt id="index-should_005fquit">Function: <em>bool</em> <strong>should_quit</strong> <em>(emacs_env *<var>env</var>)</em></dt>
+<dd><p>この関数はユーザーがquitを望むようなら<code>true</code>をリターンする。この場合にはモジュール関数は実行中の処理をabortして可能なかぎり速やかにリターンすることを推奨する。ほとんどの場合は<code>process_input</code>を使用すること。
+</p></dd></dl>
+
+<p>ユーザーがquitを望むかどうかをチェックすることに加えて入力イベントを処理するには、Emacs
+27.1以降で利用可能になった以下の関数を使用してください。
+</p>
+<span id="process_005finput"></span><dl>
+<dt id="index-emacs_005fprocess_005finput_005fresult">Function: <em>enum</em> <strong>emacs_process_input_result</strong> <em>process_input (emacs_env *<var>env</var>)</em></dt>
+<dd><p>この関数は保留中の入力イベントを処理する。ユーザーがquitを望んでいたり、シグナル処理中にエラーが発生したら<code>emacs_process_input_quit</code>をリターンする。この場合にはモジュール関数は行っているすべての処理をabortして可能なかぎり即座にリターンすることを推奨する。モジュールコードが実行を継続できるなら、<code>process_input</code>は<code>emacs_process_input_continue</code>をリターンする。<code>env</code>内に保留中の非ローカルexitが存在しない場合のみ、リターン値は<code>emacs_process_input_continue</code>。<code>process_input</code>呼び出し後にモジュールが継続する場合には、変数値やバッファーコンテンツのとうなグローバル状態は任意の手段で変更され得る。
+</p></dd></dl>
+
+<span id="open_005fchannel"></span><dl>
+<dt id="index-open_005fchannel">Function: <em>int</em> <strong>open_channel</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>pipe_process</var>)</em></dt>
+<dd><p>このEmacs
+28以降で利用可能になった関数は、既存のpipeプロセスへのチャンネルをオープンする。<var>pipe_process</var>は<code>make-pipe-process</code>が作成した既存のpipeプロセスを参照しなければならない。<a href="Asynchronous-Processes.html#Pipe-Processes">Pipe Processes</a>を参照のこと。成功すると、そのpipeへの書き込みに使用できる新たなファイルデスクリプターを値としてリターンする。他のすべてのモジュール関数と異なり、アクティブなモジュール環境がなくても、任意のスレッドがリターンしたファイルデスクリプターを使用できる。このファイルデスクリプターへの書き込みには<code>write</code>関数を使用できる。使用後には<code>close</code>を使用してファイルデスクリプターをクローズする。<a href="https://www.gnu.org/software/libc/manual/html_node/Low_002dLevel-I_002fO.html#Low_002dLevel-I_002fO">(libc)Low-Level
+I/O</a>を参照のこと。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

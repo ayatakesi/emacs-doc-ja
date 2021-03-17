@@ -1,0 +1,122 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Backtraces (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Backtraces (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Backtraces (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Debugger.html" rel="up" title="Debugger">
+<link href="Debugger-Commands.html" rel="next" title="Debugger Commands">
+<link href="Using-Debugger.html" rel="prev" title="Using Debugger">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Backtraces"></span><div class="header">
+<p>
+Next: <a href="Debugger-Commands.html" accesskey="n" rel="next">Debugger Commands</a>, Previous: <a href="Using-Debugger.html" accesskey="p" rel="prev">Using Debugger</a>, Up: <a href="Debugger.html" accesskey="u" rel="up">Debugger</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="batukutoresu"></span><h4 class="subsection">18.1.7 バックトレース</h4>
+<span id="index-backtrace-buffer"></span>
+
+<p>DebuggerモードはEdebugとERT(<a href="Edebug.html">Edebug</a>と<a href="../ert/index.html#Top">the ERT manual</a> in <cite>ERT:
+Emacs Lisp Regression Testing</cite>を参照)がbacktrace表示にも使用するBacktraceモードから派生したモードです。
+</p>
+<span id="index-stack-frame"></span>
+<p>backtraceバッファーは実行されている関数と、その関数の引数の値を示します。backtraceバッファー作成時には1つのスタックフレームにたいして1行(非常に長い可能性がある)を表示します(スタックフレームとはLispインタープリターが特定の関数呼び出しに関する情報を記録する場所のこと)。もっとも最近の呼び出しが最上行になります。
+</p>
+<span id="index-current-stack-frame"></span>
+<p>backtraceではフレームを記述する行にポイントを移動してフタックフレームを指定できます。ポイントのある行のフレームが<em>カレントフレーム(current
+frame)</em>とみなされます。
+</p>
+<p>関数名に下線が引かれている場合には、Emacsがソースコードの場所を知っていることを意味します。その関数名をマウスでクリックするか、そこに移動して<tt class="key">RET</tt>をタイプすることにより、ソースコードをvisitできます。下線のない関数名や変数名にポイントがあるときに<tt class="key">RET</tt>をタイプした場合には、もしあればそのシンボルにたいするヘルプ情報をhelpバッファーで確認することもできます。<tt class="key">M-.</tt>にバインドされている<code>xref-find-definitions</code>コマンドはbacktrace内の任意の識別子にも使用できます(<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/Looking-Up-Identifiers.html#Looking-Up-Identifiers">Looking
+Up Identifiers</a> in <cite>The GNU Emacs Manual</cite>を参照)。
+</p>
+<p>backtraceでは長いリストの末尾およびベクターや構造、同じように深くネストされたオブジェクトの終端は下線つきの&ldquo;...&rdquo;でプリントされます。&ldquo;...&rdquo;上でマウスをクリックするか、その上にポイントがある状態で<tt class="key">RET</tt>をタイプすることにより、オブジェクトの隠蔽されている部分を表示できます。省略を行う量の制御は<code>backtrace-line-length</code>をカスタマイズしてください。
+</p>
+<p>以下はbacktraceの操作と閲覧を行うコマンドのリストです:
+</p>
+<dl compact="compact">
+<dt><kbd>v</kbd></dt>
+<dd><p>カレントスタックフレームのローカル変数の表示を切り替える。
+</p>
+</dd>
+<dt><kbd>p</kbd></dt>
+<dd><p>フレームまたは前のフレームの先頭に移動する。
+</p>
+</dd>
+<dt><kbd>n</kbd></dt>
+<dd><p>次のフレームの先頭に移動する。
+</p>
+</dd>
+<dt><kbd>+</kbd></dt>
+<dd><p>可読性向上のためにポイント位置に行ブレークを追加してトップレベルLispフォームにインデントする。
+</p>
+</dd>
+<dt><kbd>-</kbd></dt>
+<dd><p>ポイント位置のトップレベルLispフォームを1行に折り畳む。
+</p>
+</dd>
+<dt><kbd>#</kbd></dt>
+<dd><p>ポイント位置のフレームの<code>print-circle</code>を切り替える。
+</p>
+</dd>
+<dt><kbd>:</kbd></dt>
+<dd><p>ポイント位置のフレームの<code>print-gensym</code>を切り替える。
+</p>
+</dd>
+<dt><kbd>.</kbd></dt>
+<dd><p>ポイント位置のフレームの&ldquo;...&rdquo;で省略されたすべてのフォームを展開する。
+</p>
+</dd>
+</dl>
+
+
+
+
+</body>
+</html>

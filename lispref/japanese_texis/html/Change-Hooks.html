@@ -1,0 +1,131 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Change Hooks (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Change Hooks (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Change Hooks (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Text.html" rel="up" title="Text">
+<link href="Non_002dASCII-Characters.html" rel="next" title="Non-ASCII Characters">
+<link href="Atomic-Changes.html" rel="prev" title="Atomic Changes">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Change-Hooks"></span><div class="header">
+<p>
+Previous: <a href="Atomic-Changes.html" accesskey="p" rel="prev">Atomic Changes</a>, Up: <a href="Text.html" accesskey="u" rel="up">Text</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="hutukunoBian-Geng-"></span><h3 class="section">32.32 フックの変更</h3>
+<span id="index-change-hooks"></span>
+<span id="index-hooks-for-text-changes"></span>
+
+<p>以下のフック変数によりバッファー(これらをバッファーローカルにした場合には特定のバッファー)での変更にたいして、通知を受け取るようにアレンジすることができます。テキストの特定部分にたいする変更の検出方法については<a href="Special-Properties.html">Special Properties</a>も参照してください。
+</p>
+<p>これらのフック内で使用する関数は、もしそれらが正規表現を使用して何かを行う場合にはマッチしたデータの保存とリストアを行うべきです。さもないとそれらが呼び出す編集処理に奇妙な方法で干渉するでしょう。
+</p>
+<dl>
+<dt id="index-before_002dchange_002dfunctions">Variable: <strong>before-change-functions</strong></dt>
+<dd><p>この変数はEmacsがバッファー変更を行おうとする際に呼び出す関数のリストを保持する。各関数は変更されようとするリージョンの先頭と終端を整数で表す2つの引数を受け取る。変更されようとするバッファーは関数の呼び出しの際には常にカレントバッファーである。
+</p></dd></dl>
+
+<dl>
+<dt id="index-after_002dchange_002dfunctions">Variable: <strong>after-change-functions</strong></dt>
+<dd><p>この変数はEmacsがバッファー変更を行った後に呼び出す関数のリストを保持する。各関数は正に変更されたリージョンの先頭と終端、およびその変更前に存在したテキストの長さという3つの引数を受け取る。これら3つの変数は、すべて整数。変更されたバッファーは関数の呼び出しの際には常にカレントバッファーである。
+</p>
+<p>古いテキストの長さは、変更される前のテキストでのテキストの前後のバッファー位置の差で与えられる。変更されたテキストでは、その長さは単に最初の2つの引数の差で与えられる。
+</p></dd></dl>
+
+<p>これらの関数は<samp>*Messages*</samp>バッファーへのメッセージの出力では呼び出されず、特定の処理用にEmacsが作成する内部的なバッファーのようなLispプログラムからは可視であるべきではないバッファーへの変更でも呼び出されません。
+</p>
+<p>バッファーを変更するプリミティブのほとんどは、バランスされたカッコ内でのそれぞれの変更にたいして<code>before-change-functions</code>と<code>after-change-functions</code>を1回呼び出し、これらのフックにたいする引数は行われた変更を正確に区切ります。しかしフック関数は常にこのように行われると信頼すべきではありません。なぜなら複雑なプリミティブのいくつかは変更を行う前に<code>before-change-functions</code>を呼び出してから、プリミティブが行なった個別の変更の数にもとづいて<code>after-change-functions</code>を0回以上呼び出すからです。これが発生した場合には、<code>before-change-functions</code>の引数は個別の変更が行われたリージョンを囲むでしょうが、そのようなリージョンが最小である必要はなく、連続した<code>after-change-functions</code>呼び出しそれぞれにたいする引数は変更されたテキスト部分を正確に区切るでしょう。一般的には、before-changeかafter-changeのいずれかのフックを使用して、両方は使用しないことを推奨します。
+</p>
+<dl>
+<dt id="index-combine_002dafter_002dchange_002dcalls">Macro: <strong>combine-after-change-calls</strong> <em>body&hellip;</em></dt>
+<dd><p>このマクロは普通に<var>body</var>を実行するが、もしそれが安全なように見えるなら一連の複数の変更にたいして正に一度、after-change関数を呼び出すようにアレンジする。
+</p>
+<p>そのバッファーの同じ領域内でプログラムが複数のテキスト変更を行う場合には、その部分のプログラムの周囲でマクロ<code>combine-after-change-calls</code>を使用することにより、after-changeフック使用中の実行がかなり高速になり得る。after-changeフックが最終的に呼び出される際には、その引数は<code>combine-after-change-calls</code>のbody内で行われたすべての変更にたいして含むバッファーの範囲を指定する。
+</p>
+<p><strong>警告:</strong>
+フォーム<code>combine-after-change-calls</code>のbody内で<code>after-change-functions</code>の値を変更してはならない。
+</p>
+<p><strong>警告:</strong>
+組み合わされた変更がバッファーの広い範囲に点在してに出現する場合でも、これは依然として機能するが推奨できない。なぜならこれは、ある変更フック関数を非効率的な挙動へと導くかもしれないからである。
+</p></dd></dl>
+
+<dl>
+<dt id="index-combine_002dchange_002dcalls">Macro: <strong>combine-change-calls</strong> <em>beg end body&hellip;</em></dt>
+<dd><p>これは通常のように<var>body</var>を実行するが、<code>before-change-functions</code>および<code>after-change-functions</code>の呼び出しをトリガーしないすべてのバッファー変更を除く。かわりに<var>beg</var>と<var>end</var>で囲まれるリージョンにたいしてこれらのフックそれぞれを1回呼び出し、<var>body</var>が変更するサイズを反映したパラメーターを<code>after-change-functions</code>に与える。
+</p>
+<p>このマクロの結果は<var>body</var>のリターンした結果。
+</p>
+<p>このマクロはある関数がバッファーにたいして繰り返し多数の変更を行う可能性があり、このマクロ以外では個別のバッファー変更ごとにそれらの変更フックを実行するために実行に長時間を要する際に有用。Emacs自身は、たとえばコマンド<code>comment-region</code>や<code>uncomment-region</code>の中でこのマクロを使用している。
+</p>
+<p><strong>警告:</strong>
+<var>body</var>内で<code>before-change-functions</code>や<code>after-change-function</code>の値を変更してはならない。
+</p>
+<p><strong>警告:</strong> <var>beg</var>と<var>end</var>で指定したリージョン外部でのバッファー変更は何も行ってはならない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-first_002dchange_002dhook">Variable: <strong>first-change-hook</strong></dt>
+<dd><p>この変数は以前は未変更の状態だったバッファーが変更された際は常に実行されるノーマルフック。
+</p></dd></dl>
+
+<dl>
+<dt id="index-inhibit_002dmodification_002dhooks">Variable: <strong>inhibit-modification-hooks</strong></dt>
+<dd><p>この変数が非<code>nil</code>ならすべての変更フックは無効。それらは何も実行されない。これはこのセクションで説明したすべてのフック変数、同様に特定のスペシャルテキストプロパティ(<a href="Special-Properties.html">Special Properties</a>を参照)とオーバーレイプロパティ(<a href="Overlay-Properties.html">Overlay Properties</a>を参照)にアタッチされたフックに影響を与える。
+</p>
+<p>これらの同一フック変数上の関数の実行の間、バッファー変更によるデフォルトの変更フックが他の変更フック実行中に実行されないように、この変数は非<code>nil</code>にバインドされる。それ自体が変更フックから実行される特定のコード断片内で変更フックを実行したければ、<code>inhibit-modification-hooks</code>を<code>nil</code>にローカルに再バインドすること。しかしこれを行うことで変更フックが再帰的に呼び出されるかもしれないのでそれに備えること(たとえばフックが何も行わないようにいくつかの変数をバインドする)。
+</p>
+<p>バッファーのテキストコンテンツに永続的な変更をもたらさない変更(たとえばフェイス変更や一時的な変更)だけにこの変数をバインドすることを推奨する。一連の変更の間は変更フックを遅延させる必要がある(通常は性能上な理由による)なら、かわりに<code>combine-change-calls</code>や<code>combine-after-change-calls</code>を使用すること。
+</p></dd></dl>
+
+
+
+</body>
+</html>

@@ -1,0 +1,213 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Creating Buffer-Local (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Creating Buffer-Local (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Creating Buffer-Local (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Buffer_002dLocal-Variables.html" rel="up" title="Buffer-Local Variables">
+<link href="Default-Value.html" rel="next" title="Default Value">
+<link href="Intro-to-Buffer_002dLocal.html" rel="prev" title="Intro to Buffer-Local">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Creating-Buffer_002dLocal"></span><div class="header">
+<p>
+Next: <a href="Default-Value.html" accesskey="n" rel="next">Default Value</a>, Previous: <a href="Intro-to-Buffer_002dLocal.html" accesskey="p" rel="prev">Intro to Buffer-Local</a>, Up: <a href="Buffer_002dLocal-Variables.html" accesskey="u" rel="up">Buffer-Local Variables</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="batuhuarokarunabaindeingunoZuo-Cheng-toXue-Chu-"></span><h4 class="subsection">12.11.2 バッファーローカルなバインディングの作成と削除</h4>
+
+<dl>
+<dt id="index-make_002dlocal_002dvariable">Command: <strong>make-local-variable</strong> <em>variable</em></dt>
+<dd><p>この関数はカレントバッファー内で、<var>variable</var>(シンボル)にたいするバッファーローカルなバインディングを作成する。他のバッファーは影響を受けない。リターンされる値は<var>variable</var>。
+</p>
+<p><var>variable</var>のバッファーローカルな値は、最初は以前に<var>variable</var>がもっていた値と同じ値をもつ。<var>variable</var>がvoidのときはvoidのまま。
+</p>
+<div class="example">
+<pre class="example">;; <span class="roman">バッファー&lsquo;<samp>b1</samp>&rsquo;で行う:</span>
+(setq foo 5)                ; <span class="roman">すべてのバッファーに影響する。</span>
+     &rArr; 5
+</pre><pre class="example">(make-local-variable 'foo)  ; <span class="roman">&lsquo;<samp>b1</samp>&rsquo;内でローカルになった</span>
+     &rArr; foo
+</pre><pre class="example">foo                         ; <span class="roman">値は変更されない</span>
+     &rArr; 5
+</pre><pre class="example">(setq foo 6)                ; <span class="roman">&lsquo;<samp>b1</samp>&rsquo;内で値を変更</span>
+     &rArr; 6
+</pre><pre class="example">foo
+     &rArr; 6
+</pre><pre class="example">
+
+</pre><pre class="example">;; <span class="roman">バッファー&lsquo;<samp>b2</samp>&rsquo;では、値は変更されていない</span>
+(with-current-buffer &quot;b2&quot;
+  foo)
+     &rArr; 5
+</pre></div>
+
+<p>変数を<code>let</code>バインディングでバッファーローカルにしても、<code>let</code>への出入り時の両方でこれを行うバッファーがカレントでなければ信頼性はない。これは<code>let</code>がバインディングの種類を区別しないからである。<code>let</code>に解るのはバインディングが作成される変数だけである。
+</p>
+<p>定数や読み取り専用の変数をバッファーローカルにするとエラーになる。<a href="Constant-Variables.html">Constant Variables</a>を参照のこと。
+</p>
+<p>変数が端末ローカル(<a href="Multiple-Terminals.html">Multiple Terminals</a>を参照)なら、この関数はエラーをシグナルする。そのような変数はバッファーローカルなバインディングをもつことができない。
+</p>
+<p><strong>警告:</strong>
+フック変数にたいして<code>make-local-variable</code>を使用しないこと。フック変数は<code>add-hook</code>か<code>remove-hook</code>の<var>local</var>引数を使用すると、必要に応じて自動でバッファーローカルになる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-setq_002dlocal">Macro: <strong>setq-local</strong> <em>&amp;rest pairs</em></dt>
+<dd><p><var>pairs</var>は変数と値のペアからなるリスト。このマクロはカレントバッファー内で変数それぞれにたいしてバッファーローカルなバインディングを作成して、それにバッファーローカルな値を与える。このマクロは各変数にたいして<code>make-local-variable</code>の後に<code>setq</code>を呼び出すのと等価。変数はクォートされていないシンボルであること。
+</p>
+<div class="lisp">
+<pre class="lisp">(setq-local var1 &quot;value1&quot;
+            var2 &quot;value2&quot;)
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-make_002dvariable_002dbuffer_002dlocal">Command: <strong>make-variable-buffer-local</strong> <em>variable</em></dt>
+<dd><p>このコマンドは<var>variable</var>(シンボル)が自動的にバッファーローカルになるようにマークするので、それ以降にその変数へのセットを試みると、その時点でカレントのバッファーにローカルになる。しばしば混乱を招く<code>make-local-variable</code>とは異なり、これが取り消されることはなく、すべてのバッファー内での変数の挙動に影響する。
+</p>
+<p>この機能特有の欠点は、(<code>let</code>やその他のバインディング構文による)変数のバインディングが、その変数にたいするバッファーローカルなバインディングを作成しないことである。(<code>set</code>や<code>setq</code>による)変数のセットだけは、その変数がカレントバッファーで作成された<code>let</code>スタイルのバインディングをもたないので、ローカルなバインディングを作成する。
+</p>
+<p><var>variable</var>がデフォルト値をもたない場合、このコマンドの呼び出しは<code>nil</code>のデフォルト値を与える。<var>variable</var>がすでにデフォルト値をもつなら、その値は変更されずに残る。それ以降に<var>variable</var>にたいして<code>makunbound</code>を呼び出すと、バッファーローカル値をvoidにして、デフォルト値は影響を受けずに残る。
+</p>
+<p>▼リターン値は<var>variable</var>。
+</p>
+<p>定数や読み取り専用の変数をバッファーローカルにするとエラーになる。<a href="Constant-Variables.html">Constant Variables</a>を参照のこと。
+</p>
+<p><strong>警告:</strong>
+ユーザーオプション変数では、ユーザーは異なるバッファーにたいして異なるカスタマイズを望む<em>かもしれない</em>ので、<code>make-variable-buffer-local</code>を使うべきだと決め込むべきではない。ユーザーは望むなら任意の変数をローカルにできる。その選択の余地を残すほうがよい。
+</p>
+<p><code>make-variable-buffer-local</code>を使用すべきなのは、複数のバッファーが同じバインディングを共有しないことが自明な場合である。たとえばバッファーごとに個別な値をもつことに依存するLispプログラム内の内部プロセスにたいして変数が使用されるときは、<code>make-variable-buffer-local</code>の使用が最善の解決策になるかもしれない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-defvar_002dlocal">Macro: <strong>defvar-local</strong> <em>variable value &amp;optional docstring</em></dt>
+<dd><p>このマクロは<var>variable</var>を初期値<var>value</var>と<var>docstring</var>の変数として定義して、それを自動的にバッファーローカルとマークする。これは<code>defvar</code>の後につづけて<code>make-variable-buffer-local</code>を呼び出すのと同じ。<var>variable</var>はクォートされていないシンボル。
+</p></dd></dl>
+
+<dl>
+<dt id="index-local_002dvariable_002dp">Function: <strong>local-variable-p</strong> <em>variable &amp;optional buffer</em></dt>
+<dd><p>これは<var>variable</var>がバッファー<var>buffer</var>(デフォルトはカレントバッファー)内でバッファーローカルなら<code>t</code>、それ以外は<code>nil</code>をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-local_002dvariable_002dif_002dset_002dp">Function: <strong>local-variable-if-set-p</strong> <em>variable &amp;optional buffer</em></dt>
+<dd><p>これは<var>variable</var>がバッファー<var>buffer</var>内でバッファーローカル値をもつ、または自動的にバッファーローカルになるなら<code>t</code>、それ以外は<code>nil</code>をリターンする。<var>buffer</var>が省略または<code>nil</code>の場合のデフォルトはカレントバッファー。
+</p></dd></dl>
+
+<dl>
+<dt id="index-buffer_002dlocal_002dvalue">Function: <strong>buffer-local-value</strong> <em>variable buffer</em></dt>
+<dd><p>この関数はバッファー<var>buffer</var>内の、<var>variable</var>(シンボル)のバッファーローカルなバインディングをリターンする。<var>variable</var>がバッファー<var>buffer</var>内でバッファーローカルなバインディングをもたなければ、かわりに<var>variable</var>のデフォルト値(<a href="Default-Value.html">Default Value</a>を参照)をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-buffer_002dlocal_002dvariables">Function: <strong>buffer-local-variables</strong> <em>&amp;optional buffer</em></dt>
+<dd><p>この関数はバッファー<var>buffer</var>内のバッファーローカル変数を表すリストをリターンする(<var>buffer</var>が省略された場合はカレントバッファーが使用される)。リストの各要素は通常は<code>(<var>sym</var>&nbsp;.&nbsp;<var>val</var>)</code><!-- /@w -->という形式をもつ。ここで<var>sym</var>はバッファーローカル変数(シンボル)、<var>val</var>はバッファーローカル値。しかし<var>buffer</var>内のある変数のバッファーローカルなバインディングがvoidなら、その変数に対応するリスト要素は単に<var>sym</var>となる。
+</p>
+<div class="example">
+<pre class="example">(make-local-variable 'foobar)
+(makunbound 'foobar)
+(make-local-variable 'bind-me)
+(setq bind-me 69)
+</pre><pre class="example">(setq lcl (buffer-local-variables))
+    ;; <span class="roman">最初はすべてのバッファー内でローカルなビルトイン変数:</span>
+&rArr; ((mark-active . nil)
+    (buffer-undo-list . nil)
+    (mode-name . &quot;Fundamental&quot;)
+    &hellip;
+</pre><pre class="example">    ;; <span class="roman">次にビルトインでないバッファーローカル変数</span>
+    ;; <span class="roman">This one is buffer-local and void:</span>
+    foobar
+    ;; <span class="roman">これはバッファーローカルでvoidではない:</span>
+    (bind-me . 69))
+</pre></div>
+
+<p>このリスト内のコンスセルの<small>CDR</small>に新たな値を格納しても、その変数のバッファーローカル値は<em>変化しない</em>ことに注意。
+</p></dd></dl>
+
+<dl>
+<dt id="index-kill_002dlocal_002dvariable">Command: <strong>kill-local-variable</strong> <em>variable</em></dt>
+<dd><p>この関数はカレントバッファー内の<var>variable</var>(シンボル)にたいするバッファーローカルなバインディング(もしあれば)を削除する。その結果として、このバッファー内で<var>variable</var>のデフォルトバインディングが可視になる。これは通常は<var>variable</var>の値を変更する。デフォルト値は削除されたバッファーローカル値とは異なるのが普通だからである。
+</p>
+<p>セットしたとき自動的にバッファーローカルになる変数のバッファーローカルなバインディングをkillすると、これによりカレントバッファー内でデフォルト値が可視になる。しかし変数を再度セットすると、その変数にたいするバッファーローカルなバインディングが再作成される。
+</p>
+<p><code>kill-local-variable</code>は<var>variable</var>をreturnします。
+</p>
+<p>この関数はコマンドである。なぜならバッファーローカル変数のインタラクティブな作成が有用な場合があるように、あるバッファーローカル変数のインタラクティブなkillが有用な場合があるからである。
+</p></dd></dl>
+
+<span id="index-local-variables_002c-killed-by-major-mode"></span>
+<dl>
+<dt id="index-kill_002dall_002dlocal_002dvariables">Function: <strong>kill-all-local-variables</strong></dt>
+<dd><p>この関数はpermanent(永続的)とマークされた変数と<code>permanent-local-hook</code>プロパティーに非<code>nil</code>をもつローカルフック関数(<a href="Setting-Hooks.html">Setting Hooks</a>を参照)を除き、カレントバッファーのすべてのバッファーローカルなバインディングを解消する。結果として、そのバッファーのほとんどの変数がデフォルト値を参照するようになる。
+</p>
+<p>この関数はそのバッファーに関連する他の特定の情報もリセットする。これはローカルキーマップを<code>nil</code>、構文テーブルを<code>(standard-syntax-table)</code>の値、caseテーブルを<code>(standard-case-table)</code>、abbrevテーブルを<code>fundamental-mode-abbrev-table</code>の値にセットする。
+</p>
+<p>この関数が1番最初に行うのはノーマルフック<code>change-major-mode-hook</code>(以下参照)の実行である。
+</p>
+<p>すべてのメジャーモードコマンドは、Fundamentalモードにスイッチする効果をもち、以前のメジャーモードのほとんどの効果を消去する、この関数を呼び出すことによって開始されます。この関数が処理を行うのを確実にするために、メジャーモードがセットする変数はpermanentとマークすべきではない。
+</p>
+<p><code>kill-all-local-variables</code> returns <code>nil</code>.
+</p></dd></dl>
+
+<dl>
+<dt id="index-change_002dmajor_002dmode_002dhook">Variable: <strong>change-major-mode-hook</strong></dt>
+<dd><p>関数<code>kill-all-local-variables</code>は、何か他のことを行う前にまずこのノーマルフックを実行する。この関数はメジャーモードにたいして、ユーザーが他のメジャーモードにスイッチした場合に行われる何か特別なことを準備する方法を与える。この関数はユーザーがメジャーモードを変更した場合に忘れられるべき、バッファー固有のマイナーモードにたいしても有用。
+</p>
+<p>最善の結果を得るために、この変数をバッファーローカルにすれば、処理が終了したときに消えるので、以降のメジャーモードに干渉しなくなる。<a href="Hooks.html">Hooks</a>を参照のこと。
+</p></dd></dl>
+
+<span id="index-permanent-local-variable"></span>
+<p>変数名(シンボル)が非<code>nil</code>の<code>permanent-local</code>プロパティーをもつなら、そのバッファーローカル変数は<em>permanent(永続的)</em>です。そのような変数は<code>kill-all-local-variables</code>の影響を受けず、したがってメジャーモードの変更によりそれらのローカルバインディングは作成されません。permanentなローカル変数はファイルの内容を編集する方法ではなく、どこから読み込んだファイルか、あるいはどのように保存するかといったことに関連するデータに適しています。
+</p>
+
+
+
+</body>
+</html>

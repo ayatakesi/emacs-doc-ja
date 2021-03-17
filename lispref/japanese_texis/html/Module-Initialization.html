@@ -1,0 +1,146 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Module Initialization (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Module Initialization (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Module Initialization (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Writing-Dynamic-Modules.html" rel="up" title="Writing Dynamic Modules">
+<link href="Module-Functions.html" rel="next" title="Module Functions">
+<link href="Writing-Dynamic-Modules.html" rel="prev" title="Writing Dynamic Modules">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Module-Initialization"></span><div class="header">
+<p>
+Next: <a href="Module-Functions.html" accesskey="n" rel="next">Module Functions</a>, Up: <a href="Writing-Dynamic-Modules.html" accesskey="u" rel="up">Writing Dynamic Modules</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="moziyurunoChu-Qi-Hua-kodo"></span><h4 class="subsection">E.8.1 モジュールの初期化コード</h4>
+<span id="index-module-initialization"></span>
+
+<p>ヘッダーファイル<samp>emacs-module.h</samp>のインクルードとGPL互換性シンボル(GPL compatibility
+symbol)によりモジュールの記述を始めましょう:
+</p>
+<div class="example">
+<pre class="example">#include &lt;emacs-module.h&gt;
+
+int plugin_is_GPL_compatible;
+</pre></div>
+
+<p>Emacsインストールの一部としてシステムのインクルードツリーに<samp>emacs-module.h</samp>ファイルがインストールされます。かわりにEmacsのソースツリー内で見つけることもできます。
+</p>
+<span id="module-initialization-function"></span><p>次にモジュール用の初期化関数を記述します。
+</p>
+<dl>
+<dt id="index-emacs_005fmodule_005finit-1">Function: <em>int</em> <strong>emacs_module_init</strong> <em>(struct emacs_runtime *<var>runtime</var>)</em></dt>
+<dd><p>Emacsはモジュールをロードする際にこの関数を呼び出す。モジュールが<code>emacs_module_init</code>という名前の関数をエクスポートしていなければモジュールはエラーをシグナルする。この初期化関数は初期化成功時には0、それ以外は非0をリターンすること。後者の場合にはEmacsはエラーをシグナルして、モジュールのロードは失敗する。初期化中にユーザーが<kbd>C-g</kbd>を押下すると、Emacsは初期化関数のリターン値を無視してquitする(<a href="Quitting.html">Quitting</a>を参照)(必要なら初期化関数内でユーザーのquitをcatchできる。<a href="Module-Misc.html#should_005fquit">should_quit</a>を参照)。
+</p>
+<p>引数<var>runtime</var>は2つのパブリックなフィールドを含むCの<code>struct</code>へのポインター、<code>size</code>はその構造体のバイトサイズ、<code>get_environment</code>はEmacsの環境オブジェクトとそのインターフェースにモジュール初期化関数をアクセス可能にする関数へのポインターを提供する。
+</p>
+<p>初期化関数はモジュールに必要な初期化は何であれすべて行うこと。さらに以下のタスクを行うことができる:
+</p>
+<dl compact="compact">
+<dd><span id="index-compatibility_002c-between-modules-and-Emacs"></span>
+</dd>
+<dt>互換性の検証</dt>
+<dd><p>モジュールにコンパイルされた<var>runtime</var>構造体の<code>size</code>メンバーの値を比較することにより、モジュールをロードするEmacs実行可能形式がモジュールと互換性があるか検証できる。
+</p>
+<div class="example">
+<pre class="example">int
+emacs_module_init (struct emacs_runtime *runtime)
+{
+  if (runtime-&gt;size &lt; sizeof (*runtime))
+    return 1;
+}
+</pre></div>
+
+<p>モジュールに渡されたruntimeオブジェクトのsizeが期待する値より小さければ、ロードしようとしているモジュールがEmacsの新しい(最近の)バージョン向けにコンパイルされていることを意味する(そのモジュールはEmacsのバイナリーとは非互換かもしれない)。
+</p>
+<p>さらにモジュールは期待しているモジュール<acronym>API</acronym>の互換性も検証できる。以下の例では上述の<code>emacs_module_init</code>関数の一部であることを仮定している:
+</p>
+<div class="example">
+<pre class="example">  emacs_env *env = runtime-&gt;get_environment (runtime);
+  if (env-&gt;size &lt; sizeof (*env))
+    return 2;
+</pre></div>
+
+<p><span id="index-module-runtime-environment"></span>
+これは<acronym>API</acronym>の<em>環境(environment)</em>へのポインターの取得用に構造体<code>runtime</code>
+(<code>size</code>フィールドに構造体のバイトサイズも保有するC<code>struct</code>
+)で提供されるポインターを使用して<code>get_environment</code>関数を呼び出す。
+</p>
+<p>最後にEmacsから渡された環境のサイズと既知のサイズを比較することによって、以下のように古いバージョンのEmacsで動作するモジュールを記述できる:
+</p>
+<div class="example">
+<pre class="example">  emacs_env *env = runtime-&gt;get_environment (runtime);
+  if (env-&gt;size &gt;= sizeof (struct emacs_env_26))
+    emacs_version = 26;  /* Emacs 26 or later.  */
+  else if (env-&gt;size &gt;= sizeof (struct emacs_env_25))
+    emacs_version = 25;
+  else
+    return 2; /* Unknown or unsupported version.  */
+</pre></div>
+
+<p>新しいバージョンのEmacsではメンバーを環境に常に<em>追加</em>して<em>削除</em>は決して行わないので、新たなEmacsのリリースではサイズは増加するだけであることにより機能する。与えられたバージョンのEmacsにたいして、そのバージョンに存在するモジュール<acronym>API</acronym>は新しいバージョンのものと等しいので、その部分だけを使用できる。
+</p>
+<p><samp>emacs-module.h</samp>はプリプロセッサマクロ<code>EMACS_MAJOR_VERSION</code>を定義する。これはヘッダーがサポートするEmacsの最新バージョンとなる整数リテラルに展開される。<a href="Version-Info.html">Version Info</a>を参照のこと。<code>EMACS_MAJOR_VERSION</code>はコンパイル時の定数であり、モジュールをロードしたカレントで実行中のEmacsのバージョンを表さないことに注意。<samp>emacs-module.h</samp>やEmacsの種々なバージョンにたいして互換性をもたせたければ、<code>EMACS_MAJOR_VERSION</code>にもとづいた条件コンパイルを使用できる。
+</p>
+<p>モジュールが処理全体を初期化関数内で行い、Lispオブジェクトにアクセスしたり環境構造体を通じてアクセス可能なEmacs関数を使用することがない場合を除いて、モジュールの互換性検証を常に行うことを推奨する。
+</p>
+</dd>
+<dt>Lispシンボルへのモジュール関数のバインド</dt>
+<dd><p>これはLispコードが名前で呼び出せるようにモジュール関数に名前を与える。これを行う方法については以下の<a href="Module-Functions.html">Module Functions</a>で説明する。
+</p></dd>
+</dl>
+</dd></dl>
+
+
+
+
+</body>
+</html>

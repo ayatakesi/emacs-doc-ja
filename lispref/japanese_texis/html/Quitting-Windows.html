@@ -1,0 +1,160 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Quitting Windows (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Quitting Windows (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Quitting Windows (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Windows.html" rel="up" title="Windows">
+<link href="Side-Windows.html" rel="next" title="Side Windows">
+<link href="Dedicated-Windows.html" rel="prev" title="Dedicated Windows">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Quitting-Windows"></span><div class="header">
+<p>
+Next: <a href="Side-Windows.html" accesskey="n" rel="next">Side Windows</a>, Previous: <a href="Dedicated-Windows.html" accesskey="p" rel="prev">Dedicated Windows</a>, Up: <a href="Windows.html" accesskey="u" rel="up">Windows</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="uindounoquit"></span><h3 class="section">28.16 ウィンドウのquit</h3>
+
+<p>バッファーを表示するために使用しているウィンドウを削除したいときには、フレームからそのウィンドウを削除するために<code>delete-window</code>や<code>delete-windows-on</code>を呼び出すことができます(<a href="Deleting-Windows.html">Deleting Windows</a>を参照)。そのバッファーが別フレームで表示されているときには、かわりに<code>delete-frame</code>を呼び出したいと思うかもしれません(<a href="Deleting-Frames.html">Deleting Frames</a>を参照)。その一方でバッファーを表示するためにウィンドウが再利用されている場合には、関数<code>switch-to-prev-buffer</code>を呼び出して前に表示されていたバッファーを表示したいと思うかもしれません(<a href="Window-History.html">Window History</a>を参照)。最終的にはそのウィンドウのバッファーをバリー(<a href="Buffer-List.html">Buffer List</a>を参照)やkill(<a href="Killing-Buffers.html">Killing Buffers</a>を参照)したいと思うかもしれません。
+</p>
+<p>以下のコマンドは、最初にどのようにバッファーを表示するウィンドウを取得するかという情報を使用して、上述で説明した処理の自動化を試みます。
+</p>
+<dl>
+<dt id="index-quit_002dwindow">Command: <strong>quit-window</strong> <em>&amp;optional kill window</em></dt>
+<dd><p>このコマンドは<var>window</var>をquitしてそのバッファーをバリーする。引数<var>window</var>は生きたウィンドウでなければならずデフォルトは選択されたウィンドウ。プレフィックス引数<var>kill</var>が非<code>nil</code>ならバッファーをバリーするかわりにkillする。これはウィンドウとそのバッファーを処理するために、次に説明する関数<code>quit-restore-window</code>を呼び出す。
+</p>
+<span id="index-quit_002dwindow_002dhook"></span>
+<p><code>quit-window-hook</code>の関数は何か他のことを行う前に実行される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-quit_002drestore_002dwindow">Function: <strong>quit-restore-window</strong> <em>&amp;optional window bury-or-kill</em></dt>
+<dd><p>この関数は<var>window</var>のquit後にウィンドウとウィンドウのバッファーを処理する。オプション引数<var>window</var>は生きたウィンドウでなければならず、デフォルトは選択されたウィンドウ。この関数の挙動は<var>window</var>の<code>quit-restore</code>パラメーターにより指定される4要素のリストにより決定される(<a href="Window-Parameters.html">Window Parameters</a>を参照)。
+</p>
+<p><code>quit-restore</code>パラメーターの1つ目の要素は<code>window</code>
+(ウィンドウは<code>display-buffer</code>により特別に作られた)、<code>frame</code>
+(別のフレームが作られた)、<code>same</code> (ウィンドウは前と同じバッファーを表示する)、<code>other</code>
+(ウィンドウは前と異なるバッファーを表示する)のシンボルのいずれか。<code>frame</code>と<code>window</code>はウィンドウがquitされる方法、<code>same</code>と<code>other</code>は<var>window</var>に以前に表示されていたバッファーの再表示に影響する。
+</p>
+<p>パラメーターの2つ目の要素はシンボル<code>window</code>、<code>frame</code>、またはそのウィンドウに前に表示されていたバッファー、そのときのウィンドウstart位置、ウィンドウポイント位置、ウィンドウの高さを要素にもつリストのいずれか。<var>window</var>のquit時にバッファーがまだ生きていれば、この関数はバッファーの表示に<var>window</var>を再利用するかもしれない。
+</p>
+<p>3つ目の要素はパラメーター作成時に選択されていたウィンドウ。この関数が<var>window</var>を削除すると、それに続いてこの要素が指名するウィンドウを再選択する。
+</p>
+<p>4つ目の要素は、その表示がこのパラメーターの生成を引き起こしたバッファー。この関数は指定された<var>window</var>がまだそのバッファーを表示している場合のみそれを削除する。
+</p>
+<p>この関数は、(1)
+<var>window</var>の<code>quit-restore</code>パラメーターの1つ目の要素が<code>window</code>か<code>frame</code>、(2)
+<code>window</code>が以前に表示したバッファーの履歴をもたない、(3)
+<code>quit-restore</code>の4つ目の要素が<var>window</var>にカレントで表示中のバッファーを指定している場合のみ<var>window</var>を削除する。<var>window</var>がアトミックウィンドウ(<a href="Atomic-Windows.html">Atomic Windows</a>を参照)の一部なら、かわりにアトミックウィンドウのルートウィンドウの削除を試みる。いずれの場合でも<var>window</var>が削除できない場合にはエラーのシグナルを回避しようと試みる。
+</p>
+<p><var>window</var>がそのフレームで唯一のウィンドウであり、かつそのフレームの端末上に他のフレームが存在する場合には、オプション引数<var>bury-or-kill</var>がそのウィンドウの処置を決定する。<var>bury-or-kill</var>が<code>kill</code>なら無条件でフレームは削除される。それ以外ではフレームの処遇はそのフレームを単一の引数とする<code>frame-auto-hide-function</code>
+(以下参照)の呼び出しにより決定される。
+</p>
+<p><code>quit-restore</code>パラメーターの3つ目の要素がバッファーのリストならウィンドウの開始 (<a href="Window-Start-and-End.html">Window Start and End</a>を参照)、ポイント(<a href="Window-Point.html">Window Point</a>を参照)、およびそのバッファーは死なずにバッファーは表示されてそれに応じてウィンドウの開始とポイントがセットされる。加えて<var>window</var>のバッファーが過去に一時的にリサイズされていた場合には、この関数は<var>window</var>の元の高さのリストアも試みる。
+</p>
+<p>それ以外の場合には、以前に別のバッファーの表示に<var>window</var>が使用されていれば(<a href="Window-History.html">Window History</a>を参照)、その履歴中でもっとも最近のバッファーが表示される。いずれの場合でも<var>window</var>が削除されなければ、<code>quit-restore</code>パラメーターは<code>nil</code>にリセットされる。
+</p>
+<p>オプション引数<var>bury-or-kill</var>には<var>window</var>を処理する方法を指定し、以下の値が処理される。
+</p>
+<dl compact="compact">
+<dt><code>nil</code></dt>
+<dd><p>これはバッファーを特別な方法で処理しないことを意味する。その結果として<var>window</var>が削除されない場合には、<code>switch-to-prev-buffer</code>の呼び出しにより通常はそのバッファーが再び表示されるだろう。
+</p>
+</dd>
+<dt><code>append</code></dt>
+<dd><p>これは<var>window</var>が削除されない場合には、そのバッファーを<var>window</var>の前のバッファーリストの最後に移動するので、将来の<code>switch-to-prev-buffer</code>呼び出しでこのバッファーには切り替わることは少なくなる。これはそのバッファーをフレームのバッファーリストの最後への移動も行う。
+</p>
+</dd>
+<dt><code>bury</code></dt>
+<dd><p>これは<var>window</var>が削除されない場合には、そのバッファーを<var>window</var>の前のバッファーリストから削除する。これはそのバッファーをフレームのバッファーリストの最後への移動も行う。この値はバッファーをkillすることなく<code>switch-to-prev-buffer</code>がこのバッファーに再び切り替えさせないようにする、もっとも信頼できる解決手段を提供する。
+</p>
+</dd>
+<dt><code>kill</code></dt>
+<dd><p>これは<var>window</var>のバッファーをkillすることを意味する。
+</p></dd>
+</dl>
+
+<p>(interactive)
+</p>
+<div class="example">
+<pre class="example">(display-buffer-record-window type window buffer)
+
+(set-window-buffer window buffer)
+
+(set-window-prev-buffers window nil)
+</pre></div>
+
+<p>ウィンドウのヒストリーを<code>nil</code>にセットすることにより？、将来の<code>quit-window</code>呼び出しが一緒にウィンドウを削除することが保証される。
+</p>
+</dd></dl>
+
+<p>以下のオプションはquitすべきウィンドウ、あるいはバリーすべきバッファーをもつウィンドウを1つだけ含むフレームを処理する方法を指定します。
+</p>
+<dl>
+<dt id="index-frame_002dauto_002dhide_002dfunction">User Option: <strong>frame-auto-hide-function</strong></dt>
+<dd><p>このオプションで指定された関数は自動的にフレームを隠すために呼び出される。この関数はフレームを唯一の引数として呼び出される。
+</p>
+<p>ここで指定される関数は選択されたウィンドウが専用(dedicated)であり、かつバリーされるバッファーを表示しているときに<code>bury-buffer</code>
+(<a href="Buffer-List.html">Buffer List</a>を参照)から呼び出される。またquitされるウィンドウのフレームがそのウィンドウのバッファーを表示するために特別に作成されたフレームで、かつそのバッファーがkillされないときにも<code>quit-restore-window</code>
+(上記)から呼び出される。
+</p>
+<p>デフォルトでは<code>iconify-frame</code> (<a href="Visibility-of-Frames.html">Visibility of Frames</a>を参照)を呼び出す。かわりにフレームをディスプレイから削除する<code>delete-frame</code> (<a href="Deleting-Frames.html">Deleting Frames</a>を参照)、フレームを不可視にする<code>make-frame-invisible</code>、フレームを変更せずに残す<code>ignore</code>、またはフレームを唯一の引数とする任意の関数のいずれかを指定できる。
+</p>
+<p>このオプションで指定された関数は指定されたフレームが生きたウィンドウただ1つを含み、かつ同一端末上に少なくとも1つ他のフレームが存在する場合のみ呼び出されることに注意。
+</p>
+<p>特定のフレームにたいしてここで指定した値は、そのフレームのフレームパラメーター<code>auto-hide-function</code>でオーバーライドされるかもしれない(<a href="Frame-Interaction-Parameters.html">Frame Interaction Parameters</a>を参照)。
+</p></dd></dl>
+
+
+
+
+
+</body>
+</html>

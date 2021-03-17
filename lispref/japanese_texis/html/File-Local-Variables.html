@@ -1,0 +1,189 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>File Local Variables (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="File Local Variables (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="File Local Variables (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Variables.html" rel="up" title="Variables">
+<link href="Directory-Local-Variables.html" rel="next" title="Directory Local Variables">
+<link href="Default-Value.html" rel="prev" title="Default Value">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="File-Local-Variables"></span><div class="header">
+<p>
+Next: <a href="Directory-Local-Variables.html" accesskey="n" rel="next">Directory Local Variables</a>, Previous: <a href="Buffer_002dLocal-Variables.html" accesskey="p" rel="prev">Buffer-Local Variables</a>, Up: <a href="Variables.html" accesskey="u" rel="up">Variables</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="huairurokaruBian-Shu-"></span><h3 class="section">12.12 ファイルローカル変数</h3>
+<span id="index-file-local-variables"></span>
+
+<p>ファイルにローカル変数の値を指定できます。そのファイルをvisitしているバッファー内で、これらの変数にたいしてバッファーローカルなバインディングを作成するために、Emacsはこれらを使用します。ファイルローカル変数の基本的な情報については、<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/File-Variables.html#File-Variables">Local Variables in Files</a> in <cite>The GNU Emacs
+Manual</cite>を参照してください。このセクションではファイルローカル変数が処理される方法に影響する関数と変数を説明します。
+</p>
+<p>ファイルローカル変数が勝手に関数や、後で呼び出されるLisp式を指定できたら、ファイルのvisitによってEmacsが乗っ取られてしまうかもしれません。Emacsは既知のファイルローカル変数だけにたいして、指定された値が安全だと自動的にセットすることにより、この危険から保護します。これ以外のファイルローカル変数は、ユーザーが同意した場合のみセットされます。
+</p>
+<p>追加の安全策としてEmacsがファイルローカル変数を読み込むとき、一時的に<code>read-circle</code>を<code>nil</code>にバインドします(<a href="Input-Functions.html">Input Functions</a>を参照)。これは循環認識と共有されたLisp構造からLispリーダーを保護します(<a href="Circular-Objects.html">Circular Objects</a>を参照)。
+</p>
+<dl>
+<dt id="index-enable_002dlocal_002dvariables">User Option: <strong>enable-local-variables</strong></dt>
+<dd><p>この変数はファイルローカル変数を処理するかどうかを制御する。以下の値が利用できる:
+</p>
+<dl compact="compact">
+<dt><code>t</code>(デフォルト)</dt>
+<dd><p>安全な変数をセット、安全でない変数は問い合わせる(1回)。
+</p></dd>
+<dt><code>:safe</code></dt>
+<dd><p>安全な変数だけをセット、問い合わせはしない。
+</p></dd>
+<dt><code>:all</code></dt>
+<dd><p>問い合わせをせずに、すべての変数をセット。
+</p></dd>
+<dt><code>nil</code></dt>
+<dd><p>変数をセットしない。
+</p></dd>
+<dt>その他</dt>
+<dd><p>すべての変数にたいして問い合わせる(1回)。
+</p></dd>
+</dl>
+</dd></dl>
+
+<dl>
+<dt id="index-inhibit_002dlocal_002dvariables_002dregexps">Variable: <strong>inhibit-local-variables-regexps</strong></dt>
+<dd><p>これは正規表現のリストである。ファイルがこのリストの要素にマッチする名前をもつなら、すべてのファイルローカル変数のフォームはスキャンされない。どんなときにこれを使いたいかの例は、<a href="Auto-Major-Mode.html">Auto Major Mode</a>を参照のこと。
+</p></dd></dl>
+
+<dl>
+<dt id="index-hack_002dlocal_002dvariables">Function: <strong>hack-local-variables</strong> <em>&amp;optional handle-mode</em></dt>
+<dd><p>この関数はカレントバッファーの内容により指定された任意のローカル変数にたいしてパースを行い、適切にバインドと評価を行う。変数<code>enable-local-variables</code>はここでも効果をもつ。しかしこの関数は&lsquo;<samp><span class="nolinebreak">-*-</span></samp>&rsquo;<!-- /@w -->行の、&lsquo;<samp>mode:</samp>&rsquo;ローカル変数を探さない。<code>set-auto-mode</code>はこれを行って<code>enable-local-variables</code>も考慮する(<a href="Auto-Major-Mode.html">Auto Major Mode</a>を参照)。
+</p>
+<p>この関数は<code>file-local-variables-alist</code>内に格納されたalistを調べて、各ローカル変数を順に適用することにより機能する。この関数は変数に適用する前(か後)に、<code>before-hack-local-variables-hook</code>(か<code>hack-local-variables-hook</code>)を呼び出す。alistが非<code>nil</code>の場合のみ、事前のフック(before-hook)を呼び出し、その他のフックは常に呼び出す。この関数はそのバッファーがすでにもつメジャーモードと同じメジャーモードが指定された場合は&lsquo;<samp>mode</samp>&rsquo;要素を無視する。
+</p>
+<p>オプションの引数<var>handle-mode</var>が<code>t</code>なら、この関数が行うのはメジャーモードを指定するシンボルをリターンすることだけであり、&lsquo;<samp><span class="nolinebreak">-*-</span></samp>&rsquo;<!-- /@w -->行やローカル変数リストがメジャーモードを指定していればそのモード、それ以外は<code>nil</code>をリターンする。この関数はモードや他のファイルローカル変数をセットしない。<var>handle-mode</var>の値が<code>nil</code>と<code>t</code>のいずれでもなければ&lsquo;<samp><span class="nolinebreak">-*-</span></samp>&rsquo;<!-- /@w -->行の&lsquo;<samp>mode</samp>&rsquo;に関するすべてのセッティングとローカル変数リストは無視されて、別のセッティングが適用される。<var>handle-mode</var>が<code>nil</code>ならすべてのファイルローカル変数がセットされる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-file_002dlocal_002dvariables_002dalist">Variable: <strong>file-local-variables-alist</strong></dt>
+<dd><p>このバッファーローカルな変数は、ファイルローカル変数のセッティングのalistを保持する。alistの各要素は<code>(<var>var</var>&nbsp;.&nbsp;<var>value</var>)</code><!-- /@w -->という形式で、<var>var</var>はローカル変数のシンボル、<var>value</var>はその値である。Emacsがファイルをvisitするとき、最初にすべてのファイルローカル変数をこのalistに収集して、その後で変数に1つずつ関数<code>hack-local-variables</code>を適用する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-before_002dhack_002dlocal_002dvariables_002dhook">Variable: <strong>before-hack-local-variables-hook</strong></dt>
+<dd><p>Emacsは<code>file-local-variables-alist</code>に格納されたファイルローカル変数を適用する直前にこのフックを呼び出す。
+</p></dd></dl>
+
+<dl>
+<dt id="index-hack_002dlocal_002dvariables_002dhook">Variable: <strong>hack-local-variables-hook</strong></dt>
+<dd><p>Emacsは<code>file-local-variables-alist</code>に格納されたファイルローカル変数を適用し終えた直後にこのフックを呼び出す。
+</p></dd></dl>
+
+<span id="index-safe-local-variable"></span>
+<p>ある変数にたいして<code>safe-local-variable</code>プロパティーによって安全な値を指定できます。このプロパティーは引数を1つとる関数です。与えられた値にたいして、その関数が非<code>nil</code>をリターンしたらその値は安全です。一般的に目にするファイル変数の多くは、<code>safe-local-variable</code>プロパティーをもちます。これらのファイル変数には<code>fill-column</code>、<code>fill-prefix</code>、<code>indent-tabs-mode</code>が含まれます。ブーリーン値の変数にたいしては、プロパティーの値に<code>booleanp</code>を使用します。
+</p>
+<p>Cソースコード内で定義された変数に<code>safe-local-variable</code>プロパティを定義したければ、それらの変数の名前とプロパティを<samp>files.el</samp>のセクション&ldquo;Safe
+local variables&rdquo;のリストに追加してください。
+</p>
+<span id="index-autoload-cookie_002c-and-safe-values-of-variable"></span>
+<p><code>defcustom</code>を使用してユーザーオプションを定義する際には、<code>defcustom</code>に引数<code>:safe
+<var>function</var></code>を追加して<code>safe-local-variable</code>プロパティをセットできます(<a href="Variable-Definitions.html">Variable Definitions</a>を参照)。しかし<code>:safe</code>を使用して定義された安全性の述語は、その<code>defcustom</code>を含むパッケージのロード時の一度だけ認識されるものであり、それでは遅すぎることがしばしばあります。代替策としては、以下のようにオプションに安全性の述語を割り当てるためにautoloadクッキー(<a href="Autoload.html">Autoload</a>を参照)を使用できます:
+</p>
+<div class="lisp">
+<pre class="lisp">;;;###autoload (put '<var>var</var> 'safe-local-variable '<var>pred</var>)
+</pre></div>
+
+<p><code>autoload</code>で指定された安全な値の定義は、そのパッケージのautoloadファイル(Emacsに同梱されたパッケージのほとんどでは<samp>loaddefs.el</samp>)にコピーされて、セッションの開始からEmacsにより認識されます。
+</p>
+<dl>
+<dt id="index-safe_002dlocal_002dvariable_002dvalues">User Option: <strong>safe-local-variable-values</strong></dt>
+<dd><p>この変数はある変数の値が安全であることをマークする、別の方法を提供する。これはコンスセル<code>(<var>var</var>
+. <var>val</var>)</code>のリストであり<var>var</var>は変数名、<var>val</var>はその変数にたいして安全な値である。
+</p>
+<p>Emacsが一連のファイルローカル変数にしたがうかどうかユーザーに尋ねるとき、ユーザーはそれらの変数が安全だとマークすることができる。安全とマークすると<code>safe-local-variable-values</code>にこれらのvariable/valueペアーが追加されて、ユーザーのカスタムファイルに保存する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-safe_002dlocal_002dvariable_002dp">Function: <strong>safe-local-variable-p</strong> <em>sym val</em></dt>
+<dd><p>この関数は上記の条件に基づき、<var>sym</var>に値<var>val</var>を与えても安全ななら非<code>nil</code>をリターンする。
+</p></dd></dl>
+
+<p>いくつかの変数は<em>危険(risky)</em>だと判断されます。ある変数が危険なら、その変数が<code>safe-local-variable-values</code>に自動的に追加されることはありません。ユーザーが<code>safe-local-variable-values</code>を直接カスタマイズすることで明示的に値を許さない限り、危険な変数をセットする前にEmacsは常に確認を求めます。
+</p>
+<p>名前が非<code>nil</code>の<code>risky-local-variable</code>プロパティーをもつすべての変数は危険だと判断されます。<code>defcustom</code>を使用してユーザーオプションを定義するとき、<code>defcustom</code>に引数<code>:risky
+<var>value</var></code>を追加することにより、ユーザーオプションに<code>risky-local-variable</code>プロパティーをセットできます。それに加えて名前が&lsquo;<samp>-command</samp>&rsquo;、&lsquo;<samp>-frame-alist</samp>&rsquo;、&lsquo;<samp>-function</samp>&rsquo;、&lsquo;<samp>-functions</samp>&rsquo;、&lsquo;<samp>-hook</samp>&rsquo;、&lsquo;<samp>-hooks</samp>&rsquo;、&lsquo;<samp>-form</samp>&rsquo;、&lsquo;<samp>-forms</samp>&rsquo;、&lsquo;<samp>-map</samp>&rsquo;、&lsquo;<samp>-map-alist</samp>&rsquo;、&lsquo;<samp>-mode-alist</samp>&rsquo;、&lsquo;<samp>-program</samp>&rsquo;、&lsquo;<samp>-predicate</samp>&rsquo;で終わるすべての変数は自動的に危険だと判断されます。後に数字をともなう変数&lsquo;<samp>font-lock-keywords</samp>&rsquo;と&lsquo;<samp>font-lock-keywords</samp>&rsquo;、さらには&lsquo;<samp>font-lock-syntactic-keywords</samp>&rsquo;も危険だと判断されます。
+</p>
+<dl>
+<dt id="index-risky_002dlocal_002dvariable_002dp">Function: <strong>risky-local-variable-p</strong> <em>sym</em></dt>
+<dd><p>この関数は<var>sym</var>が上記の条件にもとづき危険な変数なら非<code>nil</code>をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-ignored_002dlocal_002dvariables">Variable: <strong>ignored-local-variables</strong></dt>
+<dd><p>この変数はファイルによりローカル値を与えらるべきではない変数のリストを保持する。これらの変数に指定された任意の値は、完全に無視される。
+</p></dd></dl>
+
+<p>&ldquo;変数&rdquo;&lsquo;<samp>Eval:</samp>&rsquo;も抜け道になる可能性があるので、Emacsは通常はそれを処理する前に確認を求めます。
+</p>
+<dl>
+<dt id="index-enable_002dlocal_002deval">User Option: <strong>enable-local-eval</strong></dt>
+<dd><p>この変数は&lsquo;<samp>-*-</samp>&rsquo;の行中、またはvisitされるファイル内のローカル変数リストにたいする、&lsquo;<samp>Eval:</samp>&rsquo;の処理を制御する。値<code>t</code>は無条件に実行し、<code>nil</code>はそれらを無視することを意味します。それ以外なら各ファイルにたいして何を行うか、ユーザーに確認を求めることを意味する。デフォルト値は<code>maybe</code>。
+</p></dd></dl>
+
+<dl>
+<dt id="index-safe_002dlocal_002deval_002dforms">User Option: <strong>safe-local-eval-forms</strong></dt>
+<dd><p>この変数はファイルローカル変数リスト内で&lsquo;<samp>Eval:</samp>&rsquo;&ldquo;変数&rdquo;が見つかった際に評価しても安全な式のリストを保持する。
+</p></dd></dl>
+
+<p>式が関数呼び出しであり、その関数が<code>safe-local-eval-function</code>プロパティーをもつなら、その式の評価が安全かどうかはそのプロパティー値が決定します。プロパティー値はその式をテストするための述語(predicate)、そのような述語のリスト(成功した述語があれば安全)、または<code>t</code>(引数が定数である限り常に安全)を指定できます。
+</p>
+<p>テキストプロパティーには、それらの値に関数呼び出しを含めることができるので抜け道になる可能性があります。したがってEmacsはファイルローカル変数にたいして指定された文字列値から、テキストプロパティーを取り除きます。
+</p>
+
+
+
+</body>
+</html>

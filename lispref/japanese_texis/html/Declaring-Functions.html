@@ -1,0 +1,113 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Declaring Functions (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Declaring Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Declaring Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Functions.html" rel="up" title="Functions">
+<link href="Function-Safety.html" rel="next" title="Function Safety">
+<link href="Declare-Form.html" rel="prev" title="Declare Form">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Declaring-Functions"></span><div class="header">
+<p>
+Next: <a href="Function-Safety.html" accesskey="n" rel="next">Function Safety</a>, Previous: <a href="Declare-Form.html" accesskey="p" rel="prev">Declare Form</a>, Up: <a href="Functions.html" accesskey="u" rel="up">Functions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="konpairahenoDing-Yi-Ji-miGuan-Shu-noZhi-Shi"></span><h3 class="section">13.15 コンパイラーへの定義済み関数の指示</h3>
+<span id="index-function-declaration"></span>
+<span id="index-declaring-functions"></span>
+<span id="index-declare_002dfunction"></span>
+
+<p>あるファイルをバイトコンパイルするとき、コンパイラーが知らない関数について警告が生成されるときがあります(<a href="Compiler-Errors.html">Compiler Errors</a>を参照してください)。実際に問題がある場合もありますが、問題となっている関数がそのコードの実行時にロードされる他のファイルで定義されている場合が通常です。たとえば以前は<samp>simple.el</samp>をバイトコンパイルすると以下のような警告が出ていました:
+</p>
+<div class="example">
+<pre class="example">simple.el:8727:1:Warning: the function ‘shell-mode’ is not known to be
+    defined.
+</pre></div>
+
+<p>実際のところ<code>shell-mode</code>は<code>(require
+'shell)</code>を実行する関数内の<code>shell-mode</code>を呼び出す前でのみ使用されるので、<code>shell-mode</code>は実行時に正しく定義されるでしょう。そのような警告が実際には問題を示さないことを知っているときには警告を抑制したほうがよいでしょう。そうすれば実際に問題があることを示す新しい警告の識別性が良くなります。これは<code>declare-function</code>を使用して行うことができます。
+</p>
+<p>必要なのは問題となっている関数を最初に使用する前に<code>declare-function</code>命令を追加するだけです:
+</p>
+<div class="example">
+<pre class="example">(declare-function shell-mode &quot;shell&quot; ())
+</pre></div>
+
+<p>これは<code>shell-mode</code>が<samp>shell.el</samp>
+(&lsquo;<samp>.el</samp>&rsquo;は省略可)の中で定義していることを告げます。コンパイラーは関数がそのファイルで実際に定義されているとみなしてチェックを行いません。
+</p>
+<p>3つ目の引数はオプションであり<code>shell-mode</code>の引数リストを指定します。この例では引数はありません(<code>nil</code>と値を指定しないのは異なる)。それ以外の場合には<code>(file
+&amp;optional
+overwrite)</code>のようになります。引数リストを指定する必要はありませんが、指定すればコンパイラーはその呼び出しが宣言と合致するかチェックできます。
+</p>
+<dl>
+<dt id="index-declare_002dfunction-1">Macro: <strong>declare-function</strong> <em>function file &amp;optional arglist fileonly</em></dt>
+<dd><p>ファイル<var>file</var>内で<var>function</var>が定義されているとみなすようにバイトコンパイラーに告げる。オプションの3つ目の引数<var>arglist</var>は<code>t</code>
+(引数リストが未指定という意味)、または<code>defun</code>と同スタイルな正式パラメーターリストのいずれか。<var>arglist</var>を省略した際のデフォルトは<code>nil</code>ではなく<code>t</code>。これは引数省略時の非定形な挙動であり、3つ目の引数を指定せずに4つ目引数を与える場合には通常の<code>nil</code>のかわりに3つ目の引数のプレースホルダーに<code>t</code>を指定しなければならないことを意味する。オプションの4つ目の引数<var>fileonly</var>が非<code>nil</code>なら実際に<var>function</var>が定義されているかではなく<var>file</var>の存在だけをチェックすることを意味する。
+</p></dd></dl>
+
+<span id="index-check_002ddeclare_002dfile"></span>
+<span id="index-check_002ddeclare_002ddirectory"></span>
+<p>これらの関数が<code>declare-function</code>が告げる場所で実際に宣言されているかどうかを検証するには、<code>check-declare-file</code>を使用して1つのソースファイル中のすべての<code>declare-function</code>呼び出しをチェックするか、<code>check-declare-directory</code>を使用して特定のディレクトリー配下のすべてのファイルをチェックする。
+</p>
+<p>これらのコマンドは、<code>locate-library</code>で使用する関数の定義を含むはずのファイルを探す。ファイルが見つからなければ、これらのコマンドは<code>declare-function</code>の呼び出しを含むファイルがあるディレクトリーからの相対ファイル名に、定義ファイル名を展開する。
+</p>
+<p>&lsquo;<samp>.c</samp>&rsquo;や&lsquo;<samp>.m</samp>&rsquo;で終わるファイル名を指定することにより、プリミティブ関数を指定することもできる。これが有用なのは特定のシステムだけで定義されるプリミティブを呼び出す場合だけである。ほとんどのプリミティブは常に定義されているので、それらについて警告を受け取ることはありえないはずである。
+</p>
+<p>あるファイルがオプションとして外部のパッケージの関数を使う場合もある。<code>declare-function</code>命令内のファイル名のプレフィクスを&lsquo;<samp>ext:</samp>&rsquo;にすると、そのファイルが見つかった場合はチェックして、見つからない場合はエラーとせずにスキップする。
+</p>
+<p>&lsquo;<samp>check-declare</samp>&rsquo;が理解しない関数定義もいくつか存在する(たとえば<code>defstruct</code>やその他いくつかのマクロ)。そのような場合は<code>declare-function</code>の<var>fileonly</var>引数に非<code>nil</code>を渡すことができる。これはファイルの存在だけをチェックして、その関数の実際の定義はチェックしないことを意味する。これを行うなら引数リストを指定する必要はないが、<var>arglist</var>引数には<code>t</code>をセットする必要があることに注意(なぜなら<code>nil</code>は引数リストが指定されなかったという意味ではなく空の引数リストを意味するため)。
+</p>
+
+
+
+</body>
+</html>

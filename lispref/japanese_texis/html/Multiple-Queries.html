@@ -1,0 +1,155 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Multiple Queries (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Multiple Queries (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Multiple Queries (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Minibuffers.html" rel="up" title="Minibuffers">
+<link href="Reading-a-Password.html" rel="next" title="Reading a Password">
+<link href="Yes_002dor_002dNo-Queries.html" rel="prev" title="Yes-or-No Queries">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Multiple-Queries"></span><div class="header">
+<p>
+Next: <a href="Reading-a-Password.html" accesskey="n" rel="next">Reading a Password</a>, Previous: <a href="Yes_002dor_002dNo-Queries.html" accesskey="p" rel="prev">Yes-or-No Queries</a>, Up: <a href="Minibuffers.html" accesskey="u" rel="up">Minibuffers</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Fu-Shu-noWen-iwoXun-neru"></span><h3 class="section">20.8 複数の問いを尋ねる</h3>
+
+<p>このセクションではより複雑な質問や複数の似かよった質問をユーザーに尋ねる機能を説明します。
+</p>
+<span id="index-multiple-yes_002dor_002dno-questions"></span>
+<p>同じような連続する質問と答えがある場合、たとえば各バッファーにたいして順に&ldquo;Do you want to save this
+buffer?&rdquo;と確認を求めるような場合には、個別に質問するより<code>map-y-or-n-p</code>を使用して質問のコレクションを尋ねるべきです。これはユーザーにたいして、質問全体にたいして1回で答えられるような便利な機能を提供します。
+</p>
+<dl>
+<dt id="index-map_002dy_002dor_002dn_002dp">Function: <strong>map-y-or-n-p</strong> <em>prompter actor list &amp;optional help action-alist no-cursor-in-echo-area</em></dt>
+<dd><p>この関数はユーザーに一連の質問をし、それぞれの質問にたいしてエコーエリア内の1文字の答えを読み取る。
+</p>
+<p>値<var>list</var>は質問をするオブジェクトを指定する。これはリスト、オブジェクト、または生成関数(generator
+function)のいずれかである。関数の場合は引数なしで次に質問するオブジェクト、または質問の中止を意味する<code>nil</code>のいずれかをリターンする。
+</p>
+<p>引数<var>prompter</var>は各質問について問い合わせ方法を指定する。<var>prompter</var>が文字列なら質問テキストは以下のようになる:
+</p>
+<div class="example">
+<pre class="example">(format <var>prompter</var> <var>object</var>)
+</pre></div>
+
+<p>ここで<var>object</var>は、(<var>list</var>から得られる)質問する次のオブジェクトである。
+</p>
+<p>文字列でないければ、<var>prompter</var>は1つの引数(質問する次のオブジェクト)をとる関数で、質問テキストをリターンする。値が文字列ならユーザーに問う質問であること。関数は<code>t</code>(ユーザーに尋ねずこのオブジェクトを処理する)、または<code>nil</code>(ユーザーに尋ねずこのオブジェクトを無視する)をリターンすることもできる。
+</p>
+<p>引数<var>actor</var>はユーザーが与えた答えにたいして、どのように処理するかを指定する。これは引数が1つの関数で、ユーザーがyesと答えたオブジェクトを引数として呼び出される。引数は常に<var>list</var>から取得したオブジェクトである。
+</p>
+<p>引数<var>help</var>が与えられたら、それは以下の形式のリストである:
+</p>
+<div class="example">
+<pre class="example">(<var>singular</var> <var>plural</var> <var>action</var>)
+</pre></div>
+
+<p><var>singular</var>はそのオブジェクトが概念的に何に作用するかを説明する単数形の名詞を含む文字列、<var>plural</var>はそれに対応する複数形の名詞、<var>action</var>は<var>actor</var>が何を行うかを説明する他動詞である。
+</p>
+<p><var>help</var>を指定しない場合のデフォルトは<code>(&quot;object&quot; &quot;objects&quot; &quot;act on&quot;)</code>。
+</p>
+<p>質問のたびに、ユーザーはそのオブジェクトを処理するなら<kbd>y</kbd>、<kbd>Y</kbd>または<tt class="key">SPC</tt>、そのオブジェクトをスキップするなら<kbd>n</kbd>、<kbd>N</kbd>、または<tt class="key">DEL</tt>、以降のすべてのオブジェクトを処理するなら<kbd>!</kbd>、exit(以降のすべてのオブジェクトをスキップ)するなら<tt class="key">ESC</tt>か<kbd>q</kbd>、カレントオブジェクトを処理した後にexitするなら<kbd>.</kbd>(ピリオド)、ヘルプを入手する場合は<kbd>C-h</kbd>をエンターする。これらは<code>query-replace</code>が受け入れるのと同じ答えである。キーマップ<code>query-replace-map</code>は<code>map-y-or-n-p</code>にたいするそれらの意味を定義して、<code>query-replace</code>にたいしても同様に定義する。<a href="Search-and-Replace.html">Search and Replace</a>を参照のこと。
+</p>
+<p><var>action-alist</var>を使用して、利用できる追加の答えとそれらが何を意味するかを指定できる。これは要素が<code>(<var>char</var>
+<var>function</var>
+<var>help</var>)</code>という形式のalistで、それぞれの要素が追加の答えを1つ定義する。要素の内容は<var>char</var>が文字(答え)、<var>function</var>が引数が1つ(<var>list</var>から取得するオブジェクト)の関数、<var>help</var>が文字列である。
+</p>
+<p>ユーザーの応答が<var>char</var>なら、<code>map-y-or-n-p</code>は<var>function</var>を呼び出す。これが非<code>nil</code>をリターンしたらそのオブジェクトが処理されたと判断して、<code>map-y-or-n-p</code>は<var>list</var>内の次のオブジェクトに進む。<code>nil</code>をリターンしたら同じオブジェクトにたいして質問を繰り返す。
+</p>
+<p>確認を求める間、<code>map-y-or-n-p</code>は通常は<code>cursor-in-echo-area</code>をバインドする。しかし<var>no-cursor-in-echo-area</var>が非<code>nil</code>ならバインドしない。
+</p>
+<p>マウスを使用して呼び出されたコマンドから<code>map-y-or-n-p</code>が呼び出された場合(より正確には<code>last-nonmenu-event</code>は非<code>nil</code>かリストの場合。<a href="Command-Loop-Info.html">Command Loop Info</a>を参照)には、確認を求めるためにダイアログボックスかポップアップメニューが使用される。この場合にはキーボード入力やエコーエリアは使用されない。呼び出しの前後で<code>last-nonmenu-event</code>を適切な値にバインドすることによって、マウスあるいはキーボードの入力を強制できる。
+</p>
+<p><code>map-y-or-n-p</code>のリターン値は処理したオブジェクトの個数である。
+</p></dd></dl>
+
+<p>3つ以上の答えをもつかもしれない質問をユーザーに尋ねる必要がある場合には<code>read-answer</code>を使用してください。
+</p>
+<dl>
+<dt id="index-read_002danswer">Function: <strong>read-answer</strong> <em>question answers</em></dt>
+<dd><span id="index-read_002danswer_002dshort"></span>
+<p>この関数は<var>question</var>のテキスト(
+&lsquo;<samp>SPC</samp>&rsquo;文字で終端されていること)とともにユーザーに入力を求める。この関数は<var>question</var>に<var>answers</var>を追加することにより、プロンプト内に可能な応答を含めることができる。この可能な応答は以下の形式の要素をもつalistとして<var>answers</var>内に提供される。
+</p>
+<div class="lisp">
+<pre class="lisp">(<var>long-answer</var> <var>short-answer</var> <var>help-message</var>)
+</pre></div>
+
+<p><var>long-answer</var>はユーザーの応答の完全なテキスト(文字列)、<var>short-answer</var>は同じ応答の短い形式(単一文字かファンクションキー)、<var>help-message</var>はその応答の意味を説明するテキスト。変数<code>read-answer-short</code>が非<code>nil</code>なら可能な応答の短いバージョンをプロンプトに表示して、ユーザーがプロンプトに表示された1文字をタイプすることを期待する。それ以外なら可能な応答の長いバージョンをプロンプトに表示して、ユーザーにはプロンプトに表示された完全なテキストのいずれかを入力してから、入力完了で<tt class="key">RET</tt>を押下することが期待される。<tt class="key">RET</tt>が非<code>nil</code>かつこの関数がマウスイベントから呼び出された場合には問いと答えはGUIのダイアログボックス内に表示される。
+</p>
+<p>この関数はプロンプトに表示された応答の長短やユーザーがタイプした応答とは無関係に、ユーザーがセンタクした<var>long-answer</var>のテキストをリターンする。
+</p>
+<p>以下はこの関数の使用例:
+</p>
+<div class="lisp">
+<pre class="lisp">(let ((read-answer-short t))
+  (read-answer &quot;Foo &quot;
+     '((&quot;yes&quot;  ?y &quot;perform the action&quot;)
+       (&quot;no&quot;   ?n &quot;skip to the next&quot;)
+       (&quot;all&quot;  ?! &quot;perform for the rest without more questions&quot;)
+       (&quot;help&quot; ?h &quot;show help&quot;)
+       (&quot;quit&quot; ?q &quot;exit&quot;))))
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-read_002dchar_002dfrom_002dminibuffer">Function: <strong>read-char-from-minibuffer</strong> <em>prompt &amp;optional chars history</em></dt>
+<dd><p>この関数はミニバッファーを使用して単一文字を読み取りリターンする。オプションで許容する文字のリスト<var>chars</var>以外のメンバーはすべて無視する。<var>history</var>引数は使用するヒストリーリストシンボルを指定する。これが省略か<code>nil</code>なら、この関数はヒストリーを使用しない。
+</p>
+<p><code>read-char-from-minibuffer</code>の呼び出し中に<code>help-form</code> (<a href="Help-Functions.html">Help Functions</a>を参照)を非<code>nil</code>値にバインドすると、<code>help-char</code>の押下により<code>help-form</code>を評価して結果を表示する。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Parsing HTML/XML (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Parsing HTML/XML (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Parsing HTML/XML (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Text.html" rel="up" title="Text">
+<link href="Document-Object-Model.html" rel="next" title="Document Object Model">
+<link href="GnuTLS-Cryptographic-Functions.html" rel="prev" title="GnuTLS Cryptographic Functions">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Parsing-HTML_002fXML"></span><div class="header">
+<p>
+Next: <a href="Parsing-JSON.html" accesskey="n" rel="next">Parsing JSON</a>, Previous: <a href="GnuTLS-Cryptography.html" accesskey="p" rel="prev">GnuTLS Cryptography</a>, Up: <a href="Text.html" accesskey="u" rel="up">Text</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="HTMLtoXMLnoJie-Xi-"></span><h3 class="section">32.28 HTMLとXMLの解析</h3>
+<span id="index-parsing-html"></span>
+
+<p>ビルトインのlibxml2サポートつきでEmacsをコンパイルできます。
+</p>
+<dl>
+<dt id="index-libxml_002davailable_002dp">Function: <strong>libxml-available-p</strong></dt>
+<dd><p>この関数はビルトインlibxml2サポートが利用可能なら非<code>nil</code>をリターンする。
+</p></dd></dl>
+
+<p>libxml2サポートが利用可能なら、HTMLやXMLのテキストをLispオブジェクトツリーにパースするために以下の関数を利用できます。
+</p>
+<dl>
+<dt id="index-libxml_002dparse_002dhtml_002dregion">Function: <strong>libxml-parse-html-region</strong> <em>start end &amp;optional base-url discard-comments</em></dt>
+<dd><p>この関数は<var>start</var>と<var>end</var>の間のテキストをHTMLとしてパースして、HTML<em>パースツリー(parse
+tree)</em>を表すリストをリターンする。これは構文誤りにたいして強力に対処することにより、現実世界のHTMLの処理を試みる。
+</p>
+<p>オプション引数<var>base-url</var>が非<code>nil</code>なら、それはリンク内に出現する相対URLにたいするベースURLを指定する文字列であること。
+</p>
+<p>オプション引数<var>discard-comments</var>が非<code>nil</code>なら、すべてのトップレベルのコメントを破棄する(この引数は時代遅れでありEmacsの将来のバージョンで削除されるだろう。コメントの削除にはパース関数の呼び出し前にデータにユーティリティ関数<code>xml-remove-comments</code>を使用すること)。
+</p>
+<p>パースツリー内では各HTMLノードは1つ目の要素がノード名を表すシンボル、2つ目の要素がノード属性のalist、残りの要素はサブノードであるようなリストにより表される。
+</p>
+<p>以下の例でこれを示す。以下の(不正な)HTMLドキュメントを与えると:
+</p>
+<div class="example">
+<pre class="example">&lt;html&gt;&lt;head&gt;&lt;/head&gt;&lt;body width=101&gt;&lt;div class=thing&gt;Foo&lt;div&gt;Yes
+</pre></div>
+
+<p><code>libxml-parse-html-region</code>呼び出しにより以下の<acronym>DOM</acronym> (document object
+model)がリターンされる:
+</p>
+<div class="example">
+<pre class="example">(html nil
+ (head nil)
+ (body ((width . &quot;101&quot;))
+  (div ((class . &quot;thing&quot;))
+   &quot;Foo&quot;
+   (div nil
+    &quot;Yes&quot;))))
+</pre></div>
+</dd></dl>
+
+<span id="index-rendering-html"></span>
+<dl>
+<dt id="index-shr_002dinsert_002ddocument">Function: <strong>shr-insert-document</strong> <em>dom</em></dt>
+<dd><p>この関数は<var>dom</var>内のパース済みHTMLをカレントバッファー内に描画する。引数<var>dom</var>は<code>libxml-parse-html-region</code>で生成されるようなリストであること。この関数はたとえば<a href="https://www.gnu.org/software/emacs/manual/html_node/eww/index.html#Top">EWW</a> in <cite>The Emacs Web Wowser Manual</cite>により使用される。
+</p></dd></dl>
+
+<span id="index-parsing-xml"></span>
+<dl>
+<dt id="index-libxml_002dparse_002dxml_002dregion">Function: <strong>libxml-parse-xml-region</strong> <em>start end &amp;optional base-url discard-comments</em></dt>
+<dd><p>この関数は<code>libxml-parse-html-region</code>と同様だが、HTMLではなくXML(構文についてより厳格)としてテキストをパースする点が異なる。
+</p></dd></dl>
+
+<table class="menu" border="0" cellspacing="0">
+<tr><td align="left" valign="top">&bull; <a href="Document-Object-Model.html" accesskey="1">Document Object Model</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top"><acronym>DOM</acronym>にたいするアクセス、操作、検索。
+</td></tr>
+</table>
+
+
+
+
+</body>
+</html>

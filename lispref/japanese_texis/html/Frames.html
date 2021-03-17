@@ -1,0 +1,187 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Frames (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Frames (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Frames (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="index.html" rel="up" title="Top">
+<link href="Creating-Frames.html" rel="next" title="Creating Frames">
+<link href="Window-Hooks.html" rel="prev" title="Window Hooks">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Frames"></span><div class="header">
+<p>
+Next: <a href="Positions.html" accesskey="n" rel="next">Positions</a>, Previous: <a href="Windows.html" accesskey="p" rel="prev">Windows</a>, Up: <a href="index.html" accesskey="u" rel="up">Top</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="huremu"></span><h2 class="chapter">29 フレーム</h2>
+<span id="index-frame"></span>
+
+<p><em>フレーム(frame)</em>とは、1つ以上のEmacsウィンドウを含むスクリーンオブジェクトです(<a href="Windows.html">Windows</a>を参照)。これはグラフィカル環境では&ldquo;ウィンドウ&rdquo;と呼ばれる類のオブジェクトです。しかしEmacsはこの単語を異なる方法で使用しているので、ここではそれを&ldquo;ウィンドウ&rdquo;と呼ぶことはできません。Emacs
+Lispにおいて<em>フレームオブジェクト(frame
+object)</em>とは、スクリーン上のフレームを表すLispオブジェクトです。<a href="Frame-Type.html">Frame Type</a>を参照してください。
+</p>
+<p>フレームには最初は1つのメインウィンドウおよび/またはミニバッファーウィンドウが含まれます。メインウィンドウは、より小さいウィンドウに垂直か水平に分割することができます。<a href="Splitting-Windows.html">Splitting Windows</a>を参照してください。
+</p>
+<span id="index-terminal"></span>
+<p><em>端末(terminal)</em>とは1つ以上のEmacsフレームを表示する能力のあるデバイスのことです。Emacs
+Lispにおいて<em>端末オブジェクト(terminal object)</em>とは端末を表すLispオブジェクトです。<a href="Terminal-Type.html">Terminal Type</a>を参照してください。
+</p>
+<span id="index-text-terminal"></span>
+<span id="index-graphical-terminal"></span>
+<span id="index-graphical-display"></span>
+<p>端末には<em>テキスト端末(text terminals)</em>と<em>グラフィカル端末(graphical
+terminals)</em>という2つのクラスがあります。テキスト端末はグラフィック能力をもたないディスプレイであり、<code>xterm</code>やその他の端末エミュレーターが含まれます。テキスト端末上ではそれぞれのEmacsフレームはその端末のスクリーン全体を占有します。たとえ追加のフレームを作成してそれらを切り替えることができたとしても、端末が表示するのは一度に1つのフレームだけです。一方でグラフィカル端末はXウィンドウシステムのようなグラフィカルディスプレイシステムにより管理されています。これによりEmacsは同一ディスプレイ上に複数のフレームを同時に表示することができます。
+</p>
+<p>GNUおよびUnix
+systemsシステムでは、単一のEmacsセッション内でそのEmacsがテキスト端末とグラフィカル端末のいずれで開始されたかに関わらず、任意の利用可能な端末上で追加のフレームを作成することができます。Emacsは、グラフィカル端末とテキスト端末の両方を同時に表示することができます。
+これはたとえばリモートから同じセッションに接続する際などに便利でしょう。<a href="Multiple-Terminals.html">Multiple Terminals</a>を参照してください。
+</p>
+<dl>
+<dt id="index-framep">Function: <strong>framep</strong> <em>object</em></dt>
+<dd><p>この述語(predicate)は<var>object</var>がフレームなら非<code>nil</code>、それ以外は<code>nil</code>をリターンする。フレームにたいしてはフレームが使用するディスプレイの種類が値:
+</p>
+<dl compact="compact">
+<dt><code>t</code></dt>
+<dd><p>そのフレームはテキスト端末上で表示されている。
+</p></dd>
+<dt><code>x</code></dt>
+<dd><p>そのフレームはXグラフィカル端末上で表示されている。
+</p></dd>
+<dt><code>w32</code></dt>
+<dd><p>そのフレームはMS-Windowsグラフィカル端末上で表示されている。
+</p></dd>
+<dt><code>ns</code></dt>
+<dd><p>そのフレームはGNUstepかMacintosh Cocoaグラフィカル端末上で表示されている。
+</p></dd>
+<dt><code>pc</code></dt>
+<dd><p>そのフレームはMS-DOS端末上で表示されている。
+</p></dd>
+</dl>
+</dd></dl>
+
+<dl>
+<dt id="index-frame_002dterminal">Function: <strong>frame-terminal</strong> <em>&amp;optional frame</em></dt>
+<dd><p>この関数は<var>frame</var>を表示する端末オブジェクトをリターンする。<var>frame</var>が<code>nil</code>または未指定の場合のデフォルトは選択されたフレーム。
+</p></dd></dl>
+
+<dl>
+<dt id="index-terminal_002dlive_002dp">Function: <strong>terminal-live-p</strong> <em>object</em></dt>
+<dd><p>この述語は<var>object</var>が生きた(削除されていない)端末なら非<code>nil</code>、それ以外は<code>nil</code>をリターンする。生きた端末にたいしては、リターン値はその端末上で表示されているフレームの種類を示す。可能な値は上述の<code>framep</code>と同様。
+</p></dd></dl>
+
+<span id="index-top_002dlevel-frame"></span>
+<p>グラフィカルな端末ではフレームを2つのタイプに区別しています。通常の<em>トップレベルフレーム(top-level
+frame)</em>は、ウィンドウ(ウィンドウシステム)としては端末にたいするルートウィンドウ(ウィンドウシステム)の子であるようなフレームです。子フレーム(child
+frame)は、ウィンドウ(ウィンドウシステム)としてはEmacsの別フレームのウィンドウ(ウィンドウシステム)の子であるようなフレームです。<a href="Child-Frames.html">Child Frames</a>を参照してください。
+</p>
+<table class="menu" border="0" cellspacing="0">
+<tr><td align="left" valign="top">&bull; <a href="Creating-Frames.html" accesskey="1">Creating Frames</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">追加のフレームの作成。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Multiple-Terminals.html" accesskey="2">Multiple Terminals</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">異なる複数デバイス上での表示。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Frame-Geometry.html" accesskey="3">Frame Geometry</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">Geometric properties of frames.
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Frame-Parameters.html" accesskey="4">Frame Parameters</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">フレームのサイズと位置、フォント等の制御。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Terminal-Parameters.html" accesskey="5">Terminal Parameters</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">端末上のすべてのフレームにたいして一般的なパラメーター。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Frame-Titles.html" accesskey="6">Frame Titles</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">フレームタイトルの自動的な更新。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Deleting-Frames.html" accesskey="7">Deleting Frames</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">明示的に削除されるまでフレームは存続する。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Finding-All-Frames.html" accesskey="8">Finding All Frames</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">すべての既存フレームを調べる方法。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Minibuffers-and-Frames.html" accesskey="9">Minibuffers and Frames</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">フレームが使用するミニバッファーを見つける方法。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Input-Focus.html">Input Focus</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">選択されたフレームの指定。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Visibility-of-Frames.html">Visibility of Frames</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">フレームは可視や不可視、またはアイコン化されているかもしれない。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Raising-and-Lowering.html">Raising and Lowering</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">フレームの前面や背面への移動。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Frame-Configurations.html">Frame Configurations</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">すべてのフレームの状態の保存。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Child-Frames.html">Child Frames</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">フレームを他のフレームの子供にする。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Mouse-Tracking.html">Mouse Tracking</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">マウス移動時のイベントの取得。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Mouse-Position.html">Mouse Position</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">マウスの場所や移動を問い合わせる。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Pop_002dUp-Menus.html">Pop-Up Menus</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">ユーザーに選択させるためのメニューの表示。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Dialog-Boxes.html">Dialog Boxes</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">yes/noを問い合わせるためのボックスの表示。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Pointer-Shape.html">Pointer Shape</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">マウスポインターのシェイプの指定。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Window-System-Selections.html">Window System Selections</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">他のXクライアントとのテキストの転送。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Drag-and-Drop.html">Drag and Drop</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">ドラッグアンドドロップの実装の内部。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Color-Names.html">Color Names</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">カラー名定義の取得。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Text-Terminal-Colors.html">Text Terminal Colors</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">テキスト端末のカラーの定義。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Resources.html">Resources</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">サーバーからのリソース値の取得。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Display-Feature-Testing.html">Display Feature Testing</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">端末の機能の判定。
+</td></tr>
+</table>
+
+
+<hr>
+<div class="header">
+<p>
+Next: <a href="Positions.html" accesskey="n" rel="next">Positions</a>, Previous: <a href="Windows.html" accesskey="p" rel="prev">Windows</a>, Up: <a href="index.html" accesskey="u" rel="up">Top</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

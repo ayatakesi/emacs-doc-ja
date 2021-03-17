@@ -1,0 +1,124 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Security Considerations (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Security Considerations (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Security Considerations (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="System-Interface.html" rel="up" title="System Interface">
+<link href="Packaging.html" rel="next" title="Packaging">
+<link href="Dynamic-Libraries.html" rel="prev" title="Dynamic Libraries">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Security-Considerations"></span><div class="header">
+<p>
+Previous: <a href="Dynamic-Libraries.html" accesskey="p" rel="prev">Dynamic Libraries</a>, Up: <a href="System-Interface.html" accesskey="u" rel="up">System Interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="sekiyuriteihenoPei-Lu-"></span><h3 class="section">40.22 セキュリティへの配慮</h3>
+<span id="index-security"></span>
+<span id="index-hardening"></span>
+
+<p>すべてのアプリケーションと同じように、アクセス等のルールを励行するオペレーティングシステムでは、Emacsを安全な環境で実行できます。注意を払えばEmacsベースのアプリケーションがそのようなルールをチェックするセキュリティ境界の一部になることもできます。Emacsのデフォルトのセッティングでは典型的なソフトウェア開発環境としても良好に機能しますが、アタッカーを含んだ信頼されないユーザーの存在する環境では調整を要します。以下はそのようなアプリケーションを開発する際に助けとなるセキュリティ問題の要覧です。これは完全なものではありません。これはセキュリティチェックリストではなく、セキュリティに関する問題にたいするアイデアを与えることを意図したものです。
+</p>
+<dl compact="compact">
+<dt>ファイルローカル変数</dt>
+<dd><span id="index-file-local-variables-1"></span>
+<p>Emacsがvisitするファイルには、そのファイルをvisitするバッファーに効果を及ぼす変数のセッティングを含めることができる。<a href="File-Local-Variables.html">File Local Variables</a>を参照のこと。同じようにディレクトリーはそのディレクトリー内のすべてのファイルに共通なローカル変数を指定できる。<a href="Directory-Local-Variables.html">Directory Local Variables</a>を参照のこと。これらの変数の誤用にたいしてたとえEmacsが幾らかの努力を行っているにしても、あるパッケージがあまりに楽観的に<code>safe-local-variable</code>をセットすることによってセキュリティーホールは簡単に作成されるし、これはあまりに一般的な問題である。ファイルとディレクトリーの両方にたいしてこの機能を無効にするには、<code>enable-local-variables</code>に<code>nil</code>をセットすればよい。
+</p>
+</dd>
+<dt>アクセスコントロール</dt>
+<dd><p>たとえEmacsが通常は背後にあるオペレーティングシステムのアクセスパーミッションを尊重するとしても、あるケースにおいてはアクセスを特別に処理する。たとえばファイル名は独自のアクセスチェックによりファイルを特別に扱うハンドラーをもつことができる。<a href="Magic-File-Names.html">Magic File Names</a>を参照のこと。さらにバッファーは対応するファイルが書き込み可でも読み取り専用にできるしその逆も可能であり、&lsquo;<samp>File
+passwd is write-protected; try to save anyway? (yes or
+no)</samp>&rsquo;のようなメッセージを結果としてもたらすかもしれない。<a href="Read-Only-Buffers.html">Read Only Buffers</a>を参照のこと。
+</p>
+</dd>
+<dt>認証</dt>
+<dd><p>Emacsには<code>read-passwd</code>のようなパスワードを扱う関数がいくつかある。<a href="Reading-a-Password.html">Reading a Password</a>を参照のこと。これらの関数はパスワードを公に喧伝しないにしても、Emacs内部にアクセスする猛者なアタッカーにたいする実装の証左はない。たとえばパスワード使用後にメモリーをクリアーするためにelispコードが<code>clear-string</code>を使用しても、パスワードの残滓は依然としてガーベージコレクトされたフリーリスト内に存在する。<a href="Modifying-Strings.html">Modifying Strings</a>を参照のこと。
+</p>
+</dd>
+<dt>コードインジェクション</dt>
+<dd><p>Emacsは他の多くのアプリケーションにコマンドを送信できる。アプリケーションはこれらのコマンドのオペランドとして送信された文字列はディレクティブとして誤解釈しないこと。たとえばファイル<var>a</var>を<var>b</var>にリネームするシェルコマンドを使用する際に、単に文字列<code>mv
+<var>a</var>
+<var>b</var></code>を使用しないこと。なぜならファイル名のいずれかが&lsquo;<samp>-</samp>&rsquo;で始まるかもしれず、&lsquo;<samp>;</samp>&rsquo;のようなシェルのメタ文字が含まれるかもしれないから。この種の問題の回避のために<code>shell-quote-argument</code>のような関数が助けになるとしても、POSIXプラットフォームの<code>shell-quote-argument</code>はシェルのメタ文字はクォートするが先頭の&lsquo;<samp>-</samp>&rsquo;のクォートはしない。MS-Windowsでの&lsquo;<samp>%</samp>&rsquo;にたいするクォートでは名前に&lsquo;<samp>^</samp>&rsquo;がある環境変数を想定していない。<a href="Shell-Arguments.html">Shell Arguments</a>を参照のこと。通常はサブシェルより<code>call-process</code>を使用するほうが安全である。<a href="Synchronous-Processes.html">Synchronous Processes</a>を参照のこと。そしてEmacsのビルトイン関数を使用するほうが安全である。たとえば<code>mv</code>を呼び出すかわりに<code>(rename-file
+&quot;<var>a</var>&quot; &quot;<var>b</var>&quot; t)</code>を使用する。<a href="Changing-Files.html">Changing Files</a>を参照のこと。
+</p>
+</dd>
+<dt>コーディングシステム</dt>
+<dd><p>Emacsはアクセスするファイルとネットワークのコーディングシステムを推察する。<a href="Coding-Systems.html">Coding Systems</a>を参照のこと。Emacsの推察が誤っていたりネットワークの相手先がEmacsの推察に不同意なら、結果となるコーディングシステムは信頼できないかもしれない。更にその推察が正しいときでさえ、他のプログラムが使用できないバイトをEmacsが使用できる場合がよくある。たとえばEmacsEmacsにとってはnullバイトは他と同じ単なる文字だとしても、他の多くのアプリケーションはnull文字を文字列終端として扱うので、nullバイトを含む文字列やファイルを誤って処理する。
+</p>
+</dd>
+<dt>Environment and configuration variables</dt>
+<dd><p>POSIXはEmacsの挙動に影響し得る環境変数をいくつか指定する。ASCII英大文字、数字、アンダースコアだけから構成される名前をもつ任意の環境変数がEmacsの内部の動作に影響を及ぼし得る。Emacsはその種の<code>EMACSLOADPATH</code>のような変数をいくつか使用する。See <a href="Library-Search.html">Library Search</a>を参照のこと。Emacsが呼び出すかもしれないユーティリティーすべてにたいして標準の挙動を得るためには、いくつかの環境変数(<code>PATH</code>、<code>POSIXLY_CORRECT</code>、<code>SHELL</code>、<code>TMPDIR</code>)が正しく設定されていることを要するシステムがいくつかある。<code>TZ</code>のような一見は無害な変数でさえセキュリティに影響し得る。<a href="System-Environment.html">System Environment</a>を参照のこと。
+</p>
+<p>Emacsにはカスタマイズと同義な変数が他にある。たとえば変数<code>shell-file-name</code>に非標準的な動作を行うシェルを指定すれば、Emacsベースのアプリケーションはご堂する可能性がある。
+</p>
+</dd>
+<dt>Installation</dt>
+<dd><p>Emacsのインストールの際にインストール先のディレクトリー階層が信頼できないユーザーに変更可能なら、そのアプリケーションは信頼できない。これはEmacsが使用するプログラムや読み書きするファイルのディレクトリー階層にも適用される。
+</p>
+</dd>
+<dt>Network access</dt>
+<dd><p>Emacsでは多くの場合にネットワークにアクセスするので、通常行うようなネットワークアクセスを回避したいと思うかもしれない。たとえば<code>tramp-mode</code>を<code>nil</code>にセットしていなければ、特定の構文を使用するファイル名はネットワークファイルとして解釈されて、ネットワーク越しに取得される。<a href="https://www.gnu.org/software/emacs/manual/html_node/tramp/index.html#Top">The Tramp Manual</a> in <cite>The Tramp Manual</cite>を参照のこと。
+</p>
+</dd>
+<dt>Race conditions</dt>
+<dd><p>Emacsアプリケーションには、他のアプリケーションが行う競合状態に関するものと同種の問題がある。たとえば<code>(file-readable-p
+&quot;foo.txt&quot;)</code>が<code>t</code>をリターンしたときでさえ、<code>file-readable-p</code>の呼び出しからその時点の間に別のアプリケーションがファイルの権限を変更したために読み取りできないかもしれない。<a href="Testing-Accessibility.html">Testing Accessibility</a>を参照のこと。
+</p>
+</dd>
+<dt>Resource limits</dt>
+<dd><p>Emacsがメモリーや他のオペレーティングシステムのリソースを使い切ったときには、通常は完了まで実行される計算が異常終了でトップレベルに戻るかもしれないので挙動の信頼性が減少し得る。これにより通常は完了する操作をEmacsが放棄するかもしれない。
+</p></dd>
+</dl>
+
+
+
+
+</body>
+</html>

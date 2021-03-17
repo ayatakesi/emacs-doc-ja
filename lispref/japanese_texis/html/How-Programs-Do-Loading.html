@@ -1,0 +1,153 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>How Programs Do Loading (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="How Programs Do Loading (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="How Programs Do Loading (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Loading.html" rel="up" title="Loading">
+<link href="Load-Suffixes.html" rel="next" title="Load Suffixes">
+<link href="Loading.html" rel="prev" title="Loading">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="How-Programs-Do-Loading"></span><div class="header">
+<p>
+Next: <a href="Load-Suffixes.html" accesskey="n" rel="next">Load Suffixes</a>, Up: <a href="Loading.html" accesskey="u" rel="up">Loading</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="puroguramugarodowoXing-uFang-Fa-"></span><h3 class="section">16.1 プログラムがロードを行う方法</h3>
+
+<p>Emacs
+Lispにはロードのためのインターフェイスがいくつかあります。たとえば<code>autoload</code>はファイル内で定義された関数にたいしてプレースホルダーとなるオブジェクトを作成します。この関数はオートロードされる関数を呼び出すために、ファイルからその関数の実際の定義の取得を試みます(<a href="Autoload.html">Autoload</a>を参照)。<code>require</code>はファイルがまだロードされていない場合にファイルをロードします(<a href="Named-Features.html">Named Features</a>を参照)。これらすべての関数は処理を行うために最終的に<code>load</code>を呼び出します。
+</p>
+<dl>
+<dt id="index-load">Function: <strong>load</strong> <em>filename &amp;optional missing-ok nomessage nosuffix must-suffix</em></dt>
+<dd><p>この関数はLispコードのファイルを見つけてオープンして、その中のすべてのフォームを評価してそのファイルをクローズする。
+</p>
+<p><code>load</code>はまずファイルを見つけるために、<samp><var>filename</var>.elc</samp>という名前、つまり<var>filename</var>に拡張子&lsquo;<samp>.elc</samp>&rsquo;を足した名前のファイルを探す。このようなファイルが存在したらそれをロードする。Emacsがダイナミックモジュール(<a href="Dynamic-Modules.html">Dynamic Modules</a>を参照)のサポートつきでコンパイルされていれば、、次に<code>load</code>は<samp><var>filename</var>.<var>ext</var></samp>という名前のファイルを探す。ここで<var>ext</var>は共有ライブラリーのシステム依存のファイル名拡張子である。その名前のファイルが存在しなければ、<code>load</code>は<samp><var>filename</var>.el</samp>という名前のファイルを探す。このファイルが存在したらそれをロードする。最後に、もしこれらの名前がいずれも見つからなければ、<code>load</code>は何も付け足さない<var>filename</var>という名前のファイルを探してそれが存在したらロードする(<code>load</code>関数に<var>filename</var>を認識する賢さはない。<samp>foo.el.el</samp>のような正しくない名前のファイルでも、<code>(load
+&quot;foo.el&quot;)</code>を評価してそれを見つけてしまうだろう)。
+</p>
+<p>Auto
+Compressionモードが有効(残念ながらデフォルトでは有効)なら、<code>load</code>は他のファイル名を試みる前に圧縮されたバージョンのファイル名を探すのでファイルを見つけることができない。圧縮されたファイルが存在したら、それを解凍してロードする。<code>load</code>はファイル名に<code>jka-compr-load-suffixes</code>内の各サフィックスを足して圧縮されたバージョンを探す。この変数の値は文字列のリストでなければならない。標準的な値は<code>(&quot;.gz&quot;)</code>。
+</p>
+<p>オプション引数<var>nosuffix</var>が非<code>nil</code>なら、<code>load</code>はサフィックス&lsquo;<samp>.elc</samp>&rsquo;と&lsquo;<samp>.el</samp>&rsquo;のロードを試みない。この場合はロードしたいファイルの正確な名前を指定しなければならない。ただしAuto
+Compressionモードが有効なら<code>load</code>は圧縮されたバージョンを探すために、<code>jka-compr-load-suffixes</code>を使用する。正確なファイル名を指定して、<var>nosuffix</var>に<code>t</code>を使用することにより、<samp>foo.el.el</samp>のような名前のファイルにたいするロードの試みを抑止できる。
+</p>
+<p>オプション引数<var>must-suffix</var>が非<code>nil</code>の場合、ロードに使用されるファイルの名前に明示的にディレクトリー名が含まれていなければ、<code>load</code>はファイル名が&lsquo;<samp>.el</samp>&rsquo;か&lsquo;<samp>.elc</samp>&rsquo;、または共有ライブラリーの拡張子で終わること(もしかしたら圧縮による拡張子が付加されているかもしれない)を要求する。
+</p>
+<p>オプション<code>load-prefer-newer</code>が非<code>nil</code>なら、<code>load</code>はサフィックスを検索するとき、どんなファイル(&lsquo;<samp>.elc</samp>&rsquo;、&lsquo;<samp>.el</samp>&rsquo;等)であっても、もっとも最近変更されたファイルのバージョンを選択する。
+</p>
+<p><var>filename</var>が<samp>foo</samp>や<samp>baz/foo.bar</samp>のような相対ファイル名なら、<code>load</code>は変数<code>load-path</code>を使用してそのファイルを探す。これは<code>load-path</code>内にリストされた各ディレクトリーに<var>filename</var>を追加して、最初に見つかった名前のマッチするファイルをロードする。デフォルトディレクトリーを意味する<code>nil</code>が<code>load-path</code>で措定されたときだけ、カレントデフォルトディレクトリーを試みる。<code>load</code>は<code>load-path</code>内の最初のディレクトリーで利用可能な3つのサフィックスすべてを試行してから、2つ目のディレクトリーで3つのサフィックスすべてを試行する、...というようにファイルを探す。<a href="Library-Search.html">Library Search</a>を参照のこと。
+</p>
+<p>最終的に見つかったファイル、およびEmacsがそのファイルを見つけたディレクトリーが何であれ、Emacsはそのファイル名を変数<code>load-file-name</code>の値にセットする。
+</p>
+<p><samp>foo.elc</samp>が<samp>foo.el</samp>より古いと警告されたら、それは<samp>foo.el</samp>のリコンパイルを考慮すべきことを意味する。<a href="Byte-Compilation.html">Byte Compilation</a>を参照のこと。
+</p>
+<p>(コンパイルされていない)ソースファイルをロードしたとき、Emacsがファイルをvisitしたときと同じように<code>load</code>は文字セットの変換を行う。<a href="Coding-Systems.html">Coding Systems</a>を参照のこと。
+</p>
+<span id="index-eager-macro-expansion"></span>
+<p>コンパイルされていないファイルをロードするとき、Emacsはそのファイルに含まれるすべてのマクロ(<a href="Macros.html">Macros</a>を参照)を展開する。わたしたちはこれを<em>eagerマクロ展開(eager
+macro
+expansion)</em>と呼んでいる。(関連するコードを実行するまで展開を延期しないで)これを行うことにより、コンパイルされていないコードの実行スピードが明らかに向上する。循環参照によりこのマクロ展開を行うことができないときもある。これの一番簡単な例は、ロードしようとしているファイルが他のファイルで定義されているマクロを参照しているが、そのファイルはロードしようとしているファイルを必要としている場合である。これは一般的には無害である。Emacsは問題の詳細を与えるために警告(&lsquo;<samp>Eager
+macro-expansion skipped due to
+cycle&hellip;</samp>&rsquo;)をプリントするが、単にその時点ではマクロを展開せずにそのファイルをロードする。あなたはこの問題が発生しないようにコードをリストラクチャーしたいと思うかもしれない。コンパイル済みファイルではマクロ展開はコンパイル時に行われるので、ロード時のマクロ展開は行われない。<a href="Compiling-Macros.html">Compiling Macros</a>を参照のこと。
+</p>
+<p><var>nomessage</var>が非<code>nil</code>でなければ、エコーエリアに&lsquo;<samp>Loading foo...</samp>&rsquo;や&lsquo;<samp>Loading
+foo...done</samp>&rsquo;のようなメッセージがロードの間に表示される。
+</p>
+<span id="index-load-errors"></span>
+<p>ファイルをロードする間のハンドルされないエラーはロードを終了させる。<code>autoload</code>のためのロードの場合、ロードの間に定義された任意の関数定義は元に戻される。
+</p>
+<span id="index-file_002derror"></span>
+<p><code>load</code>がロードするファイルを見つけられなかった場合には、通常は(&lsquo;<samp>Cannot open load file
+<var>filename</var></samp>&rsquo;のメッセージとともに)
+<code>file-error</code>がシグナルされる。しかし<var>missing-ok</var>が非<code>nil</code>なら<code>load</code>は単に<code>nil</code>をリターンする。
+</p>
+<p>式の読み取りにたいして<code>load</code>が<code>read</code>のかわりに使用する関数を指定するために、変数<code>load-read-function</code>を使用できる。以下を参照されたい。
+</p>
+<p>ファイルが正常にロードされたら、<code>load</code>は<code>t</code>をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-load_002dfile">Command: <strong>load-file</strong> <em>filename</em></dt>
+<dd><p>このコマンドはファイル<var>filename</var>をロードする。<var>filename</var>が相対ファイル名のなら、それはカレントデフォルトディレクトリーを指定したとみなされる。このコマンドは<code>load-path</code>を使用せず、サフィックスの追加もしない。しかし(Auto
+Compressionモードが有効なら)圧縮されたバージョンの検索を行う。ロードするファイル名を正確に指定したければ、このコマンドを使用すること。
+</p></dd></dl>
+
+<dl>
+<dt id="index-load_002dlibrary">Command: <strong>load-library</strong> <em>library</em></dt>
+<dd><p>このコマンドは<var>library</var>という名前のライブラリーをロードする。このコマンドは引数を読み取る方法がインタラクティブであることを除き<code>load</code>と同じ。<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/Lisp-Libraries.html#Lisp-Libraries">Lisp
+Libraries</a> in <cite>The GNU Emacs Manual</cite>を参照のこと。
+</p></dd></dl>
+
+<dl>
+<dt id="index-load_002din_002dprogress">Variable: <strong>load-in-progress</strong></dt>
+<dd><p>この変数はEmacsがファイルをロード中なら非<code>nil</code>、それ以外は<code>nil</code>である。
+</p></dd></dl>
+
+<dl>
+<dt id="index-load_002dfile_002dname">Variable: <strong>load-file-name</strong></dt>
+<dd><p>このセクションの最初に説明した検索でEmacsがファイルを見つけて、そのファイルをロード中のとき、この変数の値はそのファイルの名前である。
+</p></dd></dl>
+
+<dl>
+<dt id="index-load_002dread_002dfunction">Variable: <strong>load-read-function</strong></dt>
+<dd><span id="Definition-of-load_002dread_002dfunction"></span><p>この変数は<code>load</code>と<code>eval-region</code>が式を読み取るために、<code>read</code>のかわりに使用する関数を指定する。指定する関数は<code>read</code>と同様、引数が1つの関数であること。
+</p>
+<p>デフォルトではこの変数の値は<code>read</code>。<a href="Input-Functions.html">Input Functions</a>を参照のこと。
+</p>
+<p>この変数を使用するかわりに別の新たな方法を使用するほうが明確である。それは<code>eval-region</code>の<var>read-function</var>引数にその関数を渡す方法である。<a href="Eval.html#Definition-of-eval_002dregion">Eval</a>を参照のこと。
+</p></dd></dl>
+
+<p>Emacsのビルドで<code>load</code>がどのように使用されているかについての情報は、<a href="Building-Emacs.html">Building Emacs</a>を参照のこと。
+</p>
+
+
+
+</body>
+</html>

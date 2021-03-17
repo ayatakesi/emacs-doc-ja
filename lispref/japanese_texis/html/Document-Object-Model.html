@@ -1,0 +1,209 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Document Object Model (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Document Object Model (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Document Object Model (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Parsing-HTML_002fXML.html" rel="up" title="Parsing HTML/XML">
+<link href="Parsing-JSON.html" rel="next" title="Parsing JSON">
+<link href="Parsing-HTML_002fXML.html" rel="prev" title="Parsing HTML/XML">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Document-Object-Model"></span><div class="header">
+<p>
+Up: <a href="Parsing-HTML_002fXML.html" accesskey="u" rel="up">Parsing HTML/XML</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="dokiyumentoobuziekutomoderu"></span><h4 class="subsection">32.28.1 ドキュメントオブジェクトモデル</h4>
+<span id="index-HTML-DOM"></span>
+<span id="index-XML-DOM"></span>
+<span id="index-DOM"></span>
+<span id="index-Document-Object-Model"></span>
+
+<p><code>libxml-parse-html-region</code>
+(およびその他の<acronym>XML</acronym>パース関数)がリターンする<acronym>DOM</acronym>はツリー構造です。このツリー構造ではそれぞれのノードがノード名(<em>タグ(tag)</em>と呼ばれる)をもち、オプションでkey/value値からなる<em>属性(attribute)</em>リスト、その後に<em>子ノード(child
+nodes)</em>が続きます。子ノードは文字列か<acronym>DOM</acronym>オブジェクトのいずれかです。
+</p>
+<div class="example">
+<pre class="example">(body ((width . &quot;101&quot;))
+ (div ((class . &quot;thing&quot;))
+  &quot;Foo&quot;
+  (div nil
+   &quot;Yes&quot;)))
+</pre></div>
+
+<dl>
+<dt id="index-dom_002dnode">Function: <strong>dom-node</strong> <em>tag &amp;optional attributes &amp;rest children</em></dt>
+<dd><p>この関数はタイプ<var>tag</var>の<acronym>DOM</acronym>ノードを作成する。もし<var>attributes</var>が与えられたら、それはkey/valueペアのリストであること。もし<var>children</var>が与えられたら、それは<acronym>DOM</acronym>ノードであること。
+</p></dd></dl>
+
+<p>この構造を処理するために以下の関数を使用できます。それぞれの関数は<acronym>DOM</acronym>ノードかノードのリストを受け取ります。後者の場合には、そのリストの最初のノードだけが使用されます。
+</p>
+<p>シンプルなアクセサー
+</p>
+<dl compact="compact">
+<dt><code>dom-tag <var>node</var></code></dt>
+<dd><p>ノードの<em>タグ</em> (&ldquo;ノード名&rdquo;とも呼ばれる)をリターンする。
+</p>
+</dd>
+<dt><code>dom-attr <var>node</var> <var>attribute</var></code></dt>
+<dd><p>ノードの<var>属性</var>の値をリターンする。以下は一般的な使用例：
+</p>
+<div class="lisp">
+<pre class="lisp">(dom-attr img 'href)
+=&gt; &quot;https://fsf.org/logo.png&quot;
+</pre></div>
+
+</dd>
+<dt><code>dom-children <var>node</var></code></dt>
+<dd><p>ノードのすべての子をリターンする。
+</p>
+</dd>
+<dt><code>dom-non-text-children <var>node</var></code></dt>
+<dd><p>ノードのすべての非文字列の子をリターンする。
+</p>
+</dd>
+<dt><code>dom-attributes <var>node</var></code></dt>
+<dd><p>ノードの属性のkey/valueペアのリストをリターンする。
+</p>
+</dd>
+<dt><code>dom-text <var>node</var></code></dt>
+<dd><p>ノードのすべてのテキスト的な要素を連結された文字列としてリターンする。
+</p>
+</dd>
+<dt><code>dom-texts <var>node</var></code></dt>
+<dd><p>ノードのすべてのテキスト的な要素、およびノードのすべての子のテキスト的な要素を、連結された文字列として再帰的にリターンする。この関数はテキスト的な要素の間に挿入するオプションのセパレーターも受け取る。
+</p>
+</dd>
+<dt><code>dom-parent <var>dom</var> <var>node</var></code></dt>
+<dd><p><var>dom</var>内での<var>node</var>の親をリターンする。
+</p>
+</dd>
+<dt><code>dom-remove <var>dom</var> <var>node</var></code></dt>
+<dd><p><var>dom</var>から<var>node</var>を削除する。
+</p></dd>
+</dl>
+
+<p>以下は<acronym>DOM</acronym>を変更するための関数です。
+</p>
+<dl compact="compact">
+<dt><code>dom-set-attribute <var>node</var> <var>attribute</var> <var>value</var></code></dt>
+<dd><p>ノードの<var>attribute</var>に<var>value</var>をセットする。
+</p>
+</dd>
+<dt><code>dom-remove-attribute <var>node</var> <var>attribute</var></code></dt>
+<dd><p><var>node</var>から<var>attribute</var>を削除する。
+</p>
+</dd>
+<dt><code>dom-append-child <var>node</var> <var>child</var></code></dt>
+<dd><p><var>node</var>の最後の子として<var>child</var>を追加する。
+</p>
+</dd>
+<dt><code>dom-add-child-before <var>node</var> <var>child</var> <var>before</var></code></dt>
+<dd><p><var>node</var>の子リストのノード<var>before</var>の前に<var>child</var>を追加する。<var>before</var>が<code>nil</code>なら、<var>child</var>が最初の子になる。
+</p>
+</dd>
+<dt><code>dom-set-attributes <var>node</var> <var>attributes</var></code></dt>
+<dd><p>ノードのすべての属性を新たなkey/valueリストに置き換える。
+</p></dd>
+</dl>
+
+<p>以下は<acronym>DOM</acronym>内の要素を検索する関数です。これらはマッチしたノードのリストをリターンします。
+</p>
+<dl compact="compact">
+<dt><code>dom-by-tag <var>dom</var> <var>tag</var></code></dt>
+<dd><p><var>dom</var>内のタイプが<var>tag</var>のすべてのノードをリターンする。典型的な使用例は:
+</p>
+<div class="lisp">
+<pre class="lisp">(dom-by-tag dom 'td)
+=&gt; '((td ...) (td ...) (td ...))
+</pre></div>
+
+</dd>
+<dt><code>dom-by-class <var>dom</var> <var>match</var></code></dt>
+<dd><p><var>dom</var>内のクラス名が正規表現<var>match</var>にマッチするすべてのノードをリターンする。
+</p>
+</dd>
+<dt><code>dom-by-style <var>dom</var> <var>style</var></code></dt>
+<dd><p><var>dom</var>内のスタイルが正規表現<var>match</var>にマッチするすべてのノードをリターンする。
+</p>
+</dd>
+<dt><code>dom-by-id <var>dom</var> <var>style</var></code></dt>
+<dd><p><var>dom</var>内のIDが正規表現<var>match</var>にマッチするすべてのノードをリターンする。
+</p>
+</dd>
+<dt><code>dom-search <var>dom</var> <var>predicate</var></code></dt>
+<dd><p><var>predicate</var>が非<code>nil</code>値をリターンした<var>dom</var>内のすべてのノードをリターンする。<var>predicate</var>はテストされるノードをパラメーターとして呼び出される。
+</p>
+</dd>
+<dt><code>dom-strings <var>dom</var></code></dt>
+<dd><p><var>dom</var>内のすべての文字列をリターンする。
+</p>
+</dd>
+</dl>
+
+<p>ユーティリティ関数:
+</p>
+<dl compact="compact">
+<dt><code>dom-pp <var>dom</var> &amp;optional <var>remove-empty</var></code></dt>
+<dd><p>ポイント位置の<var>dom</var>にたいしてプリティプリント(pp:
+優雅なプリント)を行う。<var>remove-empty</var>なら空白文字だけを含むテキスト的ノードはプリントしない。
+</p>
+</dd>
+<dt><code>dom-print <var>dom</var> &amp;optional <var>pretty</var> <var>xml</var></code></dt>
+<dd><p>ポイント位置の<var>dom</var>をプリントする。<var>xml</var>が非<code>nil</code>なら<acronym>XML</acronym>、それ以外なら<acronym>HTML</acronym>としてプリントする。<var>pretty</var>が非<code>nil</code>なら、<acronym>HTML</acronym>/<acronym>XML</acronym>を論理的にプリントする。
+</p></dd>
+</dl>
+
+
+
+
+
+</body>
+</html>

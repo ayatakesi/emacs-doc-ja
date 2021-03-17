@@ -1,0 +1,140 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Choosing Window (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Choosing Window (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Choosing Window (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Displaying-Buffers.html" rel="up" title="Displaying Buffers">
+<link href="Buffer-Display-Action-Functions.html" rel="next" title="Buffer Display Action Functions">
+<link href="Displaying-Buffers.html" rel="prev" title="Displaying Buffers">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Choosing-Window"></span><div class="header">
+<p>
+Next: <a href="Buffer-Display-Action-Functions.html" accesskey="n" rel="next">Buffer Display Action Functions</a>, Up: <a href="Displaying-Buffers.html" accesskey="u" rel="up">Displaying Buffers</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="batuhuawoBiao-ShisuruuindounoXuan-Ze-"></span><h4 class="subsection">28.13.1 バッファーを表示するウィンドウの選択</h4>
+
+<p>コマンド<code>display-buffer</code>は表示のために柔軟にウィンドウを選択して、そのウィンドウ内に指定されたバッファーを表示します。これはキーバインディング<kbd>C-x
+4
+C-o</kbd>を通じてインタラクティブに呼び出すことができます。また<code>switch-to-buffer</code>や<code>pop-to-buffer</code>を含む多くの関数やコマンドにからサブルーチンとしても使用されます(<a href="Switching-Buffers.html">Switching Buffers</a>を参照)。
+</p>
+<span id="index-buffer-display-display-action"></span>
+<span id="index-display-action"></span>
+<p>このコマンドはウィンドウ内に表示するウィンドウを探すために、いくつかの複雑なステップを実行します。これらのステップは<em>ディスプレイアクション(display
+actions)</em>を用いて記述されます。ディスプレイアクションは<code>(<var>functions</var>
+.
+<var>alist</var>)</code>という形式をもちます。ここで<var>functions</var>は&ldquo;アクション関数&rdquo;と呼ばれる単一の関数か関数のリスト(<a href="Buffer-Display-Action-Functions.html">Buffer Display Action Functions</a>を参照)、<var>alist</var>は&ldquo;アクションalist&rdquo;と呼ばれる連想リストです(<a href="Buffer-Display-Action-Alists.html">Buffer Display Action Alists</a>を参照)。ディスプレイ表示の例については<a href="The-Zen-of-Buffer-Display.html">The Zen of Buffer Display</a>を参照してください。
+</p>
+<p>アクション関数は、表示するバッファーと、アクションalistという、2つの引数を受け取ります。これは、自身の条件にしたがってウィンドウウィンドウ選択、または作成して、バッファーをウィンドウ内に表示します。成功した場合はそのウィンドウ、それ以外は<code>nil</code>をリターンします。
+</p>
+<p><code>display-buffer</code>は複数ソースからのディスプレイアクションを組み合わせて、アクション関数のいずれか1つがバッファーの表示を管理して非<code>nil</code>値をリターンするまでアクション関数を順に呼び出します。
+</p>
+<dl>
+<dt id="index-display_002dbuffer">Command: <strong>display-buffer</strong> <em>buffer-or-name &amp;optional action frame</em></dt>
+<dd><p>このコマンドは、ウィンドウウィンドウ選択したり、そのバッファーをカレントにすることなく、<var>buffer-or-name</var>をウィンドウに表示させる。引数<var>buffer-or-name</var>はバッファー、または既存のバッファーの名前でなければならない。リターン値はバッファーを表示するために選ばれたウィンドウ、適切なウィンドウが見つからなければ<code>nil</code>。
+</p>
+<p>オプション引数<var>action</var>が非<code>nil</code>なら、それは通常はディスプレイアクション(上述)であること。<code>display-buffer</code>は以下のソース(優先度の高位順)からディスプレイアクションを集約してアクション関数リストとアクションalistを構築する:
+</p>
+<ul>
+<li> 変数<code>display-buffer-overriding-action</code>。
+
+</li><li> ユーザーオプション<code>display-buffer-alist</code>。
+
+</li><li> <var>action</var>引数。
+
+</li><li> ユーザーオプション<code>display-buffer-base-action</code>。
+
+</li><li> 定数<code>display-buffer-fallback-action</code>。
+</li></ul>
+
+<p>実際のところは、これらのディプレイアクションにより指定されるアクション関数すべてのリストを<code>display-buffer</code>が構築することを意味する。このリストの最初の要素は(もしあれば)
+<code>display-buffer-overriding-action</code>が指定する最初のアクション関数。<code>display-buffer-pop-up-frame</code>の最後の要素は<code>display-buffer-fallback-action</code>が指定する最後のアクション関数。このリストから重複要素は削除されないので、1回の<code>display-buffer</code>呼び出しの間に同一のアクション関数が複数回呼び出されるかもしれない。
+</p>
+<p><code>display-buffer</code>はバッファーを1つ目の引数、組み合わされたalistを2つ目の引数として、いずれかの関数が非<code>nil</code>をリターンするまで、このリスト内で指定されたアクション関数を順に呼び出す。異なるソースから指定されたディスプレイアクションを<code>display-buffer</code>がどのように処理するかの例は<a href="Precedence-of-Action-Functions.html">Precedence of Action Functions</a>を参照のこと。
+</p>
+<p>2つ目の引数は常に、上記に挙げたソースが指定する<em>すべて</em>のアクションalistエントリーのリストであることに注意。したがってこのリストの最初の要素は(もしあれば)
+<code>display-buffer-overriding-action</code>が指定する最初のアクションalistエントリー、最後の要素はもしあれば(<code>display-buffer-fallback-action</code>のアクションalistが空)
+<code>display-buffer-base-action</code>の最後のalistエントリーとなる。
+</p>
+<p>組み合わされたアクションalistは重複したエントリーを含むかもしれず、同じキーにたするエントリーが異なる値をもつかもしれないことにも注意。アクション関数はルールとして見つかった最初のキーの連想値を常に使用する。したがってアクション関数の連想値が、そのアクション関数が指定するディスプレイアクションにより提供される連想値を使用する必要はない。
+</p>
+<p>引数<var>action</var>には非<code>nil</code>の非list値も指定できる。これはたとえ選択されたウィンドウがすでにそのバッファーを表示していても、選択されたウィンドウではない別のウィンドウにバッファーが表示されるべきという特別な意味をもつ。プレフィックス引数とともにインタラクティブに呼び出された場合には、<var>action</var>は<code>t</code>である。Lispプログラムは常にリス値を提供すること。
+</p>
+<p>オプション引数<var>frame</var>が非<code>nil</code>の場合は、そのバッファーがすでに表示されているか判断する際、どのフレームをチェックするかを指定する。これは<var>action</var>のアクションalistに要素<code><span class="nolinebreak">(reusable-frames</span>&nbsp;.&nbsp;<var>frame</var>)</code><!-- /@w -->を追加するのと等価(<a href="Buffer-Display-Action-Alists.html">Buffer Display Action Alists</a>を参照)。<var>frame</var>は互換性のために提供される引数であり、Lispプログラムが使用するべきではない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-display_002dbuffer_002doverriding_002daction">Variable: <strong>display-buffer-overriding-action</strong></dt>
+<dd><p>この変数の値は<code>display-buffer</code>により最高の優先順で扱われるディスプレイアクションであること。デフォルト値は空のディスプレイアクション(つまり<code>(nil&nbsp;.&nbsp;nil)</code><!-- /@w -->)。
+</p></dd></dl>
+
+<dl>
+<dt id="index-display_002dbuffer_002dalist">User Option: <strong>display-buffer-alist</strong></dt>
+<dd><p>このオプションの値はディスプレイアクションにコンディション(condition:
+状態)をマップするalist。コンディションはそれぞれバッファー名にマッチする正規表現、または2つの引数をとる関数であり、引数はバッファー名と<code>display-buffer</code>に渡す<var>action</var>引数。<code>display-buffer</code>に渡されたバッファー名がこのalist内の正規表現にマッチするか、あるいはコンディションで指定された関数が非<code>nil</code>をリターンした場合には、<code>display-buffer</code>はバッファーを表示すために対応するディスプレイアクションを使用する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-display_002dbuffer_002dbase_002daction">User Option: <strong>display-buffer-base-action</strong></dt>
+<dd><p>このオプションの値はディスプレイアクションであること。このオプションは<code>display-buffer</code>呼び出しにたいする標準のディスプレイアクションを定義するために使用できる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-display_002dbuffer_002dfallback_002daction">Constant: <strong>display-buffer-fallback-action</strong></dt>
+<dd><p>このディスプレイアクションは<code>display-buffer</code>にたいして、他のディスプレイアクションが与えられなかった場合の代替え処理を指定する。
+</p></dd></dl>
+
+
+
+
+
+</body>
+</html>

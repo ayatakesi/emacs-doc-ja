@@ -1,0 +1,143 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Process Buffers (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Process Buffers (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Process Buffers (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Output-from-Processes.html" rel="up" title="Output from Processes">
+<link href="Filter-Functions.html" rel="next" title="Filter Functions">
+<link href="Output-from-Processes.html" rel="prev" title="Output from Processes">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Process-Buffers"></span><div class="header">
+<p>
+Next: <a href="Filter-Functions.html" accesskey="n" rel="next">Filter Functions</a>, Up: <a href="Output-from-Processes.html" accesskey="u" rel="up">Output from Processes</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="purosesunobatuhua"></span><h4 class="subsection">38.9.1 プロセスのバッファー</h4>
+
+<p>プロセスは<em>関連付けられたバッファー(associated
+buffer)</em>をもつことができます(通常はもつ)。これは普通のEmacsバッファーであり、2つの目的のために使用されます。1つはプロセスからの出力の格納、もう1つはプロセスをkillする時期を判断するためです。通常の習慣では任意の与えられたバッファーにたいして関連付けられるプロセスは1つだけなので、処理対象のプロセスを識別するためにそのバッファーを使用することもできます。プロセス使用の多くはプロセスに送信する入力を編集するためにもこのバッファーを使用しますが、これはEmacs
+Lispの組み込みではありません。
+</p>
+<p>デフォルトでは、プロセスの出力は関連付けられたバッファーに挿入されます(カスタムフィルター関数の定義により変更可能。<a href="Filter-Functions.html">Filter Functions</a>を参照)。出力を挿入する位置は<code>process-mark</code>により決定されます。これは正に挿入されたテキストの終端にポイントを更新します。通常(常にではない)は<code>process-mark</code>はバッファーの終端になります。
+</p>
+<span id="index-process_002dkill_002dbuffer_002dquery_002dfunction"></span>
+<p>プロセスに関連付けられたバッファーをkillすることによりプロセスもkillされます。そのプロセスの<code>process-query-on-exit-flag</code>が非<code>nil</code>なら、Emacsはまず確認を求めます(<a href="Query-Before-Exit.html">Query Before Exit</a>を参照)。この確認は関数<code>process-kill-buffer-query-function</code>により行われて、これは<code>kill-buffer-query-functions</code>から実行されます(<a href="Killing-Buffers.html">Killing Buffers</a>を参照)。
+</p>
+<dl>
+<dt id="index-process_002dbuffer">Function: <strong>process-buffer</strong> <em>process</em></dt>
+<dd><p>この関数は指定された<var>process</var>の関連付けられたバッファーをリターンする。
+</p>
+<div class="example">
+<pre class="example">(process-buffer (get-process &quot;shell&quot;))
+     &rArr; #&lt;buffer *shell*&gt;
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-process_002dmark">Function: <strong>process-mark</strong> <em>process</em></dt>
+<dd><p>この関数は<var>process</var>にたいするプロセスマーカーをリターンする。これはプロセスからの出力をどこに挿入するかを示すマーカー。
+</p>
+<p><var>process</var>がバッファーをもたなければ、<code>process-mark</code>は存在しない場所を指すマーカーをリターンする。
+</p>
+<p>デフォルトのフィルター関数はプロセス出力の挿入場所の決定にこのマーカーを使用して、挿入したテキストの後にポイントを更新する。連続するバッチ出力が連続して挿入されるのはこれが理由。
+</p>
+<p>カスタムフィルター関数はこのマーカーを通常は同じ方式で使用すること。<code>process-mark</code>を使用するフィルター関数の例は<a href="Filter-Functions.html#Process-Filter-Example">Process Filter Example</a>を参照のこと。
+</p>
+<p>ユーザーにプロセスバッファー内でプロセスに送信するための入力を期待する際には、プロセスマーカーは以前の出力から新たな入力を区別する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-set_002dprocess_002dbuffer">Function: <strong>set-process-buffer</strong> <em>process buffer</em></dt>
+<dd><p>この関数は<var>process</var>に関連付けられたバッファーに<var>buffer</var>をセットする。<var>buffer</var>が<code>nil</code>ならプロセスはバッファーに関連付けられない。非<code>nil</code>ならプロセスマークは<var>buffer</var>終端のポイントにセットされる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-get_002dbuffer_002dprocess">Function: <strong>get-buffer-process</strong> <em>buffer-or-name</em></dt>
+<dd><p>この関数は<var>buffer-or-name</var>で指定されるバッファーに関連付けられた、削除されていないプロセスをリターンする。そのバッファーに複数のプロセスが関連付けられている場合には、この関数はいずれか1つ(現在のところもっとも最近作成されたプロセスだがこれを期待しないこと)を選択する。プロセスの削除(<code>delete-process</code>を参照)により、そのプロセスはこの関数がリターンするプロセスとしては不適格となる。
+</p>
+<p>同一のバッファーに複数のプロセスを関連付けるのは、通常は悪いアイデアである。
+</p>
+<div class="example">
+<pre class="example">(get-buffer-process &quot;*shell*&quot;)
+     &rArr; #&lt;process shell&gt;
+</pre></div>
+
+<p>プロセスのバッファーをkillすることにより、<code>SIGHUP</code>シグナルでサブプロセスをkillしてプロセスを削除する(<a href="Signals-to-Processes.html">Signals to Processes</a>を参照)。
+</p></dd></dl>
+
+<p>プロセスのバッファーがウィンドウに表示されている場合には、プロセスが出力をスクリーンのサイズに適応させるのと同様に、Lispプログラムでウィンドウのサイズにプロセス出力を適応させるようにプロセスに指示したいと思うでしょう。以下の関数によりプロセスにたいしてこの種の情報をやり取りできます。しかしすべてのシステムが基礎となる機能をサポートする訳ではないので、コマンドライン引数や環境変数を通じたフォールバックを提供するのが最良です。
+</p>
+<dl>
+<dt id="index-set_002dprocess_002dwindow_002dsize">Function: <strong>set-process-window-size</strong> <em>process height width</em></dt>
+<dd><p><var>process</var>にたいして、その論理ウィンドウサイズが文字単位で<var>width</var>と<var>height</var>のサイズであることを告げる。関数がこの情報をプロセスとやり取りすることに成功したら<code>t</code>、それ以外は<code>nil</code>をリターンする。
+</p></dd></dl>
+
+<p>プロセスに関連付けられたバッファーを表示するウィンドウがサイズを変更された際には、影響を受けるプロセスはその変更にたいして通知される必要があります。デフォルトではウィンドウ構成(window
+configuration)が変更されると、ウィンドウにバッファーが表示されている各プロセスにかわり、プロセスのバッファーを表示するすべてのウィンドウのうち最小のサイズのウィンドウを引数として、Emacsが自動的に<code>set-process-window-size</code>を呼び出します。これはバッファーが少なくとも1つのウィンドウに表示されているプセスそれぞれにたいして、変数<code>window-adjust-process-window-size-function</code>の値である関数を呼び出すように指定する<code>window-configuration-change-hook</code>
+(<a href="Window-Hooks.html">Window Hooks</a>を参照)を通じて機能します。この変数をセットすることにより、この振る舞いをカスマイズできます。
+</p>
+<dl>
+<dt id="index-window_002dadjust_002dprocess_002dwindow_002dsize_002dfunction">User Option: <strong>window-adjust-process-window-size-function</strong></dt>
+<dd><p>この変数の値はプロセスとプロセスのバッファーを表示するウィンドウのリストという2つの引数を受け取る関数であること。その関数が呼び出される際には、そのプロセスのバッファーがカレントバッファーとなる。関数は<code>set-process-window-size</code>の呼び出しを通じて渡される論理プロセスウィンドウ(logical
+process window)を記述するコンスセル<code>(<var>width</var>&nbsp;.&nbsp;<var>height</var>)</code><!-- /@w -->をリターンすること。関数は<code>nil</code>をリターンすることもでき、Emacsはこの場合にはそのプロセスにたいして<code>set-process-window-size</code>を呼び出さない。
+</p>
+<p>この変数にたいしてEmacsは2つの事前定義された値を提供する。1つは<code>window-adjust-process-window-size-smallest</code>であり、これはプロセスのバッファーを表示するウィンドウのすべてのサイズから最小のサイズもう1つの<code>window-adjust-process-window-size-largest</code>は最大のサイズをリターンする。より複雑な方式には独自の関数を記述すること。
+</p>
+<p>この変数はバッファーローカルにできる。
+</p></dd></dl>
+
+<p>プロセスが<code>adjust-window-size-function</code>プロパティ(<a href="Process-Information.html">Process Information</a>を参照)をもつ場合には、その値は<code>window-adjust-process-window-size-function</code>のグローバル値とバッファーロール値をオーバーライドします。
+</p>
+
+
+
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Invoking the Debugger (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Invoking the Debugger (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Invoking the Debugger (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Debugger.html" rel="up" title="Debugger">
+<link href="Internals-of-Debugger.html" rel="next" title="Internals of Debugger">
+<link href="Debugger-Commands.html" rel="prev" title="Debugger Commands">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Invoking-the-Debugger"></span><div class="header">
+<p>
+Next: <a href="Internals-of-Debugger.html" accesskey="n" rel="next">Internals of Debugger</a>, Previous: <a href="Debugger-Commands.html" accesskey="p" rel="prev">Debugger Commands</a>, Up: <a href="Debugger.html" accesskey="u" rel="up">Debugger</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="debatuganoHu-biChu-si"></span><h4 class="subsection">18.1.9 デバッガの呼び出し</h4>
+<span id="index-invoking-lisp-debugger"></span>
+
+<p>以下ではデバッガを呼び出すために使用される関数<code>debug</code>の完全な詳細を説明します。
+</p>
+<dl>
+<dt id="index-debug">Command: <strong>debug</strong> <em>&amp;rest debugger-args</em></dt>
+<dd><p>この関数はデバッガにエンターする。この関数は<samp>*Backtrace*</samp>(デバッガへの2回目以降の再帰エントリーでは<samp>*Backtrace*&lt;2&gt;、...</samp>)という名前のバッファーにバッファーを切り替えて、Lisp関数呼び出しについての情報を書き込む。それから再帰編集にエンターして、Debuggerモードでbacktraceバッファーを表示する。
+</p>
+<p>Debuggerモードのコマンド<kbd>c</kbd>、<kbd>d</kbd>、<kbd>j</kbd>、<kbd>r</kbd>は再帰編集をexitする。その後、<code>debug</code>は以前のバッファーに戻って、<code>debug</code>を呼び出したものが何であれそこにリターンする。これは関数<code>debug</code>が呼び出し元にリターンできる唯一の方法である。
+</p>
+<p><var>debugger-args</var>を使用すると、<code>debug</code>は<samp>*Backtrace*</samp>の最上部に残りの引数を表示するしてユーザーがそれらを確認できる。以下で説明する場合を除いて、これはこれらの引数を使用する<em>唯一</em>の方法である。
+</p>
+<p>しかし<code>debug</code>への1つ目の引数にたいする値は、特別な意味をもつ(これらの値は通常は<code>debug</code>を呼び出すプログラマーではなく、Emacs内部でのみ使用される)。以下はこれら特別な値のテーブルである:
+</p>
+<dl compact="compact">
+<dt><code>lambda</code></dt>
+<dd><span id="index-lambda-in-debug"></span>
+<p>1つ目の引数が<code>lambda</code>のなら、それは<code>debug-on-next-call</code>が非<code>nil</code>のときに関数にエントリーしたことによって<code>debug</code>が呼び出されたことを意味する。デバッガはバッファーのトップのテキスト行に&lsquo;<samp>Debugger
+entered--entering a function:</samp>&rsquo;と表示する。
+</p>
+</dd>
+<dt><code>debug</code></dt>
+<dd><p>1つ目の引数が<code>debug</code>なら、それはエントリー時にデバッグされるようにセットされた関数にエントリーしたことにって<code>debug</code>が呼び出されたことを意味する。デバッガは<code>lambda</code>のときと同様、&lsquo;<samp>Debugger
+entered--entering a
+function:</samp>&rsquo;を表示する。これはその関数のスタックフレームもマークするので、exit時にデバッガが呼び出される。
+</p>
+</dd>
+<dt><code>t</code></dt>
+<dd><p>1つ目の引数が<code>t</code>なら、それは<code>debug-on-next-call</code>が非<code>nil</code>のときに関数呼び出しの評価によって<code>debug</code>が呼び出されたことを示す。デバッガはバッファーのトップの行に&lsquo;<samp>Debugger
+entered--beginning evaluation of function call form:</samp>&rsquo;と表示する。
+</p>
+</dd>
+<dt><code>exit</code></dt>
+<dd><p>1つ目の引数が<code>exit</code>のときは、exit時にデバッガを呼び出すよう以前にマークされたスタックフレームをexitしたことを示す。この場合は<code>debug</code>に与えられた2つ目の引数がそのフレームからリターンされた値になる。デバッガはバッファーのトップの行に&lsquo;<samp>Debugger
+entered--returning value:</samp>&rsquo;とリターンされた値を表示する。
+</p>
+</dd>
+<dt><code>error</code></dt>
+<dd><span id="index-error-in-debug"></span>
+<p>1つ目の引数が<code>error</code>のときは、ハンドルされていないエラーまたは<code>quit</code>がシグナルされてデバッガにエンターした場合であり、デバッガは&lsquo;<samp>Debugger
+entered--Lisp error:</samp>&rsquo;とその後にシグナルされたエラーと<code>signal</code>への引数を表示してそれを示す。たとえば、
+</p>
+<div class="example">
+<pre class="example">(let ((debug-on-error t))
+  (/ 1 0))
+</pre><pre class="example">
+
+</pre><pre class="example">------ Buffer: *Backtrace* ------
+Debugger entered--Lisp error: (arith-error)
+  /(1 0)
+...
+------ Buffer: *Backtrace* ------
+</pre></div>
+
+<p>エラーがシグナルされた場合はおそらく変数<code>debug-on-error</code>は非<code>nil</code>で、<code>quit</code>がシグナルされた場合はおそらく変数<code>debug-on-quit</code>は非<code>nil</code>である。
+</p>
+</dd>
+<dt><code>nil</code></dt>
+<dd><p>明示的にデバッガにエンターしたいときは、<var>debugger-args</var>の1つ目の引数に<code>nil</code>を使用する。残りの<var>debugger-args</var>はバッファーのトップの行にプリントされる。メッセージ
+&mdash; たとえば<code>debug</code>が呼び出された条件を思い出すためのリマインダーとして &mdash; の表示にこの機能を使用できる。
+</p></dd>
+</dl>
+</dd></dl>
+
+
+
+
+</body>
+</html>

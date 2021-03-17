@@ -1,0 +1,115 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Adaptive Fill (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Adaptive Fill (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Adaptive Fill (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Text.html" rel="up" title="Text">
+<link href="Auto-Filling.html" rel="next" title="Auto Filling">
+<link href="Margins.html" rel="prev" title="Margins">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Adaptive-Fill"></span><div class="header">
+<p>
+Next: <a href="Auto-Filling.html" accesskey="n" rel="next">Auto Filling</a>, Previous: <a href="Margins.html" accesskey="p" rel="prev">Margins</a>, Up: <a href="Text.html" accesskey="u" rel="up">Text</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Adaptive-Fillmodo"></span><h3 class="section">32.13 Adaptive Fillモード</h3>
+
+<p><em>Adaptive
+Fillモード</em>が有効なとき、Emacsは事前定義された値を使用するのではなく、フィルされる各パラグラフのテキストから自動的にフィルプレフィクスを決定します。<a href="Filling.html">Filling</a>と<a href="Auto-Filling.html">Auto Filling</a>で説明されているように、このフィルプレフィクスはフィルの間にそのパラグラフの2行目以降の行頭に挿入されます。
+</p>
+<dl>
+<dt id="index-adaptive_002dfill_002dmode">User Option: <strong>adaptive-fill-mode</strong></dt>
+<dd><p>この変数が非<code>nil</code>ならAdaptive Fillモードは有効。デフォルトは<code>t</code>。
+</p></dd></dl>
+
+<dl>
+<dt id="index-fill_002dcontext_002dprefix">Function: <strong>fill-context-prefix</strong> <em>from to</em></dt>
+<dd><p>この関数はAdaptive
+Fillモード実装の肝である。これは<var>from</var>から<var>to</var>、通常はパラグラフの開始から終了にあるテキストにもとづいてフィルプレフィクスを選択する。これは以下で説明する変数にもとづき、そのパラグラフの最初の2行を調べることによりこれを行う。
+</p>
+<p>この関数は通常は文字列としてフィルプレフィクスをリターンする。しかしこれを行う前に、この関数はそのプレフィクスで始まる行がパラグラフの開始とは見えないだろうか、最終チェックを行う(以降では特に明記しない)。これが発生した場合には、この関数はかわりに<code>nil</code>をリターンすることにより異常を通知する。
+</p>
+<p>以下は<code>fill-context-prefix</code>が行う詳細:
+</p>
+<ol>
+<li> 1行目からフィルプレフィクス候補を取得するために、(もしあれば)まず<code>adaptive-fill-function</code>内の関数、次に<code>adaptive-fill-regexp</code>
+(以下参照)の正規表現を試みる。これらの非<code>nil</code>の最初の結果、いずれも<code>nil</code>なら空文字列が1行目の候補となる。
+</li><li> そのパラグラフが1行だけなら、関数は見つかったプレフィクス候補の妥当性をテストする。その後でこの関数はそれが妥当ならその候補を、それ以外はスペース文字列をリターンする(以下の<code>adaptive-fill-first-line-regexp</code>の説明を参照)。
+</li><li> すでにそのパラグラフが2行以上なら、この関数は次に1行目にたいして行なったのとまったく同じ方法で2行目でプレフィクス候補を探す。見つからなければ<code>nil</code>をリターンする。
+</li><li> ここでこの関数は発見的手法により2つのプレフィクス候補を比較する。2行目の候補の非空白文字の並びが1行目の候補と同じなら、この関数は2行目の候補をリターンする。それ以外では2つの候補に共通するもっとも長い先頭の部分文字列(これは空文字列かもしれない)をリターンする。
+</li></ol>
+</dd></dl>
+
+<dl>
+<dt id="index-adaptive_002dfill_002dregexp">User Option: <strong>adaptive-fill-regexp</strong></dt>
+<dd><p>Adaptive
+Fillモードは、(もしあれば)行の左マージン空白文字の後から開始されるテキストにたいしてこの正規表現をマッチする。マッチする文字列がその行のフィルプレフィクス候補。
+</p>
+<p>デフォルト値は空白文字と特定の句読点文字が混在した文字列にマッチする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-adaptive_002dfill_002dfirst_002dline_002dregexp">User Option: <strong>adaptive-fill-first-line-regexp</strong></dt>
+<dd><p>この正規表現は1行だけのパラグラフに使用され、1つの可能なフィルプレフィクス候補の追加の妥当性評価として機能する。その候補はこの正規表現にマッチするか、<code>comment-start-skip</code>にマッチしなければならない。マッチしなければ<code>fill-context-prefix</code>はその候補を同じ幅のスペース文字列に置き換える。
+</p>
+<p>この変数のデフォルト値は <code>&quot;\\`[&nbsp;\t]*\\'&quot;</code><!-- /@w -->であり、これは空白文字列だけにマッチする。このデフォルトの効果は1行パラグラフで見つかったフィルプレフィクスが、常に純粋な空白文字となるよう強制することである。
+</p></dd></dl>
+
+<dl>
+<dt id="index-adaptive_002dfill_002dfunction">User Option: <strong>adaptive-fill-function</strong></dt>
+<dd><p>この変数に関数をセットすることにより、自動的なフィルプレフィクス選択にたいしてより複雑な方法を指定することが可能になる。その関数は、(もしあれば)行の左マージンの後のポイントで呼び出され、かつポイントを保たなければならない。その関数はその行のフィルプレフィクス、またはプレフィクスの判断に失敗したことを意味する<code>nil</code>のいずれかをリターンすること。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

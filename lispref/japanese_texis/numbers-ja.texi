@@ -1,0 +1,1012 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2020 Free Software
+@c Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Numbers
+@chapter 数値
+@cindex integers
+@cindex numbers
+
+  GNU Emacsは2つの数値データ型 --- @dfn{整数(integers)}と@dfn{浮動小数点数(floating-point
+numbers)}をサポートします。整数は@minus{}3、0、7、13、511などの整数です。浮動小数点数は@minus{}4.5、0.0、2.71828などの小数部をもちます。これらは指数記数法でも表現できます
+---
+@samp{1.5e2}は@samp{150.0}と同じです。ここで@samp{e2}は10の2乗を表し、それに1.5を乗じるという意味です。整数計算は正確です。浮動小数点数の計算では数値は固定された精度をもつので、しばしば丸め誤差(rounding
+errors)が発生します。
+
+@menu
+* Integer Basics::           整数の表現と範囲。
+* Float Basics::             浮動少数の表現と範囲。
+* Predicates on Numbers::    数にたいするテスト。
+* Comparison of Numbers::    同一性と非同一性の述語。
+* Numeric Conversions::      浮動小数点数から整数の変換と逆変換。
+* Arithmetic Operations::    加減乗除の方法。
+* Rounding Operations::      浮動小数点数の明示的な丸め。
+* Bitwise Operations::       論理的なand、or、not、shift。
+* Math Functions::           三角関数、指数、対数関数。
+* Random Numbers::           予測可能または不可能な乱数の取得。
+@end menu
+
+@node Integer Basics
+@section 整数の基礎
+
+  Lispリーダーは、10進数字のシーケンス(オプションで最初の符号記号と最後のピリオドをともなう)として整数を読み取ります。
+
+@example
+ 1               ; @r{整数1}
+ 1.              ; @r{整数1}
++1               ; @r{これも整数1}
+-1               ; @r{整数@minus{}1}
+ 0               ; @r{整数0}
+-0               ; @r{整数0}
+@end example
+
+@cindex integers in specific radix
+@cindex radix for reading an integer
+@cindex base for reading an integer
+@cindex hex numbers
+@cindex octal numbers
+@cindex reading numbers in hex, octal, and binary
+  10以外の基数をもつ整数の構文は@samp{#}、基数表示(radix
+indication)、その後の1つ以上の数字から構成されます。基数表示は2進数(binary)は@samp{b}、8進数(octal)は@samp{o}、16進数(hex)は@samp{x}、基数@var{radix}にたいしては@samp{@var{radix}r}になります。したがって@samp{#b@var{integer}}は2進数、@samp{#@var{radix}r@var{integer}}は基数@var{radix}で@var{integer}を読み取ります。@var{radix}の値として可能な値は2から36であり、最初の@var{radix}文字は@samp{0}--@samp{9}および@samp{A}--@samp{Z}から採択されます。英文字のcase(大文字小文字)は無視されて、最初の符号と最後のピリオドはありません。たとえば:
+
+@example
+#b101100 @result{} 44
+#o54 @result{} 44
+#x2c @result{} 44
+#24r1k @result{} 44
+@end example
+
+  整数にたいして処理を行なうさまざまな関数、特にビット演算(@ref{Bitwise
+Operations}を参照)を理解するためには、数を2進形式で見ることが助けになることがよくあります。
+
+  10進整数の5は2進数では以下のようになります:
+
+@example
+@dots{}000101
+@end example
+
+@noindent
+(省略記号@samp{@dots{}}は概念的に先頭ビットにマッチする無限個数のビットを意味する。ここでは無限個の0ビット。後の例でも@samp{@dots{}}表記を使用する。)
+
+  整数の@minus{}1は以下のようになります:
+
+@example
+@dots{}111111
+@end example
+
+@noindent
+@cindex two's complement
+@minus{}1はすべて1で表現されます(@dfn{2の補数}表記と呼ばれる)。
+
+  @minus{}1から4を減じることで負の整数@minus{}5が得られます。10進の整数4は2進では100です。したがって@minus{}5は以下のようになります:
+
+@example
+@dots{}111011
+@end example
+
+  このチャプターで説明する多くの関数は、数字の位置として引数にマーカー(@ref{Markers}を参照)を受け取ります。そのような関数にたいする実際の引数は数字かマーカーなので、わたしたちはこれらの引数に@var{number-or-marker}という名前を与えることがあります。引数の値がマーカーならマーカーの位置が使用され、マーカーのバッファーは無視されます。
+
+  Emacs
+Lispでは、テキスト文字は整数により表現されます。0から@code{(max-char)}までの整数は、有効な文字として判断されます。@ref{Character
+Codes}を参照してください。
+
+  Emacs
+Lispの整数はマシンのワードサイズに制限されません。しかしその背後には@dfn{fixnums}と呼ばれる小さい整数と、@dfn{bignums}と呼ばれる大きい整数という2種類の整数が存在します。Emacs
+Lispコードは通常は整数がfixnumかbignumのいずれであるかに依存するべきではありませんが、Emacsの古いバージョンではfixnumだけがサポートされており、未だにfixnumだけを受け取るEmacs関数がいくつかあり、古いEmacs
+Lispコードがbignumを受け取ると問題が起こるかもしれません。たとえば古いEmacs
+Lispコードは@code{eq}で整数にたいする数値の等価性を安全に比較できましたが、bignumの登場により整数の比較には@code{eql}や@code{=}のような等価性にたいする述語を使うことが必要になりました。
+
+  bignumの値の範囲は主メモリー量、bignumの指数の表現に使用されるワードサイズのようなマシン特性、および@code{integer-width}変数により制限されます。これらの制限は通常はfixnumにたいする制限よりは寛大です。bignumが数値的にfixnumと等しくなることはありません。Emacsはfixnum範囲内の整数を、bignumではなく常にfixnumとして表現します。
+
+  fixnumの値の範囲はマシンに依存します。最小の範囲は@minus{}536,870,912から536,870,911(30ビット長の
+@ifnottex
+@minus{}2**29
+@end ifnottex
+@tex
+@math{-2^{29}}
+@end tex
+から
+@ifnottex
+2**29 @minus{} 1)
+@end ifnottex
+@tex
+@math{2^{29}-1})
+@end tex
+ですが、多くのマシンはより広い範囲を提供します。
+
+@cindex largest fixnum
+@cindex maximum fixnum
+@defvar most-positive-fixnum
+この変数の値はEmacs Lispが扱える``小さい''整数の最大値。典型的な値は32ビットでは
+@ifnottex
+2**29 @minus{} 1
+@end ifnottex
+@tex
+@math{2^{29}-1}
+@end tex
+、64ビットでは
+@ifnottex
+2**61 @minus{} 1
+@end ifnottex
+@tex
+@math{2^{61}-1}
+@end tex
+。
+@end defvar
+
+@cindex smallest fixnum
+@cindex minimum fixnum
+@defvar most-negative-fixnum
+この変数の値はEmacs Lispが扱える数値的に最小の``小さい''整数。これは負の整数。典型的な値は32ビットでは
+@ifnottex
+@minus{}2**29
+@end ifnottex
+@tex
+@math{-2^{29}}
+@end tex
+、64ビットでは
+@ifnottex
+@minus{}2**61、
+@end ifnottex
+@tex
+@math{-2^{61}}、
+@end tex
+。
+@end defvar
+
+@cindex bignum range
+@cindex integer range
+@cindex number of bignum bits, limit on
+@defvar integer-width
+この変数の値は大きな整数えお計算時にEmacsが範囲エラー(range error)をシグナルするかどうかを制御する負ではない整数。絶対値が
+@ifnottex
+2**@var{n},
+@end ifnottex
+@tex
+@math{2^{n}},
+@end tex
+(@var{n}はこの変数の値)が小さい整数は範囲エラーをシグナルしない。大きい整数を簡単に作成できればエラーがシグナルされない場合もあるが、通常は大きな整数の作成を試みると範囲エラーをシグナルする。この変数に大きな数値を設定すると、巨大な整数の計算にコストを要する可能性がある。
+@end defvar
+
+@node Float Basics
+@section 浮動小数点数の基礎
+
+@cindex @acronym{IEEE} floating point
+  浮動小数点数は整数以外の数値の表現に有用です。浮動小数点数の範囲は使用中のシンでのCのデータ型@code{double}と同じ範囲です。Emacsがサポートするすべてのコンピューターでは@acronym{IEEE}の64ビット浮動小数フォーマットであり、これは@url{https://standards.ieee.org/standard/754-2019.html,,IEEE
+Std 754-2019}で標準化されたもので、David
+Goldbergの論文``@url{https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html,
+What Every Computer Scientist Should Know About Floating-Point
+Arithmetic}''で更に議論されています。モダンなプラットフォームでは浮動小数処理はIEEE-754標準に厳密にしたがいますが、特に32ビットX86のような陳腐化したプラットフォームでは丸めは常に正しい訳ではありません。
+
+  浮動小数点数にたいする入力構文は、小数点と指数のどちらか1つ、または両方が必要とします。オプションの符号(@samp{+}か@samp{-})は、その数字と指数の前に記述します。たとえば@samp{1500.0}、@samp{+15e2}、@samp{15.0e+2}、@samp{+1500000e-3}、@samp{.15e4}は値が1500の浮動小数点数を記述する5つの方法です。これらはすべて等価です。Common
+Lispと同様、Emacs
+Lispは浮動小数点数の小数点の後に少なくとも1つの数字を必要とします。@samp{1500.}は整数であって浮動小数点数ではありません。
+
+  Emacs
+Lispは@code{=}のような数学的な比較に関して、@code{-0.0}を通常の0と数学的に同じものとして扱います。これは、(他の処理がこれらを区別するとしても@code{-0.0}と@code{0.0}は数学的に等しいとする)@acronym{IEEE}浮動小数点数規格にしたがっています。
+
+@cindex positive infinity
+@cindex negative infinity
+@cindex infinity
+@cindex NaN
+  @acronym{IEEE}浮動小数点数規格は浮動小数点数として、正の無限大と負の無限大をサポートします。この規格はNaNまたは``not a
+number(数字ではない)''と呼ばれる値クラスも提供します。正しい答えが存在しないような場合に、数学関数はこのような値をリターンします。たとえば@code{(/
+0.0
+0.0)}はNaNをリターンします。数値的にNaNはたとえ自身と比較してもすべての値にたいして数値的にイコールになることはありません。NaNは符号と仮数をもち、非数学関数は符号と仮数が一致すれば2つのNaNを等しいものと扱います。NaNの仮数は文字列表現の数字のようにマシン依存です。
+
+  NaNと符号つき0が関係する際には@code{eql}、@code{equal}、@code{sxhash-eql}、@code{sxhash-equal}、@code{gethash}のような非数学関数はそれらが数学的にイコールかではなく、値が区別できるかどうかを判断します。たとえば@var{x}と@var{y}が同じNaNなら数値比較を使用する@code{(=
+x y)}は@code{nil}をリターンするのにたいして@code{(equal x y)}は@code{t}をリターンして、反対に@code{(=
+0.0 -0.0)}が@code{t}をリターンするのにたいして@code{(equal 0.0 -0.0)}は@code{nil}をリターンします。
+
+以下は、これらの特別な浮動小数点数にたいする入力構文です:
+
+@table @asis
+@item infinity
+@samp{1.0e+INF}と@samp{-1.0e+INF}
+@item not-a-number
+@samp{0.0e+NaN}と@samp{-0.0e+NaN}
+@end table
+
+  以下の関数は浮動小数点数を扱うために特化したものです:
+
+@defun isnan x
+この述語は浮動小数引数がNaNなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun frexp x
+この関数はコンスセル@code{(@var{s}
+.
+@var{e})}をリターンする。ここで@var{s}と@var{e}は、浮動小数点数の仮数(浮動小数点数を2の指数表現したときの仮数)と指数である。
+
+@var{x}が有限なら@var{s}は0.5以上1.0未満の浮動小数点数、@var{e}は整数で、
+@ifnottex
+@var{x} = @var{s} * 2**@var{e}となる。
+@end ifnottex
+@tex
+@math{x = s 2^e}となる。
+@end tex
+@var{x}が0または無限なら@var{s}は@var{x}と等しくなる。@var{x}がNaNなら@var{s}もNaN。@var{x}が0なら@var{e}は0。
+@end defun
+
+@defun ldexp s e
+数値の仮数@var{s}と整数の指数@var{e}を与えられると、この関数は浮動小数点数
+@ifnottex
+@var{s} * 2**@var{e}をリターンする。
+@end ifnottex
+@tex
+@math{s 2^e}をリターンする。
+@end tex
+@end defun
+
+@defun copysign x1 x2
+この関数は@var{x2}の符号を@var{x1}の値にコピーして結果をリターンする。@var{x1}と@var{x2}は浮動小数でなければならない。
+@end defun
+
+@defun logb x
+この関数は@var{x}の2進指数をリターンする。より正確には@var{x}が有限かつ非0なら@math{|x|}の2を底とする対数を整数に切り下げた値。@var{x}が0または無限なら値は無限大。@var{x}がNaなら値はNaN。
+
+@example
+(logb 10)
+     @result{} 3
+(logb 10.0e20)
+     @result{} 69
+(logb 0)
+     @result{} -1.0e+INF
+@end example
+@end defun
+
+@node Predicates on Numbers
+@section 数値のための述語
+@cindex predicates for numbers
+
+  このセクションの関数は数値や、特定の数値型にたいしてテストを行ないます。関数@code{integerp}と@code{floatp}は、引数として任意のLispオブジェクト型をとることができます(でなければ、あまり使用する機会ない)。しかし述語@code{zerop}は引数として数値を要求します。@ref{Predicates
+on Markers}の@code{integer-or-marker-p}、@code{number-or-marker-p}も参照してください。
+
+@defun bignump object
+この述語は引数が大きい整数かどうかをテストしてもしそうなら@code{t}、それ以外は@code{nil}をリターンする。小さい整数とは異なり大きい整数は@code{eq}でなくても@code{=}や@code{eql}になり得る。
+@end defun
+
+@defun fixnump object
+この述語は引数が小さい整数かどうかをテストしてもしそうなら@code{t}、それ以外は@code{nil}をリターンする。小さい整数は@code{eq}で比較できる。
+@end defun
+
+@defun floatp object
+この述語は引数が浮動小数かどうかをテストしてもしそうなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun integerp object
+この述語は引数が整数かどうかをテストしてもしそうなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun numberp object
+この述語は引数が数(整数か浮動小数)かどうかをテストしてもしそうなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun natnump object
+@cindex natural numbers
+この述語は引数が正の整数かどうかをテストしてもしそうなら@code{t}、それ以外は@code{nil}をリターンする(名前は``natural
+numberl: 自然数''が由来)。0は整数と判断される。
+
+@findex wholenump
+@code{wholenump}は@code{natnump}のシノニム。
+@end defun
+
+@defun zerop number
+この述語は引数が0かどうかをテストしてもしそうなら@code{t}、それ以外は@code{nil}をリターンする。引数は数でなければならない。
+
+@code{(zerop x)}は@code{(= x 0)}と等価。
+@end defun
+
+@node Comparison of Numbers
+@section 数値の比較
+@cindex number comparison
+@cindex comparing numbers
+
+  数値にたいして数学的な等価性をテストするには通常は@code{eq}、@code{eql}、@code{equal}のような非数値的な比較述語のかわりに@code{=}を使用するべきです。異なる浮動小数点オブジェクトと大きい整数オブジェクトを数値的に等しくすることができます。これらの比較に@code{eq}を使用した場合にはそれらが同一の@emph{オブジェクト}かどうかを、@code{eql}や@code{equal}を使用した場合にはそれらの値が区別不能かどうかをテストすることになります。対照的に@code{=}は数値比較を使用して、非数値的な比較が@code{nil}をリターンするような場合に@code{t}をリターンしたり、その逆もあり得ます。@ref{Float
+Basics}を参照してください。
+
+  Emacs
+Lispでは2つのfixnumが数値的に等しければ同一のLispオブジェクトです。つまりfixnumでは@code{eq}は@code{=}と同じです。値が未知のfixnumの比較に@code{eq}を使用する方が便利な場合があります。なぜなら未知の値が数でない場合でも@code{eq}はエラーを報告しないからです。これは任意のタイプの引数を受け付けます。対照的に引数が数でもマーカーでもなければ@code{=}はエラーをシグナルします。しかし整数の比較においてさえ、使用できる場合には@code{=}を使用するのがよいプログラミング習慣です。
+
+  数の比較において、2つの数が同じデータ型(どちらも整数か浮動小数)では、同じ値の場合は等しい数として扱う@code{eql}や@code{equal}のほうが便利なときもあります。対照的に@code{=}は整数と浮動小数点数を等しい数と扱うことができます。@ref{Equality
+Predicates}を参照してください。
+
+  他の欠点もあります。浮動小数演算は正確ではないので、浮動小数値を比較するのが悪いアイデアとなるときがよくあります。通常は近似的に等しいことをテストするほうがよいでしょう。以下はこれを行なう関数です:
+
+@example
+(defvar fuzz-factor 1.0e-6)
+(defun approx-equal (x y)
+  (or (= x y)
+      (< (/ (abs (- x y))
+            (max (abs x) (abs y)))
+         fuzz-factor)))
+@end example
+
+@defun = number-or-marker &rest number-or-markers
+この関数はすべての引数が数値的に等しいかどうかをテストしてもしそうなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun eql value1 value2
+この関数は@code{eq}と同様に振る舞うが引数が両方とも数のときを除く。これは数を型と数値的な値により比較するので@code{(eql 1.0
+1)}は@code{nil}をリターンするが、@code{(eql 1.0 1.0)}と@code{(eql 1
+1)}は@code{t}をリターンする。これは小さい整数と同様に大きい整数の比較に使用できる。符号、指数部と仮数部が同一な浮動小数点数は@code{eql}。これは数値の比較とは異なる。@code{(eql
+0.0 -0.0)}は@code{nil}で@code{(eql 0.0e+NaN
+0.0e+NaN)}は@code{t}であり、これは@code{=}とは反対の動作である。
+@end defun
+
+@defun /= number-or-marker1 number-or-marker2
+この関数は引数が数値的に等しいかどうかをテストして、もし異なる場合は@code{t}、等しい場合は@code{nil}をリターンする。
+@end defun
+
+@defun <  number-or-marker &rest number-or-markers
+この関数は、各引数それぞれを後の引数より小さいかどうかをテストしてもしそうなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun <= number-or-marker &rest number-or-markers
+この関数は、各引数それぞれが後の引数以下かどうかをテストしてもしそうなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun > number-or-marker &rest number-or-markers
+この関数は、各引数それぞれが後の引数より大きいかどうかをテストしてもしそうなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun >= number-or-marker &rest number-or-markers
+この関数は、各引数それぞれが後の引数以上かどうかをテストしてもしそうなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun max number-or-marker &rest numbers-or-markers
+この関数は最大の引数をリターンする。
+
+@example
+(max 20)
+     @result{} 20
+(max 1 2.5)
+     @result{} 2.5
+(max 1 3 2.5)
+     @result{} 3
+@end example
+@end defun
+
+@defun min number-or-marker &rest numbers-or-markers
+この関数は最小の引数をリターンする。
+
+@example
+(min -4 1)
+     @result{} -4
+@end example
+@end defun
+
+@defun abs number
+この関数は@var{number}の絶対値をリターンする。
+@end defun
+
+@node Numeric Conversions
+@section 数値の変換
+@cindex rounding in conversions
+@cindex number conversions
+@cindex converting numbers
+
+整数を浮動少数の変換には関数@code{float}を使用します。
+
+@defun float number
+これは浮動小数点数に変換された@var{number}をリターンする。すでに@var{number}が浮動小数点数なら@code{float}はそれを変更せずにリターンする。
+@end defun
+
+  浮動小数点数を整数に変換する関数が4つあります。これらは浮動小数点数を丸める方法が異なります。これらはすべて引数@var{number}、およびオプション引数として@var{divisor}を受け取ります。引数は両方とも整数か浮動小数点数です。@var{divisor}が@code{nil}のこともあります。@var{divisor}が@code{nil}または省略された場合、これらの関数は@var{number}を整数に変換するか、それが既に整数の場合は変更せずにリターンします。@var{divisor}が非@code{nil}なら、これらの関数は@var{number}を@var{divisor}で除して結果を整数に変換します。@var{divisor}が(整数か浮動小数かに関わらず)0の場合、Emacsは@code{arith-error}エラーをシグナルします。
+
+@defun truncate number &optional divisor
+これは0に向かって丸めることにより整数に変換した@var{number}をリターンする。
+
+@example
+(truncate 1.2)
+     @result{} 1
+(truncate 1.7)
+     @result{} 1
+(truncate -1.2)
+     @result{} -1
+(truncate -1.7)
+     @result{} -1
+@end example
+@end defun
+
+@defun floor number &optional divisor
+これは下方(負の無限大に向かって)に丸めることにより整数に変換した@var{number}をリターンする。
+
+@var{divisor}が指定された場合には、@code{mod}に相当する種類の除算演算を使用して下方に丸めを行う。
+
+@example
+(floor 1.2)
+     @result{} 1
+(floor 1.7)
+     @result{} 1
+(floor -1.2)
+     @result{} -2
+(floor -1.7)
+     @result{} -2
+(floor 5.99 3)
+     @result{} 1
+@end example
+@end defun
+
+@defun ceiling number &optional divisor
+これは上方(正の無限大に向かって)に丸めることにより整数に変換した@var{number}をリターンする。
+
+@example
+(ceiling 1.2)
+     @result{} 2
+(ceiling 1.7)
+     @result{} 2
+(ceiling -1.2)
+     @result{} -1
+(ceiling -1.7)
+     @result{} -1
+@end example
+@end defun
+
+@defun round number &optional divisor
+これはもっとも近い整数に向かって丸めることにより、整数に変換した@var{number}をリターンする。2つの整数から等距離にある値の丸めでは、偶数の整数をリターンする。
+
+@example
+(round 1.2)
+     @result{} 1
+(round 1.7)
+     @result{} 2
+(round -1.2)
+     @result{} -1
+(round -1.7)
+     @result{} -2
+@end example
+@end defun
+
+@node Arithmetic Operations
+@section 算術演算
+@cindex arithmetic operations
+
+  Emacs
+Lispは伝統的な4つの算術演算(加減乗除)、同様に剰余とmodulusの関数、および1の加算と減算を行う関数を提供します。@code{%}を除き、これらの各関数は引き数として整数か浮動小数を受け取り、浮動小数の引数がある場合は浮動小数点数をリターンします。
+
+@defun 1+ number-or-marker
+この関数は@var{number-or-marker} + 1をリターンする。例えば、
+
+@example
+(setq foo 4)
+     @result{} 4
+(1+ foo)
+     @result{} 5
+@end example
+
+この関数はCの演算子@code{++}とは異なり、変数をインクリメントしない。この関数は和を計算するだけである。したがって以下を続けて評価すると、
+
+@example
+foo
+     @result{} 4
+@end example
+
+変数をインクリメントしたい場合は、以下のように@code{setq}を使用しなければならない:
+
+@example
+(setq foo (1+ foo))
+     @result{} 5
+@end example
+@end defun
+
+@defun 1- number-or-marker
+この関数は@var{number-or-marker} @minus{} 1をリターンする。
+@end defun
+
+@defun + &rest numbers-or-markers
+この関数は引数すべてを加算する。引数を与えないと@code{+}は0をリターンする。
+
+@example
+(+)
+     @result{} 0
+(+ 1)
+     @result{} 1
+(+ 1 2 3 4)
+     @result{} 10
+@end example
+@end defun
+
+@defun - &optional number-or-marker &rest more-numbers-or-markers
+@code{-}関数は2つの目的 --- 符号反転と減算 ---
+をもつ。@code{-}に1つの引数を与えると、値は引数の符号を反転したものになる。複数の引数の場合は、@var{number-or-marker}から@var{more-numbers-or-markers}までの各値を蓄積的に減算する。引数がなければ結果は0。
+
+@example
+(- 10 1 2 3 4)
+     @result{} 0
+(- 10)
+     @result{} -10
+(-)
+     @result{} 0
+@end example
+@end defun
+
+@defun * &rest numbers-or-markers
+この関数はすべての引数を乗じて積をリターンする。引数がなかれば@code{*}は1をリターンする。
+
+@example
+(*)
+     @result{} 1
+(* 1)
+     @result{} 1
+(* 1 2 3 4)
+     @result{} 24
+@end example
+@end defun
+
+@defun / number &rest divisors
+@var{divisors}が1つ以上ならこの関数は@var{divisors}内の除数で順に@var{number}を除して、その商をリターンする。@var{divisors}がなければ、この関数は1/@var{number}、つまり@var{number}の逆数をリターンする。各引数には数かマーカーを指定できる。
+
+すべての引数が整数なら、結果は各除算の後に商を0へ向かって丸めることにより得られる整数となる。
+
+@example
+@group
+(/ 6 2)
+     @result{} 3
+@end group
+@group
+(/ 5 2)
+     @result{} 2
+@end group
+@group
+(/ 5.0 2)
+     @result{} 2.5
+@end group
+@group
+(/ 5 2.0)
+     @result{} 2.5
+@end group
+@group
+(/ 5.0 2.0)
+     @result{} 2.5
+@end group
+@group
+(/ 4.0)
+     @result{} 0.25
+@end group
+@group
+(/ 4)
+     @result{} 0
+@end group
+@group
+(/ 25 3 2)
+     @result{} 4
+@end group
+@group
+(/ -17 6)
+     @result{} -2
+@end group
+@end example
+
+@cindex @code{arith-error} in division
+整数を整数0で除するとEmacsは@code{arith-error}エラー(@ref{Errors}を参照)をシグナルする。浮動小数点数の除算では、非0の数を0で除することで正の無限大または負の無限大を得る(@ref{Float
+Basics}を参照)。
+@end defun
+
+@defun % dividend divisor
+@cindex remainder
+この関数は@var{dividend}を@var{divisor}で除した後、その剰余を整数でリターンする。引数は整数かマーカーでなければならない。
+
+任意の2つの整数@var{dividend}と@var{divisor}にたいして、
+
+@example
+@group
+(+ (% @var{dividend} @var{divisor})
+   (* (/ @var{dividend} @var{divisor}) @var{divisor}))
+@end group
+@end example
+
+@noindent
+は、@var{divisor}が非0なら常に@var{dividend}と等しくなる。
+
+@example
+(% 9 4)
+     @result{} 1
+(% -9 4)
+     @result{} -1
+(% 9 -4)
+     @result{} 1
+(% -9 -4)
+     @result{} -1
+@end example
+@end defun
+
+@defun mod dividend divisor
+@cindex modulus
+この関数は@var{dividend}の@var{divisor}にたいするmodulo、言い換えると@var{dividend}を@var{divisor}で除した後の剰余(ただし符号は@var{divisor}と同じ)をリターンする。引数は数かマーカーでなければならない。
+
+@code{%}とは異なり@code{mod}は浮動小数の引数を許す。これは商を整数に下方(負の無限大に向かって)へ丸めて剰余を計算するのにこの商を使用する。
+
+@code{mod}は@var{divisor}が0のとき、両方の引数が整数なら@code{arith-error}エラーをシグナルし、それ以外はNaNをリターンする。
+
+@example
+@group
+(mod 9 4)
+     @result{} 1
+@end group
+@group
+(mod -9 4)
+     @result{} 3
+@end group
+@group
+(mod 9 -4)
+     @result{} -3
+@end group
+@group
+(mod -9 -4)
+     @result{} -1
+@end group
+@group
+(mod 5.5 2.5)
+     @result{} .5
+@end group
+@end example
+
+任意の2つの数@var{dividend}と@var{divisor}にたいして、
+
+@example
+@group
+(+ (mod @var{dividend} @var{divisor})
+   (* (floor @var{dividend} @var{divisor}) @var{divisor}))
+@end group
+@end example
+
+@noindent
+は常に@var{dividend}になる(ただし引数のどちらかが浮動小数なら、丸め誤差の範囲内で等しく、かつ@var{dividend}が整数で@var{divisor}が0なら@code{arith-error}となる)。@code{floor}については、@ref{Numeric
+Conversions}を参照のこと。
+@end defun
+
+@node Rounding Operations
+@section 丸め処理
+@cindex rounding without conversion
+
+関数@code{ffloor}、@code{fceiling}、@code{fround}、@code{ftruncate}は浮動小数の引数をとり、値が近くの整数であるような浮動少数をリターンします。@code{ffloor}は一番近い下方の整数、@code{fceiling}は一番近い上方の整数、@code{ftruncate}は0に向かう方向で一番近い整数、@code{fround}は一番近い整数をリターンします。
+
+@defun ffloor float
+この関数は@var{float}を次に小さい整数値に丸めて、その値を浮動小数点数としてリターンする。
+@end defun
+
+@defun fceiling float
+この関数は@var{float}を次に大きい整数値に丸めて、その値を浮動小数点数としてリターンする。
+@end defun
+
+@defun ftruncate float
+この関数は@var{float}を0方向の整数値に丸めて、その値を浮動小数点数としてリターンする。
+@end defun
+
+@defun fround float
+この関数は@var{float}を一番近い整数値に丸めて、その値を浮動小数点数としてリターンする。2つの整数値との距離が等しい値にたいする丸めでは、偶数の整数をリターンする。
+@end defun
+
+@node Bitwise Operations
+@section 整数にたいするビット演算
+@cindex bitwise arithmetic
+@cindex logical arithmetic
+
+  コンピューターの中では、整数は@dfn{ビット(bit:
+0か1の数字)}のシーケンスである2進数で表されます。ビットシーケンスは概念的には最上位ビットがすべて0か1であるような左側に無限なシ0ケンスです。ビット演算はそのようなシーケンスの中の個々のビットに作用します。たとえば@dfn{シフト(shifting)}はシーケンス全体を1つ以上左または右に移動して、移動されたのと同じパターンを再現します。
+
+  Emacs Lispのビット演算は整数だけに適用されます。
+
+@defun ash integer1 count
+@cindex arithmetic shift
+@code{ash} (@dfn{算術シフト(arithmetic
+shift)})は、@var{integer1}の中のビット位置を左に@var{count}シフトする。@var{count}が負なら右にシフトする。左シフトでは右側に0が挿入されて、右シフトでは最右ビットが破棄される。整数処理として考えると、@code{ash}は@var{integer1}を
+@ifnottex
+2**@var{count}
+@end ifnottex
+@tex
+@math{2^{count}}
+@end tex
+乗じてから下方、負の無限大に向かって丸めることにより結果を変換する。
+
+以下はビットパターンを1ビット左にシフトしてから右にシフトする例。この例で2進数パターンの下位ビットだけを示している。先行ビットは表示されている上位ビットにすべて一致する。確認できるように1ビットの左シフトは2を乗じて、右シフトは2で除してから負の無限大方向に丸められる。
+
+@example
+@group
+(ash 7 1) @result{} 14
+;; @r{10進の7は10進の14になる}
+@dots{}000111
+     @result{}
+@dots{}001110
+@end group
+
+@group
+(ash 7 -1) @result{} 3
+@dots{}000111
+     @result{}
+@dots{}000011
+@end group
+
+@group
+(ash -7 1) @result{} -14
+@dots{}111001
+     @result{}
+@dots{}110010
+@end group
+
+@group
+(ash -7 -1) @result{} -4
+@dots{}111001
+     @result{}
+@dots{}111100
+@end group
+@end example
+
+以下は2ビット左にシフトしてから右に2ビットシフトする例:
+
+@smallexample
+@group
+                  ;  @r{       2進数値}
+(ash 5 2)         ;   5  =  @r{@dots{}000101}
+     @result{} 20         ;      =  @r{@dots{}010100}
+(ash -5 2)        ;  -5  =  @r{@dots{}111011}
+     @result{} -20        ;      =  @r{@dots{}101100}
+@end group
+@group
+(ash 5 -2)
+     @result{} 1          ;      =  @r{@dots{}000001}
+@end group
+@group
+(ash -5 -2)
+     @result{} -2         ;      =  @r{@dots{}111110}
+@end group
+@end smallexample
+@end defun
+
+@defun lsh integer1 count
+@cindex logical shift
+@code{lsh}は@dfn{logical
+shift}の略で、@var{integer1}のビットを左に@var{count}シフトする。@var{count}が負なら@var{integer1}はfixnumか正のbignumのいずれかでなければならず、@code{lsh}はシフト前に負のfixnumを@code{most-negative-fixnum}で2回減算してあたかも符号なしであるかのように非負の結果を生成する。この奇妙な振る舞いはEmacsがfixnumsだけをサポートしていた頃の振る舞いであり、現在では@code{ash}がより良い選択である。
+
+@var{integer1}と@var{count1}がいずれも負の場合を除いて@code{lsh}は@code{ash}のように振る舞うので、以下の例ではこれらの例外ケースに焦点をあてている。これらの例は30ビットのfixnumsを想定している。
+
+@smallexample
+@group
+                 ; @r{     2進数値}
+(ash -7 -1)      ; -7 = @r{@dots{}111111111111111111111111111001}
+     @result{} -4        ;    = @r{@dots{}111111111111111111111111111100}
+(lsh -7 -1)
+     @result{} 536870908 ;    = @r{@dots{}011111111111111111111111111100}
+@end group
+@group
+(ash -5 -2)      ; -5 = @r{@dots{}111111111111111111111111111011}
+     @result{} -2        ;    = @r{@dots{}111111111111111111111111111110}
+(lsh -5 -2)
+     @result{} 268435454 ;    = @r{@dots{}001111111111111111111111111110}
+@end group
+@end smallexample
+@end defun
+
+@defun logand &rest ints-or-markers
+この関数は引数のビットのANDをリターンする。すべての引数の@var{n}番目のビットが1の場合に限り、結果の@var{n}番目のビットが1となる。
+
+たとえば13と12では、4ビット2進数を使用すると1101と1100のビットANDは1100を生成する。この2進数ではいずれも左の2ビットがセット(つまり1)されているので、リターンされる値の左2ビットがセットされる。しかし右の2ビットにたいしては少なくとも1つの引数でそのビットが0なので、リターンされる値の右2ビットは0になる。
+
+@noindent
+したがって、
+
+@example
+@group
+(logand 13 12)
+     @result{} 12
+@end group
+@end example
+
+@code{logand}に何も引数も渡さなければ、値@minus{}1がリターンされる。@minus{}1を2進数で表すとすべてのビットが1なので、@minus{}1は@code{logand}にたいする単位元(identity
+element)である。
+
+@smallexample
+@group
+                   ; @r{       2進数値}
+
+(logand 14 13)     ; 14  =  @r{@dots{}001110}
+                   ; 13  =  @r{@dots{}001101}
+     @result{} 12         ; 12  =  @r{@dots{}001100}
+@end group
+
+@group
+(logand 14 13 4)   ; 14  =  @r{@dots{}001110}
+                   ; 13  =  @r{@dots{}001101}
+                   ;  4  =  @r{@dots{}000100}
+     @result{} 4          ;  4  =  @r{@dots{}000100}
+@end group
+
+@group
+(logand)
+     @result{} -1         ; -1  =  @r{@dots{}111111}
+@end group
+@end smallexample
+@end defun
+
+@defun logior &rest ints-or-markers
+この関数は、引数のビット単位の包含的ORをリターンする。少なくとも1つの引数で@var{n}番目のビットが1なら、結果の@var{n}番目のビットが1になる。引数を与えなければ、結果はこの処理にたいする単位元である0となる。@code{logior}に渡す引数が1つだけならその引数がリターンされる。
+
+@smallexample
+@group
+                   ; @r{       2進数値}
+
+(logior 12 5)      ; 12  =  @r{@dots{}001100}
+                   ;  5  =  @r{@dots{}000101}
+     @result{} 13         ; 13  =  @r{@dots{}001101}
+@end group
+
+@group
+(logior 12 5 7)    ; 12  =  @r{@dots{}001100}
+                   ;  5  =  @r{@dots{}000101}
+                   ;  7  =  @r{@dots{}000111}
+     @result{} 15         ; 15  =  @r{@dots{}001111}
+@end group
+@end smallexample
+@end defun
+
+@defun logxor &rest ints-or-markers
+この関数は、引数のビット単位の排他的ORをリターンする。@var{n}番目のビットが1であるような引数の数が奇数個の場合のみ、結果の@var{n}番目のビットが1となる。引数を与えなければ、結果はこの処理の単位元である0となる。@code{logxor}に渡す引数が1つだけならその引数がリターンされる。
+
+@smallexample
+@group
+                   ; @r{       2進数値}
+
+(logxor 12 5)      ; 12  =  @r{@dots{}001100}
+                   ;  5  =  @r{@dots{}000101}
+     @result{} 9          ;  9  =  @r{@dots{}001001}
+@end group
+
+@group
+(logxor 12 5 7)    ; 12  =  @r{@dots{}001100}
+                   ;  5  =  @r{@dots{}000101}
+                   ;  7  =  @r{@dots{}000111}
+     @result{} 14         ; 14  =  @r{@dots{}001110}
+@end group
+@end smallexample
+@end defun
+
+@defun lognot integer
+この関数は引数のビット単位の補数(bitwise
+complement)をリターンする。@var{integer}の@var{n}番目のビットが0の場合に限り、結果の@var{n}番目のビットが1になり、その逆も成り立つ。結果は@minus{}1
+@minus{} @var{integer}と等価。
+
+@example
+(lognot 5)
+     @result{} -6
+;;  5  =  @r{@dots{}000101}
+;; @r{becomes}
+;; -6  =  @r{@dots{}111010}
+@end example
+@end defun
+
+@cindex popcount
+@cindex Hamming weight
+@cindex counting set bits
+@defun logcount integer
+この関数は@var{integer}の@dfn{ハミング重み} (Hamming weight:
+@var{integer}の2進数表現での1の個数)をリターンする。@var{integer}が負なら、その2の補数の2進数表現での0ビットの個数をリターンする。結果は常に非負となる。
+
+@example
+(logcount 43)     ;  43 = @r{@dots{}000101011}
+     @result{} 4
+(logcount -43)    ; -43 = @r{@dots{}111010101}
+     @result{} 3
+@end example
+@end defun
+
+@node Math Functions
+@section 標準的な数学関数
+@cindex transcendental functions
+@cindex mathematical functions
+@cindex floating-point functions
+
+  以下の数学的関数は、引数として整数と同様に浮動小数点数も受け入れます。
+
+@defun sin arg
+@defunx cos arg
+@defunx tan arg
+これらは三角関数であり、引数@var{arg}はラジアン単位。
+@end defun
+
+@defun asin arg
+@code{(asin @var{arg})}の値は、sinの値が@var{arg}となるような
+@ifnottex
+@minus{}pi/2
+@end ifnottex
+@tex
+@math{-\pi/2}
+@end tex
+から
+@ifnottex
+pi/2
+@end ifnottex
+@tex
+@math{\pi/2}
+@end tex
+(両端を含む)の数である。@var{arg}が範囲外([@minus{}1, 1]の外)なら、@code{asin}はNaNをリターンする。
+@end defun
+
+@defun acos arg
+@code{(acos @var{arg})}の値は、cosの値が@var{arg}となるような、0から
+@ifnottex
+pi
+@end ifnottex
+@tex
+@math{\pi}
+@end tex
+(両端を含む)の数である。argが範囲外([-1, 1]の外)なら@code{acos}はNaNをリターンする。
+@end defun
+
+@defun atan y &optional x
+@code{(atan @var{y})}の値は、tanの値が@var{y}となるような、
+@ifnottex
+@minus{}pi/2
+@end ifnottex
+@tex
+@math{-\pi/2}
+@end tex
+から
+@ifnottex
+pi/2
+@end ifnottex
+@tex
+@math{\pi/2}
+@end tex
+(両端を含まず)の数である。オプションの第2引数@var{x}が与えられると、@code{(atan y
+x)}の値はベクトル@code{[@var{x}, @var{y}]}と@code{X}軸が成す角度のラジアン値となる。
+@end defun
+
+@defun exp arg
+これは指数関数である。この関数は@math{e}の指数@var{arg}をリターンする。
+@end defun
+
+@defun log arg &optional base
+この関数は底を@var{base}とする@var{arg}の対数をリターンする。@var{base}を指定しなければ、自然底(natural
+base)@math{e}が使用される。@var{arg}か@var{base}が負なら、@code{log}はNaNをリターンする。
+@end defun
+
+@defun expt x y
+この関数は@var{x}に@var{y}を乗じてリターンする。引数が両方とも整数で@var{y}が非負なら結果は整数になる。この場合オーバーフローはエラーをシグナルするので注意。@var{x}が有限の負数で@var{y}が有限の非整数なら、@code{expt}はNaNをリターンする。
+@end defun
+
+@defun sqrt arg
+これは@var{arg}の平方根をリターンする。@var{arg}が有限で0より小さければ、@code{sqrt}はNaNをリターンする。
+@end defun
+
+加えて、Emacsは以下の数学的な定数を定義します:
+
+@defvar float-e
+自然対数@math{e}(2.71828@dots{})
+@end defvar
+
+@defvar float-pi
+円周率@math{pi}(3.14159@dots{})
+@end defvar
+
+@node Random Numbers
+@section 乱数
+@cindex random numbers
+
+  決定論的なコンピュータープログラムでは真の乱数を生成することはできません。しかしほとんどの目的には、@dfn{疑似乱数(pseudo-random
+numbers)}で充分です。一連の疑似乱数は決定論的な手法により生成されます。真の乱数ではありませんが、それらにはランダム列を模する特別な性質があります。たとえば疑似ランダム系では、すべての可能な値は均等に発生します。
+
+@cindex seed, for random number generation
+  疑似乱数は@dfn{シード値(seed
+value)}から生成されます。与えられた任意のシードから開始することにより、@code{random}関数は常に同じ数列を生成します。デフォルトでは、Emacsは開始時に乱数シードを初期化することにより、それぞれのEmacsの実行において、@code{random}の値シーケンスは(ほとんど確実に)異なります。
+
+  再現可能な乱数シーケンスが欲しい場合もあります。たとえば乱数シーケンスに依存するプログラムをデバッグする場合、プログラムの各実行において同じ挙動を得ることが助けになります。再現可能なシーケンスを作成するには、@code{(random
+"")}を実行します。これは特定のEmacsの実行可能ファイルにたいして、シードに定数値をセットします(しかしこの実行可能ファイルは、その他のEmacsビルドと異なるものになるであろう)。シード値として、他のさまざまな文字列を使用することができます。
+
+@defun random &optional limit
+この関数は疑似乱数の整数をリターンする。繰り返し呼び出すと一連の疑似乱数の整数をリターンする。
+
+@var{limit}が正のfixnumなら、値は負ではない@var{limit}未満の値から選択される。それ以外なら値はLispで表現可能な任意のfixnum(@code{most-negative-fixnum}から@code{most-positive-fixnum}の間の任意の整数)となるだろう(@ref{Integer
+Basics}を参照)。
+
+@var{limit}が@code{t}なら、あたかもEmacsが再起動されたかのように、通常はシステムのエントロピーから新たなシードが選択されることを意味する。エントロピープールを欠くシステムでは、カレント時刻のような若干揮発性が低い乱数からシードが選択される。
+
+@var{limit}が文字列なら、その文字列定数にもとづいた新しいシードを選択することを意味する。
+
+@end defun

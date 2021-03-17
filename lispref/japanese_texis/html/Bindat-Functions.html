@@ -1,0 +1,114 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Bindat Functions (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Bindat Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Bindat Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Byte-Packing.html" rel="up" title="Byte Packing">
+<link href="Display.html" rel="next" title="Display">
+<link href="Bindat-Spec.html" rel="prev" title="Bindat Spec">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Bindat-Functions"></span><div class="header">
+<p>
+Previous: <a href="Bindat-Spec.html" accesskey="p" rel="prev">Bindat Spec</a>, Up: <a href="Byte-Packing.html" accesskey="u" rel="up">Byte Packing</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="baitonounpacktopackwoXing-uGuan-Shu-"></span><h4 class="subsection">38.20.2 バイトのunpackとpackを行う関数</h4>
+
+<p>以降のドキュメントでは<var>spec</var>はデータレイアウト仕様、<code>bindat-raw</code>はバイト配列、<var>struct</var>はunpackされたフィールドデータを表すalistを参照します。
+</p>
+<dl>
+<dt id="index-bindat_002dunpack">Function: <strong>bindat-unpack</strong> <em>spec bindat-raw &amp;optional bindat-idx</em></dt>
+<dd><p>この関数はユニバイト文字列、またはバイト配列<code>bindat-raw</code>のデータを<var>spec</var>に応じてunpackする。これは通常はバイト配列の先頭からunpack化を開始するが、<var>bindat-idx</var>が非<code>nil</code>ならかわりに使用する0基準の開始位置を指定する。
+</p>
+<p>値はそれぞれの要素がunpackされたフィールドを記述するalistかネストされたalist。
+</p></dd></dl>
+
+<dl>
+<dt id="index-bindat_002dget_002dfield">Function: <strong>bindat-get-field</strong> <em>struct &amp;rest name</em></dt>
+<dd><p>この関数はネストされたalistである<var>struct</var>からフィールドのデータを選択する。<var>struct</var>は通常は<code>bindat-unpack</code>がリターンしたもの。<var>name</var>が単一の引数に対応する場合にはトップレベルのフィールド値を抽出することを意味する。複数の<var>name</var>引数は副構造体を繰り返して照合することを指定する。整数の名前は配列のインデックスとして動作する。
+</p>
+<p>たとえば<var>name</var>が<code>(a b 2
+c)</code>なら、それはフィールド<code>a</code>の副フィールド<code>b</code>の3番目の要素内のフィールド<code>c</code>
+(Cでは<code>struct.a.b[2].c</code>に相当)を意味する。
+</p></dd></dl>
+
+<p>packやunpackの処理をすることによりメモリー内でデータ構造が変化しても、そのデータの全フィールド長の合計バイト数である<em>トータル長(total
+length)</em>は保たれます。この値は一般的に仕様またはalist単独では固有ではありません。そのかわりこれら両方の情報がこの計算に役立ちます。同様にunpackされる文字列や配列の長さは仕様の記述にしたがってデータのトータル長より長くなるかもしれません。
+</p>
+<dl>
+<dt id="index-bindat_002dlength">Function: <strong>bindat-length</strong> <em>spec struct</em></dt>
+<dd><p>この関数は<var>struct</var>内のデータの<var>spec</var>に応じたトータル長をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-bindat_002dpack">Function: <strong>bindat-pack</strong> <em>spec struct &amp;optional bindat-raw bindat-idx</em></dt>
+<dd><p>この関数はalist
+<var>struct</var>内のデータから<var>spec</var>に応じてpackされたバイト配列をリターンする。これは通常は先頭から充填された新たなバイト配列を作成する。しかし<var>bindat-raw</var>が非<code>nil</code>なら、それはpack先として事前に割り当てられたユニバイト文字列かベクターを指定する。<var>bindat-idx</var>が非<code>nil</code>なら<code>bindat-raw</code>へpackする開始オフセットを指定する。
+</p>
+<p>事前に割り当てる際にはout-of-rangeエラーを避けるために、<code>(length
+<var>bindat-raw</var>)</code>がトータル長またはそれ以上であることを確認すること。
+</p></dd></dl>
+
+<dl>
+<dt id="index-bindat_002dip_002dto_002dstring">Function: <strong>bindat-ip-to-string</strong> <em>ip</em></dt>
+<dd><p>インターネットアドレスのベクター<var>ip</var>を通常のドット表記による文字列に変換する。
+</p>
+<div class="example">
+<pre class="example">(bindat-ip-to-string [127 0 0 1])
+     &rArr; &quot;127.0.0.1&quot;
+</pre></div>
+</dd></dl>
+
+
+
+
+</body>
+</html>

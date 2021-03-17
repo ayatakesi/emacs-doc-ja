@@ -1,0 +1,271 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Asynchronous Processes (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Asynchronous Processes (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Asynchronous Processes (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Processes.html" rel="up" title="Processes">
+<link href="Deleting-Processes.html" rel="next" title="Deleting Processes">
+<link href="Synchronous-Processes.html" rel="prev" title="Synchronous Processes">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Asynchronous-Processes"></span><div class="header">
+<p>
+Next: <a href="Deleting-Processes.html" accesskey="n" rel="next">Deleting Processes</a>, Previous: <a href="Synchronous-Processes.html" accesskey="p" rel="prev">Synchronous Processes</a>, Up: <a href="Processes.html" accesskey="u" rel="up">Processes</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Fei-Tong-Qi-purosesunoZuo-Cheng-"></span><h3 class="section">38.4 非同期プロセスの作成</h3>
+<span id="index-asynchronous-subprocess"></span>
+
+<p>このセクションでは<em>非同期プロセス(asynchronous
+process)</em>を作成する方法について説明します。非同期プロセスは作成後にEmacsと並列して実行され、Emacsは以降のセクション(<a href="Input-to-Processes.html">Input to Processes</a>と<a href="Output-from-Processes.html">Output from Processes</a>を参照)で説明する関数を使用してプロセスとコミュニケーションができます。プロセスコミュニケーションは部分的に非同期なだけであることに注意してください。Emacsはこれらの関数を呼び出したときだけプロセスとのデータを送受信できます。
+</p>
+<span id="index-pty_002c-when-to-use-for-subprocess-communications"></span>
+<span id="index-pipe_002c-when-to-use-for-subprocess-communications"></span>
+<p>非同期プロセスは<em>pty(pseudo-terminal:
+疑似端末)</em>、または<em>pipe</em>のいずれかを通じて制御されます。ptyかpipeの選択はデフォルトでは変数<code>process-connection-type</code>
+(以下参照)の値にもとづいてプロセス作成時に行われます。Shellモードのように利用可能ならユーザーから可視なプロセスには、プロセスと子プロセス間でジョブ制御(<kbd>C-c</kbd>、<kbd>C-z</kbd>等)が可能であり、インタラクティブなプログラムではptyを端末デバイスとして扱いますがpipeはそのような機能をサポートしないのでptyが通常は好まれます。しかし内部的な目的のためにLispプログラムが使用する(サブプロセスとユーザーの相互作用が要求されない)サブプロセスでは、サブプロセスとLispプログラム間で大量データのやり取りが要求される場合には、pipeがより効率的なのでpipeの使用が最良な場合がままあります。さらに多くのシステムではptyの合計数に制限があり、それを浪費するのは得策ではありません。
+</p>
+<dl>
+<dt id="index-make_002dprocess">Function: <strong>make-process</strong> <em>&amp;rest args</em></dt>
+<dd><p>この関数は非同期サブプロセスを開始するための基本的な低レベルなプリミティブである。これはサブプロセスを表すプロセスオブジェクトをリターンする。以下で説明するより高レベルな<code>start-process</code>と比較すると、この関数はキーワード引数を受け取り、より柔軟であり、単独の呼び出しでプロセスフィルターやセンチネルを指定できる。
+</p>
+<p>引数<var>args</var>はkeyword/argumentペアのリスト。キーワードの省略は値<code>nil</code>でそれを指定することと常に等価。以下は意味のあるキーワード:
+</p>
+<dl compact="compact">
+<dt>:name <var>name</var></dt>
+<dd><p>プロセス名として文字列<var>name</var>を使用する。その名前のプロセスがすでに存在すれば、(&lsquo;<samp>&lt;1&gt;</samp>&rsquo;、...の追加により)一意となるように<var>name</var>を修正する。
+</p>
+</dd>
+<dt>:buffer <var>buffer</var></dt>
+<dd><p>プロセスバッファーとして<var>buffer</var>を使用する。値が<code>nil</code>なら、そのサブプロセスには何のバッファーも関連付けられない。
+</p>
+</dd>
+<dt>:command <var>command</var></dt>
+<dd><p>プロセスのコマドラインとして<var>command</var>を使用する。値はプログラムの実行可能ファイル名で始まり、後にプログラムの引数として与える文字列が続くリストであること。リストの最初の要素が<code>nil</code>なら、Emacsは新たな擬似端末(pty)を作成して、実際には何もプログラムを実行せずに入出力を<var>buffer</var>に関連付ける。この場合には残りのリスト要素は無視される。
+</p>
+</dd>
+<dt>:coding <var>coding</var></dt>
+<dd><p><var>coding</var>がシンボルなら、それはその接続にたいする読み取りと書き込みの両方で使用するコーディングシステムを指定する。<var>coding</var>がコンスセル<code>(<var>decoding</var>&nbsp;.&nbsp;<var>encoding</var>)</code><!-- /@w -->なら読み取りに<var>decoding</var>、書き込みに<var>encoding</var>が使用される。プログラムに書き込むデータのエンコーディングに使用されるコーディングシステムは、コマンドライン引数のエンコーディングにも使用される(しかしプログラム自身にたいしてファイル名を別のファイル名にエンコードすることはない。<a href="Encoding-and-I_002fO.html">file-name-coding-system</a>を参照)。
+</p>
+<p><var>coding</var>が<code>nil</code>なら、デフォルトのコーディングシステム検出ルールを適用する。<a href="Default-Coding-Systems.html">Default Coding Systems</a>を参照のこと。
+</p>
+</dd>
+<dt>:connection-type <var>type</var></dt>
+<dd><p>サブプロセスとの対話に使用するデバイスタイプを初期化する。値にはptyを使用する<code>pty</code>、pipeを使用する<code>pipe</code>、または変数<code>process-connection-type</code>の値から継承されるデフォルトを使用する<code>nil</code>を指定できる。このパラメーターと<code>process-connection-type</code>の値は<code>:stderr</code>パラメーターに非<code>nil</code>が指定されている場合には無視される。その場合にはタイプは常に<code>pipe</code>になる。このパラメーターはptyが利用できないシステム(MS-Windows)でも無視されて無条件でpipeが使用される。
+</p>
+</dd>
+<dt>:noquery <var>query-flag</var></dt>
+<dd><p>プロセスqueryフラグを<var>query-flag</var>に初期化する。<a href="Query-Before-Exit.html">Query Before Exit</a>を参照のこと。
+</p>
+</dd>
+<dt>:stop <var>stopped</var></dt>
+<dd><p><var>stopped</var>が与えられた場合には<code>nil</code>でなければならない。非<code>nil</code>値の使用はすべてエラーとなる。それ以外の場合には<code>:stop</code>は無視される。これはpipeプロセスのような他のプロセスタイプへの互換性のために維持されている。非同期サブプロセスがstopped状態で開始されることはあり得ない。
+</p>
+</dd>
+<dt>:filter <var>filter</var></dt>
+<dd><p>プロセスフィルターを<var>filter</var>に初期化する。未指定ならデフォルトフィルターが提供されるが、これは後からオーバーライドできる。<a href="Filter-Functions.html">Filter Functions</a>を参照のこと。
+</p>
+</dd>
+<dt>:sentinel <var>sentinel</var></dt>
+<dd><p>プロセスセンチネルを<var>sentinel</var>に初期化する。未指定ならデフォルトセンチネルが使用されるが、これは後からオーバーライドできる。<a href="Sentinels.html">Sentinels</a>を参照のこと。
+</p>
+</dd>
+<dt>:stderr <var>stderr</var></dt>
+<dd><p>プロセスの標準エラーに<var>stderr</var>を割り当てる。値が非<code>nil</code>ならバッファー、または以下で説明する<code>make-pipe-process</code>で作成されたpipeのいずれかであること。<var>stderr</var>が<code>nil</code>なら標準エラーを標準出力と合成して、両者を<var>buffer</var>か<var>filter</var>に送信する。
+</p>
+<span id="index-standard-error-process"></span>
+<p><var>stderr</var>がバッファーならEmacsはpipeプロセス、<em>標準エラープロセス(standard error
+process)</em>を作成する。このプロセスはデフォルトフィルター(<a href="Filter-Functions.html">Filter Functions</a>を参照)、センチネル(<a href="Sentinels.html">Sentinels</a>を参照)、コーディングシステム(<a href="Default-Coding-Systems.html">Default Coding Systems</a>を参照)をもつ。その一方で、自身のquery-on-exitフラグとして<var>query-flag</var>を使用する(<a href="Query-Before-Exit.html">Query Before Exit</a>を参照)。このプロセスは<var>stderr</var>バッファーに関連づけられて、そこに出力(メインプロセスの標準エラー)を送信する(<a href="Process-Buffers.html">Process Buffers</a>を参照)。
+</p>
+<p><var>stderr</var>がpipeプロセスなら、Emacsはそれを新たなプロセス用の標準エラープロセスとして使用する。
+</p>
+</dd>
+<dt>:file-handler <var>file-handler</var></dt>
+<dd><p><var>file-handler</var>が非<code>nil</code>なら、カレントバッファーの<code>default-directory</code>にたいするファイル名ハンドラーを探して、プロセスを作成するためにそのファイル名ハンドラーを呼び出す。そのようなハンドラーがなければ、<var>file-handler</var>が<code>nil</code>であるかのように処理する。
+</p></dd>
+</dl>
+
+<p>実際の接続情報で修正されたオリジナルの引数リストは<code>process-contact</code>を通じて利用できる。
+</p>
+<p>サブプロセスのカレント作業ディレクトリー(CWD: current working
+directory)はカレントバッファーの<code>default-directory</code>がローカル(<code>unhandled-file-name-directory</code>により判断される)ならその値、それ以外は<samp>~</samp>。リモートディレクトリーでプロセスを実行したければ、<code>make-process</code>に<code>:file-handler
+t</code>を渡せばよい。この場合には、カレントのワーキングディレクトリー(CWD)は<code>default-directory</code>の(<code>file-local-name</code>で決定される)ローカル部分となる。
+</p>
+<p>ファイル名ハンドラーの実装に依存して、結果となるプロセスオブジェクトへの<var>filter</var>や<var>sentinel</var>の適用が不可能かもしれない。<code>:stderr</code>引数はpipeプロセスではあり得ないので、ファイル名ハンドラーはこれにたいしてpipeプロセスをサポートしない。<code>:stderr</code>引数としてバッファーは許されており、バッファーのコンテンツはpipeプロセスを使用することなく表示される。<a href="Filter-Functions.html">Filter Functions</a>および<a href="Accepting-Output.html">Accepting Output</a>を参照のこと。
+</p>
+<p>いくつかのファイルハンドラーは<code>make-process</code>をサポートしないかもしれない。そのような場合には、この関数は何も行わずに<code>nil</code>をリターンする。
+</p></dd></dl>
+
+<span id="Pipe-Processes"></span><dl>
+<dt id="index-make_002dpipe_002dprocess">Function: <strong>make-pipe-process</strong> <em>&amp;rest args</em></dt>
+<dd><p>この関数は子プロセスにアタッチ可能な双方向のpipeを作成する。これは<code>make-process</code>の<code>:stderr</code>キーワードと併用することで有用。この関数はプロセスオブジェクトをリターンする。
+</p>
+<p>引数<var>args</var>はkeyword/argumentペアのリスト。キーワードの省略はそのキーワードに値<code>nil</code>を指定することと常に等価。
+</p>
+<p>以下は意味のあるキーワード。
+</p>
+<dl compact="compact">
+<dt>:name <var>name</var></dt>
+<dd><p>プロセス名として文字列<var>name</var>を使用する。<code>make-process</code>の場合のように、一意にするために必要に応じて変更され得る。
+</p>
+</dd>
+<dt>:buffer <var>buffer</var></dt>
+<dd><p>プロセスバッファーとして<var>buffer</var>を使用する。
+</p>
+</dd>
+<dt>:coding <var>coding</var></dt>
+<dd><p><var>coding</var>がシンボルなら、それはその接続にたいする読み取りと書き込みの両方で使用するコーディングシステムを指定する。<var>coding</var>がコンスセル<code>(<var>decoding</var>&nbsp;.&nbsp;<var>encoding</var>)</code><!-- /@w -->なら読み取りに<var>decoding</var>、書き込みに<var>encoding</var>が使用される。
+</p>
+<p><var>coding</var>が<code>nil</code>なら、デフォルトのコーディングシステム検出ルールを適用する。<a href="Default-Coding-Systems.html">Default Coding Systems</a>を参照のこと。
+</p>
+</dd>
+<dt>:noquery <var>query-flag</var></dt>
+<dd><p>プロセスqueryフラグを<var>query-flag</var>に初期化する。<a href="Query-Before-Exit.html">Query Before Exit</a>を参照のこと。
+</p>
+</dd>
+<dt>:stop <var>stopped</var></dt>
+<dd><p><var>stopped</var>が非<code>nil</code>なら停止状態でプロセスを開始する。停止状態ではpipeプロセスは入力データを受け取らないが出力データは送信できる。停止状態は<code>stop-process</code>でセットして<code>continue-process</code>でクリアーされる(<a href="Signals-to-Processes.html">Signals to Processes</a>を参照)。
+</p>
+</dd>
+<dt>:filter <var>filter</var></dt>
+<dd><p>プロセスフィルターを<var>filter</var>に初期化する。未指定ならデフォルトフィルターが提供されるが後で変更できる。<a href="Filter-Functions.html">Filter Functions</a>を参照のこと。
+</p>
+</dd>
+<dt>:sentinel <var>sentinel</var></dt>
+<dd><p>プロセスセンチネルを<var>sentinel</var>に初期化する。未指定ならデフォルトセンチネルが使用されるが後で変更できる。<a href="Sentinels.html">Sentinels</a>を参照のこと。
+</p></dd>
+</dl>
+
+<p>実際の接続情報で修正されたオリジナルの引数リストは<code>process-contact</code>を通じて利用できる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-start_002dprocess">Function: <strong>start-process</strong> <em>name buffer-or-name program &amp;rest args</em></dt>
+<dd><p>この関数は<code>call-process</code>の類似したインターフェースを提供する、<code>make-process</code>周辺の高レベルのラッパー。これは新たに非同期サブプロセスを作成して、指定された<var>program</var>の実行をその内部で開始する。これはLispで新たなサブプロセスを意味するプロセスオブジェクトをリターンする。引数<var>name</var>はプロセスオブジェクトの名前を指定する。<code>make-process</code>の場合のように、一意な名前となるように必要に応じて修正する。バッファー<var>buffer-or-name</var>はそのプロセスに関連付けるバッファー。
+</p>
+<p><var>program</var>が<code>nil</code>ならEmacsは疑似端末(pty)を新たにオープンして、サブプロセスを新たに作成することなくptyの入力と出力を<var>buffer-or-name</var>に関連付ける。この場合には残りの引数<var>args</var>は無視される。
+</p>
+<p>残りの<var>args</var>はサブプロセスにコマンドライン引数を指定する文字列。
+</p>
+<p>以下の例では1つ目のプロセスを開始して100秒間実行(というよりはsleep)される。その間に2つ目のプロセスを開始して、一意性を保つために&lsquo;<samp>my-process&lt;1&gt;</samp>&rsquo;という名前が与えられる。これは1つ目のプロセスが終了する前にバッファー&lsquo;<samp>foo</samp>&rsquo;の最後にディレクトリーのリストを挿入する。その後に2つ目のプロセスは終了して、その旨のメッセージがバッファーに挿入される。さらに遅れて1つ目のプロセスが終了して、バッファーに別のメッセージが挿入される。
+</p>
+<div class="example">
+<pre class="example">(start-process &quot;my-process&quot; &quot;foo&quot; &quot;sleep&quot; &quot;100&quot;)
+     &rArr; #&lt;process my-process&gt;
+</pre><pre class="example">
+
+</pre><pre class="example">(start-process &quot;my-process&quot; &quot;foo&quot; &quot;ls&quot; &quot;-l&quot; &quot;/bin&quot;)
+     &rArr; #&lt;process my-process&lt;1&gt;&gt;
+
+---------- Buffer: foo ----------
+total 8336
+-rwxr-xr-x 1 root root 971384 Mar 30 10:14 bash
+-rwxr-xr-x 1 root root 146920 Jul  5  2011 bsd-csh
+&hellip;
+-rwxr-xr-x 1 root root 696880 Feb 28 15:55 zsh4
+
+Process my-process&lt;1&gt; finished
+
+Process my-process finished
+---------- Buffer: foo ----------
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-start_002dfile_002dprocess">Function: <strong>start-file-process</strong> <em>name buffer-or-name program &amp;rest args</em></dt>
+<dd><p><code>start-process</code>と同じようにこの関数は非同期サブプロセスを開始して、その内部で<var>program</var>を実行してそのプロセスオブジェクトをリターンする。
+</p>
+<p><code>start-process</code>との違いは、この関数が<code>default-directory</code>の値にもとづいてファイル名ハンドラーを呼び出すかもしれないという点である。このハンドラーはローカルホスト上、あるいは<code>default-directory</code>に応じたリモートホスト上で<var>program</var>を実行すること。後者の場合には、<code>default-directory</code>のローカル部分はそのプロセスのワーキングディレクトリーになる。
+</p>
+<p>この関数は<var>program</var>や<var>args</var>の残りにたいしてファイル名ハンドラーの呼び出しを試みない。<var>program</var>は<var>args</var>のいずれかがリモートファイル構文(<a href="Magic-File-Names.html">Magic File Names</a>を参照)を使用する場合には、<code>file-local-name</code>を通じて実行することにより、それらの名前を<code>default-directory</code>に相対的な名前やリモートホスト上でローカルにファイルを識別する名前に変換しなければならないことが理由。
+</p>
+<p>そのファイル名ハンドラーの実装によっては、リターン結果のプロセスオブジェクトに<code>process-filter</code>や<code>process-sentinel</code>を適用することができないかもしれない。<a href="Filter-Functions.html">Filter Functions</a>と<a href="Sentinels.html">Sentinels</a>を参照のこと。
+</p>
+<p>いくつかのファイル名ハンドラーは<code>start-file-process</code>をサポートしないかもしれない(たとえば<code>ange-ftp-hook-function</code>関数)。そのような場合には、この関数は何も行わずに<code>nil</code>をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-start_002dprocess_002dshell_002dcommand">Function: <strong>start-process-shell-command</strong> <em>name buffer-or-name command</em></dt>
+<dd><p>この関数は<code>start-process</code>と同様だが、指定された<var>command</var>の実行にshellを使用する点が異なる。引数<var>command</var>はshellコマンド文字列。変数<code>shell-file-name</code>はどのshellを使用するかを指定する。
+</p>
+<p><code>make-process</code>や<code>start-process</code>でプログラムを実行せずにshellを通じて実行することの要点は、引数内のワイルドカード展開のようなshell機能を利用可能にするためである。そのためにはコマンド内に任意のユーザー指定引数を含めるなら、任意の特別なshell文字がshellでの特別な意味を<em>もたない</em>ように、まず<code>shell-quote-argument</code>でそれらをクォートするべきである。<a href="Shell-Arguments.html">Shell Arguments</a>を参照のこと。ユーザー入力にもとづいたコマンド実行時には当然セキュリティ上の影響も考慮するべきである。
+</p></dd></dl>
+
+<dl>
+<dt id="index-start_002dfile_002dprocess_002dshell_002dcommand">Function: <strong>start-file-process-shell-command</strong> <em>name buffer-or-name command</em></dt>
+<dd><p>この関数は<code>start-process-shell-command</code>と似ているが、内部的に<code>start-file-process</code>を使用する点が異なる。これにより<code>default-directory</code>に応じてリモートホスト上でも<var>command</var>を実行できる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-process_002dconnection_002dtype">Variable: <strong>process-connection-type</strong></dt>
+<dd><p>この変数は非同期サブプロセスと対話するために使用するデバイスタイプを制御する。これが非<code>nil</code>の場合には利用可能ならpty、それ以外ならpipeが使用される。
+</p>
+<p><code>process-connection-type</code>の値は<code>make-process</code>や<code>start-process</code>の呼び出し時に効果を発揮する。そのためにこれらの関数の呼び出し前後でこの変数をバインドすることにより、サブプロセスとやり取りする方法を指定できる。
+</p>
+<p>この変数の値は非<code>nil</code>値の<code>:stderr</code>パラメーターで<code>make-process</code>が呼び出された際には無視される。この場合にはEmacsはpipeを使用してプロセスと対話する。ptyが利用不能(MS-Windows)な場合にも無視される。
+</p>
+<div class="example">
+<pre class="example">(let ((process-connection-type nil))  ; <span class="roman">pipeを使用</span>
+  (start-process &hellip;))
+</pre></div>
+
+<p>与えられたサブプロセスが実際にはpipeとptyのどちらを取得したかを判断するには関数<code>process-tty-name</code>を使用する(<a href="Process-Information.html">Process Information</a>を参照)。
+</p></dd></dl>
+
+<hr>
+<div class="header">
+<p>
+Next: <a href="Deleting-Processes.html" accesskey="n" rel="next">Deleting Processes</a>, Previous: <a href="Synchronous-Processes.html" accesskey="p" rel="prev">Synchronous Processes</a>, Up: <a href="Processes.html" accesskey="u" rel="up">Processes</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

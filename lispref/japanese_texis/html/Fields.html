@@ -1,0 +1,131 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Fields (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Fields (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Fields (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Text-Properties.html" rel="up" title="Text Properties">
+<link href="Not-Intervals.html" rel="next" title="Not Intervals">
+<link href="Clickable-Text.html" rel="prev" title="Clickable Text">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Fields"></span><div class="header">
+<p>
+Next: <a href="Not-Intervals.html" accesskey="n" rel="next">Not Intervals</a>, Previous: <a href="Clickable-Text.html" accesskey="p" rel="prev">Clickable Text</a>, Up: <a href="Text-Properties.html" accesskey="u" rel="up">Text Properties</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="huirudonoDing-Yi-toShi-Yong-"></span><h4 class="subsection">32.19.9 フィールドの定義と使用</h4>
+<span id="index-fields"></span>
+
+<p>フィールドとはバッファー内にある連続する文字範囲であり、<code>field</code>プロパティ(テキストプロパティかオーバーレイプロパティ)に同じ値(<code>eq</code>で比較)をもつことにより識別されます。このセクションではフィールドの操作に利用できるスペシャル関数を説明します。
+</p>
+<p>フィールドはバッファー位置<var>pos</var>で指定します。各フィールドはバッファー位置の範囲を含むと考えて、指定した位置はその位置を含むフィールドを表します。
+</p>
+<p><var>pos</var>の前後の文字は同じフィールドに属し、どのフィールドが<var>pos</var>を含むかという疑問はありません。それらの文字が属するフィールドがそのフィールドです。<var>pos</var>がフィールド境界のときは、それがどのフィールドに属すかは、取り囲む2つの文字の<code>field</code>プロパティのstickinessに依存します(<a href="Sticky-Properties.html">Sticky Properties</a>を参照)。<var>pos</var>に挿入されたテキストからプロパティが継承されたフィールドが<var>pos</var>を含むフィールドです。
+</p>
+<p><var>pos</var>に新たに挿入されたテキストが、いずれの側からも<code>field</code>プロパティを継承しない異常なケースがあります。これは前の文字の<code>field</code>プロパティがrear-stickyでなく、後の文字の<code>field</code>プロパティがfront-stickyでもない場合に発生します。このケースでは<var>pos</var>は前後のフィールドいずれにも属しません。フィールド関数はそれを、開始と終了が<var>pos</var>であるような空フィールドに属するものとして扱います。
+</p>
+<p>以下のすべての関数では、<var>pos</var>が省略か<code>nil</code>ならポイントの値がデフォルトとして使用されます。ナローイング(narrowing)が効力をもつ場合には、<var>pos</var>はアクセス可能部分にあるはずです。<a href="Narrowing.html">Narrowing</a>を参照してください。
+</p>
+<dl>
+<dt id="index-field_002dbeginning">Function: <strong>field-beginning</strong> <em>&amp;optional pos escape-from-edge limit</em></dt>
+<dd><p>この関数は<var>pos</var>で指定されたフィールドの先頭をリターンする。
+</p>
+<p><var>pos</var>が自身のフィールド先頭にあり、かつ<var>escape-from-edge</var>が非<code>nil</code>なら、<var>pos</var>周辺の<code>field</code>プロパティのstickinessに関わらず、リターン値は常に<var>pos</var>が終端であるような、前にあるフィールドの先頭になる。
+</p>
+<p><var>limit</var>が非<code>nil</code>なら、それはバッファーの位置。そのフィールドの先頭が<var>limit</var>より前なら、かわりに<var>limit</var>がリターンされるだろう。
+</p></dd></dl>
+
+<dl>
+<dt id="index-field_002dend">Function: <strong>field-end</strong> <em>&amp;optional pos escape-from-edge limit</em></dt>
+<dd><p>この関数は<var>pos</var>で指定されるフィールドの終端をリターンする。
+</p>
+<p><var>pos</var>が自身のフィールド終端にあり、かつ<var>escape-from-edge</var>が非<code>nil</code>なら、<var>pos</var>周辺の<code>field</code>プロパティのstickinessに関わらず、リターン値は常に<var>pos</var>が<em>先頭</em>であるような後のフィールドの終端になる。
+</p>
+<p><var>limit</var>が非<code>nil</code>なら、それはバッファーの位置である。そのフィールドの終端が<var>limit</var>より後なら、かわりに<var>limit</var>がリターンされるだろう。
+</p></dd></dl>
+
+<dl>
+<dt id="index-field_002dstring">Function: <strong>field-string</strong> <em>&amp;optional pos</em></dt>
+<dd><p>この関数は<var>pos</var>で指定されるフィールドのコンテンツを文字列としてリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-field_002dstring_002dno_002dproperties">Function: <strong>field-string-no-properties</strong> <em>&amp;optional pos</em></dt>
+<dd><p>この関数は<var>pos</var>で指定されるフィールドのコンテンツを、テキストプロパティを無視して文字列としてリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-delete_002dfield">Function: <strong>delete-field</strong> <em>&amp;optional pos</em></dt>
+<dd><p>この関数は<var>pos</var>で指定されるフィールドのテキストを削除する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-constrain_002dto_002dfield">Function: <strong>constrain-to-field</strong> <em>new-pos old-pos &amp;optional escape-from-edge only-in-line inhibit-capture-property</em></dt>
+<dd><p>この関数は<var>new-pos</var>を<var>old-pos</var>が属するフィールドに&ldquo;拘束(constrain)&rdquo;する。言い換えると、これは
+<var>old-pos</var>と同じフィールド内で<var>new-pos</var>にもっとも近い位置をリターンする。
+</p>
+<p><var>new-pos</var>が<code>nil</code>なら、<code>constrain-to-field</code>はかわりにポイントの値を使用してポイントをリターンすることに加えて、その位置にポイントを移動する。
+</p>
+<p><var>old-pos</var>が2つのフィールドの境界なら、許容できる最後の位置は引数<var>escape-from-edge</var>に依存する。<var>escape-from-edge</var>が<code>nil</code>なら、<var>new-pos</var>は新たに文字が<var>old-pos</var>が挿入されたときに継承するであろう値と、<code>field</code>プロパティが等しいフィールドでなければならない。<var>escape-from-edge</var>が非<code>nil</code>なら<var>new-pos</var>は隣接する2つのフィールド内のどこでも構わない。さらに2つのフィールドが特別な値<code>boundary</code>により他のフィールドで分割されている場合には、このスペシャルフィールド内のすべてのポイントも境界上とみなされる。
+</p>
+<p>引数なしの<kbd>C-a</kbd>コマンドのように、特別な種類の位置に後方へ移動して一度そこに留まるには、おそらく<var>escape-from-edge</var>にたいして<code>nil</code>を指定するべきであろう。フィールドをチェックする他の移動コマンドにたいしては、おそらく<code>t</code>を渡すべきである。
+</p>
+<p>オプション引数<var>only-in-line</var>が非<code>nil</code>、かつ<var>new-pos</var>を通常の方法により拘束することにより異なる行へ移動するような場合には、<var>new-pos</var>は非拘束でリターンされる。これは<code>next-line</code>や<code>beginning-of-line</code>のような行単位の移動コマンドで、それらのコマンドが正しい行へ移動できる場合のみフィールド境界を尊重するようにするために用いられる。
+</p>
+<p>オプション引数<var>inhibit-capture-property</var>が非<code>nil</code>、かつ<var>old-pos</var>がその名前の非<code>nil</code>のプロパティをもつ場合には、すべてのフィールド境界は無視される。
+</p>
+<p>変数<code>inhibit-field-text-motion</code>を非<code>nil</code>値にバインドすることにより、<code>constrain-to-field</code>にすべてのフィールド境界を無視(何者にも拘束されることがない)させることができる。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

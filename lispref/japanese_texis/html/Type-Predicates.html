@@ -1,0 +1,320 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Type Predicates (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Type Predicates (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Type Predicates (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Lisp-Data-Types.html" rel="up" title="Lisp Data Types">
+<link href="Equality-Predicates.html" rel="next" title="Equality Predicates">
+<link href="Circular-Objects.html" rel="prev" title="Circular Objects">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Type-Predicates"></span><div class="header">
+<p>
+Next: <a href="Equality-Predicates.html" accesskey="n" rel="next">Equality Predicates</a>, Previous: <a href="Circular-Objects.html" accesskey="p" rel="prev">Circular Objects</a>, Up: <a href="Lisp-Data-Types.html" accesskey="u" rel="up">Lisp Data Types</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Xing-notamenoShu-Yu-"></span><h3 class="section">2.7 型のための述語</h3>
+<span id="index-type-checking"></span>
+<span id="index-wrong_002dtype_002dargument"></span>
+
+<p>関数が呼び出されたとき、Emacs
+Lispインタープリター自身はその関数に渡された実際の引数の型チェックは行ないません。それが行なえないのは、Lispにおける関数の引数は他のプログラミング言語のようなデータ型宣言をもたないからです。したがって実際の引数が、その関数が使用できる型に属するかどうかをテストするのは、それぞれの関数に任されています。
+</p>
+<p>すべてのビルトイン関数は適切なときに実際の引数の型チェックを行い、引数の型が違う場合は<code>wrong-type-argument</code>エラーをシグナルします。たとえば以下は、<code>+</code>の引数に<code>+</code>が扱うことができない引数を渡したとき何が起こるかの例です:
+</p>
+<div class="example">
+<pre class="example">(+ 2 'a)
+     error&rarr; Wrong type argument: number-or-marker-p, a
+</pre></div>
+
+<span id="index-type-predicates"></span>
+<span id="index-testing-types"></span>
+<p>異なる型にたいして異なる処理をプログラムに行なわせる場合は、明示的に型チェックを行なわなければなりません。オブジェクトの型をチェックするもっとも一般的な方法は<em>型述語(type
+predicate)</em>関数の呼び出しです。Emacsはそれぞれの型にたいする型述語をもち、組み合わされた型にたいする述語もあります。
+</p>
+<p>型述語関数は1つの引数をとり、その引数が適切な型であれば<code>t</code>、そうでなければ<code>nil</code>をリターンします。述語関数にたいする一般的なLisp慣習にしたがい、ほとんどの型述語の名前は&lsquo;<samp>p</samp>&rsquo;で終わります。
+</p>
+<p>以下はリストにたいしてチェックを行なう述語<code>listp</code>と、シンボルにたいしてチェックを行なう述語<code>symbolp</code>の例です。
+</p>
+<div class="example">
+<pre class="example">(defun add-on (x)
+  (cond ((symbolp x)
+         ;; XがシンボルならLISTにputする
+         (setq list (cons x list)))
+        ((listp x)
+         ;; Xがリストならその要素をLISTに追加
+         (setq list (append x list)))
+        (t
+         ;; シンボルとリストだけを処理する
+         (error &quot;Invalid argument %s in add-on&quot; x))))
+</pre></div>
+
+<p>以下のテーブルは事前定義された型述語(アルファベット順)と、さらに情報を得るためのリファレンスです。
+</p>
+<dl compact="compact">
+<dt><code>atom</code></dt>
+<dd><p><a href="List_002drelated-Predicates.html">atom</a>を参照のこと。
+</p>
+</dd>
+<dt><code>arrayp</code></dt>
+<dd><p><a href="Array-Functions.html">arrayp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>bignump</code></dt>
+<dd><p><a href="Predicates-on-Numbers.html">floatp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>bool-vector-p</code></dt>
+<dd><p><a href="Bool_002dVectors.html">bool-vector-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>booleanp</code></dt>
+<dd><p><a href="nil-and-t.html">booleanp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>bufferp</code></dt>
+<dd><p><a href="Buffer-Basics.html">bufferp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>byte-code-function-p</code></dt>
+<dd><p><a href="Byte_002dCode-Type.html">byte-code-function-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>case-table-p</code></dt>
+<dd><p><a href="Case-Tables.html">case-table-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>char-or-string-p</code></dt>
+<dd><p><a href="Predicates-for-Strings.html">char-or-string-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>char-table-p</code></dt>
+<dd><p><a href="Char_002dTables.html">char-table-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>commandp</code></dt>
+<dd><p><a href="Interactive-Call.html">commandp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>condition-variable-p</code></dt>
+<dd><p><a href="Condition-Variables.html">condition-variable-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>consp</code></dt>
+<dd><p><a href="List_002drelated-Predicates.html">consp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>custom-variable-p</code></dt>
+<dd><p><a href="Variable-Definitions.html">custom-variable-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>fixnump</code></dt>
+<dd><p><a href="Predicates-on-Numbers.html">floatp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>floatp</code></dt>
+<dd><p><a href="Predicates-on-Numbers.html">floatp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>fontp</code></dt>
+<dd><p><a href="Low_002dLevel-Font.html">Low-Level Font</a>を参照のこと。
+</p>
+</dd>
+<dt><code>frame-configuration-p</code></dt>
+<dd><p><a href="Frame-Configurations.html">frame-configuration-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>frame-live-p</code></dt>
+<dd><p><a href="Deleting-Frames.html">frame-live-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>framep</code></dt>
+<dd><p><a href="Frames.html">framep</a>を参照のこと。
+</p>
+</dd>
+<dt><code>functionp</code></dt>
+<dd><p><a href="Functions.html">functionp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>hash-table-p</code></dt>
+<dd><p><a href="Other-Hash.html">hash-table-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>integer-or-marker-p</code></dt>
+<dd><p><a href="Predicates-on-Markers.html">integer-or-marker-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>integerp</code></dt>
+<dd><p><a href="Predicates-on-Numbers.html">integerp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>keymapp</code></dt>
+<dd><p><a href="Creating-Keymaps.html">keymapp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>keywordp</code></dt>
+<dd><p><a href="Constant-Variables.html">Constant Variables</a>を参照のこと。
+</p>
+</dd>
+<dt><code>listp</code></dt>
+<dd><p><a href="List_002drelated-Predicates.html">listp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>markerp</code></dt>
+<dd><p><a href="Predicates-on-Markers.html">markerp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>mutexp</code></dt>
+<dd><p><a href="Mutexes.html">mutexp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>nlistp</code></dt>
+<dd><p><a href="List_002drelated-Predicates.html">nlistp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>number-or-marker-p</code></dt>
+<dd><p><a href="Predicates-on-Markers.html">number-or-marker-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>numberp</code></dt>
+<dd><p><a href="Predicates-on-Numbers.html">numberp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>overlayp</code></dt>
+<dd><p><a href="Overlays.html">overlayp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>processp</code></dt>
+<dd><p><a href="Processes.html">processp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>recordp</code></dt>
+<dd><p><a href="Record-Type.html">recordp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>sequencep</code></dt>
+<dd><p><a href="Sequence-Functions.html">sequencep</a>を参照のこと。
+</p>
+</dd>
+<dt><code>string-or-null-p</code></dt>
+<dd><p><a href="Predicates-for-Strings.html">string-or-null-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>stringp</code></dt>
+<dd><p><a href="Predicates-for-Strings.html">stringp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>subrp</code></dt>
+<dd><p><a href="Function-Cells.html">subrp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>symbolp</code></dt>
+<dd><p><a href="Symbols.html">symbolp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>syntax-table-p</code></dt>
+<dd><p><a href="Syntax-Tables.html">syntax-table-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>threadp</code></dt>
+<dd><p><a href="Basic-Thread-Functions.html">threadp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>vectorp</code></dt>
+<dd><p><a href="Vectors.html">vectorp</a>を参照のこと。
+</p>
+</dd>
+<dt><code>wholenump</code></dt>
+<dd><p><a href="Predicates-on-Numbers.html">wholenump</a>を参照のこと。
+</p>
+</dd>
+<dt><code>window-configuration-p</code></dt>
+<dd><p><a href="Window-Configurations.html">window-configuration-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>window-live-p</code></dt>
+<dd><p><a href="Deleting-Windows.html">window-live-p</a>を参照のこと。
+</p>
+</dd>
+<dt><code>windowp</code></dt>
+<dd><p><a href="Basic-Windows.html">windowp</a>を参照のこと。
+</p></dd>
+</dl>
+
+<p>あるオブジェクトがどの型かチェックするもっとも一般的な方法は、関数<code>type-of</code>の呼び出しです。オブジェクトは、ただ1つだけの基本型に属することを思い出してください。<code>type-of</code>は、それがどの型かを告げます(<a href="Lisp-Data-Types.html">Lisp Data Types</a>を参照)。しかし<code>type-of</code>は基本型以外の型については何も知りません。ほとんどの場合では、<code>type-of</code>より型述語を使用するほうが便利でしょう。
+</p>
+<dl>
+<dt id="index-type_002dof">Function: <strong>type-of</strong> <em>object</em></dt>
+<dd><p>この関数は<var>object</var>の基本型を名前とするシンボルをリターンする。リターン値はシンボル<code>bool-vector</code>、<code>buffer</code>、<code>char-table</code>、<code>compiled-function</code>、<code>condition-variable</code>、<code>cons</code>、<code>finalizer</code>、<code>float</code>、<code>font-entity</code>、<code>font-object</code>、<code>font-spec</code>、<code>frame</code>、<code>hash-table</code>、<code>integer</code>、<code>marker</code>、<code>mutex</code>、<code>overlay</code>、<code>process</code>、<code>string</code>、<code>subr</code>、<code>symbol</code>、<code>thread</code>、<code>vector</code>、<code>window</code>、<code>window-configuration</code>のいずれか。ただし<var>object</var>がレコードなら最初のスロットで指定された型をリターンする。<a href="Records.html">Records</a>を参照のこと。
+</p>
+<div class="example">
+<pre class="example">(type-of 1)
+     &rArr; integer
+</pre><pre class="example">(type-of 'nil)
+     &rArr; symbol
+(type-of '())    ; <span class="roman"><code>()</code>は<code>nil</code></span>
+     &rArr; symbol
+(type-of '(x))
+     &rArr; cons
+(type-of (record 'foo))
+     &rArr; foo
+</pre></div>
+</dd></dl>
+
+<hr>
+<div class="header">
+<p>
+Next: <a href="Equality-Predicates.html" accesskey="n" rel="next">Equality Predicates</a>, Previous: <a href="Circular-Objects.html" accesskey="p" rel="prev">Circular Objects</a>, Up: <a href="Lisp-Data-Types.html" accesskey="u" rel="up">Lisp Data Types</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

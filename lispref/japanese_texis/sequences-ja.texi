@@ -1,0 +1,1537 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2020 Free Software
+@c Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Sequences Arrays Vectors
+@chapter シーケンス、配列、ベクター
+@cindex sequence
+
+  @dfn{シーケンス(sequence)}型は2つの異なるLisp型 --- リストと配列 ---
+を結合した型です。言い換えると任意のリストはシーケンスであり任意の配列はシーケンスです。すべてのシーケンスがもつ共通な属性は、それぞれが順序づけされた要素のコレクションであることです。
+
+  @dfn{配列(array)}はスロットがその要素であるような、固定長のオブジェクトです。すべての要素に一定時間でアクセスできます。配列の4つの型として文字列、ベクター、文字テーブル、ブールベクターがあります。
+
+  リストは要素のシーケンスですが、要素は単一の基本オブジェクトではありません。リストはコンスセルにより作られ、要素ごとに1つのセルをもちます。@var{n}番目の要素を探すには@var{n}個のコンスセルを走査する必要があるので、先頭から離れた要素ほどアクセスに時間を要します。しかしリストは要素の追加や削除が可能です。
+
+  以下の図はこれらの型の関連を表しています:
+
+@example
+@group
+          _____________________________________________
+         |                                             |
+         |          Sequence                           |
+         |  ______   ________________________________  |
+         | |      | |                                | |
+         | | List | |             Array              | |
+         | |      | |    ________       ________     | |
+         | |______| |   |        |     |        |    | |
+         |          |   | Vector |     | String |    | |
+         |          |   |________|     |________|    | |
+         |          |  ____________   _____________  | |
+         |          | |            | |             | | |
+         |          | | Char-table | | Bool-vector | | |
+         |          | |____________| |_____________| | |
+         |          |________________________________| |
+         |_____________________________________________|
+@end group
+@end example
+
+@menu
+* Sequence Functions::       任意の種類のシーケンスを許す関数。
+* Arrays::                   Emacs Lispの配列の特徴。
+* Array Functions::          配列に特化した関数。
+* Vectors::                  Emacs Lispベクターの特質。
+* Vector Functions::         ベクターのための特別な関数。
+* Char-Tables::              文字テーブルを扱う方法。
+* Bool-Vectors::             ブールベクターを扱う方法。
+* Rings::                    オブジェクトの固定サイズのリングを管理する。
+@end menu
+
+@node Sequence Functions
+@section シーケンス
+
+  このセクションでは任意の種類のシーケンスを許す関数を説明します。
+
+@defun sequencep object
+この関数は@var{object}がリスト、ベクター、文字列、ブールベクター、文字テーブルなら@code{t}、それ以外は@code{nil}をリターンする。以下の@code{seqp}も参照のこと。
+@end defun
+
+@defun length sequence
+@cindex string length
+@cindex list length
+@cindex vector length
+@cindex sequence length
+@cindex bool-vector length
+@cindex char-table length
+@anchor{Definition of length}
+この関数は@var{sequence}内の要素の数をリターンする。@var{sequence}がシーケンス以外、またはドットリストなら@code{wrong-type-argument}エラーをシグナルする。引数が循環リストなら@code{circular-list}エラーをシグナルする。文字テーブルではEmacsの最大文字コードより1大きい値が常にリターンされる。
+
+関連する関数@code{safe-length}については@ref{Definition of safe-length}を参照のこと。
+
+@example
+@group
+(length '(1 2 3))
+    @result{} 3
+@end group
+@group
+(length ())
+    @result{} 0
+@end group
+@group
+(length "foobar")
+    @result{} 6
+@end group
+@group
+(length [1 2 3])
+    @result{} 3
+@end group
+@group
+(length (make-bool-vector 5 nil))
+    @result{} 5
+@end group
+@end example
+@end defun
+
+@noindent
+@ref{Text Representations}の@code{string-bytes}も参照されたい。
+
+ディスプレー上での文字列の幅を計算する必要があるなら、文字数だけを数えて各文字のディスプレー幅を計算しない@code{length}ではなく、@code{string-width}
+(@ref{Size of Displayed Text}を参照)を使用すること。
+
+@defun length< sequence length
+@var{sequence}が@var{length}より短ければ非@code{nil}をリターンする。これは@var{sequence}が長いリストの場合に@var{sequence}の長さを計算するより効率的かもしれない。
+@end defun
+
+@defun length> sequence length
+@var{sequence}が@var{length}より大なら非@code{nil}をリターンする。
+@end defun
+
+@defun length= sequence length
+@var{sequence}の長さが@var{length}より短ければ非@code{nil}をリターンする。
+@end defun
+
+@defun elt sequence index
+@anchor{Definition of elt}
+@cindex elements of sequences
+この関数は@var{index}によりインデックスづけされた、@var{sequence}の要素をリターンする。@var{index}の値として妥当なのは、0から@var{sequence}の長さより1小さい数までの範囲の整数。@var{sequence}がリストなら範囲外の値は@code{nth}と同じように振る舞う。@ref{Definition
+of nth}を参照のこと。それ以外なら範囲外の値は@code{args-out-of-range}エラーを引き起こす。
+
+@example
+@group
+(elt [1 2 3 4] 2)
+     @result{} 3
+@end group
+@group
+(elt '(1 2 3 4) 2)
+     @result{} 3
+@end group
+@group
+;; @r{@code{elt}がどの文字をreturnするか明確にするために@code{string}を使用}
+(string (elt "1234" 2))
+     @result{} "3"
+@end group
+@group
+(elt [1 2 3 4] 4)
+     @error{} Args out of range: [1 2 3 4], 4
+@end group
+@group
+(elt [1 2 3 4] -1)
+     @error{} Args out of range: [1 2 3 4], -1
+@end group
+@end example
+
+この関数は@code{aref} (@ref{Array Functions}を参照)と@code{nth} (@ref{Definition of
+nth}を参照)を一般化したものである。
+@end defun
+
+@defun copy-sequence seqr
+@cindex copying sequences
+この関数は@var{seqr}
+(シーケンスかレコードであること)のコピーをリターンする。コピーはオリジナルと同じオブジェクト型であり、同じ要素を同じ順序でもつ。しかし@var{seqr}が空なら長さが0の文字列やベクターと同じように関数がリターンする値はコピーではないかもしれないが、@var{seqr}と同じ型の空のオブジェクトである。
+
+コピーに新しい要素を格納するのは元の@var{seqr}に影響を与えずその逆も真である。しかし新しいシーケンス内の要素はコピーではなく、元のシーケンスの要素と同一(@code{eq})になる。したがってコピーされたシーケンスを介して見つかった要素を変更するとオリジナルでも変更を見ることができる。
+
+引数がテキストプロパティーをもつ文字列なら、コピー内のプロパティーリスト自身もコピーとなり、元のシーケンスのプロパティーリストと共有はされない。しかしプロパティーリストの実際の値は共有される。@ref{Text
+Properties}を参照のこと。
+
+この関数はドットリストでは機能しない。循環リストのコピーは無限ループを起こすだろう。
+
+シーケンスをコピーする別の方法については@ref{Building Lists}の@code{append}、@ref{Creating
+Strings}の@code{concat}、@ref{Vector Functions}の@code{vconcat}も参照されたい。
+
+@example
+@group
+(setq bar (list 1 2))
+     @result{} (1 2)
+@end group
+@group
+(setq x (vector 'foo bar))
+     @result{} [foo (1 2)]
+@end group
+@group
+(setq y (copy-sequence x))
+     @result{} [foo (1 2)]
+@end group
+
+@group
+(eq x y)
+     @result{} nil
+@end group
+@group
+(equal x y)
+     @result{} t
+@end group
+@group
+(eq (elt x 1) (elt y 1))
+     @result{} t
+@end group
+
+@group
+;; @r{一方のシーケンスの要素を置き換え}
+(aset x 0 'quux)
+x @result{} [quux (1 2)]
+y @result{} [foo (1 2)]
+@end group
+
+@group
+;; @r{共有された要素の内部を変更}
+(setcar (aref x 1) 69)
+x @result{} [quux (69 2)]
+y @result{} [foo (69 2)]
+@end group
+@end example
+@end defun
+
+@defun reverse sequence
+@cindex string reverse
+@cindex list reverse
+@cindex vector reverse
+@cindex sequence reverse
+この関数は@var{sequence}の要素を反転した要素をもつ新たなシーケンスを作成する。元となる引数@var{sequence}は@emph{変更されない}。文字テーブルは反転できないことに注意。
+
+@example
+@group
+(setq x '(1 2 3 4))
+     @result{} (1 2 3 4)
+@end group
+@group
+(reverse x)
+     @result{} (4 3 2 1)
+x
+     @result{} (1 2 3 4)
+@end group
+@group
+(setq x [1 2 3 4])
+     @result{} [1 2 3 4]
+@end group
+@group
+(reverse x)
+     @result{} [4 3 2 1]
+x
+     @result{} [1 2 3 4]
+@end group
+@group
+(setq x "xyzzy")
+     @result{} "xyzzy"
+@end group
+@group
+(reverse x)
+     @result{} "yzzyx"
+x
+     @result{} "xyzzy"
+@end group
+@end example
+@end defun
+
+@defun nreverse sequence
+@cindex reversing a string
+@cindex reversing a list
+@cindex reversing a vector
+  この関数は@var{sequence}の要素を反転する。@code{reverse}とは異なり、元となる@var{sequence}は変更されるかもしれない。
+
+  たとえば:
+
+@example
+@group
+(setq x (list 'a 'b 'c))
+     @result{} (a b c)
+@end group
+@group
+x
+     @result{} (a b c)
+(nreverse x)
+     @result{} (c b a)
+@end group
+@group
+;; @r{先頭にあったコンスセルが末尾となった}
+x
+     @result{} (a)
+@end group
+@end example
+
+  混乱しないように、通常は元となるリストを保持する同じ変数に、@code{nreverse}の結果を書き戻す:
+
+@example
+(setq x (nreverse x))
+@end example
+
+  お馴染の例@code{(a b c)}の@code{nreverse}を以下に図示する:
+
+@smallexample
+@group
+@r{Original list head:}                       @r{Reversed list:}
+ -------------        -------------        ------------
+| car  | cdr  |      | car  | cdr  |      | car | cdr  |
+|   a  |  nil |<--   |   b  |   o  |<--   |   c |   o  |
+|      |      |   |  |      |   |  |   |  |     |   |  |
+ -------------    |   --------- | -    |   -------- | -
+                  |             |      |            |
+                   -------------        ------------
+@end group
+@end smallexample
+
+  setqが不要なのでベクターはより単純になる:
+
+@example
+(setq x (copy-sequence [1 2 3 4]))
+     @result{} [1 2 3 4]
+(nreverse x)
+     @result{} [4 3 2 1]
+x
+     @result{} [4 3 2 1]
+@end example
+
+@code{reverse}とは異なり、この関数は文字列では機能しない。@code{aset}を使用して文字列データを変更できても、たとえmutableであったとしても文字列は不変として扱うことを強く推奨する。@ref{Mutability}を参照のこと。
+
+@end defun
+
+@defun sort sequence predicate
+@cindex stable sort
+@cindex sorting lists
+@cindex sorting vectors
+この関数は@var{sequence}を安定ソートする。この関数はすべてのシーケンスにたいしては機能せず、リストとベクターにたいしてのみ使用できることに注意されたい。@var{sequence}がリストなら破壊的に変更される。この関数はソートされた@var{sequence}をリターンして、要素の比較には@var{predicate}を使用する。安定ソートでは、ソートキーが等しい要素の相対順序がソートの前後で保たれる。この安定性は異なる条件により要素を並べ替えるために、連続してソートを行う場合に重要となる。
+
+引数@var{predicate}は2つの引数を受け取る関数でなければならない。これは@var{sequence}の2つの要素で呼び出される。昇順でソートするなら、1つ目の要素が2つ目の要素より``小''なら非@code{nil}、それ以外なら@code{nil}をリターンすること。
+
+比較関数@var{predicate}は、少なくとも@code{sort}の単一の呼び出しにおいて、与えられた任意の引数ペアにたいして信頼できる結果をリターンしなければならない。これは@dfn{非対照的(antisymmetric)}、すなわち@var{a}が@var{b}より小なら、@var{b}が@var{a}より小であってはならず、@dfn{推移律(transitive)}、すなわち@var{a}が@var{b}より小、かつ@var{b}が@var{c}より小なら、@var{a}は@var{c}より小でなければならない。これらの要件に合致しない比較関数を使用すると、@code{sort}の結果は予想できない。
+
+@code{sort}のリストにたいする破壊的側面は、@sc{cdr}を変更することにより@var{sequence}を形成するコンスセルを再配置することにある。非破壊ソート関数は、それらのソート順に要素を格納するために、新たなコンスセルを作成するだろう。オリジナルを破壊せずにソートしたコピーを望むなら、まず@code{copy-sequence}でコピーしてからソートすること。
+
+ソートにより@var{sequence}のコンスセルの@sc{car}は変化しない。元々@var{sequence}内で要素@code{a}を含むコンスセルは、ソート後もその@sc{car}に@code{a}を保持する。しかし@sc{cdr}の変更により、ソート後には異なる位置に出現する。たとえば:
+
+@example
+@group
+(setq nums (list 1 3 2 6 5 4 0))
+     @result{} (1 3 2 6 5 4 0)
+@end group
+@group
+(sort nums #'<)
+     @result{} (0 1 2 3 4 5 6)
+@end group
+@group
+nums
+     @result{} (1 2 3 4 5 6)
+@end group
+@end example
+
+@noindent
+@strong{警告}
+@code{nums}内のリストが0を含まないことに注意。これはソート前と同じコンスセルだがもはやリストの先頭ではない。ソート前に引数を保持していた変数がソート済みリスト全体を保持すると仮定してはならない!
+かわりに@code{sort}の結果を保存して、それを使うこと。ほとんどの場合、わたしたちは元のリストを保持していた変数に結果を書き戻すようにしている。
+
+@example
+(setq nums (sort nums #'<))
+@end example
+
+安定ソートの何たるかをより理解するには、以下のベクターのサンプルを考えてみよ。ソート後、@code{car}が8であるようなすべてのアイテムは@code{vector}の先頭にグループ化されるが、それらの相対的な順序は保たれる。@code{car}が9であるようなすべてのアイテムは@code{vector}の末尾にグループ化されるが、それらの相対的な順序も保たれる。
+
+@example
+@group
+(setq
+  vector
+  (vector '(8 . "xxx") '(9 . "aaa") '(8 . "bbb") '(9 . "zzz")
+          '(9 . "ppp") '(8 . "ttt") '(8 . "eee") '(9 . "fff")))
+     @result{} [(8 . "xxx") (9 . "aaa") (8 . "bbb") (9 . "zzz")
+         (9 . "ppp") (8 . "ttt") (8 . "eee") (9 . "fff")]
+@end group
+@group
+(sort vector (lambda (x y) (< (car x) (car y))))
+     @result{} [(8 . "xxx") (8 . "bbb") (8 . "ttt") (8 . "eee")
+         (9 . "aaa") (9 . "zzz") (9 . "ppp") (9 . "fff")]
+@end group
+@end example
+
+ソートを行う他の関数については@ref{Sorting}を参照のこと。@code{sort}の有用な例は、@ref{Accessing
+Documentation}の@code{documentation}を参照されたい。
+@end defun
+
+@cindex sequence functions in seq
+@cindex seq library
+@cindex sequences, generalized
+  @file{seq.el}ライブラリーは、以下のようなプレフィクス@code{seq-}がついたシーケンス操作用の追加のマクロと関数を提供します。それらを使用するには、最初に@file{seq}ライブラリーをロードしなければなりません。
+
+  このライブラリー内で定義されたすべての関数は、副作用をもちません。これらは引数として渡されたすべてのシーケンス(リスト、ベクター、文字列)を変更しません。特に明記しなければ、結果は入力と同じ型のシーケンスです。述語を受け取る関数では、それらは単一の関数である必要があります。
+
+  @file{seq.el}ライブラリーは、シーケンシャルなデータ構造の追加型で機能するように拡張可能です。そのためにすべての関数は@code{cl-defgeneric}を使用して定義されています。@code{cl-defgeneric}を使用した拡張の追加に関する詳細は、@ref{Generic
+Functions}を参照してください。
+
+@defun seq-elt sequence index
+  この関数は@var{index}(有効な範囲は0から@var{sequence}の長さより1少ない整数)で指定された@var{sequence}の要素をリターンする。ビルトインのシーケンス型にたいする範囲外(out-of-range)の値にたいして、@code{seq-elt}は@code{elt}と同様に振る舞う。詳細は@ref{Definition
+of elt}を参照のこと。
+
+@example
+@group
+(seq-elt [1 2 3 4] 2)
+@result{} 3
+@end group
+@end example
+
+  @code{seq-elt}は@code{setf}を使用してセット可能なplaceをリターンする(@ref{Setting Generalized
+Variables}を参照)。
+
+@example
+@group
+(setq vec [1 2 3 4])
+(setf (seq-elt vec 2) 5)
+vec
+@result{} [1 2 5 4]
+@end group
+@end example
+@end defun
+
+@defun seq-length sequence
+  この関数は@var{sequence}内の要素の個数をリターンする。ビルトインのシーケンス型にたいして@code{seq-length}は@code{length}と同様に振る舞う。@ref{Definition
+of length}を参照のこと。
+@end defun
+
+@defun seqp object
+  この関数は@var{object}がシーケンス(リストか配列)、または@file{seq.el}のジェネリック関数を通じて定義されたすべての追加シーケンス型なら非@code{nil}をリターンする。これは@code{sequencep}の拡張された変種である。
+
+@example
+@group
+(seqp [1 2])
+@result{} t
+@end group
+@group
+(seqp 2)
+@result{} nil
+@end group
+@end example
+@end defun
+
+@defun seq-drop sequence n
+  この関数は@var{sequence}の最初の@var{n}個(整数)を除く、すべての要素をリターンする.@var{n}が0以下なら結果は@var{sequence}。
+
+@example
+@group
+(seq-drop [1 2 3 4 5 6] 3)
+@result{} [4 5 6]
+@end group
+@group
+(seq-drop "hello world" -4)
+@result{} "hello world"
+@end group
+@end example
+@end defun
+
+@defun seq-take sequence n
+  この関数は@var{sequence}の最初の@var{n}個(整数)の要素をリターンする。@var{n}が0以下なら結果は@code{nil}。
+
+@example
+@group
+(seq-take '(1 2 3 4) 3)
+@result{} (1 2 3)
+@end group
+@group
+(seq-take [1 2 3 4] 0)
+@result{} []
+@end group
+@end example
+@end defun
+
+@defun seq-take-while predicate sequence
+  この関数は@var{sequence}のメンバーを順にリターンし、@var{predicate}が最初に@code{nil}をリターンした要素の前で停止する。
+
+@example
+@group
+(seq-take-while (lambda (elt) (> elt 0)) '(1 2 3 -1 -2))
+@result{} (1 2 3)
+@end group
+@group
+(seq-take-while (lambda (elt) (> elt 0)) [-1 4 6])
+@result{} []
+@end group
+@end example
+@end defun
+
+@defun seq-drop-while predicate sequence
+  この関数は@var{predicate}が最初に@code{nil}をリターンした要素から、@var{sequence}のメンバーを順にリターンする。
+
+@example
+@group
+(seq-drop-while (lambda (elt) (> elt 0)) '(1 2 3 -1 -2))
+@result{} (-1 -2)
+@end group
+@group
+(seq-drop-while (lambda (elt) (< elt 0)) [1 4 6])
+@result{} [1 4 6]
+@end group
+@end example
+@end defun
+
+@defun seq-do function sequence
+  この関数は@var{sequence}の各要素にたいして、(恐らくは副作用を得るために)順番に@var{function}を適用して、@var{sequence}をリターンする。
+@end defun
+
+@defun seq-map function sequence
+  この関数は@var{sequence}の各要素に@var{function}を適用した結果をリターンする。リターン値はリスト。
+
+@example
+@group
+(seq-map #'1+ '(2 4 6))
+@result{} (3 5 7)
+@end group
+@group
+(seq-map #'symbol-name [foo bar])
+@result{} ("foo" "bar")
+@end group
+@end example
+@end defun
+
+@defun seq-map-indexed function sequence
+  この関数は@var{sequence}の各要素および@var{seq}であるようなインデックスに@var{function}を適用した結果をリターンする。リターン値はリスト。
+
+@example
+@group
+(seq-map-indexed (lambda (elt idx)
+                   (list idx elt))
+                 '(a b c))
+@result{} ((0 a) (b 1) (c 2))
+@end group
+@end example
+@end defun
+
+@defun seq-mapn function &rest sequences
+  この関数は@var{sequences}の各要素に@var{function}を適用した結果をリターンする。 @var{function}のarity
+(関数が受け取れる引数の個数。@ref{What Is a Function,
+subr-arity}を参照)はシーケンスの個数にマッチしなければならない。マッピングは最短のシーケンス終端で停止する。リターン値はリスト。
+
+@example
+@group
+(seq-mapn #'+ '(2 4 6) '(20 40 60))
+@result{} (22 44 66)
+@end group
+@group
+(seq-mapn #'concat '("moskito" "bite") ["bee" "sting"])
+@result{} ("moskitobee" "bitesting")
+@end group
+@end example
+@end defun
+
+@defun seq-filter predicate sequence
+@cindex filtering sequences
+  この関数は@var{predicate}が非@code{nil}をリターンした@var{sequence}内のすべての要素のリストをリターンする。
+
+@example
+@group
+(seq-filter (lambda (elt) (> elt 0)) [1 -1 3 -3 5])
+@result{} (1 3 5)
+@end group
+@group
+(seq-filter (lambda (elt) (> elt 0)) '(-1 -3 -5))
+@result{} nil
+@end group
+@end example
+@end defun
+
+@defun seq-remove predicate sequence
+@cindex removing from sequences
+  この関数は@var{predicate}が@code{nil}をリターンした@var{sequence}内のすべての要素のリストをリターンする。
+
+@example
+@group
+(seq-remove (lambda (elt) (> elt 0)) [1 -1 3 -3 5])
+@result{} (-1 -3)
+@end group
+@group
+(seq-remove (lambda (elt) (< elt 0)) '(-1 -3 -5))
+@result{} nil
+@end group
+@end example
+@end defun
+
+@defun seq-reduce function sequence initial-value
+@cindex reducing sequences
+  この関数は@var{initial-value}と@var{sequence}の1つ目の要素で@var{function}を呼び出し、次にその結果と@var{sequence}の2つ目の要素で@var{function}を呼び出し、その次にその結果と@var{sequence}の3つ目の要素で、...と呼び出した結果をリターンする。@var{function}は引数が2つの関数であること。
+
+@var{function}は2つの引数で呼び出される。1つ目の引数として@var{intial-value}
+(その後は累積値)、2つ目の引数として@var{sequence}内の要素が使用される。
+
+@var{sequence}が空なら、@var{function}を呼び出さずに@var{initial-value}をリターンする。
+
+@example
+@group
+(seq-reduce #'+ [1 2 3 4] 0)
+@result{} 10
+@end group
+@group
+(seq-reduce #'+ '(1 2 3 4) 5)
+@result{} 15
+@end group
+@group
+(seq-reduce #'+ '() 3)
+@result{} 3
+@end group
+@end example
+@end defun
+
+@defun seq-some predicate sequence
+  この関数は@var{sequence}の各要素に順に@var{predicate}を適用してリターンされた、最初の非@code{nil}値をリターンする。
+
+@example
+@group
+(seq-some #'numberp ["abc" 1 nil])
+@result{} t
+@end group
+@group
+(seq-some #'numberp ["abc" "def"])
+@result{} nil
+@end group
+@group
+(seq-some #'null ["abc" 1 nil])
+@result{} t
+@end group
+@group
+(seq-some #'1+ [2 4 6])
+@result{} 3
+@end group
+@end example
+@end defun
+
+@defun seq-find predicate sequence &optional default
+  この関数は@var{predicate}が非@code{nil}をリターンした、@var{sequence}内の最初の要素をリターンする。@var{predicate}にマッチする要素がなければ、この関数は@var{default}をリターンする。
+
+この関数は見つかった要素が@var{default}と等しい場合、要素が見つかったかどうかを知る術がないので曖昧さをもつことに注意。
+
+@example
+@group
+(seq-find #'numberp ["abc" 1 nil])
+@result{} 1
+@end group
+@group
+(seq-find #'numberp ["abc" "def"])
+@result{} nil
+@end group
+@end example
+@end defun
+
+@defun seq-every-p predicate sequence
+  この関数は@var{sequence}の各要素に@var{predicate}を適用して、すべてが非@code{nil}をリターンしたら非@code{nil}をリターンする。
+
+@example
+@group
+(seq-every-p #'numberp [2 4 6])
+@result{} t
+@end group
+@group
+(seq-every-p #'numberp [2 4 "6"])
+@result{} nil
+@end group
+@end example
+@end defun
+
+@defun seq-empty-p sequence
+  この関数は@var{sequence}が空なら@code{nil}をリターンする。
+
+@example
+@group
+(seq-empty-p "not empty")
+@result{} nil
+@end group
+@group
+(seq-empty-p "")
+@result{} t
+@end group
+@end example
+@end defun
+
+@defun seq-count predicate sequence
+  この関数は@var{sequence}内で@var{predicate}が非@code{nil}をリターンした要素の個数をリターンする。
+
+@example
+(seq-count (lambda (elt) (> elt 0)) [-1 2 0 3 -2])
+@result{} 2
+@end example
+@end defun
+
+@cindex sorting sequences
+@defun seq-sort function sequence
+  この関数は@var{function}に応じてソートされた@var{sequence}のコピーをリターンする。@var{function}は2つの引数を受け取り、1つ目の引数が2つ目より前にソートされるべきなら非@code{nil}をリターンする。
+@end defun
+
+@defun seq-sort-by function predicate sequence
+  この関数は@code{seq-sort}と似ているがソート前に@var{sequence}の要素に@var{function}を適用して変換する点が異なる。@var{function}は単一の引数を受け取る関数。
+
+@example
+(seq-sort-by #'seq-length #'> ["a" "ab" "abc"])
+@result{} ["abc" "ab" "a"]
+@end example
+@end defun
+
+
+@defun seq-contains-p sequence elt &optional function
+  この関数は@var{sequence}内の少なくとも1つの要素が@var{elt}とequalなら非@code{nil}をリターンする。オプション引数@var{function}が非@code{nil}なら、それはデフォルトの@code{equal}のかわりに使用する2つの引数を受け取る関数であること。
+
+@example
+@group
+(seq-contains-p '(symbol1 symbol2) 'symbol1)
+@result{} t
+@end group
+@group
+(seq-contains-p '(symbol1 symbol2) 'symbol3)
+@result{} nil
+@end group
+@end example
+
+@end defun
+
+@defun seq-set-equal-p sequence1 sequence2 &optional testfn
+この関数は順序とは無関係に@var{sequence1}と@var{sequence2}が同じ要素を含むかどうかをチェックする。オプション引数@var{testfn}が非@code{nil}なら、デフォルトの@code{equal}のかわりに使用する2つの引数を受け取る関数であること。
+
+@example
+@group
+(seq-set-equal-p '(a b c) '(c b a))
+@result{} t
+@end group
+@group
+(seq-set-equal-p '(a b c) '(c b))
+@result{} nil
+@end group
+@group
+(seq-set-equal-p '("a" "b" "c") '("c" "b" "a"))
+@result{} t
+@end group
+@group
+(seq-set-equal-p '("a" "b" "c") '("c" "b" "a") #'eq)
+@result{} nil
+@end group
+@end example
+
+@end defun
+
+@defun seq-position sequence elt &optional function
+  この関数は@var{elt}と@code{equal}であるような@var{sequence}内の最初の要素のインデックスをリターンする。オプション引数@var{function}が非@code{nil}なら、それはデフォルトの@code{equal}のかわりに使用する2つの引数を受け取る関数であること。
+
+@example
+@group
+(seq-position '(a b c) 'b)
+@result{} 1
+@end group
+@group
+(seq-position '(a b c) 'd)
+@result{} nil
+@end group
+@end example
+@end defun
+
+
+@defun seq-uniq sequence &optional function
+  この関数は重複を削除した@var{sequence}の要素のリストをリターンする。オプション引数@var{function}が非@code{nil}なら、それはデフォルトの@code{equal}のかわりに使用する2つの引数を受け取る関数であること。
+
+@example
+@group
+(seq-uniq '(1 2 2 1 3))
+@result{} (1 2 3)
+@end group
+@group
+(seq-uniq '(1 2 2.0 1.0) #'=)
+@result{} (1 2)
+@end group
+@end example
+@end defun
+
+@defun seq-subseq sequence start &optional end
+@cindex sub-sequence
+  この関数は@var{sequence}の@var{start}から@var{end}(いずれも整数)までのサブセットをリターンする(@var{end}のデフォルトは最後の要素)。@var{start}か@var{end}が負なら@var{sequence}の最後から数える。
+
+@example
+@group
+(seq-subseq '(1 2 3 4 5) 1)
+@result{} (2 3 4 5)
+@end group
+@group
+(seq-subseq '[1 2 3 4 5] 1 3)
+@result{} [2 3]
+@end group
+@group
+(seq-subseq '[1 2 3 4 5] -3 -1)
+@result{} [3 4]
+@end group
+@end example
+@end defun
+
+@defun seq-concatenate type &rest sequences
+  この関数は@var{sequences}を結合して作成された@var{type}型のシーケンスをリターンする。@var{type}は@code{vector}、@code{list}、@code{string}のいずれか。
+
+@example
+@group
+(seq-concatenate 'list '(1 2) '(3 4) [5 6])
+@result{} (1 2 3 4 5 6)
+@end group
+@group
+(seq-concatenate 'string "Hello " "world")
+@result{} "Hello world"
+@end group
+@end example
+@end defun
+
+@defun seq-mapcat function sequence &optional type
+  この関数は@var{sequence}の各要素に@var{function}を適用した結果に、@code{seq-concatenate}を適用した結果をリターンする。結果は@var{type}型のシーケンス、または@var{type}が@code{nil}ならリストである。
+
+@example
+@group
+(seq-mapcat #'seq-reverse '((3 2 1) (6 5 4)))
+@result{} (1 2 3 4 5 6)
+@end group
+@end example
+@end defun
+
+@defun seq-partition sequence n
+  この関数は長さ@var{n}のサブシーケンスへグループ化した@var{sequence}の要素のリストをリターンする。最後のシーケンスに含まれる要素は@var{n}より少ないかもしれない。@var{n}は整数であること。@var{n}が0以下の整数ならリターン値は@code{nil}。
+
+@example
+@group
+(seq-partition '(0 1 2 3 4 5 6 7) 3)
+@result{} ((0 1 2) (3 4 5) (6 7))
+@end group
+@end example
+@end defun
+
+@defun seq-intersection sequence1 sequence2 &optional function
+@cindex sequences, intersection of
+@cindex intersection of sequences
+  この関数は@var{sequence1}と@var{sequence2}の両方に出現する要素のリストをリターンする。オプション引数@var{function}が非@code{nil}なら、それはデフォルトの@code{equal}のかわりに比較に使用する2つの引数を受け取る関数であること。
+
+@example
+@group
+(seq-intersection [2 3 4 5] [1 3 5 6 7])
+@result{} (3 5)
+@end group
+@end example
+@end defun
+
+
+@defun seq-difference sequence1 sequence2 &optional function
+  この関数は@var{sequence1}に出現するが@var{sequence2}に出現しない要素のリストをリターンする。オプション引数@var{function}が非@code{nil}なら、それはデフォルトの@code{equal}のかわりに比較に使用する2つの引数を受け取る関数であること。
+
+@example
+@group
+(seq-difference '(2 3 4 5) [1 3 5 6 7])
+@result{} (2 4)
+@end group
+@end example
+@end defun
+
+@defun seq-group-by function sequence
+  この関数は@var{sequence}の各要素に@var{function}を適用して、その結果をキーとして@var{sequence}をalistに分割する。キーの比較には@code{equal}を使用する。
+
+@example
+@group
+(seq-group-by #'integerp '(1 2.1 3 2 3.2))
+@result{} ((t 1 3 2) (nil 2.1 3.2))
+@end group
+@group
+(seq-group-by #'car '((a 1) (b 2) (a 3) (c 4)))
+@result{} ((b (b 2)) (a (a 1) (a 3)) (c (c 4)))
+@end group
+@end example
+@end defun
+
+@defun seq-into sequence type
+@cindex convert sequence to another type
+@cindex list to vector
+@cindex vector to list
+@cindex string to vector
+  この関数はシーケンス@var{sequence}を@var{type}型のシーケンスに変換する。@var{type}は@code{vector}、@code{string}、@code{list}のいずれかであること。
+
+@example
+@group
+(seq-into [1 2 3] 'list)
+@result{} (1 2 3)
+@end group
+@group
+(seq-into nil 'vector)
+@result{} []
+@end group
+@group
+(seq-into "hello" 'vector)
+@result{} [104 101 108 108 111]
+@end group
+@end example
+@end defun
+
+@defun seq-min sequence
+@cindex minimum value of sequence
+@cindex sequence minimum
+  この関数は@var{sequence}の最小の要素をリターンする。@var{sequence}の要素は数字かマーカー(@ref{Markers}を参照)でなければならない。
+
+@example
+@group
+(seq-min [3 1 2])
+@result{} 1
+@end group
+@group
+(seq-min "Hello")
+@result{} 72
+@end group
+@end example
+@end defun
+
+@defun seq-max sequence
+@cindex maximum value of sequence
+@cindex sequence maximum
+  この関数は@var{sequence}の最大の要素をリターンする。@var{sequence}の要素は数字かマーカーでなければならない。
+
+@example
+@group
+(seq-max [1 3 2])
+@result{} 3
+@end group
+@group
+(seq-max "Hello")
+@result{} 111
+@end group
+@end example
+@end defun
+
+@defmac seq-doseq (var sequence) body@dots{}
+@cindex sequence iteration
+@cindex iteration over vector or string
+  このマクロは@code{dolist} (@ref{Iteration,
+dolist}を参照)と同様だが、@var{sequence}にリスト、ベクター、文字列のいずれかを指定できる点が異なる。これ主な利点は副作用である。
+@end defmac
+
+@anchor{seq-let}
+@defmac seq-let var-sequence val-sequence body@dots{}
+@cindex sequence destructuring
+  このマクロは@var{var-sequence}内で定義される変数に@var{val-sequence}の対応する要素をバインドする。これは@dfn{分割代入(destructuring
+binding)}として知られている。@var{var-sequence}の要素は、ネストされた非構造化を許容することにより自身にシーケンスを含むことができる。
+
+@var{var-sequence}シーケンスには、@var{val-sequence}の残りにバインドされる変数名が後続するような@code{&rest}マーカーを含めることもできる。
+
+@example
+@group
+(seq-let [first second] [1 2 3 4]
+  (list first second))
+@result{} (1 2)
+@end group
+@group
+(seq-let (_ a _ b) '(1 2 3 4)
+  (list a b))
+@result{} (2 4)
+@end group
+@group
+(seq-let [a [b [c]]] [1 [2 [3]]]
+  (list a b c))
+@result{} (1 2 3)
+@end group
+@group
+(seq-let [a b &rest others] [1 2 3 4]
+  others)
+@end group
+@result{} [3 4]
+@end example
+
+@code{pcase}パターンは分割代入にたいする代替えの機能を提供する。@ref{Destructuring with pcase
+Patterns}を参照のこと。
+@end defmac
+
+@defun seq-random-elt sequence
+  この関数は@var{sequence}の要素をランダムにリターンする。
+
+@example
+@group
+(seq-random-elt [1 2 3 4])
+@result{} 3
+(seq-random-elt [1 2 3 4])
+@result{} 2
+(seq-random-elt [1 2 3 4])
+@result{} 4
+(seq-random-elt [1 2 3 4])
+@result{} 2
+(seq-random-elt [1 2 3 4])
+@result{} 1
+@end group
+@end example
+
+  @var{sequence}が空ならこの関数はエラーをシグナルする。
+@end defun
+
+@node Arrays
+@section 配列
+@cindex array
+
+  @dfn{配列(array)}オブジェクトは、いくつかのLispオブジェクトを保持するスロットをもち、これらのオブジェクトは配列の要素と呼ばれます。配列内の任意の要素は一定時間でアクセスされます。対照的にリスト内の要素のアクセスに要する時間は、その要素がリスト内のどの位置にあるかに比例します。
+
+  Emacsは4つの配列型 ---@dfn{文字列(strings、@ref{String
+Type}を参照)}、@dfn{ベクター(vectors、@ref{Vector
+Type}を参照)}、@dfn{ブールベクター(bool-vectors、@ref{Bool-Vector
+Type}を参照)}、@dfn{文字テーブル(char-tables、@ref{Char-Table Type}を参照)} ---
+を定義しており、これらはすべて1次元です。ベクターと文字テーブルは任意の型の要素を保持できますが、文字列は文字だけ、ブールベクターは@code{t}か@code{nil}しか保持できません。
+
+  4種のすべての配列はこれらの特性を共有します:
+
+@itemize @bullet
+@item
+配列の1番目の要素はインデックス0、2番目はインデックス1、...となる。これは@dfn{0基準(zero-origin)}のインデックスづけと呼ばれる。たとえば4要素の配列のインデックスは0、1、2、3。
+
+@item
+配列の長さは一度配列が作成されたら固定されるので、既存の配列の長さは変更できない。
+
+@item
+評価において配列は定数 --- つまりそれ自身へと評価される。
+
+@item
+配列の要素は関数@code{aref}で参照したり、関数@code{aset}で変更できる(@ref{Array Functions}を参照)。
+@end itemize
+
+    配列を作成したとき、文字テーブル以外では長さを指定しなければなりません。文字テーブルの長さは文字コードの範囲により決定されるので長さを指定できません。
+
+  原則として、テキスト文字の配列が欲しい場合は、文字列とベクターのどちらかを使用できます。実際のところ4つの理由により,そのような用途にたいしては、わたしたちは常に文字列を選択します:
+
+@itemize @bullet
+@item
+文字列は同じ要素をもつベクターと比較して占めるスペースが1/4である。
+
+@item
+文字列の内容はテキストとして、より明解な方法によりプリントされる。
+
+@item
+文字列はテキストプロパティーを保持できる。@ref{Text Properties}を参照のこと。
+
+@item
+Emacsの特化した編集機能とI/O機能の多くが文字列だけに適用される。たとえば文字列をバッファーに挿入する方法では、文字のベクターをバッファーに挿入できない。@ref{Strings
+and Characters}を参照のこと
+@end itemize
+
+  対照的に、(キーシーケンスのような)キーボード入力文字の配列では、多くのキーボード入力文字は文字列に収まる範囲の外にあるので、ベクターが必要になるでしょう。@ref{Key
+Sequence Input}を参照してください。
+
+@node Array Functions
+@section 配列を操作する関数
+
+  このセクションではすべての型の配列に適用される関数を説明します。
+
+@defun arrayp object
+この関数は@var{object}が配列(ベクター、文字列、ブールベクター、文字テーブル)なら@code{t}をリターンする。
+
+@example
+@group
+(arrayp [a])
+     @result{} t
+(arrayp "asdf")
+     @result{} t
+(arrayp (syntax-table))    ;; @r{文字テーブル}
+     @result{} t
+@end group
+@end example
+@end defun
+
+@defun aref arr index
+@cindex array elements
+この関数は@var{arr} (配列かレコード)の@var{index}番目の要素をリターンする。1番目の要素のインデクスは0。
+
+@example
+@group
+(setq primes [2 3 5 7 11 13])
+     @result{} [2 3 5 7 11 13]
+(aref primes 4)
+     @result{} 11
+@end group
+@group
+(aref "abcdefg" 1)
+     @result{} 98           ; @r{@samp{b}の@acronym{ASCII}コードは98}
+@end group
+@end example
+
+@ref{Sequence Functions}の関数@code{elt}も参照されたい。
+@end defun
+
+@defun aset array index object
+この関数は@var{array}の@var{index}番目の要素を@var{object}にセットする。この関数は@var{object}をリターンする。
+
+@example
+@group
+(setq w (vector 'foo 'bar 'baz))
+     @result{} [foo bar baz]
+(aset w 0 'fu)
+     @result{} fu
+w
+     @result{} [fu bar baz]
+@end group
+
+@group
+;; @r{@code{copy-sequence}は後で変更する文字列をコピーする}
+(setq x (copy-sequence "asdfasfd"))
+     @result{} "asdfasfd"
+(aset x 3 ?Z)
+     @result{} 90
+x
+     @result{} "asdZasfd"
+@end group
+@end example
+
+@var{array}はmutableであること。@ref{Mutability}を参照のこと。
+
+@var{array}が文字列で@var{object}が文字でなければ、結果は@code{wrong-type-argument}エラーとなる。この関数は文字列の挿入で必要なら、ユニバイト文字列をマルチバイト文字列に変換する。
+@end defun
+
+@defun fillarray array object
+この関数は配列@var{array}を@var{object}で充填するので、@var{array}のすべての要素は@var{object}になる。この関数は@var{array}をリターンする。
+
+@example
+@group
+(setq a (copy-sequence [a b c d e f g]))
+     @result{} [a b c d e f g]
+(fillarray a 0)
+     @result{} [0 0 0 0 0 0 0]
+a
+     @result{} [0 0 0 0 0 0 0]
+@end group
+@group
+(setq s (copy-sequence "When in the course"))
+     @result{} "When in the course"
+(fillarray s ?-)
+     @result{} "------------------"
+@end group
+@end example
+
+@var{array}が文字列で@var{object}が文字でなければ、結果は@code{wrong-type-argument}エラーとなる。
+@end defun
+
+配列と判っているオブジェクトにたいしては、一般的なシーケンス関数@code{copy-sequence}と@code{length}が有用なときがよくあります。@ref{Sequence
+Functions}を参照してください。
+
+@node Vectors
+@section ベクター
+@cindex vector (type)
+
+  @dfn{ベクター(vector)}とは任意のLispオブジェクトを要素にもつことができる、一般用途のための配列です(対照的に文字列の要素は文字のみ。@ref{Strings
+and Characters}を参照)。Emacsではベクターはキーシーケンス(@ref{Key
+Sequences}を参照)、シンボル検索用のテーブル(@ref{Creating
+Symbols}を参照)、バイトコンパイルされた関数表現の一部(@ref{Byte Compilation}を参照)などの多くの目的で使用されます。
+
+  他の配列と同様、ベクターは0基準のインデックスづけを使用し、1番目の要素はインデックス0になります。
+
+  ベクターは角カッコ(square
+brackets)で囲まれた要素としてプリントされます。したがってシンボル@code{a}、@code{b}、@code{a}を要素にもつベクターは、@code{[a
+b a]}とプリントされます。Lisp入力として同じ方法でベクターを記述できます。
+
+  文字列や数値と同様にベクターは定数として評価され、評価された結果は同じベクターになります。ベクターの要素は評価も確認もされません。@ref{Self-Evaluating
+Forms}を参照してください。角カッコ(square
+brackets)で記述されたベクターを@code{aset}や他の破壊的操作を通じて修正しないでください。@ref{Mutability}を参照してください。
+
+  以下はこれらの原理を表す例です:
+
+@example
+@group
+(setq avector [1 two '(three) "four" [five]])
+     @result{} [1 two '(three) "four" [five]]
+(eval avector)
+     @result{} [1 two '(three) "four" [five]]
+(eq avector (eval avector))
+     @result{} t
+@end group
+@end example
+
+@node Vector Functions
+@section ベクターのための関数
+
+  ベクターに関連した関数をいくつか示します:
+
+@defun vectorp object
+この関数は@var{object}がベクターなら@code{t}をリターンする。
+
+@example
+@group
+(vectorp [a])
+     @result{} t
+(vectorp "asdf")
+     @result{} nil
+@end group
+@end example
+@end defun
+
+@defun vector &rest objects
+この関数は引数@var{objects}を要素にもつベクターを作成してリターンする。
+
+@example
+@group
+(vector 'foo 23 [bar baz] "rats")
+     @result{} [foo 23 [bar baz] "rats"]
+(vector)
+     @result{} []
+@end group
+@end example
+@end defun
+
+@defun make-vector length object
+この関数は各要素が@var{object}に初期化された、@var{length}個の要素からなる新しいベクターをリターンする。
+
+@example
+@group
+(setq sleepy (make-vector 9 'Z))
+     @result{} [Z Z Z Z Z Z Z Z Z]
+@end group
+@end example
+@end defun
+
+@defun vconcat &rest sequences
+@cindex copying vectors
+この関数は@var{sequences}のすべての要素を含む新しいベクターをリターンする。引数@var{sequences}は正リスト、ベクター、文字列、ブールベクター。@var{sequences}が与えられければ空のベクターがリターンされる。
+
+値は空のベクター、またはすべての既存ベクターと@code{eq}ではないような空ではない新しいベクターのいずれか。
+
+@example
+@group
+(setq a (vconcat '(A B C) '(D E F)))
+     @result{} [A B C D E F]
+(eq a (vconcat a))
+     @result{} nil
+@end group
+@group
+(vconcat)
+     @result{} []
+(vconcat [A B C] "aa" '(foo (6 7)))
+     @result{} [A B C 97 97 foo (6 7)]
+@end group
+@end example
+
+@code{vconcat}関数は、引数としてバイトコード関数オブジェクトも受け取ることができる。これはバイトコード関数オブジェクトの内容全体にアクセスするのを容易にするための特別な機能である。@ref{Byte-Code
+Objects}を参照のこと。
+
+結合を行なう他の関数については@ref{Mapping Functions}の@code{mapconcat}、@ref{Creating
+Strings}の@code{concat}、@ref{Building Lists}の@code{append}を参照されたい。
+@end defun
+
+  @code{append}関数はベクターを同じ要素をもつリストに変換する方法も提供します:
+
+@example
+@group
+(setq avector [1 two (quote (three)) "four" [five]])
+     @result{} [1 two '(three) "four" [five]]
+(append avector nil)
+     @result{} (1 two '(three) "four" [five])
+@end group
+@end example
+
+@node Char-Tables
+@section 文字テーブル
+@cindex char-tables
+@cindex extra slots of char-table
+
+  文字テーブル(char-table)はベクターとよく似ていますが、文字テーブルは文字コードによりインデックスづけされます。文字テーブルのインデックスには、修飾キーをともなわない任意の有効な文字コードを使用できます。他の配列と同様に、@code{aref}と@code{aset}で文字テーブルの要素にアクセスできます。加えて、文字テーブルは追加のデータを保持するために、特定の文字コードに関連づけられていない@dfn{エキストラスロット(extra
+slots)}をもつことができます。ベクターと同様、文字テーブルは定数として評価され、任意の型の要素を保持できます。
+
+@cindex subtype of char-table
+  文字テーブルはそれぞれ@dfn{サブタイプ(subtype)}をもち、これは2つの目的をもつシンボルです:
+
+@itemize @bullet
+@item
+サブタイプはそれがなんのための文字テーブルなのかを簡単に表す方法を提供する。たとえばディスプレーテーブル(display
+tables)はサブタイプが@code{display-table}の文字テーブルであり、構文テーブル(syntax
+tables)はサブタイプが@code{syntax-table}の文字テーブル。以下で説明するように関数@code{char-table-subtype}を使用してサブタイプの問い合わせが可能。
+
+@item
+サブタイプは文字テーブル内のいくつかの@dfn{エキストラスロット(extra
+slots)}を制御する。エキストラスロットの数は、そのサブタイプの@code{char-table-extra-slots}シンボルプロパティー(@ref{Symbol
+Properties}を参照)により指定され、値は0から10の整数。サブタイプにそのようなシンボルプロパティーがなければ、その文字テーブルはエキストラスロットをもたない。
+@end itemize
+
+@cindex parent of char-table
+  文字テーブルは@dfn{親(parent)}をもつことができ、これは他の文字テーブルです。文字テーブルが親をもつ場合、その文字テーブルで特定の文字@var{c}にたいして@code{nil}が指定されていたら、親と指定された文字テーブルで指定された値を継承します。言い方を変えると、文字テーブル@var{char-table}で@var{c}に@code{nil}が指定されていたら、@code{(aref
+@var{char-table} @var{c})}は@var{char-table}の親の値をリターンします。
+
+@cindex default value of char-table
+  文字テーブルは@dfn{デフォルト値(default
+value)}をもつこともできます。デフォルト値をもつとき、文字テーブル@var{char-table}が@var{c}にたいして@code{nil}値を指定すると、@code{(aref
+@var{char-table} @var{c})}はデフォルト値をリターンします。
+
+@defun make-char-table subtype &optional init
+サブタイプ@var{subtype}(シンボル)をもつ、新たに作成された文字テーブルをリターンする。各要素は@var{init}に初期化され、デフォルトは@code{nil}。文字テーブルが作成された後で、文字テーブルのサブタイプを変更することはできない。
+
+すべての文字テーブルは、インデックスとなる任意の有効な文字テーブルのための空間をもつので、文字テーブルの長さを指定する引数はない。
+
+@var{subtype}がシンボルプロパティー@code{char-table-extra-slots}をもつなら、それはその文字列テーブル内のエキストラスロットの数を指定する。値には0から10の整数を指定し、これ以外なら@code{make-char-table}はエラーとなる。@var{subtype}がシンボルプロパティー@code{char-table-extra-slots}(@ref{Property
+Lists}を参照)をもたなければ、その文字テーブルはエキストラスロットをもたない。
+@end defun
+
+@defun char-table-p object
+この関数は@var{object}が文字テーブルなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun char-table-subtype char-table
+この関数は@var{char-table}のサブタイプのシンボルをリターンする。
+@end defun
+
+文字テーブルのデフォルト値にアクセスするための特別な関数は存在しません。これを行なうには@code{char-table-range}を使用します(以下参照)。
+
+@defun char-table-parent char-table
+この関数は@var{char-table}の親をリターンする。親は常に@code{nil}か他の文字テーブルである。
+@end defun
+
+@defun set-char-table-parent char-table new-parent
+この関数は@var{char-table}の親を@var{new-parent}にセットする。
+@end defun
+
+@defun char-table-extra-slot char-table n
+この関数は@var{char-table}のエキストラスロット@var{n}
+(0基準)の内容をリターンする。文字テーブルのエキストラスロットの数は文字テーブルのサブタイプにより決定される。
+@end defun
+
+@defun set-char-table-extra-slot char-table n value
+この関数は@var{char-table}のエキストラスロット@var{n} (0基準)に@var{value}を格納する。
+@end defun
+
+  文字テーブルは1つの文字コードにたいして1つの要素値(element
+value)を指定できます。文字テーブルは文字セット全体にたいして値を指定することもできます。
+
+@defun char-table-range char-table range
+この関数は文字範囲@var{range}にたいして@var{char-table}で指定された値をリターンする。可能な@var{range}は以下のとおり:
+
+@table @asis
+@item @code{nil}
+デフォルト値への参照。
+
+@item @var{char}
+文字@var{char}にたいする要素への参照(@var{char}は有効な文字コードであると仮定)。
+
+@item @code{(@var{from} . @var{to})}
+包括的な範囲@samp{[@var{from}..@var{to}]}内のすべての文字を参照するコンスセル。
+@end table
+@end defun
+
+@defun set-char-table-range char-table range value
+この関数は@var{char-table}内の文字範囲@var{range}にたいして値をセットする。可能な@var{range}は以下のとおり:
+
+@table @asis
+@item @code{nil}
+デフォルト値への参照。
+
+@item @code{t}
+文字コード範囲の全体を参照。
+
+@item @var{char}
+文字@var{char}にたいする要素への参照(@var{char}は有効な文字コードであると仮定)。
+
+@item @code{(@var{from} . @var{to})}
+包括的な範囲@samp{[@var{from}..@var{to}]}内のすべての文字を参照するコンスセル。
+@end table
+@end defun
+
+@defun map-char-table function char-table
+この関数は@var{char-table}の非@code{nil}値ではない各要素にたいして引数@var{function}を呼び出す。@var{function}の呼び出しでは2つの引数(keyとvalue)が指定される。keyは@code{char-table-range}にたいする可能な@var{range}
+(有効な文字か、同じ値を共有する文字範囲を指定するコンスセル@code{(@var{from}
+. @var{to})})。valueは@code{(char-table-range @var{char-table}
+@var{key})}がリターンする値。
+
+全体として、@var{function}に渡されるkey-valueのペアは@var{char-table}に格納されたすべての値を表す。
+
+リターン値は常に@code{nil}である。@code{map-char-table}呼び出しを有用にするために@var{function}は副作用をもつこと。たとえば以下は構文テーブルを調べる方法:
+
+@example
+(let (accumulator)
+   (map-char-table
+    (lambda (key value)
+      (setq accumulator
+            (cons (list
+                   (if (consp key)
+                       (list (car key) (cdr key))
+                     key)
+                   value)
+                  accumulator)))
+    (syntax-table))
+   accumulator)
+@result{}
+(((2597602 4194303) (2)) ((2597523 2597601) (3))
+ ... (65379 (5 . 65378)) (65378 (4 . 65379)) (65377 (1))
+ ... (12 (0)) (11 (3)) (10 (12)) (9 (0)) ((0 8) (3)))
+@end example
+@end defun
+
+@node Bool-Vectors
+@section ブールベクター
+@cindex Bool-vectors
+
+  ブールベクター(bool-vector)はベクターとよく似ていますが、値に@code{t}と@code{nil}しか格納できません。ブールベクターの要素に非@code{nil}値の格納を試みたると、そこには@code{t}が格納されます。すべての配列と同様、ブールベクターのインデックスは0から開始され、一度ブールベクターが作成されたら長さを変更することはできません。ブールベクターは定数として評価されます。
+
+  ブールベクターを処理する特別な関数がいくつかあります。その関数以外にも、他の種類の配列に使用されるのと同じ関数でブールベクターを操作できます。
+
+@defun make-bool-vector length initial
+@var{initial}に初期化された@var{length}要素の新しいブールベクターをリターンする。
+@end defun
+
+@defun bool-vector &rest objects
+この関数は引数@var{objects}を要素にもつブールベクターを作成してリターンする。
+@end defun
+
+@defun bool-vector-p object
+この関数は@var{object}がブールベクターであれば@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+以下で説明するように、ブールベクターのセット処理を行なう関数がいくつかあります:
+
+@defun bool-vector-exclusive-or a b &optional c
+ブールベクター@var{a}と@var{b}の@dfn{ビットごとの排他的論理和(bitwise exclusive
+or)}をリターンする。オプション引数@var{c}が与えられたら、この処理の結果は@var{c}に格納される。引数にはすべて同じ長さのブールベクターを指定すること。
+@end defun
+
+@defun bool-vector-union a b &optional c
+ブールベクター@var{a}と@var{b}の@dfn{ビットごとの論理和(bitwise
+or)}をリターンする。オプション引数@var{c}が与えられたら、この処理の結果は@var{c}に格納される。引数にはすべて同じ長さのブールベクターを指定すること。
+@end defun
+
+@defun bool-vector-intersection a b &optional c
+ブールベクター@var{a}と@var{b}の@dfn{ビットごとの論理積(bitwise
+and)}をリターンする。オプション引数@var{c}が与えられたら、この処理の結果は@var{c}に格納される。引数にはすべて同じ長さのブールベクターを指定すること。
+@end defun
+
+@defun bool-vector-set-difference a b &optional c
+ブールベクター@var{a}と@var{b}の@dfn{差集合(set
+difference)}をリターンする。オプション引数@var{c}が与えられたら、この処理の結果は@var{c}に格納される。引数にはすべて同じ長さのブールベクターを指定すること。
+@end defun
+
+@defun bool-vector-not a &optional b
+ブールベクター@var{a}の@dfn{補集合(set
+complement)}をリターンする。オプション引数@var{b}が与えられたら、この処理の結果は@var{b}に格納される。引数にはすべて同じ長さのブールベクターを指定すること。
+@end defun
+
+@defun bool-vector-subsetp a b
+@var{a}内のすべての@code{t}値が@var{b}でも@code{t}値なら@code{t}、それ以外は@code{nil}をリターンする。引数にはすべて同じ長さのブールベクターを指定すること。
+@end defun
+
+@defun bool-vector-count-consecutive a b i
+@var{i}から始まる@var{a}の、@var{b}と等しい連続する要素の数をリターンする。@code{a}はブールベクターで、@var{b}は@code{t}か@code{nil}、@var{i}は@code{a}のインデックス。
+@end defun
+
+@defun bool-vector-count-population a
+ブールベクター@var{a}から@code{t}であるような要素の数をリターンする。
+@end defun
+
+  長さ8以下のブール値のプリント表記は1文字で表されます。
+
+@example
+@group
+(bool-vector t nil t nil)
+     @result{} #&4"^E"
+(bool-vector)
+     @result{} #&0""
+@end group
+@end example
+
+他のベクター同様、@code{vconcat}を使用してブールベクターをプリントできます:
+
+@example
+@group
+(vconcat (bool-vector nil t nil t))
+     @result{} [nil t nil t]
+@end group
+@end example
+
+  以下はブールベクターを作成、確認、更新する別の例です:
+
+@example
+(setq bv (make-bool-vector 5 t))
+     @result{} #&5"^_"
+(aref bv 1)
+     @result{} t
+(aset bv 3 nil)
+     @result{} nil
+bv
+     @result{} #&5"^W"
+@end example
+
+@noindent
+control-_の2進コードは11111、control-Wは10111なので、この結果は理にかなっています。
+
+@node Rings
+@section オブジェクト用固定長リングの管理
+
+@cindex ring data structure
+  @dfn{リング(ring)}は挿入、削除、ローテーション、剰余(modulo)でインデックスづけされた、参照と走査(traversal)をサポートする固定長のデータ構造です。@code{ring}パッケージにより効率的なリングデータ構造が実装されています。このパッケージは、このセクションにリストした関数を提供します。
+
+  Emacsにあるkillリングやマークリングのようないくつかのリングは、実際には単なるリストとして実装されていることに注意してください。したがってこれらのリングにたいしては、以下の関数は機能しないでしょう。
+
+@defun make-ring size
+この関数は@var{size}オブジェクトを保持できる、新しいリングをリターンする。@var{size}は整数。
+@end defun
+
+@defun ring-p object
+この関数は@var{object}がリングなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun ring-size ring
+この関数は@var{ring}の最大の要素数をリターンする。
+@end defun
+
+@defun ring-length ring
+この関数は@var{ring}に現在含まれるオブジェクトの数をリターンする。値が@code{ring-size}のリターンする値を超えることはない。
+@end defun
+
+@defun ring-elements ring
+この関数は@var{ring}内のオブジェクトのリストをリターンする。リストの順序は新しいオブジェクトが先頭になる。
+@end defun
+
+@defun ring-copy ring
+この関数は新しいリングとして@var{ring}のコピーをリターンする。新しいリングは@var{ring}と同じ(@code{eq}な)オブジェクトを含む。
+@end defun
+
+@defun ring-empty-p ring
+この関数は@var{ring}が空なら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+  リング内の1番新しい要素は常にインデックス0をもちます。より大きいインデックスは、より古い要素に対応します。インデックスはリング長のmoduloにより計算されます。インデックス@minus{}1は1番古い要素、@minus{}2は次に古い要素、...となります。
+
+@defun ring-ref ring index
+この関数はインデックス@var{index}にある@var{ring}内のオブジェクトをリターンする。@var{index}には負やリング長より大きい数を指定できる。@var{ring}が空なら@code{ring-ref}はエラーをシグナルする。
+@end defun
+
+@defun ring-insert ring object
+この関数は1番新しい要素として@var{object}を@var{ring}に挿入して@var{object}をリターンする。
+
+リングが満杯なら新しい要素用の空きを作るために、挿入により1番古い要素が削除される。
+@end defun
+
+@defun ring-remove ring &optional index
+@var{ring}からオブジェクトを削除してそのオブジェクトをリターンする。引数@var{index}はどのアイテムを削除するかを指定する。これが@code{nil}なら、それは1番古いアイテムを削除することを意味する。@var{ring}が空なら@code{ring-remove}はエラーをシグナルする。
+@end defun
+
+@defun ring-insert-at-beginning ring object
+この関数は1番古い要素として@var{object}を@var{ring}に挿入する。リターン値に意味はない。
+
+リングが満杯なら、この関数は挿入される要素のための空きを作るために1番新しい要素を削除する。
+@end defun
+
+@defun ring-resize ring size
+@var{ring}のサイズを@var{size}にセットする。新たなサイズのほうが小さければリング内の古いアイテムは破棄される。
+@end defun
+
+@cindex fifo data structure
+  リングサイズを超過しないよう注意すれば、そのリングをFIFO(first-in-first-out:
+先入れ先出し)のキューとして使用することができます。たとえば:
+
+@lisp
+(let ((fifo (make-ring 5)))
+  (mapc (lambda (obj) (ring-insert fifo obj))
+        '(0 one "two"))
+  (list (ring-remove fifo) t
+        (ring-remove fifo) t
+        (ring-remove fifo)))
+     @result{} (0 t one t "two")
+@end lisp

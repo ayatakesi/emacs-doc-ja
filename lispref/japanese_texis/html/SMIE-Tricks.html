@@ -1,0 +1,118 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>SMIE Tricks (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="SMIE Tricks (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="SMIE Tricks (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="SMIE.html" rel="up" title="SMIE">
+<link href="SMIE-Indentation.html" rel="next" title="SMIE Indentation">
+<link href="SMIE-Lexer.html" rel="prev" title="SMIE Lexer">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="SMIE-Tricks"></span><div class="header">
+<p>
+Next: <a href="SMIE-Indentation.html" accesskey="n" rel="next">SMIE Indentation</a>, Previous: <a href="SMIE-Lexer.html" accesskey="p" rel="prev">SMIE Lexer</a>, Up: <a href="SMIE.html" accesskey="u" rel="up">SMIE</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Fei-Li-napasatoBu-mu"></span><h4 class="subsubsection">23.7.1.5 非力なパーサーと歩む</h4>
+
+<p>SMIEが使用するパーステクニックは、異なるコンテキストでトークンが異なる振る舞いをすることを許容しません。ほとんどのプログラミング言語にたいして、これは順位の競合によりBNF文法を変換するとき明らかになります。
+</p>
+<p>その文法を若干異なるように表現することにより、これらの競合を回避できる場合があります。たとえばModula-2にたいしては以下のようなBNF文法をもつことが自然に思えるかもしれません:
+</p>
+<div class="example">
+<pre class="example">  ...
+  (inst (&quot;IF&quot; exp &quot;THEN&quot; insts &quot;ELSE&quot; insts &quot;END&quot;)
+        (&quot;CASE&quot; exp &quot;OF&quot; cases &quot;END&quot;)
+        ...)
+  (cases (cases &quot;|&quot; cases)
+         (caselabel &quot;:&quot; insts)
+         (&quot;ELSE&quot; insts))
+  ...
+</pre></div>
+
+<p>しかしこれは<code>&quot;ELSE&quot;</code>にたいする競合を生み出すでしょう。その一方でIFルールは、(他の多くのものの中でも特に)<code>&quot;ELSE&quot;
+=
+&quot;END&quot;</code>を暗示します。しかしその一方で<code>&quot;ELSE&quot;</code>は<code>cases</code>内に出現しますが、<code>cases</code>は<code>&quot;END&quot;</code>の左に出現するので、わたしたちは<code>&quot;ELSE&quot;
+&gt; &quot;END&quot;</code>も得ることになります。これは以下を使用して解決できます:
+</p><div class="example">
+<pre class="example">  ...
+  (inst (&quot;IF&quot; exp &quot;THEN&quot; insts &quot;ELSE&quot; insts &quot;END&quot;)
+        (&quot;CASE&quot; exp &quot;OF&quot; cases &quot;END&quot;)
+        (&quot;CASE&quot; exp &quot;OF&quot; cases &quot;ELSE&quot; insts &quot;END&quot;)
+        ...)
+  (cases (cases &quot;|&quot; cases) (caselabel &quot;:&quot; insts))
+  ...
+</pre></div>
+<p>または
+</p><div class="example">
+<pre class="example">  ...
+  (inst (&quot;IF&quot; exp &quot;THEN&quot; else &quot;END&quot;)
+        (&quot;CASE&quot; exp &quot;OF&quot; cases &quot;END&quot;)
+        ...)
+  (else (insts &quot;ELSE&quot; insts))
+  (cases (cases &quot;|&quot; cases) (caselabel &quot;:&quot; insts) (else))
+  ...
+</pre></div>
+
+<p>文法書き換えによる競合の解決には欠点があります。なぜならSMIEはその文法がコードの論理的構造を反映すると仮定するからです。そのためBNFと意図する抽象的構文木の関係を密接に保つことが望まれます。
+</p>
+<p>注意深く考慮した結果、これらの競合が深刻ではなく、<code>smie-bnf-&gt;prec2</code>の<var>resolvers</var>引数を通じて解決する決心をする場合もあるでしょう。これは通常はその文法が単に不明瞭だからです。その文法により記述されるプログラムセットは競合の影響を受けませんが、それらのプログラムにたいする唯一の方法はパースだけです。<code>'((assoc
+&quot;|&quot;))</code>のようなリゾルバ(resolver:
+解決するもの)を追加したいと望むような場合、通常それはセパレーターと2項結合演算子にたいするケースです。これが発生し得る他のケースは<code>'((assoc
+&quot;else&quot; &quot;then&quot;))</code>を使用するような場合における、古典的な<em>ぶら下がりelse問題(dangling else
+problem)</em>です。これは実際に競合があり解決不能なものの、実際のところ問題が発生しそうにないケースにたいしても発生し得ます。
+</p>
+<p>最後に多くのケースではすべての文法再構築努力にも関わらず、いくつかの競合が残るでしょう。しかし失望しないでください。パーサーをより賢くすることはできませんが、あなたの望むようにlexerをスマートにすることは可能です。その方法は競合が発生したら競合を引き起こしたトークンを調べて、それらのうちの1つを2つ以上の異なるトークンに分割する方法です。たとえばトークン<code>&quot;begin&quot;</code>にたいする互換性のない2つの使用を文法が区別する必要があり、見つかった<code>&quot;begin&quot;</code>の種類によってlexerに異なるトークン(たとえば<code>&quot;begin-fun&quot;</code>と<code>&quot;begin-plain&quot;</code>)をリターンさせる場合です。これはlexerにたいして異なるケースを区別する処理を強制し、そのためにlexerは特別な手がかりを見つけるために周囲のテキストを調べる必要があるでしょう。
+</p>
+
+
+
+</body>
+</html>

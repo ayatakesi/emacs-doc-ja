@@ -1,0 +1,147 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Sentinels (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Sentinels (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Sentinels (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Processes.html" rel="up" title="Processes">
+<link href="Query-Before-Exit.html" rel="next" title="Query Before Exit">
+<link href="Processes-and-Threads.html" rel="prev" title="Processes and Threads">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Sentinels"></span><div class="header">
+<p>
+Next: <a href="Query-Before-Exit.html" accesskey="n" rel="next">Query Before Exit</a>, Previous: <a href="Output-from-Processes.html" accesskey="p" rel="prev">Output from Processes</a>, Up: <a href="Processes.html" accesskey="u" rel="up">Processes</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="sentineru_003a-purosesuZhuang-Tai-noBian-Geng-noJian-Zhi-"></span><h3 class="section">38.10 センチネル: プロセス状態の変更の検知</h3>
+<span id="index-process-sentinel"></span>
+<span id="index-sentinel-_0028of-process_0029"></span>
+
+<p><em>プロセスセンチネル(process sentinel:
+プロセス番兵)</em>とは、(Emacsにより送信されたか、そのプロセス自身の動作が原因で送信された)プロセスを終了、停止、継続するシグナルを含む、何らかの理由により関連付けられたプロセスの状態が変化した際には常に呼び出される関数のことです。プロセスがexitする際にもプロセスセンチネルが呼び出されます。センチネルはイベントが発生したプロセスとイベントのタイプを記述する文字列という2つの引数を受け取ります。
+</p>
+<span id="index-default-sentinel-function-of-a-process"></span>
+<p>プロセスにたいして何もセンチネル関数が指定されていなければ、プロセスのバッファーにプロセス名とイベントを記述する文字列とともにメッセージを挿入するデフォルトのセンチネル関数を使用します。
+</p>
+<p>イベントを記述する文字列は以下のいずれかのような外見をもちます:
+</p>
+<ul>
+<li> <code>&quot;finished\n&quot;</code>.
+
+</li><li> <code>&quot;deleted\n&quot;</code>.
+
+</li><li> <code>&quot;exited abnormally with code <var>exitcode</var> (core dumped)\n&quot;</code>.<br>&ldquo;core
+dumped&rdquo;の部分はオプションであり、プロセスがコアをダンプした場合のみ出現する。
+
+</li><li> <code>&quot;failed with code <var>fail-code</var>\n&quot;</code>.
+
+</li><li> <code>&quot;<var>signal-description</var> (core
+dumped)\n&quot;</code>.<br><var>signal-description</var>は<code>SIGKILL</code>にたいする<code>&quot;killed&quot;</code>のようなシステム依存の説明テキスト。&ldquo;core
+dumped&rdquo;の部分はオプションであり、プロセスがコアをダンプした場合のみ出現する。
+
+</li><li> <code>&quot;open from <var>host-name</var>\n&quot;</code>.
+
+</li><li> <code>&quot;open\n&quot;</code>.
+
+</li><li> <code>&quot;connection broken by remote peer\n&quot;</code>.
+</li></ul>
+
+<p>センチネルはEmacsが(端末入力や時間経過、またはプロセス出力を)待機している間だけ実行されます。これは他のLispプログラムの途中のランダムな箇所で実行されるセンチネルが原因となるタイミングエラーを無視します。プログラムはセンチネルが実行されるように、<code>sit-for</code>や<code>sleep-for</code>(<a href="Waiting.html">Waiting</a>を参照)、または<code>accept-process-output</code>(<a href="Accepting-Output.html">Accepting Output</a>を参照)を呼び出すことにより待機することができます。Emacsはコマンドループが入力を読み取る際にもセンチネルの実行を許可します。<code>delete-process</code>は実行中のプログラムを終了させる際にセンチネルを呼び出します。
+</p>
+<p>Emacsは1つのプロセスのセンチネル呼び出しの理由のために複数のキューを保持しません。これはカレント状態と変化があった事実だけを記録します。したがって非常に短い間隔で連続して状態に2つの変化があった場合には、一度だけセンチネルが呼び出されます。しかしプロセスの終了は常に正確に1回センチネルを実行するでしょう。これは終了後にプロセス状態が再び変更されることはないからです。
+</p>
+<p>Emacsはプロセスセンチネル実行の前にプロセスからの出力をチェックします。プロセス終了によりセンチネルが一度実行されると、そのプロセスから更なる出力は到着しません。
+</p>
+<p>プロセスのバッファーに出力を書き込むセンチネルは、そのバッファーがまだ生きているかチェックするべきです。死んだバッファーへの挿入を試みるとエラーになるでしょう。そのバッファーがすでに死んでいれば<code>(buffer-name
+(process-buffer <var>process</var>))</code>は<code>nil</code>をリターンします。
+</p>
+<p>quitは通常はセンチネル内では抑制されます。さもないとコマンドレベルでの<kbd>C-g</kbd>のタイプ、またはユーザーコマンドのquitは予測できません。センチネル内部でのquitを許可したければ<code>inhibit-quit</code>を<code>nil</code>にバインドしてください。ほとんどの場合において、これを行う正しい方法はマクロ<code>with-local-quit</code>です。<a href="Quitting.html">Quitting</a>を参照してください。
+</p>
+<p>センチネルの実行中にエラーが発生した場合には、センチネル開始時に実行中だったプログラムが何であれ実行を停止しないように自動的にcatchされます。しかし<code>debug-on-error</code>が非<code>nil</code>ならエラーはcatchされません。これによりLispデバッガーを使用したセンチネルのデバッグが可能になります。<a href="Debugger.html">Debugger</a>を参照してください。
+</p>
+<p>センチネルの実行中にはセンチネルが再帰的に実行されないように、プロセスセンチネルは一時的に<code>nil</code>にセットされます。この理由によりセンチネルが新たにセンチネルを指定することはできません。
+</p>
+<p>センチネル実行中にはEmacsが自動的にマッチデータの保存とリストアを行うことに注意してください。<a href="Match-Data.html">Match Data</a>を参照してください。
+</p>
+<dl>
+<dt id="index-set_002dprocess_002dsentinel">Function: <strong>set-process-sentinel</strong> <em>process sentinel</em></dt>
+<dd><p>この関数は<var>sentinel</var>を<var>process</var>に関連付ける。<var>sentinel</var>が<code>nil</code>なら、そのプロセスはプロセス状態変更時にプロセスのバッファーにメッセージを挿入するデフォルトのセンチネルをもつことになるだろう。
+</p>
+<p>プロセスセンチネルの変更は即座に効果を発揮する。そのセンチネルは実行される予定だがまだ呼び出されておらず、かつ新たなセンチネルを指定した場合には、最終的なセンチネル呼び出しには新たなセンチネルが使用されるだろう。
+</p>
+<div class="example">
+<pre class="example">(defun msg-me (process event)
+   (princ
+     (format &quot;Process: %s had the event '%s'&quot; process event)))
+(set-process-sentinel (get-process &quot;shell&quot;) 'msg-me)
+     &rArr; msg-me
+</pre><pre class="example">(kill-process (get-process &quot;shell&quot;))
+     -| Process: #&lt;process shell&gt; had the event 'killed'
+     &rArr; #&lt;process shell&gt;
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-process_002dsentinel">Function: <strong>process-sentinel</strong> <em>process</em></dt>
+<dd><p>この関数は<var>process</var>のセンチネルをリターンする。
+</p></dd></dl>
+
+<p>あるプロセス状態の変化を複数のセンチネルに渡す必要がある場合には、既存のセンチネルと新たなセンチネルを組み合わせるために<code>add-function</code>を使用できます。<a href="Advising-Functions.html">Advising Functions</a>を参照してください。
+</p>
+<dl>
+<dt id="index-waiting_002dfor_002duser_002dinput_002dp">Function: <strong>waiting-for-user-input-p</strong></dt>
+<dd><p>この関数はセンチネルやフィルター関数の実行中に、もしEmacsがセンチネルやフィルター関数呼び出し時にユーザーのキーボード入力を待機していたら非<code>nil</code>、そうでなければ<code>nil</code>をリターンする。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

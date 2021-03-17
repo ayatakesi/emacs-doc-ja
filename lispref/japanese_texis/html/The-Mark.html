@@ -1,0 +1,235 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>The Mark (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="The Mark (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="The Mark (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Markers.html" rel="up" title="Markers">
+<link href="The-Region.html" rel="next" title="The Region">
+<link href="Moving-Markers.html" rel="prev" title="Moving Markers">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="The-Mark"></span><div class="header">
+<p>
+Next: <a href="The-Region.html" accesskey="n" rel="next">The Region</a>, Previous: <a href="Moving-Markers.html" accesskey="p" rel="prev">Moving Markers</a>, Up: <a href="Markers.html" accesskey="u" rel="up">Markers</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="maku"></span><h3 class="section">31.7 マーク</h3>
+<span id="index-mark_002c-the"></span>
+
+<p>バッファーはそれぞれ<em>マーク(mark)</em>というバッファー専用の特別なマーカーをもちます。バッファーが新たに作成される際には、このマーカーはすでに存在していますがどこも指していません。これはそのバッファーにはまだマークが存在しないことを意味します。それ以降のコマンドがマークをセットできます。
+</p>
+<p>マークは<code>kill-region</code>や<code>indent-rigidly</code>のような多くのコマンドにたいしてテキスト範囲をバインドするための位置を指定します。これらのコマンドは、通常はポイントとマークの間の<em>リージョン(region)</em>と呼ばれるテキストに作用します。リージョンを操作するコマンドを記述する場合にはマークを直接調べず、かわりに&lsquo;<samp>r</samp>&rsquo;指定とともに<code>interactive</code>を使用してください。このようにすればインタラクティブな呼び出しではコマンドの引数としてポイントとマークの値が提供され、かつ他のLispプログラムは引数を明示的に指定できます。<a href="Interactive-Codes.html">Interactive Codes</a>を参照してください。
+</p>
+<p>いくつかのコマンドは副作用(side-effect)としてマークをセットします。コマンドはユーザーがそれを使用する可能性がある場合のみマークをセットするべきであって、決してコマンドの内部的な目的にたいして使用してはなりません。たとえば<code>replace-regexp</code>コマンドは何らかの置換を行う前にマークにポイントの値をセットしますが、その理由はこれによりユーザーが置換を終えた後に簡単にその位置に戻ることが可能になるからです。
+</p>
+<p>一度バッファー内にマークが存在すれば、その存在は通常は決して消えることはありません。しかしTransient
+Markモードが有効だとマークが<em>非アクティブ(inactive)</em>になることはあります。バッファーローカル変数<code>mark-active</code>が非<code>nil</code>なら、それはマークがアクティブであることを意味します。コマンドはマークを直接非アクティブにするために関数<code>deactivate-mark</code>を呼び出すことができ、変数<code>deactivate-mark</code>を非<code>nil</code>値にセットすることにより、エディターコマンドループ(editor
+command loop)にリターン時にマークの非アクティブ化を要求できます。
+</p>
+<p>Transient
+Markモードが有効だと、通常ならポイント近傍に適用される特定の編集コマンドはマークがアクティブなときはかわりにリージョンに適用されます。これがTransient
+Markモードを使用する主な動機です(他にもマークアクティブ時にはリージョンのハイライトが有効になるという理由もある。<a href="Display.html">Display</a>を参照)。
+</p>
+<span id="index-mark-ring"></span>
+<p>マークに加えてバッファーはそれぞれ<em>マークリング(mark
+ring)</em>をもっています。これは以前のマーク値を含むマーカーのリストです。編集コマンドがマークを変更する際には、それらのコマンドは通常はマークの旧値をマークリングに保存するべきです。変数<code>mark-ring-max</code>はマークリング内のエントリー最大数を指定します。リストがこの長さに達すると最後の要素を削除して新たな要素が追加されます。
+</p>
+<p>これとは別にグローバルマークリング(global mark
+ring)がありますが、それは少数の特定のユーザーレベルコマンドでのみ使用されて、Lispプログラムとは関連しないのでここでは説明しません。
+</p>
+<dl>
+<dt id="index-mark">Function: <strong>mark</strong> <em>&amp;optional force</em></dt>
+<dd><span id="index-current-buffer-mark"></span>
+<p>この関数はカレントバッファーのマーク位置を整数でリターンする。そのバッファー内でそれまでマークがセットされていなければ<code>nil</code>をリターンする。
+</p>
+<p>Transient
+Markモードが有効、かつ<code>mark-even-if-inactive</code>が<code>nil</code>の場合、マークが非アクティブなら<code>mark</code>はエラーをシグナルする。しかし、<var>force</var>が非<code>nil</code>なら、<code>mark</code>はマークの非アクティブ性を無視して、何にせよマーク位置(か<code>nil</code>)をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-mark_002dmarker">Function: <strong>mark-marker</strong></dt>
+<dd><p>この関数はカレントバッファーのマークを表すマーカーをリターンする。これはコピーではなく内部的に使用されるマーカー。したがってこのマーカー位置にたいする変更は、そのバッファーのマークに直接影響する。それが望む効果でなければこれを行ってはならない。
+</p>
+<div class="example">
+<pre class="example">(setq m (mark-marker))
+     &rArr; #&lt;marker at 3420 in markers-ja.texi&gt;
+</pre><pre class="example">(set-marker m 100)
+     &rArr; #&lt;marker at 100 in markers-ja.texi&gt;
+</pre><pre class="example">(mark-marker)
+     &rArr; #&lt;marker at 100 in markers-ja.texi&gt;
+</pre></div>
+
+<p>他のマーカー同じように、このマーカーを任意のバッファー位置にセットできる。このマーカーにたいして、これがマークする以外のバッファーを指すようにすると、完全に整合性があるものの、いささか奇妙な結果を得ることになるだろう。わたしたちはこれを行わないことを推奨する!
+</p></dd></dl>
+
+<dl>
+<dt id="index-set_002dmark">Function: <strong>set-mark</strong> <em>position</em></dt>
+<dd><p>この関数はマークを<var>position</var>にセットして、そのマークをアクティブにする。マークの旧値はマークリングに<em>pushされない</em>。
+</p>
+<p><strong>注意:</strong>
+マークが移動したことをユーザーに確認させて、かつ前のマーク位置が失われることを望む場合のみこの関数を使用すること。通常はマークセット時に古いマークを<code>mark-ring</code>にpushすること。この理由により、ほとんどのアプリケーションは<code>set-mark</code>ではなく、<code>push-mark</code>と<code>pop-mark</code>を使用するべきである。
+</p>
+<p>Emacs
+Lisp初心者のプログラマーは誤った用途にマークの使用を試みがちである。ユーザーの利便のために位置を保存するのがマークである。編集コマンドはマーク変更がコマンドのユーザーレベル機能の一部でない限りマークを変更しないこと(そのような場合にはその効果をドキュメントするべきである)。Lispプログラムの内部的な使用のために位置を記憶するためには、マークをLisp変数に格納すること。たとえば:
+</p>
+<div class="example">
+<pre class="example">(let ((beg (point)))
+  (forward-line 1)
+  (delete-region beg (point)))
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-push_002dmark">Function: <strong>push-mark</strong> <em>&amp;optional position nomsg activate</em></dt>
+<dd><p>この関数はカレントバッファーのマークを<var>position</var>にセットして、前のマークを<code>mark-ring</code>にpushする。<var>position</var>が<code>nil</code>ならポイントの値を使用する。
+</p>
+<p>関数<code>push-mark</code>は通常はマークをアクティブに<em>しない</em>。アクティブにする場合には引数<var>activate</var>に<code>t</code>を指定する。
+</p>
+<p><var>nomsg</var>が<code>nil</code>ならメッセージ&lsquo;<samp>Mark set</samp>&rsquo;が表示される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-pop_002dmark">Function: <strong>pop-mark</strong></dt>
+<dd><p>この関数は<code>mark-ring</code>のトップ要素をpopして、そのマークをバッファーの実際のマークにする。これはバッファー内のポイントを移動せず、<code>mark-ring</code>が空なら何も行わない。これはマークを非アクティブ化する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-transient_002dmark_002dmode">User Option: <strong>transient-mark-mode</strong></dt>
+<dd><p>この変数が非<code>nil</code>ならTransient Markモードを有効にする。Transient
+Markモードでは、すべてのバッファー変更プリミティブが<code>deactivate-mark</code>をセットする。結果としてバッファーを変更するほとんどのコマンドもマークを非アクティブにする。
+</p>
+<p>Transient
+Markモードが有効かつマークがアクティブなら、通常はポイント近傍に適用されるコマンドの多くは、かわりにリージョンに適用される。そのようなコマンド、リージョンを処理すべきかどうかをテストするために、関数<code>use-region-p</code>を使用すること。<a href="The-Region.html">The Region</a>を参照のこと。
+</p>
+<p>Lispプログラムは一時的にTransient
+Markモードを有効にするために、<code>transient-mark-mode</code>を<code>nil</code>でも<code>t</code>でもない値にセットできる。値が<code>lambda</code>なら、通常ならマークを非アクティブ化するバッファー変更ような操作の後に、Transient
+Markモードを自動的にオフに切り替える。値が<code>(only&nbsp;.&nbsp;<var>oldval</var>)</code><!-- /@w -->なら後続のコマンドがポイントを移動かつシフト変換(<a href="Key-Sequence-Input.html">shift-translation</a>を参照)されていない場合、あるいは通常はマークを非アクティブにするその他の操作の場合にに、<code>transient-mark-mode</code>に値<var>oldval</var>をセットする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-mark_002deven_002dif_002dinactive">User Option: <strong>mark-even-if-inactive</strong></dt>
+<dd><p>これが非<code>nil</code>なLispプログラムおよびEmacsユーザーは、たとえ非アクティブでもマークを使用できる。このオプションはTransient
+Markモードの動作に影響を及ぼす。このオプションが非<code>nil</code>ならマークの非アクティブ化によりリージョンのハイライトはオフに切り替えられるが、マークを使用するコマンドは、あたかもマークがアクティブであるかのように振る舞う。
+</p></dd></dl>
+
+<dl>
+<dt id="index-deactivate_002dmark-1">Variable: <strong>deactivate-mark</strong></dt>
+<dd><p>エディターコマンドがこの変数を非<code>nil</code>にセットすると、エディターコマンドループはコマンドのリターン後に、(Transient
+Markモードが有効なら)マークを非アクティブにする。バッファーを変更するすべてのプリミティブは、コマンド終了時にマークを非アクティブにするために<code>deactivate-mark</code>をセットする。この変数はセットすらことによりバッファーローカルになる。
+</p>
+<p>コマンド終了時にマークを非アクティブにすることなくバッファーを変更するLispコードを記述するためには、変更を行うコードの周辺で<code>deactivate-mark</code>を<code>nil</code>にバインドすること。たとえば:
+</p>
+<div class="example">
+<pre class="example">(let (deactivate-mark)
+  (insert &quot; &quot;))
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-deactivate_002dmark">Function: <strong>deactivate-mark</strong> <em>&amp;optional force</em></dt>
+<dd><p>Transient
+Markモードが有効、または<var>force</var>が非<code>nil</code>なら、この関数はマークを非アクティブにしてノーマルフック<code>deactivate-mark-hook</code>を実行して、それ以外は何も行わない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-mark_002dactive">Variable: <strong>mark-active</strong></dt>
+<dd><p>この変数が非<code>nil</code>ならマークはアクティブ。この変数はそれぞれのバッファーにたいして常にローカル。通常はポイント近傍を操作するコマンドが、かわりにリージョンを操作すべきかどうかを判断するためにこの変数の値を<em>使用してはならない</em>。その目的にたいしては関数<code>use-region-p</code>を使用すること(<a href="The-Region.html">The Region</a>を参照)。
+</p></dd></dl>
+
+<dl>
+<dt id="index-activate_002dmark_002dhook">Variable: <strong>activate-mark-hook</strong></dt>
+<dt id="index-deactivate_002dmark_002dhook">Variable: <strong>deactivate-mark-hook</strong></dt>
+<dd><p>これらのノーマルフックはマークがアクティブや非アクティブになった際に順次実行される。マークがアクティブかつリージョンが変更された可能性があるなら、コマンドループの最後にフック<code>activate-mark-hook</code>も実行される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-handle_002dshift_002dselection">Function: <strong>handle-shift-selection</strong></dt>
+<dd><p>この関数はポイント移動コマンドのシフト選択(shift-selection)の動作を実装する。<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/Shift-Selection.html#Shift-Selection">Shift Selection</a> in <cite>The GNU Emacs
+Manual</cite>を参照のこと。これは<code>interactive</code>指定に文字&lsquo;<samp>^</samp>&rsquo;を含むコマンドの呼び出し時は常に、そのコマンド自身を実行する前にEmacsコマンドループにより自動的に呼び出される(<a href="Interactive-Codes.html">^</a>を参照)。
+</p>
+<p><code>shift-select-mode</code>が非<code>nil</code>、かつカレントコマンドがシフト変換(<a href="Key-Sequence-Input.html">shift-translation</a>を参照)を通じて呼び出された場合には、この関数はマークをセットして一時的にリージョンをアクティブにする(すでにこの方法によりリージョンが一時的にアクティブにされている場合を除く)。それ以外ではリージョンが一時的にアクティブにされていればマークを非アクティブにして、変数<code>transient-mark-mode</code>に前の値をリストアする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-mark_002dring">Variable: <strong>mark-ring</strong></dt>
+<dd><p>このバッファーローカル変数の値は、もっとも最近のものが先頭となるような、以前に保存されたカレントバッファーのマークのリスト。
+</p>
+<div class="example">
+<pre class="example">mark-ring
+&rArr; (#&lt;marker at 11050 in markers-ja.texi&gt;
+    #&lt;marker at 10832 in markers-ja.texi&gt;
+    &hellip;)
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-mark_002dring_002dmax">User Option: <strong>mark-ring-max</strong></dt>
+<dd><p>この変数の値は<code>mark-ring</code>の最大サイズ。これより多くのマークが<code>mark-ring</code>にpushされると、<code>push-mark</code>新たなマーク追加時には古いマークを破棄する。
+</p></dd></dl>
+
+
+<span id="index-delete_002dselection_002c-symbol-property"></span>
+<span id="index-delete_002dselection_002dhelper"></span>
+<span id="index-delete_002dselection_002dpre_002dhook"></span>
+<p>Delete Selectionモード(<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/Using-Region.html#Using-Region">Delete Selection</a> in <cite>The GNU
+Emacs
+Manual</cite>を参照)が有効な際には、アクティブリージョン(いわゆる&ldquo;選択&rdquo;)を操作するコマンドは若干異なる振る舞いをします。これは<code>pre-command-hook</code>に関数<code>delete-selection-pre-hook</code>を追加することにより機能します(<a href="Command-Overview.html">Command Overview</a>を参照)。この関数はそのコマンドにたいして適切なように選択を削除するために<code>delete-selection-helper</code>を呼び出します。コマンドをDelete
+Selectionモードに適応させたければ、その関数シンボルの<code>delete-selection</code>プロパティにputしてください(<a href="Symbol-Plists.html">Symbol Plists</a>を参照)。シンボルにこのプロパティをもたないコマンドは選択を削除しません。そのコマンドに期待される挙動を調整するために、このプロパティはいくつかの値のいずれかをもつことができます。詳細は<code>delete-selection-pre-hook</code>と<code>delete-selection-helper</code>のドキュメント文字列を参照してください。
+</p>
+<hr>
+<div class="header">
+<p>
+Next: <a href="The-Region.html" accesskey="n" rel="next">The Region</a>, Previous: <a href="Moving-Markers.html" accesskey="p" rel="prev">Moving Markers</a>, Up: <a href="Markers.html" accesskey="u" rel="up">Markers</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

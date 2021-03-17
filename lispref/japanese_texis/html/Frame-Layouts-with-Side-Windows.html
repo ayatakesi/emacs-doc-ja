@@ -1,0 +1,149 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Frame Layouts with Side Windows (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Frame Layouts with Side Windows (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Frame Layouts with Side Windows (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Side-Windows.html" rel="up" title="Side Windows">
+<link href="Atomic-Windows.html" rel="next" title="Atomic Windows">
+<link href="Side-Window-Options-and-Functions.html" rel="prev" title="Side Window Options and Functions">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Frame-Layouts-with-Side-Windows"></span><div class="header">
+<p>
+Previous: <a href="Side-Window-Options-and-Functions.html" accesskey="p" rel="prev">Side Window Options and Functions</a>, Up: <a href="Side-Windows.html" accesskey="u" rel="up">Side Windows</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="saidouindouniyoruhuremunoreiauto"></span><h4 class="subsection">28.17.3 サイドウィンドウによるフレームのレイアウト</h4>
+
+<p>サイドウィンドウは統合開発環境(IDE)が提供するような、より複雑なフレームレイアウトの作成に使用できます。そのようなレイアウトでは通常の編集アクティビティが行われるのはメインウィンドウ領域になります。サイドウィンドウは通常の意味においての編集は意図していません。それよりはカレント編集アクティビティを補足するためのファイルやタグやバッファーのリスト、ヘルプ情報、検索やgrepの結果、シェル出力などの情報の表示を意図しています。
+</p>
+<p>そのようなフレームのレイアウトは以下のような外観になるでしょう:
+</p>
+<div class="example">
+<pre class="example">     ___________________________________
+    |          *Buffer List*            |
+    |___________________________________|
+    |     |                       |     |
+    |  *  |                       |  *  |
+    |  d  |                       |  T  |
+    |  i  |                       |  a  |
+    |  r  |   Main Window Area    |  g  |
+    |  e  |                       |  s  |
+    |  d  |                       |  *  |
+    |  *  |                       |     |
+    |_____|_______________________|_____|
+    | *help*/*grep*/  |  *shell*/       |
+    | *Completions*   |  *compilation*  |
+    |_________________|_________________|
+    |             Echo Area             |
+    |___________________________________|
+
+
+</pre></div>
+
+<p>以下は上図フレームレイアウトを作成するコードをセットアップするために<code>display-buffer-in-side-window</code>とともにウィンドウパラメーター(see <a href="Window-Parameters.html">Window Parameters</a>) を使用する方法を説明するための例です。
+</p>
+<div class="example">
+<pre class="example">(defvar parameters
+  '(window-parameters . ((no-other-window . t)
+                         (no-delete-other-windows . t))))
+
+(setq fit-window-to-buffer-horizontally t)
+(setq window-resize-pixelwise t)
+
+(setq
+ display-buffer-alist
+ `((&quot;\\*Buffer List\\*&quot; display-buffer-in-side-window
+    (side . top) (slot . 0) (window-height . fit-window-to-buffer)
+    (preserve-size . (nil . t)) ,parameters)
+   (&quot;\\*Tags List\\*&quot; display-buffer-in-side-window
+    (side . right) (slot . 0) (window-width . fit-window-to-buffer)
+    (preserve-size . (t . nil)) ,parameters)
+   (&quot;\\*\\(?:help\\|grep\\|Completions\\)\\*&quot;
+    display-buffer-in-side-window
+    (side . bottom) (slot . -1) (preserve-size . (nil . t))
+    ,parameters)
+   (&quot;\\*\\(?:shell\\|compilation\\)\\*&quot; display-buffer-in-side-window
+    (side . bottom) (slot . 1) (preserve-size . (nil . t))
+    ,parameters)))
+</pre></div>
+
+<p>これは固定化された名前をもつバッファーにたいして<code>display-buffer-alist</code>エントリー(<a href="Choosing-Window.html">Choosing Window</a>を参照)を指定します。特にフレーム上辺に高さ調節可能な<samp>*Buffer
+List*</samp>と、フレーム右辺に幅調節可能な<samp>*Tags
+List*</samp>の表示を要求します。さらにフレーム下辺左側のウィンドウでバッファー<samp>*help*</samp>と<samp>*grep*</samp>と<samp>*Completions*</samp>の共有、フレーム下辺右側のウィンドウではバッファー<samp>*shell*</samp>と<samp>*compilation*</samp>の表示を要求します。
+</p>
+<p>ウィンドウの水平調節を可能にするためにオプション<code>fit-window-to-buffer-horizontally</code>が非<code>nil</code>値をもたなければならないことに注意してください。フレームの上下にあるサイドウィンドウの高さとフレームの左右にあるサイドウィンドウの幅を保持するためのエントリーも追加しています。フレーム最大化時にサイドウィンドウがそれに応じたサイズを維持することを保証するために、変数<code>window-resize-pixelwise</code>に非<code>nil</code>値をセットしています。<a href="Resizing-Windows.html">Resizing Windows</a>を参照してください。
+</p>
+<p>最後のフォームではこれらの各ウィンドウに<code>no-other-window</code>パラメーターをインストールすることによって、作成したサイドウィンドウにたいする<kbd><span class="nolinebreak">C-x</span>&nbsp;o</kbd><!-- /@w -->を介してアクセスできないことも保証しています。さらにこれらの各ウィンドウに<code>no-delete-other-windows</code>パラメーターをインストールして、<kbd><span class="nolinebreak">C-x</span>&nbsp;1</kbd><!-- /@w -->によるサイドウィンドウの削除ができないことを保証しています。
+</p>
+<p><code>dired</code>バッファーは固定化された名前をもたないので、フレーム左辺の細いディレクトリーバッファーを表示するためにスペシャル関数<code>dired-default-directory-on-left</code>を使用しています。
+</p>
+<div class="example">
+<pre class="example">(defun dired-default-directory-on-left ()
+  &quot;左側サイドウィンドウに詳細を隠して`default-directory'を表示する。&quot;
+  (interactive)
+  (let ((buffer (dired-noselect default-directory)))
+    (with-current-buffer buffer (dired-hide-details-mode t))
+    (display-buffer-in-side-window
+     buffer `((side . left) (slot . 0)
+              (window-width . fit-window-to-buffer)
+              (preserve-size . (t . nil)) ,parameters))))
+</pre></div>
+
+<p>これまでのフォームを評価して任意の順序で<kbd><span class="nolinebreak">M-x</span>&nbsp;<span class="nolinebreak">list-buffers</span></kbd><!-- /@w -->、<kbd>C-h f</kbd>、<kbd>M-x
+shell</kbd>、<kbd><span class="nolinebreak">M-x</span>&nbsp;<span class="nolinebreak">list-tags</span></kbd><!-- /@w -->、<kbd>M-x
+dired-default-directory-on-left</kbd>を評価すれば上図のフレームレイアウトが再作成されるはずです。
+</p>
+
+
+
+
+</body>
+</html>

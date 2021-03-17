@@ -1,0 +1,177 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Format Conversion Round-Trip (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Format Conversion Round-Trip (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Format Conversion Round-Trip (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Format-Conversion.html" rel="up" title="Format Conversion">
+<link href="Format-Conversion-Piecemeal.html" rel="next" title="Format Conversion Piecemeal">
+<link href="Format-Conversion-Overview.html" rel="prev" title="Format Conversion Overview">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Format-Conversion-Round_002dTrip"></span><div class="header">
+<p>
+Next: <a href="Format-Conversion-Piecemeal.html" accesskey="n" rel="next">Format Conversion Piecemeal</a>, Previous: <a href="Format-Conversion-Overview.html" accesskey="p" rel="prev">Format Conversion Overview</a>, Up: <a href="Format-Conversion.html" accesskey="u" rel="up">Format Conversion</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="raundotoritupuShi-Yang-"></span><h4 class="subsection">25.13.2 ラウンドトリップ仕様</h4>
+
+<p>読み取りと書き込みのもっとも一般的な機能は変数<code>format-alist</code>で制御されます。これは<em>ファイルフォーマット(file
+format)</em>仕様のリストで、Emacsバッファー内のデータにたいしてファイル内で使用されるテキスト表現を記述します。読み取りと書き込みの仕様記述はペアーになっており、わたしたちがそれを&ldquo;ラウンドトリップ(round-trip)&rdquo;仕様と呼ぶのはこれが理由です(非ペアー仕様については<a href="Format-Conversion-Piecemeal.html">Format Conversion Piecemeal</a>を参照)。
+</p>
+<dl>
+<dt id="index-format_002dalist">Variable: <strong>format-alist</strong></dt>
+<dd><p>このリストには定義されるファイルフォーマットごとに1つのフォーマット定義が含まれる。フォーマット定義はそれぞれ以下の形式のリスト:
+</p>
+<div class="example">
+<pre class="example">(<var>name</var> <var>doc-string</var> <var>regexp</var> <var>from-fn</var> <var>to-fn</var> <var>modify</var> <var>mode-fn</var> <var>preserve</var>)
+</pre></div>
+</dd></dl>
+
+<span id="index-format-definition"></span>
+<p>以下はフォーマット定義内で要素がもつ意味:
+</p>
+<dl compact="compact">
+<dt><var>name</var></dt>
+<dd><p>フォーマットの名前。
+</p>
+</dd>
+<dt><var>doc-string</var></dt>
+<dd><p>フォーマットのドキュメント文字列。
+</p>
+</dd>
+<dt><var>regexp</var></dt>
+<dd><p>このフォーマットで表現されるファイルの認識に使用される正規表現。<code>nil</code>ならフォーマットが自動的に適用されることは決してない。
+</p>
+</dd>
+<dt><var>from-fn</var></dt>
+<dd><p>このフォーマットのデータをデコードする、(ファイルデータを通常のEmacsデータ表現に変換するための)シェルコマンドか関数。
+</p>
+<p>シェルコマンドは文字列として表され、Emacsはそのコマンドを変換処理用のフィルターとして実行する。
+</p>
+<p><var>from-fn</var>が関数なら、それは変換するべきバッファー部分を指定する2つの引数<var>begin</var>と<var>end</var>で呼び出される。これはインプレースでテキストを編集することにより変換を行うこと。これはテキスト長を変更する可能性があるので<var>from-fn</var>は変更されたend位置をリターンすること。
+</p>
+<p>ファイルの先頭が変換により<var>regexp</var>にマッチしないようにするのは<var>from-fn</var>の役目の1つである。そうでないとおそらく再度変換が呼び出される。さらに<var>from-fn</var>はデコードされるバッファーやバッファーではないこと。さもなければフォーマット用の内部バッファーが上書きされるかもしれない。
+</p>
+</dd>
+<dt><var>to-fn</var></dt>
+<dd><p>このフォーマットのデータをエンコード、すなわち通常のEmacsデータ表現をこのフォーマットに変換するためのシェルコマンドか関数。
+</p>
+<p><var>to-fn</var>が文字列ならそれはシェルコマンドである。Emacsは変換処理のためのフィルターとしてこのコマンドを実行する。
+</p>
+<p><var>to-fn</var>が関数なら、それは3つの引数で呼び出される。<var>begin</var>と<var>end</var>は変換されるべきバッファー部分、<var>buffer</var>でそれがどのバッファーかを指定する。変換を行うには2つの方法がある:
+</p>
+<ul>
+<li> そのバッファー内でインプレースで編集を行う。<var>to-fn</var>はこの場合は変更にしたがいテキスト範囲のend位置をリターンすること。
+
+</li><li> 注釈(annotation)のリストをリターンする。これは<code>(<var>position</var>
+.
+<var>string</var>)</code>という形式の要素をもつリストで、<var>position</var>は書き込まれるテキスト内での相対位置を指定する整数、<var>string</var>はそこに追加される注釈である。このリストは<var>to-fn</var>がそれをリターンする際には、位置順でソートされていなければならない。
+
+<p><code>write-region</code>が実際にバッファーからファイルにテキストを書き込む際には、指定された注釈を対応する位置に混合する。これはすべてバッファーを変更せずに行われる。
+</p></li></ul>
+
+<p><var>from-fn</var>はデコードされるバッファーやバッファーではないこと。さもなければフォーマット用の内部バッファーが上書きされるかもしれない。
+</p>
+</dd>
+<dt><var>modify</var></dt>
+<dd><p>フラグ。エンコード関数がバッファーを変更するなら<code>t</code>、注釈リストをリターンすることによって機能するなら<code>nil</code>。
+</p>
+</dd>
+<dt><var>mode-fn</var></dt>
+<dd><p>このフォーマットから変換されたファイルをvisit後に呼び出されるマイナーモード関数。この関数は1つの引数で呼び出されて、それが整数1ならマイナーモード関数はそのモードを有効にする。
+</p>
+</dd>
+<dt><var>preserve</var></dt>
+<dd><p>フラグ。<code>format-write-file</code>が<code>buffer-file-format</code>からこのフォーマットを取り除くべきでなければ<code>t</code>。
+</p></dd>
+</dl>
+
+<p>関数<code>insert-file-contents</code>は指定されたファイルを読み込む際にファイルフォーマットを自動的に認識します。これはフォーマット定義の正規表現にたいしてファイルの先頭テキストをチェックして、マッチが見つかったら、そのフォーマットにたいするデコード関数を呼び出します。その後は再度すべての既知のフォーマットをチェックします。適用できるフォーマットがない間はチェックを続行します。
+</p>
+<p><code>find-file-noselect</code>やそれを使用するコマンドでファイルをvisitすることにより、同じように変換が行われます(内部で<code>insert-file-contents</code>を呼び出すため)。さらにそれをデコードする各フォーマットのモード関数も呼び出します。これはバッファーローカル変数<code>buffer-file-format</code>内にフォーマット名のリストを格納します。
+</p>
+<dl>
+<dt id="index-buffer_002dfile_002dformat">Variable: <strong>buffer-file-format</strong></dt>
+<dd><p>この変数はvisitしているファイルのフォーマットを表す。より正確にはこれはカレントバッファーのファイルをvisitに起因するデコードのファイルフォーマット名のリストである。これはすべてのバッファーにたいして常にローカル。
+</p></dd></dl>
+
+<p><code>write-region</code>がデータをファイルに書き込む際には、まず<code>buffer-file-format</code>にリストされたフォーマットにたいするエンコード関数をリスト内での出現順に呼び出します。
+</p>
+<dl>
+<dt id="index-format_002dwrite_002dfile">Command: <strong>format-write-file</strong> <em>file format &amp;optional confirm</em></dt>
+<dd><p>このコマンドはカレントバッファーのコンテンツをフォーマット名のリスト<var>format</var>にもとづいたフォーマットでファイル<var>file</var>に書き込む。これは<var>format</var>を起点に、<code>buffer-file-format</code>の値から<var>preserve</var>フラグ(上記参照)が非<code>nil</code>の要素にたいして、それがまだ<var>format</var>内に存在しなければ任意の個数それらを追加する。その後に将来の保存においてデフォルトとなるように、このフォーマットで<code>buffer-file-format</code>を更新する。<var>format</var>引数を除けばこのコマンドは<code>write-file</code>と似ている。特に<var>confirm</var>は<code>write-file</code>での対応する引数と、意味やinteractiveでの扱いが同じである。<a href="Saving-Buffers.html#Definition-of-write_002dfile">Definition of write-file</a>を参照のこと。
+</p></dd></dl>
+
+<dl>
+<dt id="index-format_002dfind_002dfile">Command: <strong>format-find-file</strong> <em>file format</em></dt>
+<dd><p>このコマンドはファイル<var>file</var>を探してそれをフォーマット<var>format</var>にしたがって変換する。これは後でそのバッファーを保存する場合に<var>format</var>をデフォルトにすることも行う。
+</p>
+<p>引数<var>format</var>はフォーマット名のリスト。<var>format</var>が<code>nil</code>なら何の変換も行われない。interactiveに呼び出した場合には、<var>format</var>にたいして単に<tt class="key">RET</tt>をタイプすると<code>nil</code>が指定される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-format_002dinsert_002dfile">Command: <strong>format-insert-file</strong> <em>file format &amp;optional beg end</em></dt>
+<dd><p>このコマンドはファイル<var>file</var>のコンテンツをフォーマット<var>format</var>にしたがって変換して挿入する。<var>beg</var>と<var>end</var>が非<code>nil</code>なら、それは<code>insert-file-contents</code>と同様、ファイルのどの部分を読み込むかを指定する(<a href="Reading-from-Files.html">Reading from Files</a>を参照)。
+</p>
+<p>リターン値は絶対ファイル名のリスト、および挿入されたデータの長さ(変換後)であり、これは<code>insert-file-contents</code>がリターンするものと同様。
+</p>
+<p>引数<var>format</var>はフォーマット名のリスト。<var>format</var>が<code>nil</code>なら何の変換も行われない。interactiveに呼び出した場合には、<var>format</var>にたいして単に<tt class="key">RET</tt>をタイプすると<code>nil</code>が指定される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-buffer_002dauto_002dsave_002dfile_002dformat">Variable: <strong>buffer-auto-save-file-format</strong></dt>
+<dd><p>この変数は自動保存(auto-saving)にたいして使用するフォーマットを指定する。値は<code>buffer-file-format</code>と同様、ファイル名のリストだが、これはauto-saveファイルへの書き込みで<code>buffer-file-format</code>のかわりに使用される。値が<code>t</code>(デフォルト)なら自動保存は当バッファーの通常の保存時と同じフォーマットを使用する。この変数はすべてのバッファーにおいて常にバッファーローカル。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

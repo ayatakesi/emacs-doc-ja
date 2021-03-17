@@ -1,0 +1,216 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Bindat Spec (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Bindat Spec (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Bindat Spec (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Byte-Packing.html" rel="up" title="Byte Packing">
+<link href="Bindat-Functions.html" rel="next" title="Bindat Functions">
+<link href="Byte-Packing.html" rel="prev" title="Byte Packing">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Bindat-Spec"></span><div class="header">
+<p>
+Next: <a href="Bindat-Functions.html" accesskey="n" rel="next">Bindat Functions</a>, Up: <a href="Byte-Packing.html" accesskey="u" rel="up">Byte Packing</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="detareiautonoJi-Shu-"></span><h4 class="subsection">38.20.1 データレイアウトの記述</h4>
+
+<p>unpackとpackを制御するためには<em>データレイアウト仕様(data layout
+specification)</em>を記述します。これは名前付きかつタイプ付けされた<em>フィールド(field)</em>を記述する特別なネスト化リストです。これは処理する各フィールドの長さ、およびそれをpackおよびunpackする方法を制御します。わたしたちは名前が&lsquo;<samp>-bindat-spec</samp>&rsquo;で終わる変数ではbindatの仕様を遵守します。この類の変数名は自動的にrisky(危険)だと認識されます。
+</p>
+<span id="index-endianness"></span>
+<span id="index-big-endian"></span>
+<span id="index-little-endian"></span>
+<span id="index-network-byte-ordering"></span>
+<p>フィールドの<em>タイプ(type)</em>はフィールドが表すオブジェクトのサイズ(バイト単位)、およびそれがマルチバイトフィールドならフィールがバイトオーダーされる方法を記述します。可能なオーダーはビッグエンディアン(big
+endian。ネットワークバイトオーダーとも呼ばれる)、およびリトルエンディアン(little
+endian)の2つです。たとえば数字<code>#x23cd</code> (10進の9165)のビッグエンディアンは<code>#x23</code>
+<code>#xcd</code>の2バイト、リトルエンディアンは<code>#xcd</code> <code>#x23</code>になるでしょう。以下は可能なタイプの値です:
+</p>
+<dl compact="compact">
+<dt><code>u8</code></dt>
+<dt><code>byte</code></dt>
+<dd><p>長さ1の符号なしタイプ。
+</p>
+</dd>
+<dt><code>u16</code></dt>
+<dt><code>word</code></dt>
+<dt><code>short</code></dt>
+<dd><p>長さ2のネットワークバイトオーダーによる符号なし整数。
+</p>
+</dd>
+<dt><code>u24</code></dt>
+<dd><p>長さ3のネットワークバイトオーダーによる符号なし整数。
+</p>
+</dd>
+<dt><code>u32</code></dt>
+<dt><code>dword</code></dt>
+<dt><code>long</code></dt>
+<dd><p>長さ4のネットワークバイトオーダーによる符号なし整数。注意: これらの値はEmacsの整数の実装に制限されるだろう。
+</p>
+</dd>
+<dt><code>u16r</code></dt>
+<dt><code>u24r</code></dt>
+<dt><code>u32r</code></dt>
+<dd><p>それぞれ長さ2、3、4のリトルエンディアンオーダーによる符号なし整数。
+</p>
+</dd>
+<dt><code>str <var>len</var></code></dt>
+<dd><p>長さ<var>len</var>の文字列。
+</p>
+</dd>
+<dt><code>strz <var>len</var></code></dt>
+<dd><p>長さ<var>len</var>の固定長フィールド内のNUL終端された文字列。
+</p>
+</dd>
+<dt><code>vec <var>len</var> [<var>type</var>]</code></dt>
+<dd><p>タイプ<var>type</var>
+(デフォルトはbyte)の<var>len</var>要素のベクター。<var>type</var>は上述した単純なタイプのいずれか、あるいは<code>(vec
+<var>len</var> [<var>type</var>])</code>という形式のリストによる別ベクターの指定。
+</p>
+</dd>
+<dt><code>ip</code></dt>
+<dd><p>インターネットアドレスを表す4つのbyteのベクター。たとえばlocalhostは<code>[127 0 0 1]</code>。
+</p>
+</dd>
+<dt><code>bits <var>len</var></code></dt>
+<dd><p><var>len</var>バイト内のセットされたビット位置のリスト。バイトはビッグエンディアンでビット位置は<code>8 * <var>len</var>
+- 1</code>で始まり0で終わるよう番号が付与される。たとえば<code>bits 2</code>では、<code>#x28</code>
+<code>#x1c</code>は<code>(2 3 4 11 13)</code>、<code>#x1c</code> <code>#x28</code>は<code>(3 5 10 11
+12)</code>にunpackされる。
+</p>
+</dd>
+<dt><code>(eval <var>form</var>)</code></dt>
+<dd><p><var>form</var>はフィールドがpackやunpackされた瞬間に評価されるLisp式。評価した結果は上記にリストしたタイプ使用のいずれかであること。
+</p></dd>
+</dl>
+
+<p>固定長フィールドでは長さ<var>len</var>がフィールド内のバイト数を指定する整数として与えられます。
+</p>
+<p>フィールド長が固定でなければ通常は先行するフィールドの値に依存します。この場合には長さ<var>len</var>は後述の<code>bindat-get-field</code>のフォーマット指定により<em>フィールド名(field
+name)</em>を指定するリスト<code>(<var>name</var> ...)</code>、または式<code>(eval <var>form</var>)</code>
+(<var>form</var>はフィールド長を指定する整数に評価されること)のいずれかで与えることもできます。
+</p>
+<p>フィールド仕様は一般的に<code>([<var>name</var>]
+<var>handler</var>)</code>という形式をもち、<var>name</var>はオプションです。紛らわしくなるのでタイプ仕様(上述)やハンドラー仕様(後述)で意味をもつシンボルの名前は使用しないでください。<var>name</var>はシンボルまたは式<code>(eval
+<var>form</var>)</code>でもよく、この場合には<var>form</var>はシンボルに評価される必要があります。
+</p>
+<p><var>handler</var>はそのフィールドがpackやunpackされる方法を記述して、以下のいずれかを指定できます:
+</p>
+<dl compact="compact">
+<dt><code><var>type</var></code></dt>
+<dd><p>タイプ仕様<var>type</var>に応じてこのフィールドのunpack/packを行う。
+</p>
+</dd>
+<dt><code>eval <var>form</var></code></dt>
+<dd><p>副作用のためだけにLisp式<var>form</var>を評価する。フィールド名が指定されたら値はそのフィールド名にバインドされる。
+</p>
+</dd>
+<dt><code>fill <var>len</var></code></dt>
+<dd><p><var>len</var>バイトをスキップする。pack化ではそれらを未変更のままとして、通常それらは0のままとなることを意味する。unpack化ではそれらが無視されることを意味する。
+</p>
+</dd>
+<dt><code>align <var>len</var></code></dt>
+<dd><p><var>len</var>バイトの次の倍数にスキップする。
+</p>
+</dd>
+<dt><code>struct <var>spec-name</var></code></dt>
+<dd><p>副仕様(sub-specification)として<var>spec-name</var>を処理する。これは別の構造体内にネストされる構造体を記述する。
+</p>
+</dd>
+<dt><code>union <var>form</var> (<var>tag</var> <var>spec</var>)&hellip;</code></dt>
+<dd><p>Lisp式<var>form</var>を評価、それにマッチする最初の<var>tag</var>を探して、それに関連付けられたレイアウト仕様<var>spec</var>を処理する。マッチングは以下の3つのいずれかで発生し得る:
+</p>
+<ul>
+<li> <var>tag</var>が<code>(eval
+<var>expr</var>)</code>という形式をもつ場合には、変数<code>tag</code>を動的に<var>form</var>の値にバインドして<var>expr</var>を評価する。結果が非<code>nil</code>ならマッチを示す。
+
+</li><li> <var>tag</var>が<var>form</var>の値と<code>equal</code>ならマッチ。
+
+</li><li> <var>tag</var>が<code>t</code>なら無条件にマッチ。
+</li></ul>
+
+</dd>
+<dt><code>repeat <var>count</var> <var>field-specs</var>&hellip;</code></dt>
+<dd><p><var>field-specs</var>を再帰的に順次処理した後に、最初のものから繰り返して、すべての仕様全体を<var>count</var>回処理する。<var>count</var>はフィールド長と同じフォーマットを使用して与えられる。<code>eval</code>フォームが使用された場合には1回だけ評価される。正しく処理されるためには、<var>field-specs</var>内の各仕様が名前を含まなければならない。
+</p></dd>
+</dl>
+
+<p>bindat仕様内で仕様される<code>(eval
+<var>form</var>)</code>フォームでは、評価の間に<var>form</var>はこれらの動的にバインドされた変数へのアクセスと更新が可能である。
+</p>
+<dl compact="compact">
+<dt><code>last</code></dt>
+<dd><p>最後に処理されたフィールドの値。
+</p>
+</dd>
+<dt><code>bindat-raw</code></dt>
+<dd><p>バイト配列のデータ。
+</p>
+</dd>
+<dt><code>bindat-idx</code></dt>
+<dd><p>unpack化/pack化にたいする、(<code>bindat-raw</code>での)カレントインデックス。
+</p>
+</dd>
+<dt><code>struct</code></dt>
+<dd><p>これまでにunpackされた構造化データ、またはpackされた構造体全体を含むalist。この構造体の特定のフィールドにアクセスするために<code>bindat-get-field</code>を使用できる。
+</p>
+</dd>
+<dt><code>count</code></dt>
+<dt><code>index</code></dt>
+<dd><p><code>repeat</code>ブロック内部では、これらは(<var>count</var>パラメーターで指定された)繰り返しの最大回数、および(0から数えた)カレント繰り返し回数を含む。<code>count</code>を0にセットすることにより、カレントの繰り返し終了後に最内繰り返しブロックを終了する。
+</p></dd>
+</dl>
+
+
+
+
+</body>
+</html>

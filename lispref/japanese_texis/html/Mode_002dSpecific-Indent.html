@@ -1,0 +1,168 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Mode-Specific Indent (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Mode-Specific Indent (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Mode-Specific Indent (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Indentation.html" rel="up" title="Indentation">
+<link href="Region-Indent.html" rel="next" title="Region Indent">
+<link href="Primitive-Indent.html" rel="prev" title="Primitive Indent">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Mode_002dSpecific-Indent"></span><div class="header">
+<p>
+Next: <a href="Region-Indent.html" accesskey="n" rel="next">Region Indent</a>, Previous: <a href="Primitive-Indent.html" accesskey="p" rel="prev">Primitive Indent</a>, Up: <a href="Indentation.html" accesskey="u" rel="up">Indentation</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="meziyamodogaZhi-Yu-suruindento"></span><h4 class="subsection">32.17.2 メジャーモードが制御するインデント</h4>
+
+<p>すべてのメジャーモードにとって重要な関数は、編集対象の言語にたいして正しくインデントを行うように<tt class="key">TAB</tt>キーをカスタマイズします。このセクションでは<tt class="key">TAB</tt>キーのメカニズムと、それを制御する方法について説明します。このセクションの関数は予期せぬ値をリターンします。
+</p>
+<dl>
+<dt id="index-indent_002dfor_002dtab_002dcommand">Command: <strong>indent-for-tab-command</strong> <em>&amp;optional rigid</em></dt>
+<dd><p>これはほとんどの編集用モードで<tt class="key">TAB</tt>にバインドされるコマンド。これの通常の動作はカレント行のインデントだが、かわりにタブ文字の挿入やリージョンのインデントを行うこともできる。
+</p>
+<p>これは以下のことを行う:
+</p>
+<ul>
+<li> まずTransient
+Markモードが有効かどうか、そしてリージョンがアクティブかどうかをチェックする。もしそうならリージョン内のテキストすべてをインデントするために<code>indent-region</code>を呼び出す(<a href="Region-Indent.html">Region Indent</a>を参照)。
+
+</li><li> それ以外なら<code>indent-line-function</code>内のインデント関数が<code>indent-to-left-margin</code>の場合、または変数<code>tab-always-indent</code>が挿入する文字としてタブ文字を指定する場合(以下参照)にはタブ文字を挿入する。
+
+</li><li> それ以外ならカレント行をインデントする。これは<code>indent-line-function</code>内の関数を呼び出すことにより行われる。その行がすでにインデント済みで、かつ<code>tab-always-indent</code>の値が<code>complete</code>(以下参照)ならポイント位置のテキストの補完を試みる。
+</li></ul>
+
+<p><var>rigid</var>が非<code>nil</code>
+(インタラクティブな場合はプレフィクス引数)なら、このコマンドが行をインデントした後、あるいはタブを挿入後に新たなインデントを反映するために、このコマンドはカレント行先頭にあるバランスされた式全体も厳正にインデントする。この引数はコマンドがリージョンをインデントする場合は無視される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-indent_002dline_002dfunction">Variable: <strong>indent-line-function</strong></dt>
+<dd><p>この変数の値はカレント行をインデントするために<code>indent-for-tab-command</code>、およびその他種々のインデントコマンドにより使用される関数。これは通常はメジャーモードにより割り当てられ、たとえばLispモードはこれを<code>lisp-indent-line</code>、Cモードは<code>c-indent-line</code>のようにセットする。デフォルト値は<code>indent-relative</code>。<a href="Auto_002dIndentation.html">Auto-Indentation</a>を参照のこと。
+</p></dd></dl>
+
+<dl>
+<dt id="index-indent_002daccording_002dto_002dmode">Command: <strong>indent-according-to-mode</strong></dt>
+<dd><p>このコマンドはカレントのメジャーモードに適した方法でカレント行をインデントするために<code>indent-line-function</code>内の関数を呼び出す。
+</p></dd></dl>
+
+<dl>
+<dt id="index-newline_002dand_002dindent">Command: <strong>newline-and-indent</strong></dt>
+<dd><p>この関数は改行を挿入後に、メジャーモードに応じて新たな行(挿入した改行の次の行)をインデントする。これは<code>indent-according-to-mode</code>を呼び出すことによりインデントを行う。
+</p></dd></dl>
+
+<dl>
+<dt id="index-reindent_002dthen_002dnewline_002dand_002dindent">Command: <strong>reindent-then-newline-and-indent</strong></dt>
+<dd><p>このコマンドはカレント行の再インデント、ポイント位置への改行の挿入、その後に新たな行(挿入した改行の次の行)のインデントを行う。これは<code>indent-according-to-mode</code>を呼び出すことにより両方の行をインデントする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-tab_002dalways_002dindent">User Option: <strong>tab-always-indent</strong></dt>
+<dd><p>この変数は<tt class="key">TAB</tt>
+(<code>indent-for-tab-command</code>)コマンドの挙動のカスタマイズに使用できる。値が<code>t</code>(デフォルト)ならコマンドは通常はカレント行だけをインデントする。値が<code>nil</code>ならコマンドはポイントが左マージン、またはその行のインデント内ににあるときのみカレント行をインデントして、それ以外はタブ文字を挿入する。値が<code>complete</code>ならコマンドはまずカレント行のインデントを試みて、その行がすでにインデント済みならポイント位置のテキストを補完するために<code>completion-at-point</code>を呼び出す(<a href="Completion-in-Buffers.html">Completion in Buffers</a>を参照)。
+</p></dd></dl>
+
+<dl>
+<dt id="index-tab_002dfirst_002dcompletion">User Option: <strong>tab-first-completion</strong></dt>
+<dd><p><code>tab-always-indent</code>が<code>complete</code>なら、<code>tab-first-completion</code>変数を介して拡張するか、それともインデントするかを更にカスタマイズできる。以下の値を使用できる:
+</p><dl compact="compact">
+<dt><code>eol</code></dt>
+<dd><p>ポイントが行末にあれば補完のみ。
+</p>
+</dd>
+<dt><code>word</code></dt>
+<dd><p>次の文字が単語構文をもたなければ補完。
+</p>
+</dd>
+<dt><code>word-or-paren</code></dt>
+<dd><p>次の文字が単語構文やカッコでなければ補完。
+</p>
+</dd>
+<dt><code>word-or-paren-or-punct</code></dt>
+<dd><p>次の文字が単語構文やカッコや句読点でなければ補完。
+</p></dd>
+</dl>
+
+<p>いずれの場合でも、2回目の<kbd>TAB</kbd>の結果は常に補完となる。
+</p></dd></dl>
+
+<span id="index-literate-programming"></span>
+<span id="index-multi_002dmode-indentation"></span>
+<p>いくつかのメジャーモードでは、異なるメジャーモードに所属する構文をもつ埋め込みのテキストリージョンをサポートする必要があります。これらの例にはドキュメントとソースコード断片の組み合わせである<em>文芸的プログラミング(literate
+programming)</em>のソースファイル、PythonやJSのコード断片を含んだYacc/Bisonプログラムが含まれます。埋め込みチャンクをを正しくインデントするためには、主モードがインデントをガイドする何らかのコンテキストを提供しつつ、他のモードのインデントエンジン(JSでは<code>js-indent-line</code>、Pythonでは<code>python-indent-line</code>の呼び出し)にインデントを委譲する必要があります。メジャーモードはインデントコードで<code>widen</code>の呼び出しを避けて<code>prog-first-column</code>にしたがうべきです。
+</p>
+<dl>
+<dt id="index-prog_002dindentation_002dcontext">Variable: <strong>prog-indentation-context</strong></dt>
+<dd><p>この変数が非<code>nil</code>なら副モードのインデントエンジンにたいして上位モードが提供するインデントのコンテキストを保持する。値は<code>(<var>first-column</var>
+. <var>rest</var>)</code>という形式のリストであること。リストのメンバーは以下の意味をもつ:
+</p>
+<dl compact="compact">
+<dt><var>first-column</var></dt>
+<dd><p>トップレベルの構文にたいして使用する列。これは副モードが使用するトップレベルの列のデフォルト値(通常は0)を置き換える。
+</p></dd>
+<dt><var>rest</var></dt>
+<dd><p>現在のところ使用しない。
+</p></dd>
+</dl>
+</dd></dl>
+
+<p>以下は他のメジャーモードの副モードとしての呼び出しをサポートする際に、そのメジャーモードのインデントエンジンが使用するべき便宜用の関数です。
+</p>
+<dl>
+<dt id="index-prog_002dfirst_002dcolumn">Function: <strong>prog-first-column</strong></dt>
+<dd><p>トップレベルのプログラム上のコンテキストの列値にたいしてリテラル値(通常は0)を使用するかわりにこの関数を呼び出す。関数の値はトップレベルに使用する列数。上位モードの影響下になければ関数は0をリターンする。
+</p></dd></dl>
+
+
+
+
+
+</body>
+</html>

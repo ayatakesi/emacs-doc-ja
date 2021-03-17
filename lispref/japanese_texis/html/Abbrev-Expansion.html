@@ -1,0 +1,156 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Abbrev Expansion (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Abbrev Expansion (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Abbrev Expansion (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Abbrevs.html" rel="up" title="Abbrevs">
+<link href="Standard-Abbrev-Tables.html" rel="next" title="Standard Abbrev Tables">
+<link href="Abbrev-Files.html" rel="prev" title="Abbrev Files">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Abbrev-Expansion"></span><div class="header">
+<p>
+Next: <a href="Standard-Abbrev-Tables.html" accesskey="n" rel="next">Standard Abbrev Tables</a>, Previous: <a href="Abbrev-Files.html" accesskey="p" rel="prev">Abbrev Files</a>, Up: <a href="Abbrevs.html" accesskey="u" rel="up">Abbrevs</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Lue-Yu-noZhao-Hui-toZhan-Kai-"></span><h3 class="section">36.4 略語の照会と展開</h3>
+<span id="index-looking-up-abbrevs"></span>
+<span id="index-expanding-abbrevs"></span>
+<span id="index-abbrevs_002c-looking-up-and-expanding"></span>
+
+<p>abbrevは通常は<code>self-insert-command</code>を含む特定のinteractiveなコマンドにより展開されます。このセクションではそのようなコマンドの記述に使用されるサブルーチン、並びに通信のために使用される変数について説明します。
+</p>
+<dl>
+<dt id="index-abbrev_002dsymbol">Function: <strong>abbrev-symbol</strong> <em>abbrev &amp;optional table</em></dt>
+<dd><p>この関数は<var>abbrev</var>という名前のabbrevを表すシンボルをリターンする。そのabbrevが定義されていなければ<code>nil</code>をリターンする。オプションの2つ目の引数<var>table</var>はそれを照合するためのabbrevテーブル。<var>table</var>が<code>nil</code>ならこの関数はまずカレントバッファーのローカルabbrevテーブル、次にグローバルabbrevテーブルを試みる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-abbrev_002dexpansion">Function: <strong>abbrev-expansion</strong> <em>abbrev &amp;optional table</em></dt>
+<dd><p>この関数は<var>abbrev</var>が展開されるであろう文字列(カレントバッファーにたいして使用されるabbrevテーブルで定義される文字列)をリターンする。これは<var>abbrev</var>が有効なabbrevでなければ<code>nil</code>をリターンする。オプション引数<var>table</var>は<code>abbrev-symbol</code>の場合と同じように使用するabbrevテーブルを指定する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-expand_002dabbrev">Command: <strong>expand-abbrev</strong></dt>
+<dd><p>このコマンドは、(もしあれば)ポイントの前のabbrevを展開する。ポイントがabbrevの後になければこのコマンドは何もしない。展開を行うためにこれは変数<code>abbrev-expand-function</code>の値となっている関数を引数なしで呼び出して、何であれその関数がリターンしたものをリターンする。
+</p>
+<p>デフォルトの展開関数は展開を行ったらabbrevのシンボル、それ以外は<code>nil</code>をリターンする。そのabbrevシンボルが<code>no-self-insert</code>プロパティが非<code>nil</code>のシンボルであるようなフック関数をもち、そのフック関数が値として<code>nil</code>をリターンした場合には、たとえ展開が行われたとしてもデフォルト展開関数は<code>nil</code>をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-abbrev_002dinsert">Function: <strong>abbrev-insert</strong> <em>abbrev &amp;optional name start end</em></dt>
+<dd><p>この関数は<code>start</code>と<code>end</code>の間のテキストを置換することにより<code>abbrev</code>のabbrev展開形を挿入する。<code>start</code>が省略された場合のデフォルトはポイント。<code>name</code>が非<code>nil</code>なら、それはこのabbrevが見つかった名前(文字列)であること。これは展開形のcapitalizationを調整するかどうかを判断するために使用される。この関数はabbrevの挿入に成功したら<code>abbrev</code>、それ以外は<code>nil</code>をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-abbrev_002dprefix_002dmark">Command: <strong>abbrev-prefix-mark</strong> <em>&amp;optional arg</em></dt>
+<dd><p>このコマンドはポイントのカレント位置をabbrevの開始としてマークする。<code>expand-abbrev</code>の次回呼び出しでは、通常のように以前の単語ではなく、ここからポイント(その時点での位置)にあるテキストが展開するべきabbrevとして使用される。
+</p>
+<p>このコマンドは、まず<var>arg</var>が<code>nil</code>ならポイントの前の任意のabbrevを展開する(インタラクティブな呼び出しでは<var>arg</var>はプレフィクス引数)。それから展開する次のabbrevの開始を示すためにポイントの前にハイフンを挿入する。実際の展開ではハイフンは削除される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-abbrev_002dall_002dcaps">User Option: <strong>abbrev-all-caps</strong></dt>
+<dd><p>これが非<code>nil</code>にセットされているときは、すべて大文字で入力されたabbrevはすべて大文字を使用して展開される。それ以外ならすべて大文字で入力されたabbrevは、展開形の単語ごとにcapitalizeして展開される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-abbrev_002dstart_002dlocation">Variable: <strong>abbrev-start-location</strong></dt>
+<dd><p>この変数の値は次にabbrevを展開する開始位置として<code>expand-abbrev</code>に使用されるバッファー位置。値は<code>nil</code>も可能であり、それはかわりにポイントの前の単語を使用することを意味する。<code>abbrev-start-location</code>は<code>expand-abbrev</code>の呼び出しごとに毎回<code>nil</code>にセットされる。この変数は<code>abbrev-prefix-mark</code>からもセットされる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-abbrev_002dstart_002dlocation_002dbuffer">Variable: <strong>abbrev-start-location-buffer</strong></dt>
+<dd><p>この変数の値は<code>abbrev-start-location</code>がセットされたバッファー。他のバッファーでabbrev展開を試みることにより<code>abbrev-start-location</code>はクリアーされる。この変数は<code>abbrev-prefix-mark</code>によりセットされる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-last_002dabbrev">Variable: <strong>last-abbrev</strong></dt>
+<dd><p>これは直近のabbrev展開の<code>abbrev-symbol</code>。これは<code>unexpand-abbrev</code>コマンド(<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/Expanding-Abbrevs.html#Expanding-Abbrevs">Expanding Abbrevs</a> in <cite>The GNU Emacs
+Manual</cite>を参照)のために<code>expand-abbrev</code>により残された情報である。
+</p></dd></dl>
+
+<dl>
+<dt id="index-last_002dabbrev_002dlocation">Variable: <strong>last-abbrev-location</strong></dt>
+<dd><p>これは直近の.abbrev展開の場所。これには<code>unexpand-abbrev</code>コマンドのために<code>expand-abbrev</code>により残された情報が含まれる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-last_002dabbrev_002dtext">Variable: <strong>last-abbrev-text</strong></dt>
+<dd><p>これは直近のabbrev展開の正確な展開形を、(もしあれば)大文字小文字変換した後のテキストである。そのabbrevがすでに非展開されていれば値は<code>nil</code>。これには<code>unexpand-abbrev</code>コマンドのために<code>expand-abbrev</code>ga残sita情報が含まれる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-abbrev_002dexpand_002dfunction">Variable: <strong>abbrev-expand-function</strong></dt>
+<dd><p>この変数の値は展開を行うために<code>expand-abbrev</code>が引数なしで呼び出すであろう関数。この関数では展開を行う前後に行いたいことを行うことができる。展開が行われた場合にはそのabbrevシンボルをリターンすること。
+</p></dd></dl>
+
+<p>以下のサンプルコードでは<code>abbrev-expand-function</code>のシンプルな使い方を示します。このサンプルでは<code>foo-mode</code>が&lsquo;<samp>#</samp>&rsquo;で始まる行がコメントであるような特定のファイルを編集するためのモードであるとします。それらコメント行にたいしてはTextモードのabbrevの使用が望ましく、その他すべての行にたいしては正規のローカルabbrevテーブル<code>foo-mode-abbrev-table</code>が適しています。<code>local-abbrev-table</code>と<code>text-mode-abbrev-table</code>の定義については、<a href="Standard-Abbrev-Tables.html">Standard Abbrev Tables</a>を参照してください。<code>add-function</code>についての詳細は<a href="Advising-Functions.html">Advising Functions</a>を参照してください。
+</p>
+<div class="example">
+<pre class="example">(defun foo-mode-abbrev-expand-function (expand)
+  (if (not (save-excursion (forward-line 0) (eq (char-after) ?#)))
+      ;; 通常の展開を行う
+      (funcall expand)
+    ;; コメント内はtext-modeのabbrevを使用
+    (let ((local-abbrev-table text-mode-abbrev-table))
+      (funcall expand))))
+
+(add-hook 'foo-mode-hook
+          (lambda ()
+            (add-function :around (local 'abbrev-expand-function)
+                          #'foo-mode-abbrev-expand-function)))
+</pre></div>
+
+
+
+
+</body>
+</html>

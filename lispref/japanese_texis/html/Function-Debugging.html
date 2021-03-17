@@ -1,0 +1,111 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Function Debugging (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Function Debugging (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Function Debugging (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Debugger.html" rel="up" title="Debugger">
+<link href="Variable-Debugging.html" rel="next" title="Variable Debugging">
+<link href="Infinite-Loops.html" rel="prev" title="Infinite Loops">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Function-Debugging"></span><div class="header">
+<p>
+Next: <a href="Variable-Debugging.html" accesskey="n" rel="next">Variable Debugging</a>, Previous: <a href="Infinite-Loops.html" accesskey="p" rel="prev">Infinite Loops</a>, Up: <a href="Debugger.html" accesskey="u" rel="up">Debugger</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Guan-Shu-Hu-biChu-siniyorudebatugahenoenta"></span><h4 class="subsection">18.1.3 関数呼び出しによるデバッガへのエンター</h4>
+<span id="index-function-call-debugging"></span>
+<span id="index-debugging-specific-functions"></span>
+
+<p>プログラムの途中で発生する問題を調べるための有用なテクニックの1つは、特定の関数が呼び出されたときデバッガにエンターする方法です。問題が発生した関数にこれを行ってその関数をステップで追ったり、問題箇所の少し手前の関数呼び出しでこれを行って、その関数をステップオーバーしてその後をステップで追うことができます。
+</p>
+<dl>
+<dt id="index-debug_002don_002dentry">Command: <strong>debug-on-entry</strong> <em>function-name</em></dt>
+<dd><p>この関数は<var>function-name</var>が呼び出されるたびにデバッガの呼び出しを要求する。
+</p>
+<p>Lispコードで定義された任意の関数とマクロは、インタープリターに解釈されたコードかコンパイル済みのコードかに関わらず、エントリーにbreakをセットできる。その関数がコマンドならLispから呼び出されたときと、インタラクティブに呼び出されたときにデバッガにエンターする。(たとえばCで記述された)プリミティブ関数にもこの方法で<code>debug-on-entry</code>をセットできるが、そのプリミティブがLispコードから呼び出されたときだけ効果がある。<code>debug-on-entry</code>はスペシャルフォームにはセットできない。
+</p>
+<p><code>debug-on-entry</code>がインタラクティブに呼び出されたときは、ミニバッファーで<var>function-name</var>の入力を求める。その関数がすでにエントリーでデバッガを呼び出すようにセットアップされていたら、<code>debug-on-entry</code>は何も行わない。<code>debug-on-entry</code>は常に<var>function-name</var>をリターンする。
+</p>
+<p>以下はこの関数の使い方を説明するための例である:
+</p>
+<div class="example">
+<pre class="example">(defun fact (n)
+  (if (zerop n) 1
+      (* n (fact (1- n)))))
+     &rArr; fact
+</pre><pre class="example">(debug-on-entry 'fact)
+     &rArr; fact
+</pre><pre class="example">(fact 3)
+</pre><pre class="example">
+
+</pre><pre class="example">------ Buffer: *Backtrace* ------
+Debugger entered--entering a function:
+* fact(3)
+  eval((fact 3))
+  eval-last-sexp-1(nil)
+  eval-last-sexp(nil)
+  call-interactively(eval-last-sexp)
+------ Buffer: *Backtrace* ------
+</pre><pre class="example">
+
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-cancel_002ddebug_002don_002dentry">Command: <strong>cancel-debug-on-entry</strong> <em>&amp;optional function-name</em></dt>
+<dd><p>この関数は<var>function-name</var>にたいする<code>debug-on-entry</code>の効果をアンドゥする。インタラクティブに呼び出されたときは、ミニバッファーで<var>function-name</var>の入力を求める。<var>function-name</var>が省略または<code>nil</code>なら、すべての関数にたいするbreak-on-entryをキャンセルする。エントリー時にbreakするようセットアップされていない関数に<code>cancel-debug-on-entry</code>を呼び出したときは何も行わない。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

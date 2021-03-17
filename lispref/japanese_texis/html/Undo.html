@@ -1,0 +1,174 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Undo (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Undo (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Undo (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Text.html" rel="up" title="Text">
+<link href="Maintaining-Undo.html" rel="next" title="Maintaining Undo">
+<link href="Internals-of-Kill-Ring.html" rel="prev" title="Internals of Kill Ring">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Undo"></span><div class="header">
+<p>
+Next: <a href="Maintaining-Undo.html" accesskey="n" rel="next">Maintaining Undo</a>, Previous: <a href="The-Kill-Ring.html" accesskey="p" rel="prev">The Kill Ring</a>, Up: <a href="Text.html" accesskey="u" rel="up">Text</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="andou"></span><h3 class="section">32.9 アンドゥ</h3>
+<span id="index-redo"></span>
+
+<p>ほとんどのバッファーは、バッファーのテキストにたいして行われた変更をundoできるように、すべての変更を記録する<em>undoリスト(undo
+list)</em>をもっています(undoリストをもたないバッファーとは通常はEmacsがundoを有用とみなさない特殊用途のバッファーである。特に名前がスペースで始まるバッファーはすべてundoの記録がデフォルトでオフになっている。<a href="Buffer-Names.html">Buffer Names</a>を参照)。バッファー内でテキストを変更するすべてのプリミティブはundoリストの先頭に自動的に要素を追加して、それは変数<code>buffer-undo-list</code>に格納されます。
+</p>
+<dl>
+<dt id="index-buffer_002dundo_002dlist">Variable: <strong>buffer-undo-list</strong></dt>
+<dd><p>このバッファーローカル変数の値は、カレントバッファーのundoリスト。値が<code>t</code>ならundo情報の記録を無効にする。
+</p></dd></dl>
+
+<p>以下はundoリストが保有可能な要素の種類です:
+</p>
+<dl compact="compact">
+<dt><code><var>position</var></code></dt>
+<dd><p>この種の要素は前のポイント値を記録する。この要素をundoすることによりポイントは<var>position</var>に移動する。通常のカーソル移動はどのような類のundo記録も作成しないが、削除操作はそのコマンド以前にポイントがあった場所を記録するためにこのエントリーを使用する。
+</p>
+</dd>
+<dt><code>(<var>beg</var> . <var>end</var>)</code></dt>
+<dd><p>この種の要素は挿入されたテキストを削除する方法を示す。挿入においてそのテキストはバッファー内の範囲<var>beg</var>から<var>end</var>を占める。
+</p>
+</dd>
+<dt><code>(<var>text</var> . <var>position</var>)</code></dt>
+<dd><p>この種の要素は削除されたテキストを再度挿入する方法を示す。文字列<var>text</var>は削除されたテキストそのもの。削除されたテキストを再挿入する位置は<code>(abs
+<var>position</var>)</code>。<var>position</var>が正ならポイントがあったのは削除されたテキストの先頭、それ以外では末尾。この要素の直後に0個以上の(<var>marker</var>
+. <var>adjustment</var>)要素が続く。
+</p>
+</dd>
+<dt><code>(t . <var>time-flag</var>)</code></dt>
+<dd><p>この種の要素は未変更のバッファーが変更されたことを示す。<var>time-flag</var>
+(非整数のLispタイムスタンプ)は、visitされたファイルにたいしてそれが以前にvisitや保存されたときの更新時刻(modification
+time)を、<code>current-time</code>と同じ形式を用いて表す。<a href="Time-of-Day.html">Time of Day</a>を参照のこと。<var>time-flag</var>が0ならそのバッファーに対応するファイルがないことを、-1ならvisitされたファイルは以前は存在しなかったことを意味する。<code>primitive-undo</code>はバッファーを再度未変更とマークするかどうかを判断するために、これらの値を使用する(ファイルの状態が<var>time-flag</var>のそれとマッチする場合のみ未変更とマーク)。
+</p>
+</dd>
+<dt><code>(nil <var>property</var> <var>value</var> <var>beg</var> . <var>end</var>)</code></dt>
+<dd><p>この種の要素はテキストプロパティの変更を記録する。変更をundoする方法は以下のようになる:
+</p>
+<div class="example">
+<pre class="example">(put-text-property <var>beg</var> <var>end</var> <var>property</var> <var>value</var>)
+</pre></div>
+
+</dd>
+<dt><code>(<var>marker</var> . <var>adjustment</var>)</code></dt>
+<dd><p>この種の要素はマーカー<var>marker</var>がそれを取り囲むテキストの削除により再配置されて、<var>adjustment</var>文字位置を移動したということを記録する。undoリスト内の前にある要素(<var>text</var>
+. <var>position</var>)とマーカーの位置が一致する場合には、この要素をundoすることにより<var>marker</var> -
+<var>adjustment</var>文字移動する。
+</p>
+</dd>
+<dt><code>(apply <var>funname</var> . <var>args</var>)</code></dt>
+<dd><p>これは拡張可能なundoアイテムであり、引数<var>args</var>とともに<var>funname</var>を呼び出すことによりundoが行われる。
+</p>
+</dd>
+<dt><code>(apply <var>delta</var> <var>beg</var> <var>end</var> <var>funname</var> . <var>args</var>)</code></dt>
+<dd><p>これは拡張可能なundoアイテムであり、<var>beg</var>から<var>end</var>までに限定された範囲にたいして、そのバッファーのサイズを<var>delta</var>文字増加させる変更を記録する。これは引数<var>args</var>とともに<var>funname</var>を呼び出すことによりundoが行われる。
+</p>
+<p>この種の要素は、それがリージョンと関係するか否かを判断することによりリージョンに限定されたundoを有効にする。
+</p>
+</dd>
+<dt><code>nil</code></dt>
+<dd><p>この要素は境界(boundary)である。2つの境界の間にある要素を<em>変更グループ(change
+group)</em>と呼び、それぞれの変更グループは通常1つのキーボードコマンドに対応するとともに、undoコマンドは通常はグループを1つの単位として全体をundoを行う。
+</p></dd>
+</dl>
+
+<dl>
+<dt id="index-undo_002dboundary">Function: <strong>undo-boundary</strong></dt>
+<dd><p>この関数はundoリスト内に境界を配置する。このような境界ごとにundoコマンドは停止して、連続するundoコマンドは、より以前の境界へとundoを行っていく。この関数は<code>nil</code>をリターンする。
+</p>
+<p>この関数を明示的に呼び出すことは、あるコマンドの効果を複数単位に分割するために有用である。たとえば<code>query-replace</code>はユーザーが個別に置換をundoできるように、それぞれの置換後に<code>undo-boundary</code>を呼び出している。
+</p>
+<p>しかしほとんどの場合には、この関数は適切なタイミングで自動的に呼び出される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-undo_002dauto_002damalgamate">Function: <strong>undo-auto-amalgamate</strong></dt>
+<dd><span id="index-amalgamating-commands_002c-and-undo"></span>
+<span id="index-amalgamating_002dundo_002dlimit"></span>
+<p>エディターコマンドループは各アンドゥがが通常はそれぞれ1つのコマンドの効果をアンドゥするように、各キーシーケンスを実行する直前に<code>undo-boundary</code>を呼び出す。少数の例外は<em>融合(amalgamating)</em>コマンドである。これらのコマンドは一般的にバッファーにたいして小さい変更を発生させるので、変更をグループとしてアンドゥできるように、20回目のコマンドごとに境界が挿入される。デフォルトでは自己挿入入力文字を生成するコマンド<code>self-insert-command</code>
+(<a href="Commands-for-Insertion.html">Commands for Insertion</a>を参照)、文字を削除するコマンド<code>delete-char</code>
+(<a href="Deletion.html">Deletion</a>を参照)は融合コマンドである。複数バッファーのコンテンツに影響するコマンド、たとえば発生し得るとすれば<code>post-command-hook</code>上の関数が<code>current-buffer</code>以外のバッファーに影響を及ぼす場合には、影響を受ける各バッファーごとに<code>undo-boundary</code>が呼び出されるだろう。
+</p>
+<p>この関数を融合コマンドの前に呼び出すことができる。そのような一連の呼び出しが行われていると、以前の<code>undo-boundary</code>は削除される。
+</p>
+<p>融合可能な最大の変更数は<code>amalgamating-undo-limit</code>変数で制御される。この変数が1なら変更は融合されない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-undo_002dauto_002dcurrent_002dboundary_002dtimer">Variable: <strong>undo-auto-current-boundary-timer</strong></dt>
+<dd><p>プロセスバッファーのようないくつかのバッファーでは、何もコマンドを実行していなくても変更が発生し得る。このような場合には、通常は<code>undo-boundary</code>この変数内のタイマーにより定期的に呼び出される。この挙動を抑制するには、この変数を非<code>nil</code>にセットすること。
+</p></dd></dl>
+
+<dl>
+<dt id="index-undo_002din_002dprogress">Variable: <strong>undo-in-progress</strong></dt>
+<dd><p>この変数は通常は<code>nil</code>だが、undoコマンドはこれを<code>t</code>にバインドする。これによりさまざまな種類の変更フックがundoにより呼び出された際に、それを告げることが可能になる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-primitive_002dundo">Function: <strong>primitive-undo</strong> <em>count list</em></dt>
+<dd><p>これはundoリストの要素のundoにたいする基本的な関数。これは<var>list</var>の最初の<var>count</var>要素をundoして<var>list</var>の残りをリターンする。
+</p>
+<p><code>primitive-undo</code>はバッファー変更時に、そのバッファーのundoリストに要素を追加する。undoコマンドは混乱を避けるためにundo操作シーケンス冒頭にundoリストの値を保存する。その後でundo操作は保存された値の使用と更新を行う。undoにより追加された新たな要素はこの保存値の一部でないので継続するundoと干渉しない。
+</p>
+<p>この関数は<code>undo-in-progress</code>をバインドしない。
+</p></dd></dl>
+
+<p>いくつかのコマンは、コマンドの選択的なアンドゥを妨害する方法により、実行後にリージョンをアクティブなままにします。<code>undo</code>をそのようなコマンドの直後に呼び出した際にアクティブなリージョンを無視するには、コマンドの関数シンボルの<code>undo-inhibit-region</code>プロパティに非nil値をセットします。<a href="Standard-Properties.html">Standard Properties</a>を参照してください。
+</p>
+
+
+
+</body>
+</html>

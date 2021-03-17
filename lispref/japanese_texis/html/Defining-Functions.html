@@ -1,0 +1,136 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Defining Functions (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Defining Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Defining Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Functions.html" rel="up" title="Functions">
+<link href="Calling-Functions.html" rel="next" title="Calling Functions">
+<link href="Function-Names.html" rel="prev" title="Function Names">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Defining-Functions"></span><div class="header">
+<p>
+Next: <a href="Calling-Functions.html" accesskey="n" rel="next">Calling Functions</a>, Previous: <a href="Function-Names.html" accesskey="p" rel="prev">Function Names</a>, Up: <a href="Functions.html" accesskey="u" rel="up">Functions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Guan-Shu-noDing-Yi-"></span><h3 class="section">13.4 関数の定義</h3>
+<span id="index-defining-a-function"></span>
+
+<p>わたしたちは通常は関数を最初に作成したときに名前を与えます。これは<em>関数の定義(defining a
+function)</em>と呼ばれており、通常は<code>defun</code>マクロにより行われます。このセクションでは関数を定義する別の方法も説明します。
+</p>
+<dl>
+<dt id="index-defun">Macro: <strong>defun</strong> <em>name args [doc] [declare] [interactive] body&hellip;</em></dt>
+<dd><p><code>defun</code>は新たなLisp関数を定義する通常の方法である。これは引数リスト<var>args</var>、および<var>body</var>により与えられるbodyフォームとともに、シンボル<var>name</var>を関数として定義する(<a href="Argument-List.html">Argument List</a>を参照)。<var>name</var>と<var>args</var>をクォートする必要はない。
+</p>
+<p><var>doc</var>が与えられたら、それはその関数のドキュメント文字列を指定する文字列であること(<a href="Function-Documentation.html">Function Documentation</a>を参照)。<var>declare</var>が与えられたら、それは関数のメタデータを指定する<code>declare</code>フォームであること(<a href="Declare-Form.html">Declare Form</a>を参照)。<var>interactive</var>が与えられたら、それは関数が対話的に呼び出される方法を指定する<code>interactive</code>フォームであるこ(<a href="Interactive-Call.html">Interactive Call</a>を参照)。
+</p>
+<p><code>defun</code>のリターン値は定義されていません。
+</p>
+<p>以下にいくつか例を示す:
+</p>
+<div class="example">
+<pre class="example">(defun foo () 5)
+(foo)
+     &rArr; 5
+</pre><pre class="example">
+
+</pre><pre class="example">(defun bar (a &amp;optional b &amp;rest c)
+    (list a b c))
+(bar 1 2 3 4 5)
+     &rArr; (1 2 (3 4 5))
+</pre><pre class="example">(bar 1)
+     &rArr; (1 nil nil)
+</pre><pre class="example">(bar)
+error&rarr; Wrong number of arguments.
+</pre><pre class="example">
+
+</pre><pre class="example">(defun capitalize-backwards ()
+  &quot;Upcase the last letter of the word at point.&quot;
+  (interactive)
+  (backward-word 1)
+  (forward-word 1)
+  (backward-char 1)
+  (capitalize-word 1))
+</pre></div>
+
+<span id="index-override-existing-functions"></span>
+<span id="index-Ji-Cun-noGuan-Shu-noZai-Ding-Yi-_002e-"></span>
+<p>意図せず既存の関数を再定義しないように注意されたい。<code>defun</code>は<code>car</code>のようなプリミティブ関数でさえ、問い合わせせずに躊躇なく再定義する。Emacsがこれを妨げることはない。なぜなら関数の再定義は故意に行われることがあり、そのような意図した再定義を、意図しない再定義と見分ける方法はがないからである。
+</p></dd></dl>
+
+<span id="index-function-aliases"></span>
+<span id="index-alias_002c-for-functions"></span>
+<dl>
+<dt id="index-defalias">Function: <strong>defalias</strong> <em>name definition &amp;optional doc</em></dt>
+<dd><span id="Definition-of-defalias"></span><p>この関数は定義<var>definition</var>(任意の有効なLisp関数)とともに、シンボル<var>name</var>を関数として定義する。この関数のリターン値は<em>未定義</em>。
+</p>
+<p><var>doc</var>が非<code>nil</code>なら、それは関数<var>name</var>のドキュメントとなる。それ以外なら<var>definition</var>により提供されるドキュメントが使用される。
+</p>
+<span id="index-defalias_002dfset_002dfunction-property"></span>
+<p>内部的には<code>defalias</code>は、通常は定義のセットに<code>fset</code>を使用する。しかし<var>name</var>が<code>defalias-fset-function</code>プロパティーをもつなら、<code>fset</code>を呼び出すかわりにそれに割り当てられた値を使用する。
+</p>
+<p><code>defalias</code>を使う正しい場所は、特定の関数名が正に定義される場所 &mdash;
+特にソースファイルがロードされるとき明示的にその名前が出現する場所である。これは<code>defalias</code>が<code>defun</code>と同じように、どれが関数を定義するファイルなのか記録するからである(<a href="Unloading.html">Unloading</a>を参照)。
+</p>
+<p>それとは対象的に他の目的のために関数を操作するプログラムでは、そのような記録を保持しない<code>fset</code>を使用するほうがよいだろう。<a href="Function-Cells.html">Function Cells</a>を参照のこと。
+</p></dd></dl>
+
+<p><code>defun</code>や<code>defalias</code>で新たなプリミティブ関数を作成することはできませんが、任意の関数定義を変更するのに使用することができ、通常の定義がプリミティブである<code>car</code>や<code>x-popup-menu</code>のような関数でさえ変更することができます。しかしこれは危険なことです。たとえばLispの完全性を損なうことなく、<code>car</code>を再定義するのはほとんど不可能だからです。それほど有名ではない<code>x-popup-menu</code>のような関数の再定義では、危険は減少しますが、それでも期待したとおりに機能しないかもしれません。Cコードにそのプリミティブの呼び出しがあれば、それは直接そのプリミティブのC定義を呼び出すので、シンボル定義を変更してもそれらに影響はありません。
+</p>
+<p><code>defsubst</code>も参照してください。これは<code>defun</code>のように関数を定義して、それのインライン展開を処理するようLispコンパイラーに指示します。<a href="Inline-Functions.html">Inline Functions</a>を参照してください。
+</p>
+<p>関数名を未定義にするには<code>fmakunbound</code>を使用します。<a href="Function-Cells.html">Function Cells</a>を参照してください。
+</p>
+
+
+
+</body>
+</html>

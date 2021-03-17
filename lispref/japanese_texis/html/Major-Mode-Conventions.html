@@ -1,0 +1,177 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Major Mode Conventions (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Major Mode Conventions (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Major Mode Conventions (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Major-Modes.html" rel="up" title="Major Modes">
+<link href="Auto-Major-Mode.html" rel="next" title="Auto Major Mode">
+<link href="Major-Modes.html" rel="prev" title="Major Modes">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Major-Mode-Conventions"></span><div class="header">
+<p>
+Next: <a href="Auto-Major-Mode.html" accesskey="n" rel="next">Auto Major Mode</a>, Up: <a href="Major-Modes.html" accesskey="u" rel="up">Major Modes</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="meziyamodonoGuan-Xi"></span><h4 class="subsection">23.2.1 メジャーモードの慣習</h4>
+<span id="index-major-mode-conventions"></span>
+<span id="index-conventions-for-writing-major-modes"></span>
+
+<p>メジャーモードにたいするすべてのコードはさまざまなコーディング規約にしたがうべきであり、それらの規約にはローカルキーマップおよび構文テーブルの初期化、関数名や変数名、フックにたいする規約が含まれます。
+</p>
+<p><code>define-derived-mode</code>マクロを使用すれば、これらの規約を自動的に配慮します。<a href="Derived-Modes.html">Derived Modes</a>を参照してください。FundamentalモードはEmacsのデフォルト状態を表すモードなので、これらの規約が該当しないことに注意してください。
+</p>
+<p>以下の規約リストはほんの一部です。一般的にすべてのメジャーモードはEmacs全体が首尾一貫するよう、他のEmacsメジャーモードとの一貫性を目指すべきです。ここでこの問題を洗い出すすべての想定される要点をリストするのは不可能です。自身の開発するメジャーモードが通常の規約を逸脱する領域を示すような場合には、Emacs開発者は互換性を保つようにしてください。
+</p>
+<ul>
+<li> 名前が&lsquo;<samp>-mode</samp>&rsquo;で終わるようにメジャーモードコマンドを定義する。引数なしで呼び出されたときこのコマンドはキーマップ、構文テーブル、既存バッファーのバッファーローカル変数をセットアップして、カレントバッファーを新たなモードに切り替えること。そのバッファーのコンテンツを変更しないこと。
+
+</li><li> そのモードで利用できる特別なコマンドを説明するドキュメント文字列を記述する。<a href="Mode-Help.html">Mode Help</a>を参照のこと。
+
+<p>そのユーザー自身のキーバインディングに自動的に適合してヘルプが表示されるように、ドキュメント文字列に特別なドキュメントサブストリング&lsquo;<samp>\[<var>command</var>]</samp>&rsquo;、&lsquo;<samp>\{<var>keymap</var>}</samp>&rsquo;、&lsquo;<samp>\&lt;<var>keymap</var>&gt;</samp>&rsquo;を含めるとよいかもしれない。<a href="Keys-in-Documentation.html">Keys in Documentation</a>を参照のこと。
+</p>
+</li><li> メジャーモードコマンドは<code>kill-all-local-variables</code>を呼び出すことによって開始すること。これはノーマルフック<code>change-major-mode-hook</code>を実行してから、前のメジャーモードで効力のあったバッファーローカル変数を解放する。<a href="Creating-Buffer_002dLocal.html">Creating Buffer-Local</a>を参照のこと。
+
+</li><li> メジャーモードコマンドは変数<code>major-mode</code>にメジャーモードコマンドのシンボルをセットすること。これは<code>describe-mode</code>がプリントするドキュメントを探す手掛かりとなる。
+
+</li><li> メジャーモードコマンドは変数<code>mode-name</code>にそのモードの&ldquo;愛称(pretty
+name)&rdquo;をセットすること(これは通常は文字列だが他の利用可能な形式については<a href="Mode-Line-Data.html">Mode Line Data</a>を参照)。このモード名はモードラインに表示される。
+
+</li><li> 連続してメジャーモードコマンドを直接呼び出しても失敗せずに、1回だけ呼び出されたときと同じことを行うこと。言い換えるとメジャーモードコマンドはべき等であること。
+
+</li><li> <span id="index-functions-in-modes"></span>
+すべてのグローバル名は同じネームスペースにあるので、モードの一部であるようなすべてのグローバルな変数、定数、関数はメジャーモード名(メジャーモード名が長いようなら短縮名)で始まる名前をもつこと。<a href="Coding-Conventions.html">Coding Conventions</a>を参照されたい。
+
+</li><li> プログラム言語のようなある種の構造型テキストを編集するためのメジャーモードでは、その構造に応じたテキストのインデントがおそらく有用であろう。したがってそのようなモードは<code>indent-line-function</code>に適切な関数をセットするとともに、インデント用のその他の変数をカスタマイズするべきだろう。<a href="Auto_002dIndentation.html">Auto-Indentation</a>を参照のこと。
+
+</li><li> <span id="index-keymaps-in-modes"></span>
+メジャーモードは、通常はそのモードにあるすべてのバッファーのローカルキーマップとして使用されるモード自身のキーマップをもつこと。メジャーモードコマンドはそのローカルマップをインストールするために、<code>use-local-map</code>を呼び出すこと。詳細は<a href="Active-Keymaps.html">Active Keymaps</a>を参照されたい。
+
+<p>このキーマップは<code><var>modename</var>-mode-map</code>という名前のグローバル変数に永続的に格納されること。そのモードを定義するライブラリーは、通常はこの変数をセットする。
+</p>
+<p>モード用のキーマップ変数をセットアップするコードの記述する方法に関するアドバイスは<a href="Tips-for-Defining.html">Tips for Defining</a>を参照されたい。
+</p>
+</li><li> メジャーモードのキーマップ内でバインドされるキーシーケンスは、通常は<kbd>C-c</kbd>で始まってその後にコントロール文字、数字、<kbd>{</kbd>、<kbd>}</kbd>、<kbd>&lt;</kbd>、<kbd>&gt;</kbd>、<kbd>:</kbd>、<kbd>;</kbd>が続くこと。その他の記号文字(punctuation
+characters)はマイナーモード、通常のアルファベット文字はユーザー用に予約済みである。
+
+<p>メジャーモードは<kbd>M-n</kbd>、<kbd>M-p</kbd>、<kbd>M-s</kbd>などのキーもリバインドできる。<kbd>M-n</kbd>と<kbd>M-p</kbd>にたいするバインディングは、通常は
+前方か後方への移動を意味するような類のものであるべきだが、これが必ずしもカーソル移動を意味する必要はない。
+</p>
+<p>そのモードにより適した方法でテキストに同じ処理を行うコマンドを提供する場合には、メジャーモードが標準的なキーシーケンスをリバインドするのは正当性がある。たとえばプログラム言語を編集するためのメジャーモードは、その言語にとって関数の先頭に移動するために、より良く機能する方法で<kbd>C-M-a</kbd>を再定義するかもしれない。メジャーモードにニーズに応じて<kbd>C-M-a</kbd>を構成するための推奨方法は、そのモード固有の関数を呼び出すために<code>beginning-of-defun-function</code>をセットすること(<a href="List-Motion.html">List Motion</a>を参照)。
+</p>
+<p>ある標準的なキーシーケンスの標準的な意味がそのモードではほとんど役に立たないような場合にも、メジャーモードが標準的なキーシーケンスをリバインドする正当性がある。たとえば<kbd>M-r</kbd>の標準的な意味はミニバッファーではほとんど使用されないので、このキーシーケンスをリバインドする。テキストの自己挿入を許さないDiredやRmailのようなメジャーモードがアルファベット文字や、その他のプリント文字を特別なコマンドに再定義することには正当性がある。
+</p>
+</li><li> テキストを編集するメジャーモードは改行の挿入以外の何かに<tt class="key">RET</tt>を定義すべきではない。しかしユーザーが直接テキストを編集しない、DiredやInfoのような特別なモードにたいしては完全に異なることを行うように<tt class="key">RET</tt>を再定義しても構わない。
+
+</li><li> メジャーモードは、たとえばAuto-Fillモードを有効にする等の、主にユーザーの好みに関するオプションを変更しないこと。それらのオプションはユーザーに選択に任せること。ただし<em>もし</em>ユーザーがAuto-Fillモードを使用すると決定したら、それが便利に機能するように他の変数をカスタマイズすること。
+
+</li><li> <span id="index-syntax-tables-in-modes"></span>
+モードは自身の構文テーブルをもつことができ、他の関連するモードと構文テーブルを共有するかもすることもできる。モードが自身の構文テーブルをもつ場合には、<code><var>modename</var>-mode-syntax-table</code>という名前の変数にそれを格納すること。<a href="Syntax-Tables.html">Syntax Tables</a>を参照されたい。
+
+</li><li> コメントにたいする構文をもつ言語を扱うモードは、コメント構文を定義する変数をセットすること。<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/Options-for-Comments.html#Options-for-Comments">Options Controlling Comments</a> in <cite>The GNU Emacs Manual</cite>を参照されたい。
+
+</li><li> <span id="index-abbrev-tables-in-modes"></span>
+モードは自身のabbrevテーブルをもつことができ、他の関連するモードと構文テーブルを共有することもできる。モードが自身のabbrevテーブルをもつ場合には、<code><var>modename</var>-mode-abbrev-table</code>という名前の変数にそれを格納すること。メジャーモードコマンドが自身で何らかのabbrevを定義する場合には、<code>define-abbrev</code>の<var>system-flag</var>引数に<code>t</code>を渡すこと。<a href="Defining-Abbrevs.html">Defining Abbrevs</a>を参照されたい。
+
+</li><li> モードは変数<code>font-lock-defaults</code>にバッファーローカルな値をセットすることによって、Font
+Lockモードにたいしてハイライトする方法を指定すること(<a href="Font-Lock-Mode.html">Font Lock Mode</a>を参照)。
+
+</li><li> モードが定義するすべてのフェイスは、もし可能なら既存のEmacsフェイスを継承すること。<a href="Basic-Faces.html">Basic Faces</a>と<a href="Faces-for-Font-Lock.html">Faces for Font Lock</a>を参照されたい。
+
+</li><li> モードは変数<code>imenu-generic-expression</code>、<code>imenu-prev-index-position-function</code>と<code>imenu-extract-index-name-function</code>の2つの変数、または変数<code>imenu-create-index-function</code>にバッファーローカルな値をセットすることによってImenuがバッファー内の定義やセクションを探す方法を指定すること(<a href="Imenu.html">Imenu</a>を参照)。
+
+</li><li> モードはスペシャルフック<code>eldoc-documentation-functions</code>に1つ以上のバッファーローカルエントリーを追加することにより、ポイント位置にあるものそれぞれにたいして異なるドキュメントタイプの取得方法をElDocモードに指示できる。
+
+</li><li> モードはスペシャルフック<code>completion-at-point-functions</code>に1つ以上のバッファーローカルエントリーを追加することにより、さまざまなキーワードの補完方法を指定できる。<a href="Completion-in-Buffers.html">Completion in Buffers</a>を参照のこと。
+
+</li><li> <span id="index-buffer_002dlocal-variables-in-modes"></span>
+Emacsのカスタマイズ変数にたいしてバッファーローカルなバインディングを作成するには、<code>make-variable-buffer-local</code>ではなくメジャーモードコマンド内で<code>make-local-variable</code>を使用すること。関数<code>make-variable-buffer-local</code>はそれ以降にカスタマイズ変数をセットするすべてのバッファーにたいしてその変数をローカルにして、そのモードを使用しないバッファーにたいしても影響があるだろう。そのようなグローバルな効果はモードにとって好ましくない。<a href="Buffer_002dLocal-Variables.html">Buffer-Local Variables</a>を参照のこと。
+
+<p>稀な例外としてLispパッケージ内で<code>make-variable-buffer-local</code>を使用する唯一の正当な方法は、そのパッケージ内でのみ使用される変数にたいして使用をする場合である。他のパッケージにより使用される変数にたいしてこの関数を使用すると競合が発生するだろう。
+</p>
+</li><li> <span id="index-mode-hook"></span>
+<span id="index-major-mode-hook"></span>
+すべてのメジャーモードは<code><var>modename</var>-mode-hook</code>という名前のノーマルな<em>モードフック(mode
+hook)</em>をもつこと。メジャーモードコマンドが一番最後に<code>run-mode-hooks</code>を呼び出すこと。これはノーマルフック<code>change-major-mode-after-body-hook</code>、モードフック、(バッファーがファイルをvisitしていれば)関数<code>hack-local-variables</code>、その後にノーマルフック<code>after-change-major-mode-hook</code>を実行する。<a href="Mode-Hooks.html">Mode Hooks</a>を参照のこと。
+
+</li><li> メジャーモードコマンドは<em>親モード(parent
+mode)</em>と呼ばれる他のいくつかのメジャーモードを呼び出すことにより開始されるかもしれず、それらのセッティングのいくつかを変更するかもしれない。これを行うモードは<em>派生モード(derived
+mode)</em>と呼ばれる。派生モードを定義する推奨方法は<code>define-derived-mode</code>マクロの使用だが必須ではない。そのようなモードは<code>delay-mode-hooks</code>フォーム内で親のモードコマンドを呼び出すこと(<code>define-derived-mode</code>は自動的にこれを行う)。<a href="Derived-Modes.html">Derived Modes</a>と<a href="Mode-Hooks.html">Mode Hooks</a>を参照されたい。
+
+</li><li> ユーザーがそのモードのバッファーから他のモードのバッファーに切り替える際に特別な何かを行う必要がある場合、モードは<code>change-major-mode-hook</code>にたいしてバッファーローカル値をセットアップできる(<a href="Creating-Buffer_002dLocal.html">Creating Buffer-Local</a>を参照)。
+
+</li><li> そのモードが、(ユーザーがキーボードでタイプしたテキストや外部ファイルのテキストではなく)モード自身が生成する特別に用意されたテキストにたいしてのみ適している場合、メジャーモードコマンドのシンボルは以下のように<code>mode-class</code>という名前のプロパティに値<code>special</code>をputすること:
+
+<span id="index-mode_002dclass-_0028property_0029"></span>
+<span id="index-special-modes"></span>
+<div class="example">
+<pre class="example">(put 'funny-mode 'mode-class 'special)
+</pre></div>
+
+<p>これはEmacsにたいしてカレントバッファーがFunnyモードのときに新たなバッファーを作成したとき、たとえ<code>major-mode</code>のデフォルト値が<code>nil</code>であってもそのバッファーをFunnyモードにしないよう指示する。デフォルトでは<code>major-mode</code>にたいする値<code>nil</code>は新たなバッファー作成時にカレントバッファーのメジャーモードを使用することを意味するが(<a href="Auto-Major-Mode.html">Auto Major Mode</a>を参照)、<code>special</code>なモードにたいしてはかわりにFundamentalモードが使用される。Dired、Rmail、Buffer
+Listのようなモードはこの機能を使用する。
+</p>
+<p>関数<code>view-buffer</code>はmode-classがspecialであるようなバッファーではViewモードを有効にしない。そのようなモードは通常は自身でViewに相当するバインディングを提供するからである。
+</p>
+<p><code>define-derived-mode</code>マクロは親モードがspecialなら、自動的に派生モードをspecialにマークする。親モードでspecialモードが有用ならそれを継承したモードでも有用だろう。<a href="Basic-Major-Modes.html">Basic Major Modes</a>を参照のこと。
+</p>
+</li><li> 新たなモードを識別可能な特定のファイルにたいするデフォルトとしたければ、そのようなファイル名にたいしてそのモードを選択するために<code>auto-mode-alist</code>に要素を追加する。autoload用にモードコマンドを定義する場合には、<code>autoload</code>を呼び出すのと同じファイル内にその要素を追加すること。モードコマンドにたいしてautoload
+cookieを使用する場合はに、その要素を追加するフォームにたいしてもautoload cookieを使用できる(<a href="Autoload.html#autoload-cookie">autoload cookie</a>を参照)。モードコマンドをautoloadしない場合には、モード定義を含むファイル内で要素を追加すれば十分である。
+
+</li><li> <span id="index-mode-loading"></span>
+悪影響を与えることなく1回以上評価されるように、モード定義はファイル内のトップレベルのフォームとして記述すべきである。たとえばすでに値をもつ変数が再初期化されないように、モードに関連した変数をセットするときは<code>defvar</code>か<code>defcustom</code>を使用する(<a href="Defining-Variables.html">Defining Variables</a>を参照)。
+
+</li></ul>
+
+
+
+
+</body>
+</html>

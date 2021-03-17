@@ -1,0 +1,244 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Handling Errors (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Handling Errors (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Handling Errors (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Errors.html" rel="up" title="Errors">
+<link href="Error-Symbols.html" rel="next" title="Error Symbols">
+<link href="Processing-of-Errors.html" rel="prev" title="Processing of Errors">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Handling-Errors"></span><div class="header">
+<p>
+Next: <a href="Error-Symbols.html" accesskey="n" rel="next">Error Symbols</a>, Previous: <a href="Processing-of-Errors.html" accesskey="p" rel="prev">Processing of Errors</a>, Up: <a href="Errors.html" accesskey="u" rel="up">Errors</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="erawoChu-Li-surukodonoJi-Shu-"></span><h4 class="subsubsection">11.7.3.3 エラーを処理するコードの記述</h4>
+<span id="index-error-handler"></span>
+<span id="index-handling-errors"></span>
+<span id="index-handle-Lisp-errors"></span>
+<span id="index-forms-for-handling-errors"></span>
+
+<p>エラーをシグナルすることによる通常の効果は、実行されていたコマンドを終了してEmacsエディターのコマンドループに即座にリターンすることです。スペシャルフォーム<code>condition-case</code>を使用してエラーハンドラーを設定することにより、プログラム内の一部で発生するエラーのをトラップを調整することができます。以下は単純な例です:
+</p>
+<div class="example">
+<pre class="example">(condition-case nil
+    (delete-file filename)
+  (error nil))
+</pre></div>
+
+<p>これは<var>filename</var>という名前のファイルを削除して、任意のエラーをcatch、エラーが発生した場合は<code>nil</code>をリターンします(このような単純なケースではマクロ<code>ignore-errors</code>を使用することもできる。以下を参照のこと)。
+</p>
+<p><code>condition-case</code>構文は、<code>insert-file-contents</code>呼び出しによるファイルオープンの失敗のような、予想できるエラーをトラップするために多用されます。<code>condition-case</code>構文はユーザーから読み取った式を評価するプログラムのような、完全には予測できないエラーのトラップにも使用されます。
+</p>
+<p><code>condition-case</code>の2番目の引数は<em>保護されたフォーム(protected
+form)</em>と呼ばれます(上記の例では保護されたフォームは<code>delete-file</code>の呼び出し)。このフォームの実行が開始されるとエラーハンドラーが効果をもち、このフォームがリターンすると不活性になります。その間のすべてにおいてエラーハンドラーは効果をもちます。特にこのフォームで呼び出された関数とそのサブルーチン等を実行する間、エラーハンドラーは効果をもちます。厳密にいうと保護されたフォーム自身ではなく、保護されたフォームから呼び出されたLispプリミティブ関数(<code>signal</code>と<code>error</code>を含む)だけがシグナルされるというのは、よいことと言えます。
+</p>
+<p>保護されたフォームの後の引数はハンドラーです。各ハンドラーはそれぞれ、どのエラーを処理するかを指定する1つ以上の<em>コンディション名</em>(シンボル)をリストします。エラーがシグナルされたとき、エラーシンボルはコンディション名のリストも定義します。エラーが共通のコンディション名をもつ場合、そのハンドラーがそのエラーに適用されます。上記の例では1つのハンドラーがあり、それはすべてのエラーをカバーするコンディション名<code>error</code>を指定しています。
+</p>
+<p>適切なハンドラーの検索は、もっとも最近に設定されたハンドラーから始まり、設定されたすべてのハンドラーをチェックします。したがってネストされた<code>condition-case</code>フォームに同じエラー処理がある場合には、内側のハンドラーがそれを処理します。
+</p>
+<p>何らかの<code>condition-case</code>によりエラーが処理されると、<code>debug-on-error</code>でエラーによりデバッガーが呼び出されるようにしていても、通常はデバッガーの実行が抑制されます。
+</p>
+<p><code>condition-case</code>で補足されるようなエラーをデバッグできるようにしたいなら、変数<code>debug-on-signal</code>に非<code>nil</code>値をセットします。以下のようにコンディション内に<code>debug</code>を記述することにより、最初にデバッガーを実行するような特定のハンドラーを指定することもできます:
+</p>
+<div class="example">
+<pre class="example">(condition-case nil
+    (delete-file filename)
+  ((debug error) nil))
+</pre></div>
+
+<p>ここでの<code>debug</code>の効果は、デバッガー呼び出しを抑制する<code>condition-case</code>を防ぐことだけです。<code>debug-on-error</code>とその他のフィルタリングメカニズムがデバッガーを呼び出すように指定されているときだけ、エラーによりデバッガーが呼び出されます。<a href="Error-Debugging.html">Error Debugging</a>を参照してください。
+</p>
+<dl>
+<dt id="index-condition_002dcase_002dunless_002ddebug">Macro: <strong>condition-case-unless-debug</strong> <em>var protected-form handlers&hellip;</em></dt>
+<dd><p>マクロ<code>condition-case-unless-debug</code>は、そのようなフォームのデバッギングを処理する、別の方法を提供する。このマクロは変数<code>debug-on-error</code>が<code>nil</code>、つまり任意のエラーを処理しないようなケース以外は、<code>condition-case</code>とまったく同様に振る舞う。
+</p></dd></dl>
+
+<p>特定のハンドラーがそのエラーを処理するとEmacsが判断すると、Emacsは制御をそのハンドラーにreturnします。これを行うために、Emacsはそのとき脱出しつつあるバインディング構成により作成されたすべての変数のバインドを解き、そのとき脱出しつつあるすべての<code>unwind-protect</code>フォームを実行します。制御がそのハンドラーに達すると、そのハンドラーのbodyが通常どおり実行されます。
+</p>
+<p>そのハンドラーのbodyを実行した後、<code>condition-case</code>フォームから実行がreturnされます。保護されたフォームは、そのハンドラーの実行の前に完全にexitしているので、そのハンドラーはそのエラーの位置から実行を再開することはできず、その保護されたフォーム内で作られた変数のバインディングを調べることもできません。ハンドラーが行なえることは、クリーンアップと、処理を進行させることだけです。
+</p>
+<p>エラーのシグナルとハンドルには<code>throw</code>と<code>catch</code> (<a href="Catch-and-Throw.html">Catch and Throw</a>を参照)に類似する点がいくつかありますが、これらは完全に別の機能です。エラーは<code>catch</code>でキャッチできず、<code>throw</code>をエラーハンドラーで処理することはできません(しかし対応する<code>catch</code>が存在しないときに<code>throw</code>を使用することによりシグナルされるエラーは処理できる)。
+</p>
+<dl>
+<dt id="index-condition_002dcase">Special Form: <strong>condition-case</strong> <em>var protected-form handlers&hellip;</em></dt>
+<dd><p>このスペシャルフォームは<var>protected-form</var>の実行を囲い込むエラーハンドラー<var>handlers</var>を確立する。エラーなしで<var>protected-form</var>が実行されると、リターンされる値は<code>condition-case</code>フォームの値になる。この場合、<code>condition-case</code>は効果をもたない。<var>protected-form</var>の間にエラーが発生すると、<code>condition-case</code>フォームは違いを生じる。
+</p>
+<p><var>handlers</var>はそれぞれ、<code>(<var>conditions</var>
+<var>body</var>&hellip;)</code>というフォームのリストである。ここで<var>conditions</var>はハンドルされるエラーコンディション名、またはそのハンドラーの前にデバッガーを実行するためのコンディション名(<code>debug</code>を含む)。<code>t</code>というコンディション名はすべてのコンディションにマッチする。<var>body</var>はこのハンドラーがエラーを処理するときに実行される1つ以上のLisp式。
+</p>
+<div class="example">
+<pre class="example">(error nil)
+
+(arith-error (message &quot;Division by zero&quot;))
+
+((arith-error file-error)
+ (message
+  &quot;Either division by zero or failure to open a file&quot;))
+</pre></div>
+
+<p>発生するエラーはそれぞれ、それが何の種類のエラーかを記述する<em>エラーシンボル(error
+symbol)</em>をもち、これはコンディション名のリストも記述する(<a href="Error-Symbols.html">Error Symbols</a>を参照)。Emacsは1つ以上のコンディション名を指定するハンドラーにたいして、すべてのアクティブな<code>condition-case</code>フォームを検索する。<code>condition-case</code>の最内のマッチがそのエラーを処理する。<code>condition-case</code>内では、最初に適合したハンドラーがそのエラーを処理する。
+</p>
+<p>ハンドラーのbodyを実行した後、<code>condition-case</code>は通常どおりリターンして、ハンドラーのbodyの最後の値をハンドラー全体の値として使用する。
+</p>
+<span id="index-error-description"></span>
+<p>引数<var>var</var>は変数である。<var>protected-form</var>を実行するとき、<code>condition-case</code>はこの変数をバインドせず、エラーを処理するときだけバインドする。その場合には、<var>var</var>を<em>エラー記述(error
+description)</em>にバインドする。これはエラーの詳細を与えるリストである。このエラー記述は<code>(<var>error-symbol</var>
+.
+<var>data</var>)</code>というフォームをもつ。ハンドラーは何を行なうか決定するために、このリストを参照することができる。たとえばファイルオープンの失敗にたいするエラーなら、ファイル名が<var>data</var>(エラー記述の3番目の要素)の2番目の要素になる。
+</p>
+<p><var>var</var>が<code>nil</code>なら、それはバインドされた変数がないことを意味する。この場合、エラーシンボルおよび関連するデータは、そのハンドラーでは利用できない。
+</p>
+<span id="index-rethrow-a-signal"></span>
+<p>より外側のレベルのハンドラーにcatchさせるために、<code>condition-case</code>によりcatchされたシグナルを再度throwする必要がある場合もある。以下はこれを行なう方法である:
+</p>
+<div class="example">
+<pre class="example">  (signal (car err) (cdr err))
+</pre></div>
+
+<p>ここで<code>err</code>はエラー記述変数(error description
+variable)で、<code>condition-case</code>の1番目の引数は、再throwしたいエラーコンディション。<a href="Signaling-Errors.html#Definition-of-signal">Definition of signal</a>を参照のこと。
+</p></dd></dl>
+
+<dl>
+<dt id="index-error_002dmessage_002dstring">Function: <strong>error-message-string</strong> <em>error-descriptor</em></dt>
+<dd><p>この関数は与えられたエラー記述子(error
+descriptor)にたいするエラーメッセージ文字列をリターンする。これはそのエラーにたいする通常のエラーメッセージをプリントすることにより、エラーを処理したい場合に有用。<a href="Signaling-Errors.html#Definition-of-signal">Definition of signal</a>を参照のこと。
+</p></dd></dl>
+
+<span id="index-arith_002derror-example"></span>
+<p>以下は0除算の結果によるエラーを処理するために、<code>condition-case</code>を使用する例です。このハンドラーは、(beepなしで)エラーメッセージを表示して、非常に大きい数をリターンします。
+</p>
+<div class="example">
+<pre class="example">(defun safe-divide (dividend divisor)
+  (condition-case err
+      ;; <span class="roman">保護されたフォーム</span>
+      (/ dividend divisor)
+</pre><pre class="example">    ;; <span class="roman">ハンドラー</span>
+    (arith-error                        ; <span class="roman">コンディション</span>
+     ;; <span class="roman">このエラーにたいする、通常のメッセージを表示する</span>
+     (message &quot;%s&quot; (error-message-string err))
+     1000000)))
+&rArr; safe-divide
+</pre><pre class="example">
+
+</pre><pre class="example">(safe-divide 5 0)
+     -| Arithmetic error: (arith-error)
+&rArr; 1000000
+</pre></div>
+
+<p>このハンドラーはコンディション名<code>arith-error</code>を指定するので、division-by-zero(0除算)エラーだけを処理します。他の種類のエラーは(この<code>condition-case</code>によっては)、処理されません。したがって:
+</p>
+<div class="example">
+<pre class="example">(safe-divide nil 3)
+     error&rarr; Wrong type argument: number-or-marker-p, nil
+</pre></div>
+
+<p>以下は<code>error</code>によるエラーを含む、すべての種類のエラーをcatchする<code>condition-case</code>です:
+</p>
+<div class="example">
+<pre class="example">(setq baz 34)
+     &rArr; 34
+</pre><pre class="example">
+
+</pre><pre class="example">(condition-case err
+    (if (eq baz 35)
+        t
+      ;; <span class="roman">関数<code>error</code>の呼び出し</span>
+      (error &quot;Rats!  The variable %s was %s, not 35&quot; 'baz baz))
+  ;; <span class="roman">フォームではないハンドラー</span>
+  (error (princ (format &quot;The error was: %s&quot; err))
+         2))
+-| The error was: (error &quot;Rats!  The variable baz was 34, not 35&quot;)
+&rArr; 2
+</pre></div>
+
+<dl>
+<dt id="index-ignore_002derrors">Macro: <strong>ignore-errors</strong> <em>body&hellip;</em></dt>
+<dd><p>この構文は、それの実行中に発生する任意のエラーを無視して<var>body</var>を実行する。その実行中にエラーがなければ、<code>ignore-errors</code>は<var>body</var>内の最後のフォームの値を、それ以外は<code>nil</code>をリターンする。
+</p>
+<p>以下はこのセクションの最初の例を<code>ignore-errors</code>を使用して記述する例である:
+</p>
+<div class="example">
+<pre class="example">  (ignore-errors
+   (delete-file filename))
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-ignore_002derror">Macro: <strong>ignore-error</strong> <em>condition body&hellip;</em></dt>
+<dd><p>このマクロは<code>ignore-errors</code>と同様だが、指定した特定のエラーコンディションだけを無視する点が異なる。
+</p>
+<div class="example">
+<pre class="example">  (ignore-error end-of-file
+    (read &quot;&quot;))
+</pre></div>
+
+<p><var>condition</var>はエエラーコンディションのリストでも可。
+</p></dd></dl>
+
+<dl>
+<dt id="index-with_002ddemoted_002derrors">Macro: <strong>with-demoted-errors</strong> <em>format body&hellip;</em></dt>
+<dd><p>このマクロはいわば<code>ignore-errors</code>の穏やかなバージョンである。これはエラーを完全に抑止するのではなく、エラーをメッセージに変換する。これはメッセージのフォーマットに、文字列<var>format</var>を使用する。<var>format</var>は<code>&quot;Error:
+%S&quot;</code>のように、単一の&lsquo;<samp>%</samp>&rsquo;シーケンスを含むこと。エラーをシグナルするとは予測されないが、もし発生した場合は堅牢であるべきようなコードの周囲に<code>with-demoted-errors</code>を使用する。このマクロは<code>condition-case</code>ではなく、<code>condition-case-unless-debug</code>を使用することに注意。
+</p></dd></dl>
+
+<hr>
+<div class="header">
+<p>
+Next: <a href="Error-Symbols.html" accesskey="n" rel="next">Error Symbols</a>, Previous: <a href="Processing-of-Errors.html" accesskey="p" rel="prev">Processing of Errors</a>, Up: <a href="Errors.html" accesskey="u" rel="up">Errors</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

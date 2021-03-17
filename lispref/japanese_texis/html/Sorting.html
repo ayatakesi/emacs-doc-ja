@@ -1,0 +1,228 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Sorting (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Sorting (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Sorting (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Text.html" rel="up" title="Text">
+<link href="Columns.html" rel="next" title="Columns">
+<link href="Auto-Filling.html" rel="prev" title="Auto Filling">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Sorting"></span><div class="header">
+<p>
+Next: <a href="Columns.html" accesskey="n" rel="next">Columns</a>, Previous: <a href="Auto-Filling.html" accesskey="p" rel="prev">Auto Filling</a>, Up: <a href="Text.html" accesskey="u" rel="up">Text</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="tekisutonosoto"></span><h3 class="section">32.15 テキストのソート</h3>
+<span id="index-sorting-text"></span>
+
+<p>このセクションで説明するソート関数は、すべてバッファー内のテキストを再配置します。これはリスト要素を再配置する<code>sort</code>関数とは対照的です(see <a href="Rearrangement.html">Rearrangement</a>)。これらの関数がリターンする値に意味はありません。
+</p>
+<dl>
+<dt id="index-sort_002dsubr">Function: <strong>sort-subr</strong> <em>reverse nextrecfun endrecfun &amp;optional startkeyfun endkeyfun predicate</em></dt>
+<dd><p>この関数はバッファーをレコードに細分してそれらをソートする一般的なテキストソートルーチン。このセクションのコマンドのほとんどは、この関数を使用する。
+</p>
+<p><code>sort-subr</code>が機能する方法を理解するためには、バッファーのアクセス可能範囲を<em>ソートレコード(sort
+records)</em>と呼ばれる分離された断片に分割すると考えればよい。レコードは連続、あるいは非連続かもしれないがオーバーラップしてはならない。各ソートレコードの一部(全体かもしれない)はソートキーとして指定される。これらソートキーによるソートによりレコードは再配置される。
+</p>
+<p>レコードは通常はソートキー昇順で再配置される。<code>sort-subr</code>の1つ目の引数<var>reverse</var>が非<code>nil</code>ならレコードはソートキー降順にソートされて再配置される。
+</p>
+<p><code>sort-subr</code>にたいする以下の4つの引数は、ソートレコード間でポイントを移動するために呼び出される。これらは<code>sort-subr</code>内で頻繁に呼び出される。
+</p>
+<ol>
+<li> <var>nextrecfun</var>はレコード終端のポイントで呼び出される。この関数は次のレコードの先頭にポイントを移動する。<code>sort-subr</code>が呼び出された際には、ポイント位置が1つ目のレコードの開始とみなされる。したがって<code>sort-subr</code>を呼び出す前は、通常はそのバッファーの先頭にポイントを移動すること。
+
+<p>この関数はバッファー終端にポイントを残すことにより、それ以上のソートレコードがないことを示すことができるできる。
+</p>
+</li><li> <var>endrecfun</var>はレコード内にあるポイントで呼び出される。これはレコード終端にポイントを移動する。
+
+</li><li> <var>startkeyfun</var>はポイントをレコード先頭からソートキー先頭に移動する。この引数はオプションで、省略された場合はレコード全体がソートキーとなる。もし与えられた場合には、その関数はソートキーとして使用する非<code>nil</code>値、または<code>nil</code>
+(ソートキーはそのバッファー内のポイント位置から始まることを示す)のいずれかをリターンすること。後者の場合にはソートキー終端を見るけるために<var>endkeyfun</var>が呼び出される。
+
+</li><li> <var>endkeyfun</var>はソートキー先頭からソートキー終端にポイントを移動するために呼び出される。引数はオプション。<var>startkeyfun</var>が<code>nil</code>をリターンし、かつこの引数が省略(または<code>nil</code>)の場合には、そのソートキーはレコード終端まで拡張される。<var>startkeyfun</var>が非<code>nil</code>値をリターンした場合には<var>endkeyfun</var>は不要。
+</li></ol>
+
+<p>引数<var>predicate</var>はキーの比較に使用する関数。この関数は引数として比較する2つのキーを受け取り、1つ目のキーが2つ目のキーよりソート順で前なら非<code>nil</code>をリターンすること。引数のキーが正確に何であるかは<var>startkeyfun</var>と<var>endkeyfun</var>がリターンする値に依存する。<var>predicate</var>が省略または<code>nil</code>の場合のデフォルトはキーが数値なら<code>&lt;</code>、キーがコンスセル(<code>car</code>がキーのバッファー位置の開始で<code>cdr</code>が終了)なら<code>compare-buffer-substrings</code>、それ以外なら<code>string&lt;</code>
+(キーを文字列とみなす)。
+</p>
+<p><code>sort-subr</code>の例として以下は<code>sort-lines</code>関数の完全な定義である:
+</p>
+<div class="example">
+<pre class="example">;; <span class="roman">ドキュメント文字列の冒頭2行は</span>
+;; <span class="roman">ユーザー閲覧時には1行となることに注意</span>
+(defun sort-lines (reverse beg end)
+  &quot;リージョン内の行をアルファベット順にソート;\
+ 引数は降順を意味する
+プログラムから呼び出す場合は、以下の3つの引数がある:
+</pre><pre class="example">REVERSE(非nilは逆順の意)、\
+およびBEGとEND(ソートするリージョン)
+変数`sort-fold-case'は英字\
+大文字小文字の違いが
+ソート順に影響するかどうかを決定する&quot;
+</pre><pre class="example">  (interactive &quot;P\nr&quot;)
+  (save-excursion
+    (save-restriction
+      (narrow-to-region beg end)
+      (goto-char (point-min))
+      (let ((inhibit-field-text-motion t))
+        (sort-subr reverse 'forward-line 'end-of-line)))))
+</pre></div>
+
+<p>ここで<code>forward-line</code>は次のレコードの先頭にポイントを移動して、<code>end-of-line</code>はレコードの終端にポイントを移動する。レコード全体をソートキーとするので引数<var>startkeyfun</var>と<var>endkeyfun</var>は渡していない。
+</p>
+<p><code>sort-paragraphs</code>はほとんど同じだが、<code>sort-subr</code>の呼び出しが以下のようになる:
+</p>
+<div class="example">
+<pre class="example">(sort-subr reverse
+           (lambda ()
+             (while (and (not (eobp))
+                         (looking-at paragraph-separate))
+               (forward-line 1)))
+           'forward-paragraph)
+</pre></div>
+
+<p>ソートレコード内を指す任意のマーカーは、<code>sort-subr</code>リターン後は無意味なマーカー位置のまま取り残される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-sort_002dfold_002dcase">User Option: <strong>sort-fold-case</strong></dt>
+<dd><p>この変数が非<code>nil</code>なら、<code>sort-subr</code>とその他のバッファーソート関数は文字列比較時にcase(大文字小文字)の違いを無視する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-sort_002dregexp_002dfields">Command: <strong>sort-regexp-fields</strong> <em>reverse record-regexp key-regexp start end</em></dt>
+<dd><p>このコマンドは<var>start</var>から<var>end</var>の間のリージョンを、<var>record-regexp</var>と<var>key-regexp</var>で指定されたようにアルファベット順にソートする。<var>reverse</var>が負の整数なら逆順にソートする。
+</p>
+<p>アルファベット順のソートとは2つのソートキーにたいして、それぞれの1つ目の文字同士、2つ目の文字同士、...のように比較することにより、キーを比較することを意味する。文字が一致しなければ、それはソートキーが不等なことを意味する。最初の不一致箇所で文字が小さいソートキーが小さいソートキーとなる。個別の文字はEmacs文字セット内の文字コードの数値に応じて比較される。
+</p>
+<p>引数<var>record-regexp</var>の値はバッファーをソートレコードに分割する方法を指定する。各レコードの終端で、この正規表現にたいする検索は完了して、これにマッチするテキストが次のレコードとして採用される。たとえば改行の前に少なくとも1つの文字がある行にマッチする正規表現&lsquo;<samp>^.+$</samp>&rsquo;は、そのような行をソートレコードとするだろう。正規表現の構文と意味については<a href="Regular-Expressions.html">Regular Expressions</a>を参照のこと。
+</p>
+<p>引数<var>key-regexp</var>の値は各レコードのどの部分がソートキーかを指定する。<var>key-regexp</var>はレコード全体、またはその一部にマッチすることができる。後者の場合にはレコードの残りの部分はソート順に影響しないが、レコードが新たな位置に移動される際はともに移動される。
+</p>
+<p>引数<var>key-regexp</var>は<var>record-regexp</var>の部分式(subexpression)、またはその正規表現自体にマッチしたテキストを参照できる。
+</p>
+<p><var>key-regexp</var>には以下を指定できる:
+</p>
+<dl compact="compact">
+<dt>&lsquo;<samp>\<var>digit</var></samp>&rsquo;</dt>
+<dd><p><var>record-regexp</var>内で<var>digit</var>番目のカッコ&lsquo;<samp>\(...\)</samp>&rsquo;でグループ化によりマッチしたテキストがソートキーになる。
+</p>
+</dd>
+<dt>&lsquo;<samp>\&amp;</samp>&rsquo;</dt>
+<dd><p>レコード全体がソートキーとなる。
+</p>
+</dd>
+<dt>正規表現</dt>
+<dd><p><code>sort-regexp-fields</code>は、そのレコード内で正規表現にたいするマッチを検索する。そのようなマッチがあればそれがソートキー。レコード内に<var>key-regexp</var>にたいするマッチがなければそのレコードは無視されて、そのバッファー内でのレコードの位置は変更されないことを意味する(他のレコードがそのレコードを移動するかもしれない)。
+</p></dd>
+</dl>
+
+<p>たとえばリージョン内のすべての行にたいして、最初の単語が文字&lsquo;<samp>f</samp>&rsquo;で始まる行をソートすることを目論むなら、<var>record-regexp</var>を&lsquo;<samp>^.*$</samp>&rsquo;、<var>key-regexp</var>を&lsquo;<samp>\&lt;f\w*\&gt;</samp>&rsquo;にセットすること。結果は以下のような式になる
+</p>
+<div class="example">
+<pre class="example">(sort-regexp-fields nil &quot;^.*$&quot; &quot;\\&lt;f\\w*\\&gt;&quot;
+                    (region-beginning)
+                    (region-end))
+</pre></div>
+
+<p><code>sort-regexp-fields</code>をインタラクティブに呼び出した場合にはミニバッファー内で<var>record-regexp</var>と<var>key-regexp</var>の入力を求める。
+</p></dd></dl>
+
+<dl>
+<dt id="index-sort_002dlines">Command: <strong>sort-lines</strong> <em>reverse start end</em></dt>
+<dd><p>このコマンドは<var>start</var>と<var>end</var>の間のリージョン内の行をアルファベット順にソートする。<var>reverse</var>が非<code>nil</code>なら逆順にソートする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-sort_002dparagraphs">Command: <strong>sort-paragraphs</strong> <em>reverse start end</em></dt>
+<dd><p>このコマンドは<var>start</var>と<var>end</var>の間のリージョン内のパラグラフをアルファベット順にソートする。<var>reverse</var>が非<code>nil</code>なら逆順にソートする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-sort_002dpages">Command: <strong>sort-pages</strong> <em>reverse start end</em></dt>
+<dd><p>このコマンドは<var>start</var>と<var>end</var>の間のリージョン内のページをアルファベット順にソートする。<var>reverse</var>が非<code>nil</code>なら逆順にソートする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-sort_002dfields">Command: <strong>sort-fields</strong> <em>field start end</em></dt>
+<dd><p>このコマンドは<var>start</var>と<var>end</var>の間のリージョン内の行にたいして、各行の<var>field</var>番目のフィールドをアルファベット順に比較することに行をソートする。<var>field</var>は空白文字により区切られて、1から数えられる。<var>field</var>が負なら行の終端から-<var>field</var><!-- /@w -->番目のフィールドでソートする。このコマンドはテーブルのソートに有用。
+</p></dd></dl>
+
+<dl>
+<dt id="index-sort_002dnumeric_002dfields">Command: <strong>sort-numeric-fields</strong> <em>field start end</em></dt>
+<dd><p>このコマンドは<var>start</var>と<var>end</var>の間のリージョン内の行にたいして、各行の<var>field</var>番目のフィールドを数値的に比較することにより行をソートする。<var>field</var>は空白文字により区切られて、1から数えられる。リージョン内の各行の指定されたフィールドは数字を含んでいなければならない。0で始まる数字は8進数、&lsquo;<samp>0x</samp>&rsquo;で始まる数字は16進数として扱われる。
+</p>
+<p><var>field</var>が負なら行の終端から-<var>field</var><!-- /@w -->番目のフィールドでソートする。このコマンドはテーブルのソートに有用。
+</p></dd></dl>
+
+<dl>
+<dt id="index-sort_002dnumeric_002dbase">User Option: <strong>sort-numeric-base</strong></dt>
+<dd><p>この変数は<code>sort-numeric-fields</code>にたいして数字を解析するための基本基数を指定する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-sort_002dcolumns">Command: <strong>sort-columns</strong> <em>reverse &amp;optional beg end</em></dt>
+<dd><p>このコマンドは<var>beg</var>と<var>end</var>の間にある行にたいして特定の列範囲をアルファベット順に比較することによりソートする。<var>beg</var>と<var>end</var>の列位置はソートが行われる列範囲にバインドされる。
+</p>
+<p><var>reverse</var>が非<code>nil</code>なら逆順にソートする。
+</p>
+<p>このコマンドが通常と異なるのは、位置<var>beg</var>を含む行全体と位置<var>end</var>を含む行全体がソートされるリージョンに含まれることである。
+</p>
+<p>タブは指定された列に分割される可能性があるので、<code>sort-columns</code>はタブを含むテキストを受け付けないことに注意。ソート前に<kbd>M-x
+untabify</kbd>を使用してタブをスペースに変換すること。
+</p>
+<p>可能ならユーティリティプログラム<code>sort</code>を呼び出すことにより、このコマンドは実際に機能する。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Kill Functions (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Kill Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Kill Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="The-Kill-Ring.html" rel="up" title="The Kill Ring">
+<link href="Yanking.html" rel="next" title="Yanking">
+<link href="Kill-Ring-Concepts.html" rel="prev" title="Kill Ring Concepts">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Kill-Functions"></span><div class="header">
+<p>
+Next: <a href="Yanking.html" accesskey="n" rel="next">Yanking</a>, Previous: <a href="Kill-Ring-Concepts.html" accesskey="p" rel="prev">Kill Ring Concepts</a>, Up: <a href="The-Kill-Ring.html" accesskey="u" rel="up">The Kill Ring</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="killYong-noGuan-Shu-"></span><h4 class="subsection">32.8.2 kill用の関数</h4>
+
+<p><code>kill-region</code>はテキストkill用の通常サブルーチンです。この関数を呼び出すすべてのコマンドはkillコマンドです(そして恐らくは名前に&lsquo;<samp>kill</samp>&rsquo;が含まれる)。<code>kill-region</code>は新たにkillされたテキストをkillリング内の最初の要素内に置くか、それをもっとも最近の要素に追加します。これは前のコマンドがkillコマンドか否かを、(<code>last-command</code>を使用して)自動的に判別して、もしkillコマンドならkillされたテキストをもっとも最近のエントリーに追加します。
+</p>
+<span id="index-filtering-killed-text"></span>
+<p>以下で説明するコマンドはkillされるテキストがkillリングに保存される前に、それらをフィルターできます。これらの関数は、このフィルタリングを行うために<code>filter-buffer-substring</code>を呼び出します(<a href="Buffer-Contents.html">Buffer Contents</a>を参照)。デフォルトではこれらはフィルタリングを行いませんが、バッファーにあったときと異なるようにテキストをkillリングに保存するために、マイナーモードとフック関数はフィルタリングをセットアップできます。
+</p>
+<dl>
+<dt id="index-kill_002dregion">Command: <strong>kill-region</strong> <em>start end &amp;optional region</em></dt>
+<dd><p>この関数は<var>start</var>と<var>end</var>の間のテキスト範囲をkillするが、オプション引数<var>region</var>が非<code>nil</code>なら、かわりにカレントリージョンのテキストをkillする。そのテキストは削除されるが、そのテキストプロパティと共にkillリングに保存される。値は常に<code>nil</code>。
+</p>
+<p>インタラクティブな呼び出しでは<var>start</var>と<var>end</var>はポイントとマークで<var>region</var>は常に非<code>nil</code>なので、このコマンドは常にカレントリージョン内のテキストをkillする。
+</p>
+<p>バッファーまたはテキストが読み取り専用なら、<code>kill-region</code>は同じようにkillリングを変更後に、バッファーを変更せずにエラーをシグナルする。これはユーザーが一連のkillコマンドで、読み取り専用バッファーからkillリングにテキストをコピーするのに有用。
+</p></dd></dl>
+
+<dl>
+<dt id="index-kill_002dread_002donly_002dok">User Option: <strong>kill-read-only-ok</strong></dt>
+<dd><p>このオプションが非<code>nil</code>なら、バッファーやテキストが読み取り専用でも<code>kill-region</code>はエラーをシグナルしない。かわりにバッファーを変更せずにkillリングを更新して単にリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-copy_002dregion_002das_002dkill">Command: <strong>copy-region-as-kill</strong> <em>start end &amp;optional region</em></dt>
+<dd><p>この関数は<var>start</var>と<var>end</var>の間のテキスト範囲(テキストプロパティを含む)をkillリングに保存するが、バッファーからそのテキストを削除しない。しかしオプション引数<var>region</var>が非<code>nil</code>なら、この関数は<var>start</var>と<var>end</var>を無視して、かわりにカレントリージョンを保存する。この関数は常に<code>nil</code>をリターンする。
+</p>
+<p>インタラクティブな呼び出しでは<var>start</var>と<var>end</var>はポイントとマークで<var>region</var>は常に非<code>nil</code>なので、このコマンドは常にカレントリージョン内のテキストをkillする。
+</p>
+<p>このコマンドは後続のkillコマンドが同一のkillリングエントリーに追加しないように、<code>this-command</code>に<code>kill-region</code>をセットしない。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

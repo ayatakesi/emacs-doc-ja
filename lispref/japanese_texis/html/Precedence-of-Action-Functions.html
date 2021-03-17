@@ -1,0 +1,229 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Precedence of Action Functions (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Precedence of Action Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Precedence of Action Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Displaying-Buffers.html" rel="up" title="Displaying Buffers">
+<link href="The-Zen-of-Buffer-Display.html" rel="next" title="The Zen of Buffer Display">
+<link href="Choosing-Window-Options.html" rel="prev" title="Choosing Window Options">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Precedence-of-Action-Functions"></span><div class="header">
+<p>
+Next: <a href="The-Zen-of-Buffer-Display.html" accesskey="n" rel="next">The Zen of Buffer Display</a>, Previous: <a href="Choosing-Window-Options.html" accesskey="p" rel="prev">Choosing Window Options</a>, Up: <a href="Displaying-Buffers.html" accesskey="u" rel="up">Displaying Buffers</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="akusiyonGuan-Shu-noYou-Xian-Shun-"></span><h4 class="subsection">28.13.5 アクション関数の優先順</h4>
+<span id="index-precedence-of-buffer-display-action-functions"></span>
+<span id="index-execution-order-of-buffer-display-action-functions"></span>
+<span id="index-buffer-display-action-functions_002c-precedence"></span>
+
+<p>これまでのサブセクションによってバッファーを表示するためには、<code>display-buffer</code>にいくつかのディスプレイアクションを提供しなければならないことがわかりました(<a href="Choosing-Window.html">Choosing Window</a>を参照)。まったくカスタマイズしていないEmacsでは、これらのアクションは<code>display-buffer-fallback-action</code>によってウィンドウの再利用、同一フレーム上での新たなウィンドウのポップアップ、そのバッファーを以前に表示したウィンドウの使用、新たなフレームをポップアップして何らかのウィンドウを使用するという優先順で指定されます(<code>display-buffer-fallback-action</code>いより命名される残りのアクションは未カスタマイズのEmacsではvoidであることに注意)。
+</p>
+<p>以下のフォームを考えてください:
+</p>
+<div class="example">
+<pre class="example">(display-buffer (get-buffer-create &quot;*foo*&quot;))
+</pre></div>
+
+<p>このフォームをカスタマイズされていないEmacsの<samp>*scratch*</samp>バッファーで評価すると、通常はすでに<samp>*foo*</samp>を表示しているウィンドウの再利用は失敗しますが、新たなウィンドウのポップアップは成功するでしょう。そこで同じフォームを再度評価すると、今度は<code>display-buffer</code>はすでに<samp>*foo*</samp>を表示しているウィンドウを再利用して視覚的な変化は生じません。なぜならそれは許容され得るアクションであるとともに、すべての許容され得るアクションの中でもっとも高い優先度をもつからです。
+</p>
+<p>選択されたフレームに十分なスペースがなければ、新たなウィンドウのポップアップは失敗します。カスタマイズされていないEmacsでは、通常はフレームに2つのウィンドウがすでに存在すれば失敗します。たとえば今度は<kbd><span class="nolinebreak">C-x</span>&nbsp;1</kbd><!-- /@w -->の後に<kbd><span class="nolinebreak">C-x</span>&nbsp;2</kbd><!-- /@w -->をタイプしてからもう一度フォームを評価すると、<samp>*foo*</samp>は下側のウィンドウに表示されるはずです(
+<code>display-buffer</code>は単に&ldquo;何らか&rdquo;のウィンドウを使用した)。<kbd><span class="nolinebreak">C-x</span>&nbsp;2</kbd><!-- /@w -->をタイプする前に<kbd><span class="nolinebreak">C-x</span>&nbsp;o</kbd><!-- /@w -->をタイプしていれば、<samp>*foo*</samp>は上側のウィンドウに表示されるでしょう。なぜなら&ldquo;何らか&rdquo;のウィンドウとは&ldquo;最近もっとも使用されていない&rdquo;ウィンドウという意味であり、選択されたウィンドウが最近もっとも使用されていないウィンドウになるのは、それがフレームで唯一のウィンドウの場合だけだからです。
+</p>
+<p><kbd><span class="nolinebreak">C-x</span>&nbsp;o</kbd><!-- /@w -->をタイプせずに<samp>*foo*</samp>が下側のウィンドウに表示されているとしましょう。下側のウィンドウに移動するために<kbd><span class="nolinebreak">C-x</span>&nbsp;o</kbd><!-- /@w -->の後に<kbd><span class="nolinebreak">C-x</span>&nbsp;left</kbd><!-- /@w -->をタイプして、再びフォームを評価してみます。すると<samp>*foo*</samp>は同じ下側のウィンドウに表示されるはずです。なぜなら<samp>*foo*</samp>は以前にそのウィンドウで表示されているので何らかのウィンドウのかわりにそのウィンドウが選択されるからです。
+</p>
+<p>ここまではカスタマイズしていないEmacsのデフォルトの動作を観察してきました。この動作のカスタマイズの仕方を確認するために、オプション<code>display-buffer-base-action</code>について考えてみましょう。これは概念的に<em>任意</em>のバッファーの表示に影響を与える、非常に大まかなカスタマイズを提供します。これは<code>display-buffer-fallback-action</code>により提供されるアクションの並び替えや、提供されていないもののユーザーの編集方法により密接に適合するアクションを追加することにより、<code>display-buffer-fallback-action</code>の補強に使用することができます。しかしデフォルトの動作をより深く変更するためにも使用できます。
+</p>
+<p>ルールとして別フレームにバッファーを表示することを好むユーザーを考えてみましょう。そのようなユーザーなら以下のようなカスタマイズを行うかもしれません:
+</p>
+<div class="example">
+<pre class="example">(customize-set-variable
+ 'display-buffer-base-action
+ '((display-buffer-reuse-window display-buffer-pop-up-frame)
+   (reusable-frames . 0)))
+</pre></div>
+
+<p>このセッティングにより<code>display-buffer</code>はバッファーを表示するウィンドウを探すために、まず可視のフレームとアイコン化されたフレームを探して、そのようなフレームが存在しなければ新たなフレームをポップアップします。グラフィカルなシステム上で<samp>*scratch*</samp>を表示しているウィンドウで<kbd><span class="nolinebreak">C-x</span>&nbsp;1</kbd><!-- /@w -->をタイプして例の<code>display-buffer</code>フォームを評価して動作を観察できます。これは通常はルートウィンドウに<samp>*foo*</samp>を表示するフレームを新たに作成(およびフォーカスを付与)します。このフレームをアイコン化して例のフォームを再度評価すると、<code>display-buffer</code>は新たなフレーム(通常はフレームをraiseしてフォーカスを付与)のウィンドウを再利用するでしょう。
+</p>
+<p><code>display-buffer</code>は新たなフレームの作成に失敗した場合のみ<code>display-buffer-fallback-action</code>が提供するアクション(ウィンドウ再利用の再試行、新たなウィンドウのポップアップ等)を適用します。以下のフォームでフレーム作成を簡単に失敗させることができます:
+</p>
+<div class="example">
+<pre class="example">(let ((pop-up-frame-function 'ignore))
+  (display-buffer (get-buffer-create &quot;*foo*&quot;)))
+</pre></div>
+
+<p>新たなフレーム作成に失敗してかわりにフォールバックアクションの使用を観察した直後にこのフォームを忘れてしまうでしょう。
+</p>
+<p><code>display-buffer-base-action</code>のカスタマイズにおいて<code>display-buffer-reuse-window</code>は冗長に思えることに注意してください。なぜならすでに<code>display-buffer-reuse-window</code>は<code>display-buffer-fallback-action</code>の一部であり、いずれにせよフォールバックアクションで試みられるはずだからです。しかしこれは<code>display-buffer-pop-up-frame</code>が優先順ですでに優っていた時点で、<code>display-buffer-base-action</code>が<code>display-buffer-fallback-action</code>より優先されることにより失敗するでしょう。実際のところ:
+</p>
+<div class="example">
+<pre class="example">(customize-set-variable
+ 'display-buffer-base-action
+ '(display-buffer-pop-up-frame (reusable-frames . 0)))
+</pre></div>
+
+<p>は<code>display-buffer</code>が<em>常</em>に新たなフレームをポップアップして、これはおそらくユーザーが望んでいない動作です。
+</p>
+<p>ここまでは<em>ユーザー</em>が<code>display-buffer</code>のデフォルト動作をカスタマイズする方法だけを示しました。今度は<em>アプリケーション</em>が<code>display-buffer</code>の動作を変更する方法について見てみましょう。これを行う正規の手順は<code>display-buffer</code>や<code>pop-to-buffer</code>のような<code>display-buffer</code>を呼び出す関数の<var>action</var>引数を使用する方法です(<a href="Switching-Buffers.html">Switching Buffers</a>を参照)。
+</p>
+<p>あるアプリケーションが(新たなウィンドウにユーザーを即座に注目させるために)可能なら選択されたウィンドウの下、それが失敗したらフレームの最下ウィンドウにに<samp>*foo*</samp>を表示したいと仮定してみましょう。これは以下のような呼び出しで行うことができます:
+</p>
+<div class="example">
+<pre class="example">(display-buffer
+ (get-buffer-create &quot;*foo*&quot;)
+ '((display-buffer-below-selected display-buffer-at-bottom)))
+</pre></div>
+
+<p>この新しい変更されたフォームがどのように機能するか確認するために<samp>*foo*</samp>を表示しているすべてのフレームを削除してから、<samp>*scratch*</samp>を表示中のウィンドウで<kbd><span class="nolinebreak">C-x</span>&nbsp;1</kbd><!-- /@w -->の後に<kbd><span class="nolinebreak">C-x</span>&nbsp;2</kbd><!-- /@w -->をタイプしてから、続けてそのフォームを評価してみてください。<code>display-buffer</code>は上側のウィンドウを分割して、新たなウィンドウに<samp>*foo*</samp>を表示するはずです。<kbd><span class="nolinebreak">C-x</span>&nbsp;2</kbd><!-- /@w -->の後に<kbd><span class="nolinebreak">C-x</span>&nbsp;o</kbd><!-- /@w -->をタイプした場合には、<code>display-buffer</code>はかわりに最下にあるウィンドウを分割するでしょう。
+</p>
+<p>今度は新たなフォームを評価する前に、(たとえば選択されたウィンドウで<code>(fit-window-to-buffer)</code>を評価して)選択されたウィンドウを可能なかぎり小さくしたとします。この場合には<code>display-buffer</code>は選択されたウィンドウの分割に失敗して、フレームの最下に効果的に<samp>*foo*</samp>を表示するために、かわりにフレームのルートウィンドウを分割するでしょう。
+</p>
+<p>いずれの場合においても新たなフォームの2回目の評価では、すでに<samp>*foo*</samp>を表示しているウィンドウの再利用を試みるはずです。これは<var>action</var>引数が提供するどちらの関数も、そのようなウィンドウの使用を最初に試みるからです。
+</p>
+<p><var>action</var>引数をセットすることにより、アプリケーションは<code>display-buffer-base-action</code>のすべてのカスタマイゼーションを効果的に無効にします。今度はユーザーはアプリケーションの選択を受け入れるか、以下のようにオプション<code>display-buffer-alist</code>をさらにカスタマイズすることができます:
+</p>
+<div class="example">
+<pre class="example">(customize-set-variable
+ 'display-buffer-alist
+ '((&quot;\\*foo\\*&quot;
+    (display-buffer-reuse-window display-buffer-pop-up-frame))))
+</pre></div>
+
+<p><samp>*foo*</samp>がどこにも表示されていない設定で新たな変更版のフォームを試みると、<code>display-buffer</code>の<var>action</var>を完全に無視して別フレームに<samp>*foo*</samp>が表示されます。
+</p>
+<p><code>display-buffer-alist</code>の仕様において,<code>reusable-frames</code>アクションalistの指定を気にしていない点に注意してください。<code>display-buffer</code>は常に最初に見つかったウィンドウ、この場合では<code>display-buffer-base-action</code>で指定されたウィンドウを採用します。しかし異なる仕様を使用したいとき、たとえば再利用可能なウィンドウから<samp>*foo*</samp>を表示中のアイコン化されたフレームを除外したければ個別にそれを指定する必要があります:
+</p>
+<div class="example">
+<pre class="example">(customize-set-variable
+ 'display-buffer-alist
+ '((&quot;\\*foo\\*&quot;
+    (display-buffer-reuse-window display-buffer-pop-up-frame)
+    (reusable-frames . visible))))
+</pre></div>
+
+<p>これを試せば繰り返し<samp>*foo*</samp>の表示を試みた場合に、フレームが可視のときだけフレームの再利用に成功することに気がつくでしょう。
+</p>
+<p>上記の例によりアプリケーションが選択した<var>action</var>引数を無視するという単一の目的にたいしてユーザーが<code>display-buffer-alist</code>をカスタマイズできるという結論が導かれるかもしれません。そのような結論は正しくありません。<code>display-buffer-alist</code>は表示が<var>action</var>引数によってもガイドされるかどうかに関わらず、ユーザーが好む方法で特定のバッファーの表示方法を指示するための標準オプションです。
+</p>
+<p>しかし2つの主要な観点から、<code>display-buffer-alist</code>のカスタマイズは<code>display-buffer-base-action</code>のカスタマイズとは異なると合理的に結論づけることができます。<code>display-buffer-alist</code>のカスタマイズは<code>display-buffer</code>の<var>action</var>引数をオーバーライドして、影響を受けるバッファーを明示的に指定できることからより強力です。実際のところ<samp>*foo*</samp>のカスタマイズによって他のバッファーの表示には何も影響がありません。たとえば、
+</p>
+<div class="example">
+<pre class="example">(display-buffer (get-buffer-create &quot;*bar*&quot;))
+</pre></div>
+
+<p>は<code>display-buffer-base-action</code>と<code>display-buffer-fallback-action</code>のセッティングだけに管理されます。
+</p>
+<p>ここで例を止めることもできますが、Lispプログラムには<code>display-buffer-alist</code>にたいする任意のカスタマイズの無効化に使用できる取って置きの切り札があります。その切り札<code>display-buffer-overriding-action</code>は以下のように<code>display-buffer</code>呼び出しの前後でバインドすることができます:
+</p>
+<div class="example">
+<pre class="example">(let ((display-buffer-overriding-action
+       '((display-buffer-same-window))))
+  (display-buffer
+   (get-buffer-create &quot;*foo*&quot;)
+   '((display-buffer-below-selected display-buffer-at-bottom))))
+</pre></div>
+
+<p>このフォームの評価により通常は<var>action</var>引数や任意のユーザーカスタマイゼーションとは無関係に、選択されたウィンドウに<samp>*foo*</samp>が表示されます(通常はアプリケーションが<var>action</var>を提供する必要もないが、ここではオーバーライドされる事実を示すために提供されている)。
+</p>
+<p>ここで提供したカスタマイゼーションで<samp>*foo*</samp>の表示を試みたアクション関数のリストを調べれば、それが実例になるかもしれません。そのリスト(何がそれを追加したかと後続の要素を含む)は:
+</p>
+<div class="example">
+<pre class="example">(display-buffer-same-window  ;; `display-buffer-overriding-action'
+ display-buffer-reuse-window ;; `display-buffer-alist'
+ display-buffer-pop-up-frame
+ display-buffer-below-selected ;; ACTION argument
+ display-buffer-at-bottom
+ display-buffer-reuse-window ;; `display-buffer-base-action'
+ display-buffer-pop-up-frame
+ display-buffer--maybe-same-window ;; `display-buffer-fallback-action'
+ display-buffer-reuse-window
+ display-buffer--maybe-pop-up-frame-or-window
+ display-buffer-in-previous-window
+ display-buffer-use-some-window
+ display-buffer-pop-up-frame)
+</pre></div>
+
+<p>ここで列挙した内部関数の中で<code>display-buffer--maybe-pop-up-frame-or-window</code>が実際に<code>display-buffer-pop-up-window</code>を実行しているにも関わらず、<code>display-buffer--maybe-same-window</code>が効果的に無視されていることに注意してください。
+</p>
+<p>アクション関数の各呼び出しにおいて渡されるアクションalistは:
+</p>
+<div class="example">
+<pre class="example">((reusable-frames . visible)
+ (reusable-frames . 0))
+</pre></div>
+
+<p>これは上述の<code>display-buffer-alist</code>の2つ目の仕様を使用して、<code>display-buffer-base-action</code>が提供する仕様をオーバーライドすることを示しています。これをユーザーが以下のように記述したと考えてみましょう
+</p>
+<div class="example">
+<pre class="example">(customize-set-variable
+ 'display-buffer-alist
+ '((&quot;\\*foo\\*&quot;
+    (display-buffer-reuse-window display-buffer-pop-up-frame)
+    (inhibit-same-window . t)
+    (reusable-frames . visible))))
+</pre></div>
+
+<p>この場合にはalistの<code>inhibit-same-window</code>エントリーは<code>display-buffer-overriding-action</code>から<code>display-buffer-same-window</code>仕様を成功裏に無効化して、<code>display-buffer</code>は別フレームに<samp>*foo*</samp>を表示するでしょう。この点において<code>display-buffer-overriding-action</code>をより堅牢にするためには、アプリケーションはたとえば以下のように適切な<code>inhibit-same-window</code>エントリーも指定する必要があるでしょう:
+</p>
+<div class="example">
+<pre class="example">(let ((display-buffer-overriding-action
+       '(display-buffer-same-window (inhibit-same-window . nil))))
+  (display-buffer (get-buffer-create &quot;*foo*&quot;)))
+</pre></div>
+
+<p>最後の例では<a href="Choosing-Window.html">Choosing Window</a>で説明したようにアクション関数の優先順は固定ではあるものの、優先順で低位のディスプレイアクションが指定したアクションalistのエントリーが、より高位のディスプレイアクションの実行に影響を与えれれることを示しています。
+</p>
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Property Search (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Property Search (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Property Search (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Text-Properties.html" rel="up" title="Text Properties">
+<link href="Special-Properties.html" rel="next" title="Special Properties">
+<link href="Changing-Properties.html" rel="prev" title="Changing Properties">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Property-Search"></span><div class="header">
+<p>
+Next: <a href="Special-Properties.html" accesskey="n" rel="next">Special Properties</a>, Previous: <a href="Changing-Properties.html" accesskey="p" rel="prev">Changing Properties</a>, Up: <a href="Text-Properties.html" accesskey="u" rel="up">Text Properties</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="tekisutopuropateinoJian-Suo-Guan-Shu-"></span><h4 class="subsection">32.19.3 テキストプロパティの検索関数</h4>
+<span id="index-searching-text-properties"></span>
+<span id="index-text-properties_002c-searching"></span>
+
+<p>テキストプロパティの通常の使用では、ほとんどの場合は複数または多くの連続する文字が同じ値のプロパティをもちます。文字を1つずつ調べるプログラムを記述するよりも、同じプロパティ値をもつテキスト塊(chunks
+of text)を処理するほうがより高速です。
+</p>
+<p>以下はこれを行うことに使用できる関数です。これらはプロパティ値の比較に<code>eq</code>を使用します。すべての関数において<var>object</var>のデフォルトはカレントバッファーです。
+</p>
+<p>より良いパフォーマンスのためには、特に単一のプロパティを検索する関数における<var>limit</var>引数の使用が重要です。さもないと興味のあるプロパティが変化しない場合に、バッファー終端までのスキャンで長い時間を要するでしょう。
+</p>
+<p>これらの関数はポイントを移動しません。そのかわりに位置(または<code>nil</code>
+)をリターンします。ポイントは常に文字と文字の間にあることを思い出してください。これらの関数によりリターンされる位置は、異なるプロパティをもつ2つの文字の間にあります。
+</p>
+<dl>
+<dt id="index-next_002dproperty_002dchange">Function: <strong>next-property-change</strong> <em>pos &amp;optional object limit</em></dt>
+<dd><p>この関数は文字列かバッファー<var>object</var>内の位置<var>pos</var>から、何らかのテキストプロパティの変化が見つかるまでテキストを前方にスキャンして、変化のあった位置をリターンする。言い換えると<var>pos</var>の直後の文字とプロパティが等しくない、<var>pos</var>の先にある最初の文字の位置をリターンする。
+</p>
+<p><var>limit</var>が非<code>nil</code>ならスキャンは位置<var>limit</var>で停止する。そのポイントより前にプロパティが変化しなければ、この関数は<var>limit</var>をリターンする。
+</p>
+<p>プロパティが<var>object</var>終端まで変化せず、かつ<var>limit</var>が<code>nil</code>なら値は<code>nil</code>。値が非<code>nil</code>なら、それは<var>pos</var>以上の位置。<var>limit</var>が<var>pos</var>と等しいときのみ値は<var>pos</var>になる。
+</p>
+<p>以下はすべてのプロパティが定数であるようなテキスト塊によりバッファーをスキャンする方法の例:
+</p>
+<div class="example">
+<pre class="example">(while (not (eobp))
+  (let ((plist (text-properties-at (point)))
+        (next-change
+         (or (next-property-change (point) (current-buffer))
+             (point-max))))
+    <span class="roman">ポイントから<var>next-change</var>へテキストを処理&hellip;</span>
+    (goto-char next-change)))
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-previous_002dproperty_002dchange">Function: <strong>previous-property-change</strong> <em>pos &amp;optional object limit</em></dt>
+<dd><p>これは<code>next-property-change</code>と似ているが、<var>pos</var>から前方ではなく後方にスキャンする点が異なる。値が非<code>nil</code>なら、それは<var>pos</var>以下の位置。<var>limit</var>と<var>pos</var>が等しい場合のみ<var>pos</var>をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-next_002dsingle_002dproperty_002dchange">Function: <strong>next-single-property-change</strong> <em>pos prop &amp;optional object limit</em></dt>
+<dd><p>この関数はプロパティ<var>prop</var>内の変化にたいしてテキストをスキャンして、変化があった位置をリターンする。このスキャンは文字列かバッファー<var>object</var>内の位置<var>pos</var>から前方に行われる。言い換えると<var>pos</var>の直後の文字とプロパティ<var>prop</var>が等しくない、<var>pos</var>の先にある最初の文字の位置をリターンする。
+</p>
+<p><var>limit</var>が非<code>nil</code>ならスキャンは位置<var>limit</var>で終了する。そのポイントより前にプロパティの変化がなければ、<code>next-single-property-change</code>は<var>limit</var>をリターンする。
+</p>
+<p>プロパティが<var>object</var>終端まで変化せず、かつ<var>limit</var>が<code>nil</code>なら値は<code>nil</code>。値が非<code>nil</code>なら、それは<var>pos</var>以上の位置。<var>limit</var>が<var>pos</var>と等しいときのみ値は<var>pos</var>になる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-previous_002dsingle_002dproperty_002dchange">Function: <strong>previous-single-property-change</strong> <em>pos prop &amp;optional object limit</em></dt>
+<dd><p>これは<code>next-single-property-change</code>と似ているが、<var>pos</var>から前方ではなく後方にスキャンする点が異なる。値が非<code>nil</code>なら、それは<var>pos</var>以下の位置。<var>limit</var>と<var>pos</var>が等しい場合のみ<var>pos</var>をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-next_002dchar_002dproperty_002dchange">Function: <strong>next-char-property-change</strong> <em>pos &amp;optional limit</em></dt>
+<dd><p><code>next-property-change</code>と似ているが、これはテキストプロパティと同様にオーバーレイも考慮して、バッファー終端より前に変化が見つからなければ、<code>nil</code>ではなくバッファー位置の最大をリターンする点が異なる(この点では<code>next-property-change</code>よりも対応するオーバーレイ関数<code>next-overlay-change</code>と似ている)。この関数はカレントバッファーだけを処理するので<var>object</var>オペランドは存在しない。これはいずれかの種類のプロパティが変化した、次のアドレスをリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-previous_002dchar_002dproperty_002dchange">Function: <strong>previous-char-property-change</strong> <em>pos &amp;optional limit</em></dt>
+<dd><p>これは<code>next-char-property-change</code>と似ているが、<var>pos</var>から前方ではなく後方へスキャンすること、および変化が見つからなければバッファー位置の最小をリターンする点が異なる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-next_002dsingle_002dchar_002dproperty_002dchange">Function: <strong>next-single-char-property-change</strong> <em>pos prop &amp;optional object limit</em></dt>
+<dd><p><code>next-single-property-change</code>と似ているが、これはテキストプロパティと同様にオーバーレイも考慮して、<var>object</var>終端より前に変化が見つからなければ、<code>nil</code>ではなく<var>object</var>内の有効な位置の最大をリターンする点が異なる。<code>next-char-property-change</code>と異なり、この関数は<var>object</var>オペランドを<em>もつ</em>。<var>object</var>が非バッファーならテキストプロパティだけが考慮される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-previous_002dsingle_002dchar_002dproperty_002dchange">Function: <strong>previous-single-char-property-change</strong> <em>pos prop &amp;optional object limit</em></dt>
+<dd><p>これは<code>next-single-char-property-change</code>と似ているが、<var>pos</var>から前方ではなく後方へスキャンすること、および変化が見つからなければ<var>object</var>内の有効な位置の最小をリターンする点が異なる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-text_002dproperty_002dany">Function: <strong>text-property-any</strong> <em>start end prop value &amp;optional object</em></dt>
+<dd><p>この関数は<var>start</var>と<var>end</var>の間に少なくともプロパティ<var>prop</var>に値<var>value</var>をもつ文字が1つあれば非<code>nil</code>をリターンする。より正確には、これはそのような最初の文字の位置、それ以外は<code>nil</code>をリターンする。
+</p>
+<p>5つ目のオプション引数<var>object</var>はスキャンする文字列かバッファーを指定する。位置は<var>object</var>にたいして相対的。<var>object</var>のデフォルトはカレントバッファー。
+</p></dd></dl>
+
+<dl>
+<dt id="index-text_002dproperty_002dnot_002dall">Function: <strong>text-property-not-all</strong> <em>start end prop value &amp;optional object</em></dt>
+<dd><p>この関数は<var>start</var>と<var>end</var>の間に少なくともプロパティ<var>prop</var>に値<var>value</var>をもたない文字が1つあれば非<code>nil</code>をリターンする。より正確には、これはそのような最初の文字の位置、それ以外は<code>nil</code>をリターンする。
+</p>
+<p>5つ目のオプション引数<var>object</var>はスキャンする文字列かバッファーを指定する。位置は<var>object</var>にたいして相対的。<var>object</var>のデフォルトはカレントバッファー。
+</p></dd></dl>
+
+<dl>
+<dt id="index-text_002dproperty_002dsearch_002dforward">Function: <strong>text-property-search-forward</strong> <em>prop &amp;optional value predicate not-current</em></dt>
+<dd><p>テキストプロパティ<var>prop</var>に<var>value</var>がセットされている次のリージョンを<var>predicate</var>にしたがい検索する。
+</p>
+<p>この関数はポイントを移動するという点において<code>search-forward</code>や類似関数をモデルとするが、<code>match-beginning</code>や類似関数とは異なりマッチを記述する構造をリターンする。
+</p>
+<p>テキストプロパティが見つからなければ、この関数は<code>nil</code>をリターンする。見つかったらマッチしたテキストプロパティをもつリージョンの最後にポイントを移動して<code>prop-match</code>構造をリターンする。
+</p>
+<p><var>predicate</var>は<code>t</code> ( <code>equal</code>のシノニム)、<code>nil</code> ( &ldquo;not
+equal&rdquo;を意味する)、または2つのパラメーター(1つ目は<var>value</var>で2つ目は検査するテキストプロパティの値)で呼び出される述語のいずれかを指定できる。
+</p>
+<p><var>not-current</var>の場合には、もしポイントがマッチしたリージョン内にあれば、それをスキップして次のインスタンスを探す。
+</p>
+<p><code>prop-match</code>構造は<code>prop-match-beginning</code>
+(マッチ先頭)、<code>prop-match-end</code> (マッチ終端)、<code>prop-match-value</code>
+(マッチ先頭の<var>property</var>の値)というアクセサをもつ。
+</p>
+<p>以下の例では以下のようなバッファー内にいると想像してほしい:
+</p>
+<div class="example">
+<pre class="example">This is a bold and here's bolditalic and this is the end.
+</pre></div>
+
+<p>すなわち単語&ldquo;bold&rdquo;は<code>bold</code>フェイス、単語&ldquo;italic&rdquo;は<code>italic</code>フェイスをもつものとする。
+</p>
+<p>まず最初は:
+</p>
+<div class="lisp">
+<pre class="lisp">(while (setq match (text-property-search-forward 'face 'bold t))
+  (push (buffer-substring (prop-match-beginning match)
+                          (prop-match-end match))
+        words))
+</pre></div>
+
+<p>これは<code>bold</code>フェイスを使用するすべての単語を選択する。
+</p>
+<div class="lisp">
+<pre class="lisp">(while (setq match (text-property-search-forward 'face nil t))
+  (push (buffer-substring (prop-match-beginning match)
+                          (prop-match-end match))
+        words))
+</pre></div>
+
+<p>これはフェイスプロパティをもたないすべての断片を選択して、結果はリスト&lsquo;<samp>(&quot;This is a &quot; &quot;and here's &quot; &quot;and
+this is the end&quot;)</samp>&rsquo;となるだろう( <code>push</code>を使用しているので逆転される)。
+</p>
+<div class="lisp">
+<pre class="lisp">(while (setq match (text-property-search-forward 'face nil nil))
+  (push (buffer-substring (prop-match-beginning match)
+                          (prop-match-end match))
+        words))
+</pre></div>
+
+<p>これは<code>face</code>に何らかがセットされているすべてのリージョンを選択するがプロパティが変化する箇所で分割するので結果は&lsquo;<samp>(&quot;bold&quot;
+&quot;bold&quot; &quot;italic&quot;)</samp>&rsquo;になるだろう。
+</p>
+<p>これを使用するかもしれないより現実的な例してURLを表す特定のセクションがあり、それらが<code>shr-url</code>でタグ付けされているバッファーがあると仮定してみる。
+</p>
+<div class="lisp">
+<pre class="lisp">(while (setq match (text-property-search-forward 'shr-url nil nil))
+  (push (prop-match-value match) urls))
+</pre></div>
+
+<p>これはそれらすべてのURLのリストを与えるだろう。
+</p>
+</dd></dl>
+
+<dl>
+<dt id="index-text_002dproperty_002dsearch_002dbackward">Function: <strong>text-property-search-backward</strong> <em>prop &amp;optional value predicate not-current</em></dt>
+<dd><p>これは<code>text-property-search-backward</code>と同様だが、後方に検索する。ポイントはマッチしたリージョン終端ではなく先頭に配置される。
+</p></dd></dl>
+
+
+<hr>
+<div class="header">
+<p>
+Next: <a href="Special-Properties.html" accesskey="n" rel="next">Special Properties</a>, Previous: <a href="Changing-Properties.html" accesskey="p" rel="prev">Changing Properties</a>, Up: <a href="Text-Properties.html" accesskey="u" rel="up">Text Properties</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

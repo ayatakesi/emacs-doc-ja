@@ -1,0 +1,376 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Module Values (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Module Values (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Module Values (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Writing-Dynamic-Modules.html" rel="up" title="Writing Dynamic Modules">
+<link href="Module-Misc.html" rel="next" title="Module Misc">
+<link href="Module-Functions.html" rel="prev" title="Module Functions">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Module-Values"></span><div class="header">
+<p>
+Next: <a href="Module-Misc.html" accesskey="n" rel="next">Module Misc</a>, Previous: <a href="Module-Functions.html" accesskey="p" rel="prev">Module Functions</a>, Up: <a href="Writing-Dynamic-Modules.html" accesskey="u" rel="up">Writing Dynamic Modules</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="LispmoziyuruJian-noZhi-Bian-Huan-"></span><h4 class="subsection">E.8.3 Lisp・モジュール間の値変換</h4>
+<span id="index-module-values_002c-conversion"></span>
+
+<span id="index-emacs_005fvalue-data-type"></span>
+<p>非常に少数の例外を除くほとんどのモジュールでは、モジュールを呼び出すLispプログラムとの間でモジュール関数への引数やリターン値の受け渡しでデータのやり取りが必要になります。この目的にたいしてモジュール<acronym>API</acronym>は<code>emacs_value</code>タイプを提供しています。これは<acronym>API</acronym>を通じたやり取りにおいてEmacsのLispオブジェクトを表現するタイプであり、EmacsのCプリミティブ(<a href="Writing-Emacs-Primitives.html">Writing Emacs Primitives</a>を参照)で使用される<code>Lisp_Object</code>タイプと機能的には等価です。このセクションではLispの基本データ型に対応する<code>emacs_value</code>オブジェクトの作成を可能とするモジュール<acronym>API</acronym>の部分と、Lispオブジェクトに対応する<code>emacs_value</code>オブジェクト内のCデータへのアクセス方法について説明します。
+</p>
+<p>以下で説明するすべての関数は、実際にはすべてのモジュール関数が受け取る環境へのポインターを介して提供される<em>関数ポインター(function
+pointers)</em>です。したがってモジュールのコードでは以下のように環境ポインターを通じてこれらの関数を呼び出す必要があります:
+</p>
+<div class="example">
+<pre class="example">emacs_env *env;  /* the environment pointer */
+env-&gt;some_function (arguments&hellip;);
+</pre></div>
+
+<p><code>emacs_env</code>ポインターは通常はモジュール関数の1つ目の引数、モジュール初期化関数内で環境が必要な場合には<code>get_environment</code>の呼び出しから取得できます。
+</p>
+<p>以下で説明するもののほとんどはEmacs 25で利用可能になった関数であり、Emacs
+25はダイナミックモジュールを最初にサポートした最初のEmacsリリースです。それ以降のリリースで利用可能になったいくつかの関数につていは、それらをサポートする最初のEmacsバージョンを付記します。
+</p>
+<p>以下の<acronym>API</acronym>関数は<code>emacs_value</code>オブジェクトから種々のCデータ型を抽出します。これらすべては引数の<code>emacs_value</code>オブジェクトがその関数の期待するタイプでなければ、エラーコンディション<code>wrong-type-argument</code>をraiseします(<a href="Type-Predicates.html">Type Predicates</a>を参照)。Emacsモジュール内でエラーをシグナルする方法、およびEmacsにエラーが報告される前にモジュール内部でエラーコンディションをcatchする方法の詳細は<a href="Module-Nonlocal.html">Module Nonlocal</a>を参照してください。<code>emacs_value</code>のタイプ取得には<acronym>API</acronym>関数<code>type_of</code>を使用できます(<a href="Module-Misc.html">type_of</a>を参照)。
+</p>
+<dl>
+<dt id="index-extract_005finteger">Function: <em>intmax_t</em> <strong>extract_integer</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>arg</var>)</em></dt>
+<dd><p>この関数は<var>arg</var>で指定されたLisp整数の値をリターンする。リターン値のCデータ型<code>intmax_t</code>はCコンパイラーがサポートする最大の整数型であり、一般的には<code>long&nbsp;long</code><!-- /@w -->。<var>arg</var>の値が<code>intmax_t</code>に収まらなければ、関数はエラーシンボル<code>overflow-error</code>を使用してエラーをシグナルする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-extract_005fbig_005finteger">Function: <em>bool</em> <strong>extract_big_integer</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>arg</var>, int *<var>sign</var>, ptrdiff_t *<var>count</var>, emacs_limb_t *<var>magnitude</var>)</em></dt>
+<dd><p>このEmacs
+27から利用可能になった関数は、<var>arg</var>の整数値を抽出する。<var>arg</var>の値は整数(fixnumかbignum)でなければならない。<var>sign</var>が<code>NULL</code>以外なら、<var>arg</var>の符号(-1、0、+1)を<code>*sign</code>に格納する。マグニチュード(magnitude:
+大きさ)は次のように<var>magnitude</var>に格納される。<var>count</var>と<var>magnitude</var>がいずれも非<code>NULL</code>なら、<var>magnitude</var>は少なくとも<code>*count</code>
+<code>unsigned
+long</code>要素の配列を指さなければならない。<var>magnitude</var>が<var>arg</var>のマグニチュードを保持するのに十分大きければ、この関数は<var>magnitude</var>配列にリトルエンディアン形式でマグニチュードを書き込み、配列の要素数を<code>*count</code>に格納して<code>true</code>をリターンする。<var>magnitude</var>の大きさが十分でなければ、必要な配列サイズを<code>*count</code>に格納，エラーをシグナルして<code>false</code>をリターンする。<var>count</var>が非<code>NULL</code>かつ<var>magnitude</var>が<code>NULL</code>なら、必要となる配列サイズを<code>*count</code>に格納して<code>true</code>をリターンする。
+</p>
+<p>Emacsは<code>*count</code>に要求される最大値が<code>min (PTRDIFF_MAX, SIZE_MAX) / sizeof
+(emacs_limb_t)</code>を超えないことを保証するので、<code>magnitude</code>配列の割り当てではサイズ計算で整数のオーバーフローを心配せずに<code>malloc
+(*count * sizeof *magnitude)</code>を使用できる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-emacs_005flimb_005ft">Type alias: <strong>emacs_limb_t</strong></dt>
+<dd><p>これは大きい整数向け変換関数のマグニチュード配列の要素タイプとして使用される符号なし整数タイプ。このタイプは一意なオブジェクト表現をもつ(パディングビットがない)ことが保証されている。
+</p></dd></dl>
+
+<dl>
+<dt id="index-EMACS_005fLIMB_005fMAX">Macro: <strong>EMACS_LIMB_MAX</strong></dt>
+<dd><p>これは<code>emacs_limb_t</code>にたいして可能な最大値を指定する定数式に展開されるマクロ。この式は<code>#if</code>内での利用に適する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-extract_005ffloat">Function: <em>double</em> <strong>extract_float</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>arg</var>)</em></dt>
+<dd><p>この関数は<var>arg</var>で指定されたLisp浮動小数の値をCの<code>double</code>値としてリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-timespec">Function: <em>struct</em> <strong>timespec</strong> <em>extract_time (emacs_env *<var>env</var>, emacs_value <var>arg</var>)</em></dt>
+<dd><p>このEmacs 27から利用可能になった関数は<var>arg</var>をEmacs Lispのtime値として解釈して、それに対応する<code>struct
+timespec</code>をリターンする。<a href="Time-of-Day.html">Time of Day</a>を参照のこと。<code>struct
+timespec</code>はナノ秒の精度のタイムスタンプを表す。以下のメンバーをもつ:
+</p>
+<dl compact="compact">
+<dt><code>time_t tv_sec</code></dt>
+<dd><p>整数秒。
+</p></dd>
+<dt><code>long tv_nsec</code></dt>
+<dd><p>ナノ秒としての少数秒数。<code>extract_time</code>がリターンするタイムスタンプでは常に非負かつ十億未満(<code>tv_nsec</code>のタイプが<code>long</code>であることをPOSIXがが要求しているとしても、非標準的なプラットフォームでは<code>long
+long</code>である)。
+</p></dd>
+</dl>
+
+<p><a href="https://www.gnu.org/software/libc/manual/html_node/Elapsed-Time.html#Elapsed-Time">(libc)Elapsed Time</a>を参照のこと。
+</p>
+<p><var>time</var>がナノ秒より高い精度をもつ場合には、この関数はナノ秒の精度へ負の無限大方向に切り詰める。<code>struct
+timespec</code>が(ナノ秒に切り詰めた)<var>time</var>を表現できなければ、この関数はエラーをシグナルする。たとえば<code>time_t</code>が32ビット整数タイプなら100億秒という<var>time</var>値はエラーをシグナルするが、600ピコ秒の<var>time</var>値は0に切り詰められるだろう。
+</p>
+<p><code>struct
+timespec</code>で表現できないtime値を処理する必要があったり、より高い精度が必要ならLisp関数<code>encode-time</code>を呼び出してリターン値を処理すればよい。<a href="Time-Conversion.html">Time Conversion</a>を参照のこと。
+</p></dd></dl>
+
+<dl>
+<dt id="index-copy_005fstring_005fcontents">Function: <em>bool</em> <strong>copy_string_contents</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>arg</var>, char *<var>buf</var>, ptrdiff_t *<var>len</var>)</em></dt>
+<dd><p>これは<var>arg</var>で指定されたLisp文字列をUTF-8にエンコードしたテキストを<var>buf</var>が指す<code>char</code>配列に格納する。<var>buf</var>は少なくとも終端のnullバイトを含む<code>*<var>len</var></code>バイトを保持するために十分なスペースをもつこと。引数<var>len</var>は<code>NULL</code>ポインターであってはならない。この関数の呼び出し時には<var>buf</var>のバイトサイズを指定する値を指していること。
+</p>
+<p><code>*<var>len</var></code>で指定されたバッファーサイズが文字列のテキストを保持するために十分大きければ、関数は終端のnullバイト含む実際にコピーされる<code>*<var>len</var></code>バイトを<var>buf</var>にコピーして<code>true</code>をリターンする。バッファーが小さすぎる場合には、関数はエラーコンディション<code>args-out-of-range</code>をraiseするとともに、必要なバイト数を<code>*<var>len</var></code>に格納して<code>false</code>をリターンする。保留中のエラーコンディションのハンドル方法は<a href="Module-Nonlocal.html">Module Nonlocal</a>を参照のこと。
+</p>
+<p>引数<var>buf</var>は<code>NULL</code>ポインターでもよく、この場合には関数は<var>arg</var>のコンテンツの格納に必要なバイト数を<code>*<var>len</var></code>に格納して<code>true</code>をリターンする。これは特定の文字列を格納するために必要な<var>buf</var>サイズを決定する手段となり得る。1回目は<var>buf</var>を<code>NULL</code>で<code>copy_string_contents</code>を呼び出して、関数により<code>*<var>len</var></code>に格納されたバイト数の保持に十分なメモリーを割り当ててから、実際にテキストのコピーを行うために非<code>NULL</code>の<var>buf</var>で関数を再び呼び出す。
+</p></dd></dl>
+
+<dl>
+<dt id="index-vec_005fget">Function: <em>emacs_value</em> <strong>vec_get</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>vector</var>, ptrdiff_t <var>index</var>)</em></dt>
+<dd><p>この関数は<var>vector</var>の<var>index</var>の要素をリターンする。ベクターの最初の要素の<var>index</var>は0。<var>index</var>の値が無効ならこの関数はエラーコンディション<code>args-out-of-range</code>をraiseする。関数のリターン値からCデータを抽出するためには、ベクターの当該要素に格納されたLispデータタイプに応じて、ここで説明している他の抽出関数を使用すればよい。
+</p></dd></dl>
+
+<dl>
+<dt id="index-vec_005fsize">Function: <em>ptrdiff_t</em> <strong>vec_size</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>vector</var>)</em></dt>
+<dd><p>この関数は<var>vector</var>内の要素数をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-vec_005fset">Function: <em>void</em> <strong>vec_set</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>vector</var>, ptrdiff_t <var>index</var>, emacs_value <var>value</var>)</em></dt>
+<dd><p>この関数は<var>vector</var>のインデックス<var>index</var>の要素に<var>value</var>を格納する。<var>index</var>の値が無効ならこの関数はエラーコンディション<code>args-out-of-range</code>をraiseする。
+</p></dd></dl>
+
+<p>以下はCの基本データ型から<code>emacs_value</code>オブジェクトを作成する<acronym>API</acronym>関数です。これらはすべて作成した<code>emacs_value</code>オブジェクトをリターンします。
+</p>
+<dl>
+<dt id="index-make_005finteger">Function: <em>emacs_value</em> <strong>make_integer</strong> <em>(emacs_env *<var>env</var>, intmax_t <var>n</var>)</em></dt>
+<dd><p>この関数は引数<var>n</var>
+(整数)を受け取り対応する<code>emacs_value</code>オブジェクトをリターンする。<var>n</var>の値が<code>most-negative-fixnum</code>と<code>most-positive-fixnum</code>の内外いずれであるかに応じてfixnumかbignumのいずれかをリターンする(<a href="Integer-Basics.html">Integer Basics</a>を参照)。<var>n</var>の値をEmacs整数で表現できない、すなわち<code>most-negative-fixnum</code>と<code>most-positive-fixnum</code>の範囲外(<a href="Integer-Basics.html">Integer Basics</a>を参照)ならエラーコンディション<code>overflow-error</code>をraiseする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-make_005fbig_005finteger">Function: <em>emacs_value</em> <strong>make_big_integer</strong> <em>(emacs_env *<var>env</var>, int sign, ptrdiff_t count, const emacs_limb_t *magnitude)</em></dt>
+<dd><p>このEmacs
+27から利用可能になった関数は任意のサイズの整数の引数を受け取り、それに対応する<code>emacs_value</code>オブジェクトをリターンする。<var>sign</var>引数はリターン値の符号を与える。<var>sign</var>が0以外なら、<var>magnitude</var>はリターン値のマグニチュードをリトルエンディアンで指定する、少なくとも<var>count</var>個の要素数の配列を指さなければならない。
+</p></dd></dl>
+
+<p>以下は与えられた整数の次の確率的素数を計算するためにGNU Multiprecision Library
+(GMP)を使用する例です。GMPの概要は<a href="https://www.gmplib.org/manual/index.html#Top">(gmp)Top</a>、<code>magnitude</code>とGMPの<code>mpz_t</code>値との間の変換方法については<a href="https://www.gmplib.org/manual/Integer-Import-and-Export.html#Integer-Import-and-Export">(gmp)Integer
+Import and Export</a>を参照してください。
+</p>
+<div class="example">
+<pre class="example">#include &lt;emacs-module.h&gt;
+int plugin_is_GPL_compatible;
+
+#include &lt;assert.h&gt;
+#include &lt;limits.h&gt;
+#include &lt;stdint.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+
+#include &lt;gmp.h&gt;
+
+static void
+memory_full (emacs_env *env)
+{
+  static const char message[] = &quot;Memory exhausted&quot;;
+  emacs_value data = env-&gt;make_string (env, message,
+                                       strlen (message));
+  env-&gt;non_local_exit_signal
+    (env, env-&gt;intern (env, &quot;error&quot;),
+     env-&gt;funcall (env, env-&gt;intern (env, &quot;list&quot;), 1, &amp;data));
+}
+
+enum
+{
+  order = -1, endian = 0, nails = 0,
+  limb_size = sizeof (emacs_limb_t),
+  max_nlimbs = ((SIZE_MAX &lt; PTRDIFF_MAX ? SIZE_MAX : PTRDIFF_MAX)
+                / limb_size)
+};
+
+static bool
+extract_big_integer (emacs_env *env, emacs_value arg, mpz_t result)
+{
+  ptrdiff_t nlimbs;
+  bool ok = env-&gt;extract_big_integer (env, arg, NULL, &amp;nlimbs, NULL);
+  if (!ok)
+    return false;
+  assert (0 &lt; nlimbs &amp;&amp; nlimbs &lt;= max_nlimbs);
+  emacs_limb_t *magnitude = malloc (nlimbs * limb_size);
+  if (magnitude == NULL)
+    {
+      memory_full (env);
+      return false;
+    }
+  int sign;
+  ok = env-&gt;extract_big_integer (env, arg, &amp;sign, &amp;nlimbs, magnitude);
+  assert (ok);
+  mpz_import (result, nlimbs, order, limb_size, endian, nails, magnitude);
+  free (magnitude);
+  if (sign &lt; 0)
+    mpz_neg (result, result);
+  return true;
+}
+
+static emacs_value
+make_big_integer (emacs_env *env, const mpz_t value)
+{
+  size_t nbits = mpz_sizeinbase (value, 2);
+  int bitsperlimb = CHAR_BIT * limb_size - nails;
+  size_t nlimbs = nbits / bitsperlimb + (nbits % bitsperlimb != 0);
+  emacs_limb_t *magnitude
+    = nlimbs &lt;= max_nlimbs ? malloc (nlimbs * limb_size) : NULL;
+  if (magnitude == NULL)
+    {
+      memory_full (env);
+      return NULL;
+    }
+  size_t written;
+  mpz_export (magnitude, &amp;written, order, limb_size, endian, nails, value);
+  assert (written == nlimbs);
+  assert (nlimbs &lt;= PTRDIFF_MAX);
+  emacs_value result = env-&gt;make_big_integer (env, mpz_sgn (value),
+                                              nlimbs, magnitude);
+  free (magnitude);
+  return result;
+}
+
+static emacs_value
+next_prime (emacs_env *env, ptrdiff_t nargs, emacs_value *args,
+            void *data)
+{
+  assert (nargs == 1);
+  mpz_t p;
+  mpz_init (p);
+  extract_big_integer (env, args[0], p);
+  mpz_nextprime (p, p);
+  emacs_value result = make_big_integer (env, p);
+  mpz_clear (p);
+  return result;
+}
+
+int
+emacs_module_init (struct emacs_runtime *runtime)
+{
+  emacs_env *env = runtime-&gt;get_environment (runtime);
+  emacs_value symbol = env-&gt;intern (env, &quot;next-prime&quot;);
+  emacs_value func
+    = env-&gt;make_function (env, 1, 1, next_prime, NULL, NULL);
+  emacs_value args[] = {symbol, func};
+  env-&gt;funcall (env, env-&gt;intern (env, &quot;defalias&quot;), 2, args);
+  return 0;
+}
+</pre></div>
+
+<dl>
+<dt id="index-make_005ffloat">Function: <em>emacs_value</em> <strong>make_float</strong> <em>(emacs_env *<var>env</var>, double <var>d</var>)</em></dt>
+<dd><p>この関数は<code>double</code>の引数<var>d</var>を受け取り対応するEmacs浮動小数点値をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-make_005ftime">Function: <em>emacs_value</em> <strong>make_time</strong> <em>(emacs_env *<var>env</var>, struct timespec <var>time</var>)</em></dt>
+<dd><p>このEmacs 27から利用可能になった関数は<code>struct
+timespec</code>の引数<var>time</var>を受け取り、<code>(<var>ticks</var>
+.
+<var>hz</var>)</code>というペアーとしてそれに対応するEmacsタイムスタンプをリターンする。リターン値は正確に<var>time</var>と同一のタイムスタンプを表す。つまりすべての入力値は表現可能であり、精度を失うことは決してない。<code><var>time</var>.tv_sec</code>および<code><var>time</var>.tv_nsec</code>は任意の値をとり得る。特に<var>time</var>が正規化されている必要はない。これは<code><var>time</var>.tv_nsec</code>が負、あるいは999,999,999より大きくなり得ることを意味する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-make_005fstring">Function: <em>emacs_value</em> <strong>make_string</strong> <em>(emacs_env *<var>env</var>, const char *<var>str</var>, ptrdiff_t <var>len</var>)</em></dt>
+<dd><p>この関数は<var>str</var>が指す、終端のnullバイトを含まないバイト長が<var>len</var>であるようなCテキスト文字列からEmacs文字列を作成する。<var>str</var>の元文字列は<acronym>ASCII</acronym>文字列かUTF-8にエンコードされた非<acronym>ASCII</acronym>文字列が可能であり、文字列には埋め込みのnullバイトを含むことができ、<code><var>str</var>[<var>len</var>]</code>にあるnullバイトで終端される必要はない。<var>len</var>が負、またはEmacs文字列の最大長を超過する場合には、この関数はエラーコンディション<code>overflow-error</code>をraiseする。<var>len</var>が0なら<var>str</var>は<code>NULL</code>、それ以外なら有効なメモリーへのポインターでなければならない。非0の<var>len</var>では、<code>make_string</code>は一意でmutableな文字列オブジェクトをリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-make_005funibyte_005fstring">Function: <em>emacs_value</em> <strong>make_unibyte_string</strong> <em>(emacs_env *<var>env</var>, const char *<var>str</var>, ptrdiff_t <var>len</var>)</em></dt>
+<dd><p>この関数は<code>make_string</code>と似ているがC文字列のバイト値にたいする制限がなく、Emacsにユニバイト形式でバイナリーデータを渡すために使用できる。
+</p></dd></dl>
+
+<p>この<acronym>API</acronym>はたとえば<code>cons</code>と<code>list</code>によるリスト作成(<a href="Building-Lists.html">Building Lists</a>を参照)、<code>car</code>と<code>cdr</code>によるリストメンバーの抽出(<a href="List-Elements.html">List Elements</a>を参照)、<code>vector</code>によるベクター作成(<a href="Vector-Functions.html">Vector Functions</a>を参照)等のようなLispデータ構造を操作する関数は提供しません。これらにたいしてはたいおう
+するLisp関数を呼び出すために、次のサブセクションで説明する<code>intern</code>と<code>funcall</code>を使用します。
+</p>
+<p><code>emacs_value</code>オブジェクトのライフタイムはかなり短いのが普通です。このライフタイムはオブジェクトの作成に使用された<code>emacs_env</code>ポインターがスコープ外になると終了します。<code>emacs_value</code>が望む間は行き続けるような<em>グローバル参照(global
+references)</em>を作成を要する場合もあるかもしれません。そのようなオブジェクトの管理には以下の2つの関数を使用します。
+</p>
+<dl>
+<dt id="index-make_005fglobal_005fref">Function: <em>emacs_value</em> <strong>make_global_ref</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>value</var>)</em></dt>
+<dd><p>この関数は<var>value</var>のグローバル参照をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-free_005fglobal_005fref">Function: <em>void</em> <strong>free_global_ref</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>global_value</var>)</em></dt>
+<dd><p>この関数は以前に<code>make_global_ref</code>で作成した<var>global_value</var>を解放する。<var>global_value</var>はこの呼び出し後は無効になる。モジュールのコードでは<code>make_global_ref</code>と対応する<code>free_global_ref</code>の呼び出しそれぞれをペアーとすること。
+</p></dd></dl>
+
+<span id="index-user-pointer_002c-using-in-module-functions"></span>
+<p>後でモジュール関数に渡す必要があるCデータ構造体を追跡するための代替え手段は<em>ユーザーポインター(user
+pointer)</em>オブジェクトの作成です。ユーザーポインター(または<code>user-ptr</code>
+)はCポインターをカプセル化したLispオブジェクトであり、関連付けられたファイナライザー(オブジェクトがガーベージコレクトされる際に呼び出される。<a href="Garbage-Collection.html">Garbage Collection</a>を参照)をもつことができます。モジュール<acronym>API</acronym>は<code>user-ptr</code>オブジェクトの作成やアクセスを行う関数を提供します。これらの関数は<code>user-ptr</code>オブジェクトを表現しない<code>emacs_value</code>で呼び出されるとエラーコンディション<code>wrong-type-argument</code>をraiseします。
+</p>
+<dl>
+<dt id="index-make_005fuser_005fptr">Function: <em>emacs_value</em> <strong>make_user_ptr</strong> <em>(emacs_env *<var>env</var>, emacs_finalizer <var>fin</var>, void *<var>ptr</var>)</em></dt>
+<dd><p>この関数はCポインター<var>ptr</var>をラップした<code>user-ptr</code>オブジェクトを作成してリターンする。ファイナライザー関数<var>fin</var>は<code>NULL</code>
+(ファイナライザーなし)、または以下のシグネチャをもつ関数のいずれか:
+</p>
+<div class="example">
+<pre class="example">typedef void (*emacs_finalizer) (void *<var>ptr</var>);
+</pre></div>
+
+<p><var>fin</var>が<code>NULL</code>ポインターでなければ、<code>user-ptr</code>オブジェクトがガーベージコレクトされる際に<var>ptr</var>を引数として呼び出される。Emacsの応答性を維持するためにGCは短時間で終了しなければならないので、ファイナライザーでは高価なコードの実行は行ってはならない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-_002aget_005fuser_005fptr">Function: <em>void</em> <strong>*get_user_ptr</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>arg</var>)</em></dt>
+<dd><p>この関数は<var>arg</var>で表されるLispオブジェクトからCポインターを抽出する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-set_005fuser_005fptr">Function: <em>void</em> <strong>set_user_ptr</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>arg</var>, void *<var>ptr</var>)</em></dt>
+<dd><p>この関数は<var>arg</var>で表される<code>user-ptr</code>オブジェクトに埋め込まれたCポインターに<var>ptr</var>をセットする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-get_005fuser_005ffinalizer">Function: <em>emacs_finalizer</em> <strong>get_user_finalizer</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>arg</var>)</em></dt>
+<dd><p>この関数は<var>arg</var>で表される<code>user-ptr</code>オブジェクトのファイナライザー、ファイナライザーがなければ<code>NULL</code>をリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-set_005fuser_005ffinalizer">Function: <em>void</em> <strong>set_user_finalizer</strong> <em>(emacs_env *<var>env</var>, emacs_value <var>arg</var>, emacs_finalizer <var>fin</var>)</em></dt>
+<dd><p>この関数は<var>arg</var>で表される<code>user-ptr</code>オブジェクトのファイナライザーを<var>fin</var>に変更する。<var>fin</var>が<code>NULL</code>なら<code>user-ptr</code>オブジェクトのファイナライザーはなくなる。
+</p></dd></dl>
+
+<p><code>emacs_finalizer</code>タイプはユーザーポインターと関数ファイナライザーの両方にたいして機能することに注意してください。<a href="Module-Functions.html#Module-Function-Finalizers">Module Function Finalizers</a>を参照してください。
+</p>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Module-Misc.html" accesskey="n" rel="next">Module Misc</a>, Previous: <a href="Module-Functions.html" accesskey="p" rel="prev">Module Functions</a>, Up: <a href="Writing-Dynamic-Modules.html" accesskey="u" rel="up">Writing Dynamic Modules</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

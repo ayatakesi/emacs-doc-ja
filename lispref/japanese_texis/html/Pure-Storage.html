@@ -1,0 +1,97 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Pure Storage (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Pure Storage (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Pure Storage (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="GNU-Emacs-Internals.html" rel="up" title="GNU Emacs Internals">
+<link href="Garbage-Collection.html" rel="next" title="Garbage Collection">
+<link href="Building-Emacs.html" rel="prev" title="Building Emacs">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Pure-Storage"></span><div class="header">
+<p>
+Next: <a href="Garbage-Collection.html" accesskey="n" rel="next">Garbage Collection</a>, Previous: <a href="Building-Emacs.html" accesskey="p" rel="prev">Building Emacs</a>, Up: <a href="GNU-Emacs-Internals.html" accesskey="u" rel="up">GNU Emacs Internals</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Chun-Cui-sutorezi"></span><h3 class="section">E.2 純粋ストレージ</h3>
+<span id="index-pure-storage"></span>
+
+<p>Emacs Lispはユーザー作成Lispオブジェクトにたいして、<em>通常ストレージ(normal
+storage)</em>と<em>純粋ストレージ(pure
+storage)</em>という2種のストレージをもちます。通常ストレージはEmacsセッションが維持される間に新たにデータが作成される場所です。純粋ストレージは事前ロードされた標準Lispファイル内の特定のデータのために使用されます。このデータは実際のEmacs使用中に決して変更されるべきではないデータです。
+</p>
+<p>純粋ストレージは<code>temacs</code>が標準的な事前ローLispライブラリーのロード中にのみ割り当てられます。ファイル<samp>emacs</samp>ではこのメモリースペースは読み取り専用とマークされるのでマシン上で実行中のすべてのEmacsジョブで共有できます。純粋ストレージは拡張できません。Emacsのコンパイル時に固定された量が割り当てられて、それが事前ロードされるライブラリーにたいして不足なら<samp>temacs</samp>はそれに収まらない部分を動的メモリーに割り当てます。Emacsを<code>pdump</code>メソッド(<a href="Building-Emacs.html">Building Emacs</a>を参照)を使用してダンプする場合には純粋ストレージのオーバーフローは特に重要ではありません(単に事前ロード済みのライブラリーのいくつかが別のEmacsジョブで共有できないことを意味する)。しかしEmacsを時代遅れとなった<code>unexec</code>メソッドでダンプする場合には結果イメージは動作するでしょうが、この状況ではメモリーリークとなるのでガーベージコレクション(<a href="Garbage-Collection.html">Garbage Collection</a>を参照)は無効です。そのような通常なら発生しないオーバーフローは、あなたが事前ロードライブラリの追加や標準的な事前ロードライブラリに追加を試みないかぎり発生しません。Emacsが<code>unexec</code>を使用してダンプされていたら、Emacsは開始時にオーバーフローに関する警告を表示するでしょう。これが発生したらファイル<samp>src/puresize.h</samp>内のコンパイルパラメーターを<code>SYSTEM_PURESIZE_EXTRA</code>を増やしてEmacsをリビルドする必要があります。
+</p>
+<dl>
+<dt id="index-purecopy">Function: <strong>purecopy</strong> <em>object</em></dt>
+<dd><p>この関数は純粋ストレージに<var>object</var>のコピーを作成してリターンする。これは同じ文字で新たに文字列を作成することにより文字列をコピーするが、純粋ストレージではテキストプロパティはない。これはベクターとコンスセルのコンテンツを再帰的にコピーする。シンボルのような他のオブジェクトのコピーは作成しないが未変更でリターンする。マーカーのコピーを試みるとエラーをシグナルする。
+</p>
+<p>この関数はEmacsのビルド中とダンプ中を除き何もしない。通常は事前ロードされるLispファイル内でのみ呼び出される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-pure_002dbytes_002dused">Variable: <strong>pure-bytes-used</strong></dt>
+<dd><p>この変数の値は、これまでに割り当てられた純粋ストレージのバイト数。ダンプされたEmacsでは通常は利用可能な純粋ストレージの総量とほとんど同じであり、もしそうでないならわたしたちは事前割り当てをもっと少なくするだろう。
+</p></dd></dl>
+
+<dl>
+<dt id="index-purify_002dflag">Variable: <strong>purify-flag</strong></dt>
+<dd><p>この変数は<code>defun</code>が純粋ストレージにその関数定義のコピーを作成するべきか否かを判断する。これが非<code>nil</code>ならその関数の定義は純粋ストレージにコピーされる。
+</p>
+<p>このフラグはEmacsのビルド用の基本的な関数の初回ロード中は<code>t</code>となる。実行可能形式としてEmacsをダンプすることにより、ダンプ前後の実際の値とは無関係に常にこの変数に<code>nil</code>が書き込まれる。
+</p>
+<p>実行中のEmacsでこのフラグを変更しないこと。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

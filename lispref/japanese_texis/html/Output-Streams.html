@@ -1,0 +1,213 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Output Streams (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Output Streams (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Output Streams (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Read-and-Print.html" rel="up" title="Read and Print">
+<link href="Output-Functions.html" rel="next" title="Output Functions">
+<link href="Input-Functions.html" rel="prev" title="Input Functions">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Output-Streams"></span><div class="header">
+<p>
+Next: <a href="Output-Functions.html" accesskey="n" rel="next">Output Functions</a>, Previous: <a href="Input-Functions.html" accesskey="p" rel="prev">Input Functions</a>, Up: <a href="Read-and-Print.html" accesskey="u" rel="up">Read and Print</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Chu-Li-sutorimu"></span><h3 class="section">19.4 出力ストリーム</h3>
+<span id="index-stream-_0028for-printing_0029"></span>
+<span id="index-output-stream"></span>
+
+<p>出力ストリームはプリントによって生成された文字に何を行うかを指定します。ほとんどのプリント関数は引数としてオプションで出力ストリームを受け取ります。以下は利用できる出力ストリーム型です:
+</p>
+<dl compact="compact">
+<dt><var>buffer</var></dt>
+<dd><span id="index-buffer-output-stream"></span>
+<p>出力文字は<var>buffer</var>のポイント位置に挿入される。文字が挿入された分だけポイントが進む。
+</p>
+</dd>
+<dt><var>marker</var></dt>
+<dd><span id="index-marker-output-stream"></span>
+<p>出力文字は<var>marker</var>があるバッファーのマーカー位置に挿入される。文字が挿入された分だけマーカー位置が進む。ストリームがマーカーのときは、そのバッファー内のポイント位置にプリントは影響せず、この種のプリントでポイントは移動しない(マーカー位置がポイント位置かポイント位置より前の場合は除く。通常はテキストの周囲にポイントが進む)。
+</p>
+</dd>
+<dt><var>function</var></dt>
+<dd><span id="index-function-output-stream"></span>
+<p>出力文字は文字を格納する役目をもつ<var>function</var>に渡される。この関数は1つの文字を引数に出力される文字の回数呼び出され、格納したい場所にその文字を格納する役目をもつ。
+</p>
+</dd>
+<dt><code>t</code></dt>
+<dd><span id="index-t-output-stream"></span>
+<p>出力文字はエコーエリアに表示される。Emacsがbatchモード(<a href="Batch-Mode.html">Batch Mode</a>を参照)で実行中なら、出力はかわりに標準出力デスクリプターに書き込まれる。
+</p>
+</dd>
+<dt><code>nil</code></dt>
+<dd><span id="index-nil-output-stream"></span>
+<p>出力ストリームに<code>nil</code>が指定された場合は、かわりに<code>standard-output</code>変数の値が使用されることを意味する。この値は<em>デフォルトの出力ストリーム(default
+output stream)</em>であり、非<code>nil</code>でなければならない。
+</p>
+</dd>
+<dt><var>symbol</var></dt>
+<dd><p>出力ストリームとしてのシンボルは、(もしあれば)そのシンボルの関数定義と等価である。
+</p></dd>
+</dl>
+
+<p>有効な出力ストリームの多くは、入力ストリームとしても有効です。したがって入力ストリームと出力ストリームの違いは、Lispオブジェクトの型ではなく、どのようにLispオブジェクトを使うかという点です。
+</p>
+<p>以下はバッファーを出力ストリームとして使用する例です。ポイントは最初は&lsquo;<samp>the</samp>&rsquo;の中の&lsquo;<samp>h</samp>&rsquo;の直前にあります。そして最後も同じ&lsquo;<samp>h</samp>&rsquo;の直前に配置されます。
+</p>
+<span id="index-print-example"></span>
+<div class="example">
+<pre class="example">---------- Buffer: foo ----------
+This is t&lowast;he contents of foo.
+---------- Buffer: foo ----------
+</pre><pre class="example">
+
+(print &quot;This is the output&quot; (get-buffer &quot;foo&quot;))
+     &rArr; &quot;This is the output&quot;
+
+</pre><pre class="example">---------- Buffer: foo ----------
+This is t
+&quot;This is the output&quot;
+&lowast;he contents of foo.
+---------- Buffer: foo ----------
+</pre></div>
+
+<p>次はマーカーを出力ストリームとして使用する例です。マーカーは最初はバッファー<code>foo</code>内の単語&lsquo;<samp>the</samp>&rsquo;の中の&lsquo;<samp>t</samp>&rsquo;と&lsquo;<samp>h</samp>&rsquo;の間にあります。最後には挿入されたテキストによってマーカーが進んで、同じ&lsquo;<samp>h</samp>&rsquo;の前に留まります。通常の方法で見られるようなポイント位置への影響がないことに注意してください。
+</p>
+<div class="example">
+<pre class="example">---------- Buffer: foo ----------
+This is the &lowast;output
+---------- Buffer: foo ----------
+</pre><pre class="example">
+
+</pre><pre class="example">(setq m (copy-marker 10))
+     &rArr; #&lt;marker at 10 in foo&gt;
+</pre><pre class="example">
+
+</pre><pre class="example">(print &quot;More output for foo.&quot; m)
+     &rArr; &quot;More output for foo.&quot;
+</pre><pre class="example">
+
+</pre><pre class="example">---------- Buffer: foo ----------
+This is t
+&quot;More output for foo.&quot;
+he &lowast;output
+---------- Buffer: foo ----------
+</pre><pre class="example">
+
+</pre><pre class="example">m
+     &rArr; #&lt;marker at 34 in foo&gt;
+</pre></div>
+
+<p>以下はエコーエリアに出力を表示する例です:
+</p>
+<div class="example">
+<pre class="example">(print &quot;Echo Area output&quot; t)
+     &rArr; &quot;Echo Area output&quot;
+---------- Echo Area ----------
+&quot;Echo Area output&quot;
+---------- Echo Area ----------
+</pre></div>
+
+<p>最後は関数を出力ストリームとして使用する例です。関数<code>eat-output</code>は与えられたそれぞれの文字を<code>last-output</code>の先頭にconsします(<a href="Building-Lists.html">Building Lists</a>を参照)。最後にはリストには出力されたすべての文字が逆順で含まれます。
+</p>
+<div class="example">
+<pre class="example">(setq last-output nil)
+     &rArr; nil
+</pre><pre class="example">
+
+</pre><pre class="example">(defun eat-output (c)
+  (setq last-output (cons c last-output)))
+     &rArr; eat-output
+</pre><pre class="example">
+
+</pre><pre class="example">(print &quot;This is the output&quot; #'eat-output)
+     &rArr; &quot;This is the output&quot;
+</pre><pre class="example">
+
+</pre><pre class="example">last-output
+     &rArr; (10 34 116 117 112 116 117 111 32 101 104
+    116 32 115 105 32 115 105 104 84 34 10)
+</pre></div>
+
+<p>このリストを逆転すれば正しい順序で出力することができます:
+</p>
+<div class="example">
+<pre class="example">(concat (nreverse last-output))
+     &rArr; &quot;
+\&quot;This is the output\&quot;
+&quot;
+</pre></div>
+
+<p><code>concat</code>を呼び出してリストを文字列に変換すれば、内容をより明解に確認できます。
+</p>
+<span id="index-stderr-stream_002c-use-for-debugging"></span>
+<span id="external_002ddebugging_002doutput"></span><dl>
+<dt id="index-external_002ddebugging_002doutput">Function: <strong>external-debugging-output</strong> <em>character</em></dt>
+<dd><p>この関数はデバッグ時の出力ストリームとして有用。これは標準エラーストリームに<var>character</var>を書き込む。
+</p>
+<p>たとえば
+</p><div class="example">
+<pre class="example">(print &quot;This is the output&quot; #'external-debugging-output)
+-| This is the output
+&rArr; &quot;This is the output&quot;
+</pre></div>
+</dd></dl>
+
+<hr>
+<div class="header">
+<p>
+Next: <a href="Output-Functions.html" accesskey="n" rel="next">Output Functions</a>, Previous: <a href="Input-Functions.html" accesskey="p" rel="prev">Input Functions</a>, Up: <a href="Read-and-Print.html" accesskey="u" rel="up">Read and Print</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

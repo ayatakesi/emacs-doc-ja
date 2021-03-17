@@ -1,0 +1,150 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Interactive Call (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Interactive Call (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Interactive Call (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Command-Loop.html" rel="up" title="Command Loop">
+<link href="Distinguish-Interactive.html" rel="next" title="Distinguish Interactive">
+<link href="Generic-Commands.html" rel="prev" title="Generic Commands">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Interactive-Call"></span><div class="header">
+<p>
+Next: <a href="Distinguish-Interactive.html" accesskey="n" rel="next">Distinguish Interactive</a>, Previous: <a href="Defining-Commands.html" accesskey="p" rel="prev">Defining Commands</a>, Up: <a href="Command-Loop.html" accesskey="u" rel="up">Command Loop</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="intarakuteibunaHu-biChu-si"></span><h3 class="section">21.3 インタラクティブな呼び出し</h3>
+<span id="index-interactive-call"></span>
+
+<p>コマンドループはキーシーケンスをコマンドに変換した後、関数<code>command-execute</code>を使用してその関数を呼び出します。そのコマンドが関数なら、<code>command-execute</code>は引数を読み取りコマンドを呼び出す<code>call-interactively</code>を呼び出します。自分でこれらの関数を呼び出すこともできます。
+</p>
+<p>このコンテキストにおいて用語&ldquo;command&rdquo;はインタラクティブにコール可能な関数(または関数likeなオブジェクト)やキーボードマクロを指すことに注意してください。つまりコマンドを呼び出すキーシーケンスのことではありません(<a href="Keymaps.html">Keymaps</a>を参照)。
+</p>
+<dl>
+<dt id="index-commandp">Function: <strong>commandp</strong> <em>object &amp;optional for-call-interactively</em></dt>
+<dd><p>この関数は<var>object</var>がコマンドなら<code>t</code>、それ以外は<code>nil</code>をリターンする。
+</p>
+<p>コマンドには文字列とベクター(キーボードマクロとして扱われる)、トップレベルの<code>interactive</code>フォーム(<a href="Using-Interactive.html">Using Interactive</a>を参照)を含むラムダ式、そのようなラムダ式から作成されたバイトコンパイル関数オブジェクト、interactiveとして宣言(<code>autoload</code>の4つ目の引数が非<code>nil</code>)されたautoloadオブジェクト、およびいくつかのプリミティブ関数が含まれる。<code>interactive-form</code>プロパティが非<code>nil</code>のシンボル、および関数定義が<code>commandp</code>を満足するシンボルもコマンドとされる。
+</p>
+<p><var>for-call-interactively</var>が非<code>nil</code>なら、<code>call-interactively</code>が呼び出すことができるオブジェクトにたいしてのみ<code>commandp</code>は<code>t</code>をリターンする。したがってキーボードマクロは該当しなくなる。
+</p>
+<p><code>commandp</code>を使用する現実的な例については、<a href="Accessing-Documentation.html">Accessing Documentation</a>内の<code>documentation</code>を参照のこと。
+</p></dd></dl>
+
+<dl>
+<dt id="index-call_002dinteractively">Function: <strong>call-interactively</strong> <em>command &amp;optional record-flag keys</em></dt>
+<dd><p>この関数はinteractive呼び出し仕様にしたがって引数を取得し、インタラクティブに呼び出し可能な関数<var>command</var>を呼び出す。これは<var>command</var>がリターンするものが何であれ、それをリターンする。
+</p>
+<p>たとえばもし以下の署名をもつ関数があり:
+</p>
+<div class="example">
+<pre class="example">(defun foo (begin end)
+  (interactive &quot;r&quot;)
+  ...)
+</pre></div>
+
+<p>以下を行うと
+</p>
+<div class="example">
+<pre class="example">(call-interactively 'foo)
+</pre></div>
+
+<p>これはリージョン(<code>point</code>と<code>mark</code>)を引数として<code>foo</code>を呼び出すだろう。
+</p>
+<p><var>command</var>が関数でない、またはインタラクティブに呼び出せない(コマンドでない)場合にはエラーをシグナルする。たとえコマンドだとしても、キーボードマクロ(文字列かベクター)は関数ではないので許容されないことに注意。<var>command</var>がシンボルなら<code>call-interactively</code>はそれの関数定義を使用する。
+</p>
+<span id="index-record-command-history"></span>
+<p><var>record-flag</var>が非<code>nil</code>なら、このコマンドとコマンドの引数は無条件にリスト<code>command-history</code>に追加される。それ以外なら引数の読み取りにミニバッファーを使用した場合のみコマンドが追加される。<a href="Command-History.html">Command History</a>を参照のこと。
+</p>
+<p>引数<var>keys</var>が与えらたら、それはコマンドを呼び出すためにどのイベントを使用するかコマンドが問い合わせた場合に与えるべきイベントシーケンスを指定するベクターである。<var>keys</var>が<code>nil</code>または省略された場合のデフォルトは、<code>this-command-keys-vector</code>のリターン値である。<a href="Command-Loop-Info.html#Definition-of-this_002dcommand_002dkeys_002dvector">Definition of this-command-keys-vector</a>を参照のこと。
+</p></dd></dl>
+
+<dl>
+<dt id="index-funcall_002dinteractively">Function: <strong>funcall-interactively</strong> <em>function &amp;rest arguments</em></dt>
+<dd><p>この関数は<code>funcall</code> (<a href="Calling-Functions.html">Calling Functions</a>を参照)と同様に機能するが、インタラクティブな呼び出しのように見える呼び出しを生成する。<var>function</var>内部での<code>called-interactively-p</code>の呼び出しは<code>t</code>をリターンするだろう。<var>function</var>がコマンドでなければ、エラーをシグラルすることなくそれを呼び出す。
+</p></dd></dl>
+
+<dl>
+<dt id="index-command_002dexecute">Function: <strong>command-execute</strong> <em>command &amp;optional record-flag keys special</em></dt>
+<dd><span id="index-keyboard-macro-execution"></span>
+<p>この関数は<var>command</var>を実行する。引数<var>command</var>は述語<code>commandp</code>を満足しなければならない。つまりインタラクティブに呼び出し可能な関数かキーボードマクロでなければならない。
+</p>
+<p><var>command</var>が文字列かベクターなら、<code>execute-kbd-macro</code>により実行される。関数は<var>record-flag</var>および<var>keys</var>引数とともに<code>call-interactively</code>に渡される(上記参照)。
+</p>
+<p><var>command</var>がシンボルなら、その位置にシンボルの関数定義が使用される。<code>autoload</code>定義のあるシンボルは、インタラクティブに呼び出し可能な関数を意味するよう宣言されていればコマンドとして判断される。そのような宣言は指定されたライブラリーのロードと、シンボル定義の再チェックにより処理される。
+</p>
+<p>引数<var>special</var>が与えられたら、それはプレフィクス引数を無視して、それをクリアーしないという意味である。これはスペシャルイベント(<a href="Special-Events.html">Special Events</a>を参照)を実行する場合に使用される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-execute_002dextended_002dcommand">Command: <strong>execute-extended-command</strong> <em>prefix-argument</em></dt>
+<dd><span id="index-read-command-name"></span>
+<p>この関数は<code>completing-read</code>(<a href="Completion.html">Completion</a>を参照)を使用して、ミニバッファーからコマンド名を読み取る。その後で指定されたコマンドを呼び出すために<code>command-execute</code>を使用する。そのコマンドがリターンするのが何であれ、それが<code>execute-extended-command</code>の値となる。
+</p>
+<span id="index-execute-with-prefix-argument"></span>
+<p>そのコマンドがプレフィクス引数を求める場合には、<var>prefix-argument</var>の値を受け取る。<code>execute-extended-command</code>がインタラクティブに呼び出されたら、カレントのrawプレフィクス引数が<var>prefix-argument</var>に使用され、それが何であれ実行するコマンドに渡される。
+</p>
+<span id="index-M_002dx"></span>
+<p>通常は<code>execute-extended-command</code>は<kbd>M-x</kbd>の定義なので、プロンプトとして文字列&lsquo;<samp><span class="nolinebreak">M-x</span>&nbsp;</samp>&rsquo;<!-- /@w -->を使用する(<code>execute-extended-command</code>を呼び出したイベントからプロンプトを受け取るほうが良いのだろうが実装は苦痛を併なう)。プレフィクス引数の値の説明がもしあれば、それもプロンプトの一部となる。
+</p>
+<div class="example">
+<pre class="example">(execute-extended-command 3)
+---------- Buffer: Minibuffer ----------
+3 M-x forward-word <span class="key">RET</span>
+---------- Buffer: Minibuffer ----------
+     &rArr; t
+</pre></div>
+</dd></dl>
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Bidirectional Display (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Bidirectional Display (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Bidirectional Display (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Display.html" rel="up" title="Display">
+<link href="System-Interface.html" rel="next" title="System Interface">
+<link href="Tooltips.html" rel="prev" title="Tooltips">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Bidirectional-Display"></span><div class="header">
+<p>
+Previous: <a href="Tooltips.html" accesskey="p" rel="prev">Tooltips</a>, Up: <a href="Display.html" accesskey="u" rel="up">Display</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Shuang-Fang-Xiang-tekisutonoBiao-Shi"></span><h3 class="section">39.26 双方向テキストの表示</h3>
+<span id="index-bidirectional-display"></span>
+<span id="index-right_002dto_002dleft-text"></span>
+
+<p>Emacsはアラビア語、ペルシア語、ヘブライ語のような水平方向テキストの自然な表示順がR2L(right-to-left:
+右から左)に実行されるようなスクリプトで記述されたテキストを表示できます。さらにL2R(right-to-left:
+左から右)のテキストに埋め込まれたR2Lスクリプト(例:
+プログラムソースファイル内のアラビア語やヘブライ語のコメント)は適宜右から左にR2Lに表示される一方、ラテンスクリプト部やR2Lテキストに埋め込まれた数字はL2Rで表示されます。そのようなL2RとR2Lが混交されたテキストを、わたしたちは<em>双方向テキスト(bidirectional
+text)</em>と呼んでいます。このセクションでは双方向テキストの編集と表示にたいする機能とオプションについて説明します。
+</p>
+<span id="index-logical-order"></span>
+<span id="index-reading-order"></span>
+<span id="index-visual-order"></span>
+<span id="index-unicode-bidirectional-algorithm"></span>
+<span id="index-UBA"></span>
+<span id="index-bidirectional-reordering"></span>
+<span id="index-reordering_002c-of-bidirectional-text"></span>
+<p>テキストは<em>ロジカル</em>な順序(または<em>読込順</em>)、すなわち人間が各文字を読み込むであろう順序でテキストをEmacsバッファーや文字列に格納します。R2Lおよび双方向テキストでは、スクリーン上で文字が表示される順序(<em>ビジュアル順</em>と呼ばれる)はロジカル順と同一ではありません。それら各文字のスクリーン位置は文字列やバッファー位置により単調に増加しません。この<em>双方向の並べ替え(bidirectional
+reordering)</em>を処理を行う際に、EmacsはUnicode双方向アルゴリズム(<acronym>UBA</acronym>： Unicode
+Bidirectional
+Algorithm)にしたがいます(<a href="https://www.unicode.org/reports/tr9/">https://www.unicode.org/reports/tr9/</a>)。EmacsはUnicode
+Standard v9.0の要件に合致する<acronym>UBA</acronym>の&ldquo;Full
+Bidirectionality(完全な双方向性)&rdquo;を提供します。とはいえテキストがパラグラフの基本方向と逆方向なときにEmacsが継続行を表示する方法は、表示するテキストの再並び換えの前に行の折り返しを要求するUBAからは逸脱していることに注意してください。
+</p>
+<dl>
+<dt id="index-bidi_002ddisplay_002dreordering">Variable: <strong>bidi-display-reordering</strong></dt>
+<dd><p>このバッファーローカル変数の値が非<code>nil</code>
+(デフォルト)なら、Emacsは表示で双方向の並べ替えを行う。この並べ替えはバッファーテキスト、同様に文字列表示やバッファー内のテキストプロパティやオーバーレイプロパティ由来のオーバーレイ文字列に効果を及ぼす(<a href="Overlay-Properties.html">Overlay Properties</a>および<a href="Display-Property.html">Display Property</a>を参照)。値が<code>nil</code>ならEmacsはバッファー内での双方向の並べ替えを行わない。
+</p>
+<p><code>bidi-display-reordering</code>のデフォルト値は、モードライン内に表示されるテキスト(<a href="Mode-Line-Format.html">Mode Line Format</a>を参照)、およびヘッダー行(<a href="Header-Lines.html">Header Lines</a>を参照)を含む、バッファーにより直接提供されない文字列の並べ替えを制御する。
+</p></dd></dl>
+
+<span id="index-unibyte-buffers_002c-and-bidi-reordering"></span>
+<p>たとえバッファーの<code>bidi-display-reordering</code>が非<code>nil</code>でも、Emacsがユニバイトバッファーのテキストの並べ替えを行うことはありません。これはユニバイトバッファーに含まれるのが文字ではなくrawバイトであり、並べ替えに要する方向的なプロパティを欠くからです。したがってあるバッファーのテキストが並べ替えられるかどうかテストするには、<code>bidi-display-reordering</code>のテスト単独では不十分です。正しいテストは以下のようになります:
+</p>
+<div class="example">
+<pre class="example"> (if (and enable-multibyte-characters
+          bidi-display-reordering)
+     ;; 表示時にバッファーは並べ替えられるだろう
+   )
+</pre></div>
+
+<p>とはいえ親バッファーが並べ替えられた際には、ユニバイト表示やオーバーレイ文字列は<em>並べ替えられます</em>。これはEmacsによりプレーン<small>ASCII</small>文字列がユニバイト文字列に格納されるからです。ユニバイト表示やオーバーレイ文字列が非<small>ASCII</small>文字列を含むなら、それらの文字はL2Rの方向をもつとみなされます。
+</p>
+<span id="index-display-properties_002c-and-bidi-reordering-of-text"></span>
+<p>テキストプロパティ<code>display</code>、値が文字列であるような<code>display</code>プロパティによるオーバーレイ、バッファーテキストを置換するその他任意のプロパティにカバーされたテキストは表示時の並べ替えの際には単一の単位として扱われます。つまりこれらのプロパティにカバーされたテキストのchunk全体が一緒に並べ替えられます。さらにそのようなテキストchunk内の文字の双方向的なプロパティは無視されて、Emacsはあたかもそれらが<em>オブジェクト置換文字(Object
+Replacement
+Character)</em>として知られる単一文字で置換されたかのように並べ替えます。これはテキスト範囲上にdisplayプロパティを配置することにより、表示時に周辺テキストを並べ替える方法が変更され得ることを意味しています。このような予期せぬ効果を防ぐには、常に周辺テキストと等しい方向のテキストにたいしてそのようなプロパティを配置してください。
+</p>
+<span id="index-base-direction-of-a-paragraph"></span>
+<p>双方向テキストのパラグラフはそれぞれ、R2LかL2Rいずれかの<em>基本方向(base
+direction)</em>をもちます。L2Rパラグラフはウィンドウの左マージンを先頭に表示され、そのテキストが右マージンに達したら切り詰めや継続されます。R2Lパラグラフはウィンドウの右マージンを先頭に表示され、そのテキストが左マージンに達したら切り詰めや継続されます。
+</p>
+<span id="index-paragraph_002dstart_002c-and-bidirectional-display"></span>
+<span id="index-paragraph_002dseparate_002c-and-bidirectional-display"></span>
+<p>Emacsの<acronym>UBA</acronym>実装の目的におけるパラグラフの開始および終了の正確な位置は、以下の2つのローカル変数により決定されます(<code>paragraph-start</code>と<code>paragraph-separate</code>に効果はないことに注意)。デフォルトではこれらの変数は<code>nil</code>であり、パラグラフは空行(改行を後に併なう0個以上の空白文字)で囲まれます。
+</p>
+<dl>
+<dt id="index-bidi_002dparagraph_002dstart_002dre">Variable: <strong>bidi-paragraph-start-re</strong></dt>
+<dd><p>この変数の値が非<code>nil</code>ならパラグラフの開始か2つのパラグラフを分割する行にマッチする正規表現であること。この正規表現は常に改行の後にマッチするので、それをアンカーにする(<code>&quot;^&quot;</code>で開始する)のが最善である。
+</p></dd></dl>
+
+<dl>
+<dt id="index-bidi_002dparagraph_002dseparate_002dre">Variable: <strong>bidi-paragraph-separate-re</strong></dt>
+<dd><p>この変数の値が非<code>nil</code>なら2つのパラグラフを分割する行にマッチする正規表現であること。この正規表現は常に改行の後にマッチするので、それをアンカーにする(<code>&quot;^&quot;</code>で開始する)のが最善である。
+</p></dd></dl>
+
+<p>これら2つの変数
+のいずれかを変更する場合には、整合性のあるパラグラフの記述を保証するために、通常は両方を変更するべきです。たとえば双方向の並べ替え目的のために各改行を新たなパラグラフの開始とするには両方の変数に<code>&quot;^&quot;</code>をセットしてください。
+</p>
+<p>デフォルトではEmacsはテキスト先頭を調べることにより各パラグラフの基本方向を判断します。基本方向の精細な決定手法は<acronym>UBA</acronym>により指定されており、簡潔に言うとその明示にな方向生をもつそのパラグラフ内の最初の文字がパラグラフの基本方向を決定します。とはいえ、あるバッファーが自身のパラグラフにたいして特定の基本方向の強制を要する場合もあります。たとえばプログラムソースコードを含むバッファーは、すべてのパラグラフがL2Rで表示されるよう強制されるべきでしょう。これを行うために以下の変数を使用できます:
+</p>
+<dl>
+<dt id="index-bidi_002dparagraph_002ddirection">User Option: <strong>bidi-paragraph-direction</strong></dt>
+<dd><p>このバッファーローカル変数の値が<code>right-to-left</code>か<code>left-to-right</code>いずれかのシンボルなら、そのバッファー内のすべてのパラグラフがその指定された方向をもつとみなされる。その他すべての値は<code>nil</code>
+(デフォルト)と等価であり、それは各パラグラフの基本方向が内容により判断されることを意味する。
+</p>
+<span id="index-prog_002dmode_002c-and-bidi_002dparagraph_002ddirection"></span>
+<p>プログラムソースコードにたいするモードは、これを<code>left-to-right</code>にセットすること。Progモードはデフォルトでこれを行うので、Progモードから派生したモードは明示的にセットする必要はない(<a href="Basic-Major-Modes.html">Basic Major Modes</a>を参照)。
+</p></dd></dl>
+
+<dl>
+<dt id="index-current_002dbidi_002dparagraph_002ddirection">Function: <strong>current-bidi-paragraph-direction</strong> <em>&amp;optional buffer</em></dt>
+<dd><p>この関数は<var>buffer</var>という名前のバッファーのポイント位置のパラグラフ方向をリターンする。リターンされる値は<code>left-to-right</code>か<code>right-to-left</code>いずれかのシンボルである。<var>buffer</var>が省略または<code>nil</code>の場合のデフォルトはカレントバッファー。変数<code>bidi-paragraph-direction</code>のバッファーローカル値が非<code>nil</code>なら、リターンされる値はその値と等しくなるだろう。それ以外ならリターンされる値はEmacsにより動的に決定されたパラグラフの方向を反映する。<code>bidi-display-reordering</code>の値が<code>nil</code>のバッファー、同様にユニバイトバッファーにたいしては、この関数は常に<code>left-to-right</code>をリターンする。
+</p></dd></dl>
+
+<span id="index-visual_002dorder-cursor-motion"></span>
+<p>バッファーのカレントのスクリーン位置にたいして、ビジュアル順にL2RかR2Lいずれかの方向に厳密なポイント移動を要す場合があります。Emacsはこれを行うためのプリミティブを提供します。
+</p>
+<dl>
+<dt id="index-move_002dpoint_002dvisually">Function: <strong>move-point-visually</strong> <em>direction</em></dt>
+<dd><p>この関数は、カレントで選択されたウィンドウのバッファーにたいしてポイントを、スクリーン上ですぐ右か左のポイントへ移動する。<var>direction</var>が正ならスクリーン位置は右、それ以外ならスクリーン位置は左へ移動するだろう。周囲の双方向コンテキストに依存して、これは潜在的に多くのバッファーのポイントを移動し得ることに注意。スクリーン行終端で呼び出された場合には、この関数は<var>direction</var>に応じて適宜、次行か前行の右端か左端のスクリーン位置にポイントを移動する。
+</p>
+<p>この関数は値として新たなバッファー位置をリターンする。
+</p></dd></dl>
+
+<span id="index-layout-on-display_002c-and-bidirectional-text"></span>
+<span id="index-jumbled-display-of-bidirectional-text"></span>
+<span id="index-concatenating-bidirectional-strings"></span>
+<p>バッファー内で双方向の内容をもつ2つの文字列が並置されているときや、プログラムで1つのテキスト文字列に結合した場合には、双方向の並べ替えは以外かつ不快な効果を与える可能性があります。典型的な問題ケースはBuffer
+MenuモードやRmail
+Summaryモードのようにバッファーがスペースや区切り文字分割されたテキストのフィールドのシーケンスで構成されているときです。それはセパレーターとして使用されている区切り文字が<em>弱い方向性</em>をもち、周囲のテキストの方向を採用するためです。結果として双方向の内容のフィールドが後続する数値フィールドは、先行するフィールドヘ<em>左方向</em>に表示され、期待したレイアウトを破壊してしまいます。この問題を回避するための方法がいくつかあります：
+</p>
+<ul class="no-bullet">
+<li>- 双方向の内容をもち得る各フィールド終端に、スペシャル文字LEFT-TO-RIGHT MARK(略して<acronym>LRM</acronym>)のU+200E
+<small>LEFT-TO-RIGHT
+MARK</small>を付加する。後述の関数<code>bidi-string-mark-left-to-right</code>は、この目的に手頃(R2LパラグラフではかわりにRIGHT-TO-LEFT
+MARK、略して<acronym>RLM</acronym>のU+200F <small>RIGHT-TO-LEFT
+MARK</small>を使用する)。これはUBAにより推奨される解決策の1つである。
+
+</li><li>- フィールドセパレーターにタブ文字を含める。タブ文字は双方向の並べ替えにおいて<em>セグメントセパレーター(segment
+separator)</em>の役割を演じて、両側のテキストを個別に並べ替えさせる。
+
+</li><li>- <span id="index-space-display-spec_002c-and-bidirectional-text"></span>
+<code>display</code>プロパティ、または<code>(space . PROPS)</code>という形式の値をもつオーバーレイ(<a href="Specified-Space.html">Specified Space</a>を参照)でフィールドを区切る。Emacsはこのdisplay仕様を<em>パラグラフセパレーター(paragraph
+separator)</em>として扱い両側のテキストを個別に並べ替える。
+</li></ul>
+
+<dl>
+<dt id="index-bidi_002dstring_002dmark_002dleft_002dto_002dright">Function: <strong>bidi-string-mark-left-to-right</strong> <em>string</em></dt>
+<dd><p>この関数は結果を安全に他の文字列に結合できるよう、あるいはこの文字列とスクリーン上で次行となる行に関連するレイアウトを乱すことなくバッファー内の他の文字列に並置できるよう、自身への引数<var>string</var>を恐らく変更してリターンする。この関数がリターンする文字列がR2Lパラグラフの一部として表示される文字列なら、それは常に後続するテキストの左に出現するだろう。この関数は自身の引数の文字を検証することにより機能して、もしそれらの文字のいずれかがディスプレイ上の並べ替えを発生し得るなら、この関数はその文字列に<acronym>LRM</acronym>文字を付加する。付加された<acronym>LRM</acronym>文字はテキストプロパティ<code>invisible</code>に<code>t</code>を与えることにより不可視にできる(<a href="Invisible-Text.html">Invisible Text</a>を参照)。
+</p></dd></dl>
+
+<p>並べ替えアルゴリズムは<code>bidi-class</code>プロパティとして格納された文字の双方向プロパティを使用します(<a href="Character-Properties.html">Character Properties</a>を参照)。Lispプログラムは<code>put-char-code-property</code>関数を呼び出すことにより、これらのプロパティを変更できます。しかしこれを行うには<acronym>UBA</acronym>の完全な理解が要求されるので推奨しません。ある文字の双方向プロパティにたいする任意の変更はグローバルな効果をもちます。これらはEmacsのフレームのすべてのフレームとウィンドウに影響します。
+</p>
+<p>同様に<code>mirroring</code>プロパティは並べ替えられたテキスト内の適切にミラーされた文字の表示に使用されます。Lispプログラムはこのプロパティを変更することにより、ミラーされた表示に影響を与えることができます。繰り返しますがそのような変更はEmacsのすべての表示に影響を与えます。
+</p>
+<span id="index-overriding-bidirectional-properties"></span>
+<span id="index-directional-overrides"></span>
+<span id="index-LRO"></span>
+<span id="index-RLO"></span>
+<p>スペシャル双方向制御文字LEFT-TO-RIGHT OVERRIDE (<acronym>LRO</acronym>)とRIGHT-TO-LEFT OVERRIDE
+(<acronym>RLO</acronym>)をテキストに挿入することにより、文字の双方向プロパティをオーバーライドできます。<acronym>RLO</acronym>と改行かPOP
+DIRECTIONAL FORMATTING
+(<acronym>PDF</acronym>)のいずれか先にある文字間のすべての文字は、それらが強いR2Lであるかのように表示されます(反転して表示される)。同様に<acronym>LRO</acronym>と<acronym>PDF</acronym>か改行の間のすべての文字は、それらがたとえ強いR2Lであっても強いL2Rであるかのように反転して表示<em>されません</em>。
+</p>
+<span id="index-phishing-using-directional-overrides"></span>
+<span id="index-malicious-use-of-directional-overrides"></span>
+<p>これらのオーバーライドは、あるテキストを並び替えアルゴリズムの影響を受けずに、直接表示順を制御したいときに有用です。しかしこれらは<em>フィッシング(phishing)</em>として知られるような悪意のある用途にも使用されます。特にウェブ上のURLやemailメッセージ内のリンクは真のリンク先はまったく異なるのに、ブラウザによる論理順で解釈される外観を認識不能に操作したり、何らかの著名で安全なリンク先に偽装される可能性があります。
+</p>
+<p>Emacsはアプリケーションが使用するために、双方向プロパティでL2R文字をR2L、またはその逆にするようにオーバーライドされたテキストのインスタンスを検知するプリミティブを提供します。
+</p>
+<dl>
+<dt id="index-bidi_002dfind_002doverridden_002ddirectionality">Function: <strong>bidi-find-overridden-directionality</strong> <em>from to &amp;optional object</em></dt>
+<dd><p>この関数は<var>object</var>で指定されたテキストの<var>from</var> (含む)と<var>to</var>
+(含まず)の間のテキストを調べてR2Lの文字であるかのように表示が強制されている双方向プロパティの強いL2R文字、L2Rの文字であるかのように表示が強制されている強いR2L文字の最初の位置をリターンする。指定されたテキストリージョンでそのような文字が見つからなければ<code>nil</code>をリターンする。
+</p>
+<p>オプション引数<var>object</var>は検索するテキストを指定して、デフォルトはカレントバッファー。<var>object</var>が非<code>nil</code>なら別のバッファーや文字列、またはウィンドウかもしれない。文字列ならこの関数はその文字列を検索する。ウィンドウならこの関数はそのウィンドウが表示するバッファーを検索する。検査したいテキストをもつバッファーが何らかのウィンドウに表示されていれば、この関数にバッファーを渡すのではなくそのウィンドウの指定を推奨する。これはウィンドウ固有のオーバーレイにカバーされたバッファーのテキストでは関数の結果が変化し得るが、関数にウィンドウ固有のオーバーレイを正しく考慮するように指示するからである。
+</p></dd></dl>
+
+<span id="index-copying-bidirectional-text_002c-preserve-visual-order"></span>
+<span id="index-visual-order_002c-preserve-when-copying-bidirectional-text"></span>
+<p>テキストがR2L文字とL2R文字の混交を含み、かつ双方向制御が別の場所にコピーされる際には、その視覚的外見は変化するかもしれず、コピー先の周辺テキストの視覚的外見にも影響するかもしれません。これは<acronym>UBA</acronym>で指定される双方向テキストの並び替えでは、コピーされるテキストとそれを取り囲む周辺テキストの両方が非自明かつコンテキスト依存の効果をもつからです。
+</p>
+<p>コピーされるテキストとコピー先周辺のテキストの視覚的外見をLispプロパティが保証することが必要なときがあるかもしれません。この効果を達成するためにLispプログラムは以下の関数を使用できます。
+</p>
+<dl>
+<dt id="index-buffer_002dsubstring_002dwith_002dbidi_002dcontext">Function: <strong>buffer-substring-with-bidi-context</strong> <em>start end &amp;optional no-properties</em></dt>
+<dd><p>この関数は<code>buffer-substring</code> (<a href="Buffer-Contents.html">Buffer Contents</a>を参照)と同様に機能するが、テキストが別の場所にコピーされる際に視覚的外見を保つために必要な双方向制御文字を前や後に付加する点が異なる。オプション引数<var>no-properties</var>が非<code>nil</code>なら、それはテキストのコピーからテキストプロパティを削除することを意味する。
+</p></dd></dl>
+
+
+
+</body>
+</html>

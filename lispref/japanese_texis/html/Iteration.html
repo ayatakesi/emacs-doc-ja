@@ -1,0 +1,131 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Iteration (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Iteration (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Iteration (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Control-Structures.html" rel="up" title="Control Structures">
+<link href="Generators.html" rel="next" title="Generators">
+<link href="Destructuring-with-pcase-Patterns.html" rel="prev" title="Destructuring with pcase Patterns">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Iteration"></span><div class="header">
+<p>
+Next: <a href="Generators.html" accesskey="n" rel="next">Generators</a>, Previous: <a href="Pattern_002dMatching-Conditional.html" accesskey="p" rel="prev">Pattern-Matching Conditional</a>, Up: <a href="Control-Structures.html" accesskey="u" rel="up">Control Structures</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Zao-riFan-si"></span><h3 class="section">11.5 繰り返し</h3>
+<span id="index-iteration"></span>
+<span id="index-recursion"></span>
+<span id="index-forms_002c-iteration"></span>
+
+<p>繰り返し(iteration)とは、プログラムの一部を繰り返し実行することを意味します。たとえばリストの各要素、または0から<var>n</var>の整数にたいして、繰り返し一度ずつ何らかの計算を行いたいとしましょう。Emacs
+Lispではスペシャルフォーム<code>while</code>でこれを行なうことができます:
+</p>
+<dl>
+<dt id="index-while">Special Form: <strong>while</strong> <em>condition forms&hellip;</em></dt>
+<dd><p><code>while</code>は最初に<var>condition</var>を評価する。結果が非<code>nil</code>なら<var>forms</var>をテキスト順に評価する。その後に<var>condition</var>を再評価して結果が非<code>nil</code>なら、再度<var>forms</var>を評価する。この処理は<var>condition</var>が<code>nil</code>に評価されるまで繰り返される。
+</p>
+<p>繰り返し回数に制限はない。このループは<var>condition</var>が<code>nil</code>に評価されるか、エラーになるか、または<code>throw</code>で抜け出す(<a href="Nonlocal-Exits.html">Nonlocal Exits</a>を参照)まで継続される。
+</p>
+<p><code>while</code>フォームの値は常に<code>nil</code>である。
+</p>
+<div class="example">
+<pre class="example">(setq num 0)
+     &rArr; 0
+</pre><pre class="example">(while (&lt; num 4)
+  (princ (format &quot;Iteration %d.&quot; num))
+  (setq num (1+ num)))
+     -| Iteration 0.
+     -| Iteration 1.
+     -| Iteration 2.
+     -| Iteration 3.
+     &rArr; nil
+</pre></div>
+
+<p>各繰り返しごとに何かを実行して、その後も終了テストを行なうrepeat-untilループを記述するには、以下のように<code>while</code>の1番目の引数としてbodyの後に終了テストを記述して、それを<code>progn</code>の中に配置する:
+</p>
+<div class="example">
+<pre class="example">(while (progn
+         (forward-line 1)
+         (not (looking-at &quot;^$&quot;))))
+</pre></div>
+
+<p>これは1行前方に移動して、空行に達するまで行単位の移動を継続する。独特な点は<code>while</code>がbodyをもたず、終了テスト(これはポイント移動という実処理も行なう)だけを行うことである。
+</p></dd></dl>
+
+<p>マクロ<code>dolist</code>および<code>dotimes</code>は、2つの一般的な種類のループを記述する、便利な方法を提供します。
+</p>
+<dl>
+<dt id="index-dolist">Macro: <strong>dolist</strong> <em>(var list [result]) body&hellip;</em></dt>
+<dd><p>この構文は<var>list</var>の各要素に一度<var>body</var>を実行して、カレント要素をローカルに保持するように、変数<var>var</var>にバインドする。その後に<var>result</var>を評価した値、<var>result</var>が省略された場合は<code>nil</code>をリターンする。たとえば以下は<code>reverse</code>関数を定義するために<code>dolist</code>を使用する方法の例である:
+</p>
+<div class="example">
+<pre class="example">(defun reverse (list)
+  (let (value)
+    (dolist (elt list value)
+      (setq value (cons elt value)))))
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-dotimes">Macro: <strong>dotimes</strong> <em>(var count [result]) body&hellip;</em></dt>
+<dd><p>この構文は0以上<var>count</var>未満の各整数にたいして、一度<var>body</var>を実行してから、繰り返しのカレント回数となる整数を変数<var>var</var>にバインドする。その後に<var>result</var>の値、<var>result</var>が省略された場合は<code>nil</code>をリターンする。<var>result</var>の使用は推奨しない。以下は<code>dotimes</code>を使用して、何らかの処理を100回行なう例:
+</p>
+<div class="example">
+<pre class="example">(dotimes (i 100)
+  (insert &quot;I will not obey absurd orders\n&quot;))
+</pre></div>
+</dd></dl>
+
+
+
+
+</body>
+</html>

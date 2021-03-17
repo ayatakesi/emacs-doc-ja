@@ -1,0 +1,96 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Repeated Expansion (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Repeated Expansion (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Repeated Expansion (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Problems-with-Macros.html" rel="up" title="Problems with Macros">
+<link href="Indenting-Macros.html" rel="next" title="Indenting Macros">
+<link href="Eval-During-Expansion.html" rel="prev" title="Eval During Expansion">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Repeated-Expansion"></span><div class="header">
+<p>
+Previous: <a href="Eval-During-Expansion.html" accesskey="p" rel="prev">Eval During Expansion</a>, Up: <a href="Problems-with-Macros.html" accesskey="u" rel="up">Problems with Macros</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="makurogaZhan-Kai-sareruHui-Shu-ha_003f"></span><h4 class="subsection">14.5.5 マクロが展開される回数は?</h4>
+
+<p>逐次解釈される関数で毎回マクロ呼び出しが展開されるが、コンパイルされた関数では(コンパイル時の)1回だけしか展開されないという事実にもとづく問題が時折発生します。そのマクロ定義が副作用をもつなら、そのマクロが何回展開されたかによって、それらのマクロは異なる動作をとるでしょう。
+</p>
+<p>したがってあなたが何をしているか本当に判っていないのであれば、マクロ展開形の計算での副作用は避けるべきです。
+</p>
+<p>避けることのできない特殊な副作用が1つあります。それはLispオブジェクトの構築です。ほとんどすべてのマクロ展開形にはリストの構築が含まれます。リスト構築はほとんどのマクロの核心部分です。これは通常は安全です。用心しなければならないケースが1つだけあります。それは構築するオブジェクトがマクロ展開形の中でクォートされた定数の一部となるときです。
+</p>
+<p>そのマクロが1回だけ &mdash; コンパイル時 &mdash;
+しか展開されないなら、そのオブジェクトの構築もコンパイル時の1回です。しかし逐次実行では、そのマクロはマクロ呼び出しが実行されるたびに展開され、これは毎回新たなオブジェクトが構築されることを意味します。
+</p>
+<p>クリーンなLispコードのほとんどでは、この違いは問題になりません。しかしマクロ定義によるオブジェクト構築の副作用を処理する場合には、問題になるかもしれません。したがって問題を避けるために、<strong>マクロ定義によるオブジェクト構築の副作用を避けてください</strong>。以下は副作用により問題が起こる例です:
+</p>
+<div class="lisp">
+<pre class="lisp">(defmacro empty-object ()
+  (list 'quote (cons nil nil)))
+</pre><pre class="lisp">
+
+</pre><pre class="lisp">(defun initialize (condition)
+  (let ((object (empty-object)))
+    (if condition
+        (setcar object condition))
+    object))
+</pre></div>
+
+<p><code>initialize</code>が解釈されると、<code>initialize</code>が呼び出されるたびに新しいリスト<code>(nil)</code>が構築されます。したがって各呼び出しの間において副作用は存続しません。しかし<code>initialize</code>がコンパイルされると、マクロ<code>empty-object</code>はコンパイル時に展開され、これは1つの定数<code>(nil)</code>を生成し、この定数は<code>initialize</code>の呼び出しの各回で再利用、変更されます。
+</p>
+<p>このような異常な状態を避ける1つの方法は、<code>empty-object</code>をメモリー割り当て構造ではなく一種の奇妙な変数と考えることです。<code>'(nil)</code>のような定数にたいして<code>setcar</code>を使うことはないでしょうから、当然<code>(empty-object)</code>にも使うことはないでしょう。
+</p>
+
+
+
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Derived Modes (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Derived Modes (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Derived Modes (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Major-Modes.html" rel="up" title="Major Modes">
+<link href="Basic-Major-Modes.html" rel="next" title="Basic Major Modes">
+<link href="Mode-Help.html" rel="prev" title="Mode Help">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Derived-Modes"></span><div class="header">
+<p>
+Next: <a href="Basic-Major-Modes.html" accesskey="n" rel="next">Basic Major Modes</a>, Previous: <a href="Mode-Help.html" accesskey="p" rel="prev">Mode Help</a>, Up: <a href="Major-Modes.html" accesskey="u" rel="up">Major Modes</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Pai-Sheng-modonoDing-Yi-"></span><h4 class="subsection">23.2.4 派生モードの定義</h4>
+<span id="index-derived-mode"></span>
+
+<p>新しいメジャーモードを定義する推奨方法は、<code>define-derived-mode</code>を使用して既存のメジャーモードから派生させる方法です。それほど近いモードが存在しない場合は<code>text-mode</code>、<code>special-mode</code>、または<code>prog-mode</code>から継承するべきです。<a href="Basic-Major-Modes.html">Basic Major Modes</a>を参照してください。これらがいずれも適切でなければ、<code>fundamental-mode</code>から継承することができます(<a href="Major-Modes.html">Major Modes</a>を参照)。
+</p>
+<dl>
+<dt id="index-define_002dderived_002dmode">Macro: <strong>define-derived-mode</strong> <em>variant parent name docstring keyword-args&hellip; body&hellip;</em></dt>
+<dd><p>このマクロは<var>variant</var>をメジャーモードコマンドとして定義して、<var>name</var>をモード名の文字列形式とする。<var>variant</var>と<var>parent</var>はクォートされていないシンボルであること。
+</p>
+<p>新たなコマンド<var>variant</var>は関数<var>parent</var>を呼び出すよう定義されて、その後その親モードの特定の性質をオーバーライドする。
+</p>
+<ul>
+<li> 新たなモードは<code><var>variant</var>-map</code>という名前の、自身のsparseキーマップ(疎キーマップ)をもつ。<code>define-derived-mode</code>は<code><var>variant</var>-map</code>がすでにセットされていて、かつすでに親をもつ場合を除いて親モードのキーマップを新たなマップの親キーマップにする。
+
+</li><li> 新たなモードは自身の構文テーブル(syntax
+table)をもち、それは変数<code><var>variant</var>-syntax-table</code>に保持される。ただし<code>:syntax-table</code>キーワード(以下参照)を使用してこれをオーバーライドした場合は異なる。<code>define-derived-mode</code>は<code><var>variant</var>-syntax-table</code>がすでにセットされていて、かつ標準的な構文テーブルよ異なる親をもつ場合を除いて、親モードの構文テーブルを<code><var>variant</var>-syntax-table</code>の親とする。
+
+</li><li> 新たなモードは自身のabbrevテーブル(略語テーブル)をもち、それは変数<code><var>variant</var>-abbrev-table</code>に保持される。ただし<code>:abbrev-table</code>キーワード(以下参照)を使用してこれをオーバーライドした場合は異なる。
+
+</li><li> 新たなモードは自身のモードフック<code><var>variant</var>-hook</code>をもつ。これはフックを実行した後に<code>:after-hook</code>があればそれを実行して、それとは別に最後に<code>run-mode-hooks</code>によって自身の祖先のモードのフックを実行する。
+</li></ul>
+
+<p>これらに加えて<var>body</var>で<var>parent</var>のその他の性質をオーバーライドする方法を指定できます。コマンド<var>variant</var>は通常のオーバーライドをセットアップした後、そのモードのフックを実行する直前に<var>body</var>内のフォームを評価します。
+</p>
+<p><var>parent</var>が非<code>nil</code>の<code>mode-class</code>シンボルプロパティをもつ場合、<code>define-derived-mode</code>は<var>variant</var>の<code>mode-class</code>プロパティに同じ値をセットします。これはたとえば<var>parent</var>がspecialモードなら<var>variant</var>もspecialモードになることを保証します(<a href="Major-Mode-Conventions.html">Major Mode Conventions</a>を参照)。
+</p>
+<p><var>parent</var>にたいして<code>nil</code>を指定することもできます。これにより新たなモードは親をもたなくなります。その後に<code>define-derived-mode</code>は上述のように振る舞いますが、当然<var>parent</var>につながるすべてのアクションは省略されます。
+</p>
+<p>引数<var>docstring</var>は新たなモードにたいするドキュメント文字列を指定します。<code>define-derived-mode</code>はこのドキュメント文字列の最後にそのモードフックに関する一般的な情報と、その後にそのモードのキーマップを追加します。<var>docstring</var>を省略すると<code>define-derived-mode</code>がドキュメント文字列を生成します。
+</p>
+<p><var>keyword-args</var>はキーワードと値のペアー。<code>:after-hook</code>のものを除いて値は評価される。現在のところ以下のキーワードがサポートされる:
+</p>
+<dl compact="compact">
+<dt><code>:syntax-table</code></dt>
+<dd><p>新たなモードにたいする構文テーブルを明示的に指定するためにこれを使用できる。<code>nil</code>値を指定すると新たなモードは<var>parent</var>と同じ構文テーブル、<var>parent</var>も<code>nil</code>なら標準的な構文テーブルを使用する(これは<code>nil</code>値の非キーワード引数は引数を指定しないのと同じという通常の慣習には<em>したがわない</em>ことに注意)。
+</p>
+</dd>
+<dt><code>:abbrev-table</code></dt>
+<dd><p>新たなモードにたいするabbrevテーブルを明示的に指定するためにこれを使用できる。<code>nil</code>値を指定すると新たなモードは<var>parent</var>と同じabbrevテーブル、<var>parent</var>も<code>nil</code>なら<code>fundamental-mode-abbrev-table</code>を使用する(繰り返すが<code>nil</code>値はこのキーワードを指定しないことでは<em>ない</em>)。
+</p>
+</dd>
+<dt><code>:group</code></dt>
+<dd><p>これが指定する場合、値はそのモードにたいするカスタマイズグループ(customization
+group)であること(すべてのメジャーモードがカスタマイズグループをもつ訳ではない)。<code>customize-mode</code>コマンドはこれを使用する。<code>define-derived-mode</code>は指定されたカスタマイズグループを自動的に<em>定義しない</em>。
+</p>
+</dd>
+<dt><code>:after-hook</code></dt>
+<dd><p>このオプションのｋｅｙはモードフック実行後にモード関数の最後の活動として評価される単一のLispフォームを指定する。クォートしないこと。モードにが終了した後にフォーが評価されるので、モード関数のローカル状態のすべての要素にアクセスするべきではない。<code>:after-hook</code>フォームはモードフックで変更されているかもしれないユーザーのセッティングに依存するモードの様相をセットアップするために有用。
+</p></dd>
+</dl>
+
+<p>以下は架空の例:
+</p>
+<div class="example">
+<pre class="example">(defvar hypertext-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map [down-mouse-3] 'do-hyper-link)
+    map))
+
+(define-derived-mode hypertext-mode
+  text-mode &quot;Hypertext&quot;
+  &quot;ハイパーテキスト用のメジャーモード&quot;
+  (setq-local case-fold-search nil))
+</pre></div>
+
+<p><code>define-derived-mode</code>が自動的に行うので、この定義内に<code>interactive</code>指定を記述してはならない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-derived_002dmode_002dp">Function: <strong>derived-mode-p</strong> <em>&amp;rest modes</em></dt>
+<dd><p>この関数はカレントメジャーモードがシンボル<var>modes</var>で与えられたメジャーモードのいずれかから派生されていたら非<code>nil</code>をリターンする。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

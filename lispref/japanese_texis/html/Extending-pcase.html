@@ -1,0 +1,98 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Extending pcase (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Extending pcase (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Extending pcase (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Pattern_002dMatching-Conditional.html" rel="up" title="Pattern-Matching Conditional">
+<link href="Backquote-Patterns.html" rel="next" title="Backquote Patterns">
+<link href="pcase-Macro.html" rel="prev" title="pcase Macro">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Extending-pcase"></span><div class="header">
+<p>
+Next: <a href="Backquote-Patterns.html" accesskey="n" rel="next">Backquote Patterns</a>, Previous: <a href="pcase-Macro.html" accesskey="p" rel="prev">pcase Macro</a>, Up: <a href="Pattern_002dMatching-Conditional.html" accesskey="u" rel="up">Pattern-Matching Conditional</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="pcasenoKuo-Zhang-"></span><h4 class="subsection">11.4.2 <code>pcase</code>の拡張</h4>
+<span id="index-pcase_002c-defining-new-kinds-of-patterns"></span>
+
+<p><code>pcase</code>マクロは数種類のパターンをサポートします(<a href="Pattern_002dMatching-Conditional.html">Pattern-Matching Conditional</a>を参照)。<code>pcase-defmacro</code>を使用すれば違う種類のパターンにたいするサポートを追加できます。
+</p>
+<dl>
+<dt id="index-pcase_002ddefmacro">Macro: <strong>pcase-defmacro</strong> <em>name args [doc] &amp;rest body</em></dt>
+<dd><p><code>(<var>name</var>&nbsp;<var><span class="nolinebreak">actual-args</span></var>)</code><!-- /@w -->のように呼び出すために新たな種類の<code>pcase</code>用のパターンを定義する。<code>pcase</code>マクロは<var>body</var>を評価する呼び出しへと展開する。このマクロの役割は<var>args</var>を<var>actual-args</var>にバインドした環境下において、呼び出されたパターンを別の何らかのパターンに書き換えることである。
+</p>
+<p>さらに<code>pcase</code>のドキュメント文字列とともに<var>doc</var>が表示されるように計らう。<var>doc</var>では慣例により<var>expression</var>の評価結果を示すために<code>EXPVAL</code>を使用すること。
+</p></dd></dl>
+
+<p><var>body</var>は通常はより基本的なパターンを使用して呼び出されたパターンを書き換える。最終的にはすべてのパターンはコアパターンに絞り込まれるが、<code>body</code>がすぐにコアパターンを使用する必要はない。以下の例では<code>less-than</code>と<code>integer-less-than</code>という2つのパターンを定義している。
+</p>
+<div class="example">
+<pre class="example">(pcase-defmacro less-than (n)
+  &quot;Matches if EXPVAL is a number less than N.&quot;
+  `(pred (&gt; ,n)))
+</pre><pre class="example">
+
+</pre><pre class="example">(pcase-defmacro integer-less-than (n)
+  &quot;Matches if EXPVAL is an integer less than N.&quot;
+  `(and (pred integerp)
+        (less-than ,n)))
+</pre></div>
+
+<p><var>args</var>
+(このケースでは<code>n</code>の1つだけ)に言及するdocstringは通常の方法、<code>EXPVAL</code>では慣例にもとづく方法であることに注意してください。1つ目の書き換え(
+<code>less-than</code>の<var>body</var>
+)では<code>pred</code>というコアパターンだけが使用されていて、2つ目では2つのコアパターン<code>and</code>と<code>pred</code>と新たに定義したパターン<code>less-than</code>が使用されています。そしていずれの書き換えにおいてもシングルバッククォート構文が使用されています(<a href="Backquote.html">Backquote</a>を参照)。
+</p>
+
+
+
+</body>
+</html>

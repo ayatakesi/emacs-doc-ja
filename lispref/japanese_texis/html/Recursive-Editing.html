@@ -1,0 +1,138 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Recursive Editing (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Recursive Editing (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Recursive Editing (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Command-Loop.html" rel="up" title="Command Loop">
+<link href="Disabling-Commands.html" rel="next" title="Disabling Commands">
+<link href="Prefix-Command-Arguments.html" rel="prev" title="Prefix Command Arguments">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Recursive-Editing"></span><div class="header">
+<p>
+Next: <a href="Disabling-Commands.html" accesskey="n" rel="next">Disabling Commands</a>, Previous: <a href="Prefix-Command-Arguments.html" accesskey="p" rel="prev">Prefix Command Arguments</a>, Up: <a href="Command-Loop.html" accesskey="u" rel="up">Command Loop</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Zai-Gui-Bian-Ji-"></span><h3 class="section">21.13 再帰編集</h3>
+<span id="index-recursive-command-loop"></span>
+<span id="index-recursive-editing-level"></span>
+<span id="index-command-loop_002c-recursive"></span>
+
+<p>Emacsはスタートアップ時に、自動的にEmacsコマンドループに移行します。このトップレベルのコマンドループ呼び出しは決してexitすることなく、Emacs実行中は実行を継続します。Lispプログラムもコマンドループを呼び出せます。これは複数のコマンドループを活性化するので、<em>再帰編集(recursive
+editing)</em>と呼ばれています。再帰編集レベルは呼び出したコマンドが何であれそれをサスペンドして、そのコマンドを再開する前にユーザーが任意の編集を行うことを可能にする効果をもちます。
+</p>
+<p>再帰編集の間に利用可能なコマンドは、トップレベルの編集ループ内で利用できるコマンドと同じでありキーマップ内で定義されます。数少ない特別なコマンドだけが再帰編集レベルをexitして、他のコマンドは再帰編集レベルが終了したときに再帰編集レベルからリターンします(exitするための特別なコマンドは常に利用できるが再帰編集が行われていないときは何も行わない)。
+</p>
+<p>再帰コマンドループを含むすべてのコマンドループは、コマンドループから実行されたコマンド内のエラーによってそのループをexitしないように、汎用エラーハンドラーをセットアップします。
+</p>
+<span id="index-minibuffer-input"></span>
+<p>ミニバッファー入力は特殊な再帰編集です。これはミニバッファーとミニバッファーウィンドウの表示を有効にするなどの欠点をもちますが、それはあなたが思うより少ないでしょう。ミニバッファー内では特定のキーの振る舞いが異なりますが、これははミニバッファーのローカルマップによるものです。ウィンドウを切り替えれば通常のEmacsコマンドを使用できます。
+</p>
+<span id="index-throw-example"></span>
+<span id="index-exit"></span>
+<span id="index-exit-recursive-editing"></span>
+<span id="index-aborting"></span>
+<p>再帰編集レベルを呼び出すには関数<code>recursive-edit</code>を呼び出します。この関数はコマンドループを含んでいます。さらに<code>exit</code>をthrowすることにより再帰編集レベルのexitを可能にする、タグ<code>exit</code>をともなった<code>catch</code>呼び出しも含んでいます(<a href="Catch-and-Throw.html">Catch and Throw</a>を参照)。<code>t</code>以外の値をthrowすると、<code>recursive-edit</code>は通常はそれを呼び出した関数にリターンします。コマンド<kbd>C-M-c</kbd>
+(<code>exit-recursive-edit</code>)がこれを行います。値<code>t</code>をthrowすることによって<code>recursive-edit</code>がquitされるので、1レベル上位のコマンドループに制御がリターンされます。これは<em>abort</em>と呼ばれ、<kbd>C-]</kbd>(<code>abort-recursive-edit</code>)がこれを行います。
+</p>
+<p>ほとんどのアプリケーションはミニバッファー使用の一部として使用する場合を除き、再帰編集を使用するべきではありません。カレントバッファーのメジャーモードから特殊なメジャーモードに一時的に変更する場合に、そのモードに戻るコマンドをもつ必要があるときは、通常は再帰編集のほうが便利です(Rmailの<kbd>e</kbd>コマンドはこのテクニックを使用)。またはユーザーが新たなバッファーの特殊なモードで、異なるテキストを再帰的に編集・作成・選択できるようにしたい場合が該当します。このモードでは処理を完了させるコマンドを定義して前のバッファーに戻ります(Rmailの<kbd>m</kbd>コマンドはこれを使用)。
+</p>
+<p>再帰編集はデバッグに便利です。一種のブレークポイントとして関数定義内に<code>debug</code>を挿入して、関数がそこに達したときにその箇所を調べることができます。<code>debug</code>は再帰編集を呼び出しますが、デバッガのその他の機能も提供します。
+</p>
+<p><code>query-replace</code>内で<kbd>C-r</kbd>をタイプしたときや<kbd>C-x q</kbd>
+(<code>kbd-macro-query</code>)を使用したときにも再帰編集レベルが使用されます。
+</p>
+<dl>
+<dt id="index-recursive_002dedit">Command: <strong>recursive-edit</strong></dt>
+<dd><span id="index-suspend-evaluation"></span>
+<p>この関数はエディターコマンドループを呼び出す。これはユーザーに編集を開始させるために、Emacsの初期化により自動的に呼び出される。Lispプログラムから呼び出されたときは再帰編集レベルにエンターする。
+</p>
+<p>カレントバッファーが選択されたウィンドウのバッファーと異なる場合、<code>recursive-edit</code>はカレントバッファーの保存とリストアを行う。それ以外ではバッファーを切り替えると、<code>recursive-edit</code>がリターンした後にその切り替えたバッファーがカレントになる。
+</p>
+<p>以下の例では関数<code>simple-rec</code>が最初にポイントを1単語分進めてからメッセージをエコーエリアにプリントして再帰編集にエンターする。その後ユーザーは望む編集を行い、<kbd>C-M-c</kbd>をタイプすれば再帰編集をexitして<code>simple-rec</code>の実行を継続できる。
+</p>
+<div class="example">
+<pre class="example">(defun simple-rec ()
+  (forward-word 1)
+  (message &quot;Recursive edit in progress&quot;)
+  (recursive-edit)
+  (forward-word 1))
+     &rArr; simple-rec
+(simple-rec)
+     &rArr; nil
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-exit_002drecursive_002dedit">Command: <strong>exit-recursive-edit</strong></dt>
+<dd><p>この関数は最内の再帰編集(ミニバッファー入力を含む)からexitする。関数の実質的な定義は<code>(throw 'exit nil)</code>。
+</p></dd></dl>
+
+<dl>
+<dt id="index-abort_002drecursive_002dedit">Command: <strong>abort-recursive-edit</strong></dt>
+<dd><p>この関数は再帰編集をexitした後に<code>quit</code>をシグナルすることにより、最内の再帰編集(ミニバッファー入力を含む)を要求したコマンドをabortする。関数の実質的な定義は<code>(throw
+'exit t)</code>。<a href="Quitting.html">Quitting</a>を参照のこと。
+</p></dd></dl>
+
+<dl>
+<dt id="index-top_002dlevel">Command: <strong>top-level</strong></dt>
+<dd><p>この関数はすべての再帰編集レベルをexitする。これはすべての計算を直接抜け出してメインのコマンドループに戻って値をリターンしない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-recursion_002ddepth">Function: <strong>recursion-depth</strong></dt>
+<dd><p>この関数は再帰編集のカレントの深さをリターンする。アクティブな再帰編集が存在しなければ0をリターンする。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

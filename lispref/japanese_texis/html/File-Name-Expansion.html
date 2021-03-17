@@ -1,0 +1,208 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>File Name Expansion (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="File Name Expansion (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="File Name Expansion (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="File-Names.html" rel="up" title="File Names">
+<link href="Unique-File-Names.html" rel="next" title="Unique File Names">
+<link href="Directory-Names.html" rel="prev" title="Directory Names">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="File-Name-Expansion"></span><div class="header">
+<p>
+Next: <a href="Unique-File-Names.html" accesskey="n" rel="next">Unique File Names</a>, Previous: <a href="Directory-Names.html" accesskey="p" rel="prev">Directory Names</a>, Up: <a href="File-Names.html" accesskey="u" rel="up">File Names</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="huairuMing-woZhan-Kai-suruGuan-Shu-"></span><h4 class="subsection">25.9.4 ファイル名を展開する関数</h4>
+<span id="index-expansion-of-file-names"></span>
+
+<p>ファイル名の<em>展開(expanding)</em>と、相対ファイル名を絶対ファイル名に変換することを意味します。これはデフォルトディレクトリーから相対的に行われるため、展開されるファイル名と同様にデフォルトディレクトリーも指定しなければなりません。これは<samp>~/</samp>のような省略形
+(<a href="Directory-Names.html#abbreviate_002dfile_002dname">abbreviate-file-name</a>を参照)、
+の展開、および<samp>./</samp>や<samp><var>name</var>/../</samp>のような冗長さの排除も行います。
+</p>
+<dl>
+<dt id="index-expand_002dfile_002dname">Function: <strong>expand-file-name</strong> <em>filename &amp;optional directory</em></dt>
+<dd><p>この関数は<var>filename</var>を絶対ファイル名に変換する。<var>directory</var>が与えられた場合には<var>filename</var>が相対的であり先頭が&lsquo;<samp>~</samp>&rsquo;でなければ、それが開始点となるデフォルトディレクトリーになる(<var>directory</var>の値はそれ自体が絶対ディレクトリー名かディレクトリーファイル名であるべきで、それは&lsquo;<samp>~</samp>&rsquo;で始まるかもしれない)。それ以外ではカレントバッファーの<code>default-directory</code>の値が使用される。たとえば:
+</p>
+<div class="example">
+<pre class="example">(expand-file-name &quot;foo&quot;)
+     &rArr; &quot;/xcssun/users/rms/lewis/foo&quot;
+</pre><pre class="example">(expand-file-name &quot;../foo&quot;)
+     &rArr; &quot;/xcssun/users/rms/foo&quot;
+</pre><pre class="example">(expand-file-name &quot;foo&quot; &quot;/usr/spool/&quot;)
+     &rArr; &quot;/usr/spool/foo&quot;
+</pre></div>
+
+<p><var>filename</var>の最初のスラッシュの前が&lsquo;<samp>~</samp>&rsquo;ならユーザーのホームディレクトリー(通常は環境変数<code>HOME</code>の値で指定される)に展開される(<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/General-Variables.html#General-Variables">General
+Variables</a> in <cite>The GNU Emacs
+Manual</cite>を参照)。最初のスラッシュの前が&lsquo;<samp>~<var>user</var></samp>&rsquo;で<var>user</var>が有効なログイン名なら<var>user</var>のホームディレクトリーに展開される。リテラル&lsquo;<samp>~</samp>&rsquo;で始まるかもしれない相対的な<var>filename</var>にたいして展開を望まない場合には<code>(expand-file-name
+filename directory)</code>のかわりに<code>(concat (file-name-as-directory directory)
+filename)</code>を使用できる。
+</p>
+<p>&lsquo;<samp>.</samp>&rsquo;や&lsquo;<samp>..</samp>&rsquo;を含むファイル名は正規化形式に簡略化される:
+</p>
+<div class="example">
+<pre class="example">(expand-file-name &quot;bar/../foo&quot;)
+     &rArr; &quot;/xcssun/users/rms/lewis/foo&quot;
+</pre></div>
+
+<p>出力に&lsquo;<samp>..</samp>&rsquo;部分が残り得る場合もある:
+</p>
+<div class="example">
+<pre class="example">(expand-file-name &quot;../home&quot; &quot;/&quot;)
+     &rArr; &quot;/../home&quot;
+</pre></div>
+
+<p>これはルートディレクトリー<samp>/</samp>の上位のスーパールート(superroot)という概念をもつファイルシステムのためのものである。その他のファイルシステムでは<samp>/../</samp>は<samp>/</samp>とまったく同じに解釈される。
+</p>
+<p><samp>.</samp>や空文字列を展開するとデフォルトディレクトリーがリターンされる:
+</p>
+<div class="example">
+<pre class="example">(expand-file-name &quot;.&quot; &quot;/usr/spool/&quot;)
+     &rArr; &quot;/usr/spool&quot;
+(expand-file-name &quot;&quot; &quot;/usr/spool/&quot;)
+     &rArr; &quot;/usr/spool&quot;
+</pre></div>
+
+<p><code>expand-file-name</code>は環境変数を<em>展開しない</em>ことに注意。それを行うのは<code>substitute-in-file-name</code>のみ。
+</p>
+<div class="example">
+<pre class="example">(expand-file-name &quot;$HOME/foo&quot;)
+     &rArr; &quot;/xcssun/users/rms/lewis/$HOME/foo&quot;
+</pre></div>
+
+<p><code>expand-file-name</code>はあらゆる階層においてシンボリックリンクをフォローしないことにも注意。これは&lsquo;<samp>..</samp>&rsquo;の扱いが<code>file-truename</code>と<code>expand-file-name</code>で異なることに起因する。&lsquo;<samp>/tmp/bar</samp>&rsquo;がディレクトリー&lsquo;<samp>/tmp/foo/bar</samp>&rsquo;にたいするシンボリックリンクであると仮定すると:
+</p>
+<div class="example">
+<pre class="example">(file-truename &quot;/tmp/bar/../myfile&quot;)
+     &rArr; &quot;/tmp/foo/myfile&quot;
+</pre><pre class="example">(expand-file-name &quot;/tmp/bar/../myfile&quot;)
+     &rArr; &quot;/tmp/myfile&quot;
+</pre></div>
+
+<p>直接間接を問わず事前に<code>expand-file-name</code>を呼び出さずに&lsquo;<samp>..</samp>&rsquo;に先行するシンボリックリンクをフォローする必要があるかもしれない場合には、それを呼び出さずに確実に<code>file-truename</code>を呼び出すこと。<a href="Truenames.html">Truenames</a>を参照されたい。
+</p></dd></dl>
+
+<dl>
+<dt id="index-default_002ddirectory">Variable: <strong>default-directory</strong></dt>
+<dd><p>このバッファーローカル変数の値はカレントバッファーにたいするデフォルトディレクトリー。これは絶対ディレクトリー名であること。これは&lsquo;<samp>~</samp>&rsquo;で始まるかもしれない。この変数はすべてのバッファーにおいてバッファーローカル。
+</p>
+<p>2つ目の引数が<code>nil</code>なら、<code>expand-file-name</code>はデフォルトディレクトリーを使用する。
+</p>
+<p>値は常にスラッシュで終わる文字列。
+</p>
+<div class="example">
+<pre class="example">default-directory
+     &rArr; &quot;/user/lewis/manual/&quot;
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-substitute_002din_002dfile_002dname">Function: <strong>substitute-in-file-name</strong> <em>filename</em></dt>
+<dd><span id="Definition-of-substitute_002din_002dfile_002dname"></span><p>この関数は<var>filename</var>内で参照される環境変数を環境変数の値に置き換える。標準的なUnixシェル構文にしたがい
+&lsquo;<samp>$</samp>&rsquo;は環境変数値を置き換るプレフィックスである。入力に&lsquo;<samp>$$</samp>&rsquo;が含まれる場合には、それらは&lsquo;<samp>$</samp>&rsquo;に置き換えられる。これによりユーザーが&lsquo;<samp>$</samp>&rsquo;をクォートする手段が与えられる。
+</p>
+<p>環境変数名は&lsquo;<samp>$</samp>&rsquo;の後に続く一連の英数字(アンダースコアを含む)である。&lsquo;<samp>$</samp>&rsquo;の後続文字が&lsquo;<samp>{</samp>&rsquo;なら対応する&lsquo;<samp>}</samp>&rsquo;までのすべてが変数名である。
+</p>
+<p><code>substitute-in-file-name</code>により生成された出力で<code>substitute-in-file-name</code>を呼び出すと不正な結果となる傾向がある。たとえば単一の&lsquo;<samp>$</samp>&rsquo;をクォートするために&lsquo;<samp>$$</samp>&rsquo;を使用しても正しく機能せずに環境変数値の中の&lsquo;<samp>$</samp>&rsquo;は再帰的な置換を導くだろう。したがってこの関数を呼び出して出力をこの関数に渡すプログラムは、その後の不正な結果を防ぐためにすべての&lsquo;<samp>$</samp>&rsquo;文字を二重化する必要がある。
+</p>
+<p>以下ではユーザーのホームディレクトリーを保持する環境変数<code>HOME</code>の値が&lsquo;<samp>/xcssun/users/rms</samp>&rsquo;だと仮定する。
+</p>
+<div class="example">
+<pre class="example">(substitute-in-file-name &quot;$HOME/foo&quot;)
+     &rArr; &quot;/xcssun/users/rms/foo&quot;
+</pre></div>
+
+<p>置き換え後には、&lsquo;<samp>/</samp>&rsquo;の直後に&lsquo;<samp>~</samp>&rsquo;や別の&lsquo;<samp>/</samp>&rsquo;が出現すると、この関数は&lsquo;<samp>/</samp>&rsquo;の前にあるすべてを無視する。
+</p>
+<div class="example">
+<pre class="example">(substitute-in-file-name &quot;bar/~/foo&quot;)
+     &rArr; &quot;~/foo&quot;
+</pre><pre class="example">(substitute-in-file-name &quot;/usr/local/$HOME/foo&quot;)
+     &rArr; &quot;/xcssun/users/rms/foo&quot;
+     ;; <span class="roman"><samp>/usr/local/</samp>は破棄された</span>
+</pre></div>
+
+</dd></dl>
+
+<p>ファイル名の展開が望ましくない場合もあります。そのような場合には展開を抑制するためにファイル名をクォートしてファイル名をそのままリテラルとして処理することができます。ファイル名の前に&lsquo;<samp>/:</samp>&rsquo;を前置することによりクォートが行われます。
+</p>
+<dl>
+<dt id="index-file_002dname_002dquote">Macro: <strong>file-name-quote</strong> <em>name</em></dt>
+<dd><p>このマクロはファイル<var>name</var>にクォーテーションプレフィクス&lsquo;<samp>/:</samp>&rsquo;を付加する。ローカルファイル<var>name</var>には<var>name</var>の前にプレフィクス&lsquo;<samp>/:</samp>&rsquo;を付加する。<var>name</var>がリモートファイル名なら<var>name</var>のローカル部分がクォートされる(<a href="Magic-File-Names.html">Magic File Names</a>を参照)。<var>name</var>がクォート済みのファイル名なら、<var>name</var>は変更せずにリターンする。
+</p>
+<div class="example">
+<pre class="example">(substitute-in-file-name (file-name-quote &quot;bar/~/foo&quot;))
+     &rArr; &quot;/:bar/~/foo&quot;
+</pre><pre class="example">
+
+</pre><pre class="example">(substitute-in-file-name (file-name-quote &quot;/ssh:host:bar/~/foo&quot;))
+     &rArr; &quot;/ssh:host:/:bar/~/foo&quot;
+</pre></div>
+
+<p>マジックファイル名によるファイル名ハンドラーを抑制するためにこのマクロは使用できない(<a href="Magic-File-Names.html">Magic File Names</a>を参照)。
+</p></dd></dl>
+
+<dl>
+<dt id="index-file_002dname_002dunquote">Macro: <strong>file-name-unquote</strong> <em>name</em></dt>
+<dd><p>このマクロはファイル<var>name</var>にクォーテーションプレフィクス&lsquo;<samp>/:</samp>&rsquo;があれば削除する。<var>name</var>がリモートファイル名なら<var>name</var>のローカル部分を非クォート化する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-file_002dname_002dquoted_002dp">Macro: <strong>file-name-quoted-p</strong> <em>name</em></dt>
+<dd><p>このマクロは<var>name</var>がプレフィクス&lsquo;<samp>/:</samp>&rsquo;でクォートされていれば非<code>nil</code>をリターンする。<var>name</var>がリモートファイル名なら<var>name</var>のローカル部分をチェックする。
+</p></dd></dl>
+
+
+
+
+
+</body>
+</html>

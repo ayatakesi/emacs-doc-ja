@@ -1,0 +1,2084 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+@c -*- mode: texinfo; coding: utf-8 -*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1994, 1998--2020 Free Software Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Keymaps
+@chapter キーマップ
+@cindex keymap
+
+  入力イベントのコマンドバインディングは@dfn{キーマップ(keymap)}と呼ばれるデータ構造に記録されます。キーマップ内の各エントリーは個別のイベント型(他のキーマップ、またはコマンド)に関連づけ(または@dfn{バインド})されます。イベント型がキーマップにバインドされていれば、そのキーマップは次の入力イベントを調べるために使用されます。これはコマンドが見つかるまで継続されます。このプロセス全体を@dfn{キールックアップ(key
+lookup: キーの照合)}と呼びます。
+
+@menu
+* Key Sequences::            Lispオブジェクトとしてのキーシーケンス。
+* Keymap Basics::            キーマップの基本概念。
+* Format of Keymaps::        キーマップはLispオブジェクトとしてどのように見えるか。
+* Creating Keymaps::         キーマップの作成やコピーを行う関数。
+* Inheritance and Keymaps::  キーマップが他のキーマップのバインディングを継承する方法。
+* Prefix Keys::              キーマップの定義としてキーを定義する。
+* Active Keymaps::           Emacsがアクティブなキーマップでキーバインディングを探す方法。
+* Searching Keymaps::        アクティブなマップ検索のLisp処理概要。
+* Controlling Active Maps::  各バッファーは標準(グローバル)のバインディングをオーバーライドするためのキーマップをもつ。マイナーモードもそれらをオーバーライドできる。
+* Key Lookup::               1つのキーマップから、あるキーのバインディングを探す。
+* Functions for Key Lookup::  キールックアップを要求する方法。
+* Changing Key Bindings::    キーマップ内でのキーの再定義。
+* Remapping Commands::       キーマップはあるコマンドを他のコマンドに変換できる。
+* Translation Keymaps::      イベントシーケンスを変換するキーマップ。
+* Key Binding Commands::     キーの再定義にたいするインタラクティブなインターフェイス。
+* Scanning Keymaps::         ヘルプをプリントするためにすべてのキーマップを走査する。
+* Menu Keymaps::             キーマップとしてキーマップを定義する。
+@end menu
+
+@node Key Sequences
+@section キーシーケンス
+@cindex key
+@cindex keystroke
+@cindex key sequence
+
+  @dfn{キーシーケンス(key
+sequence)}、短くは@dfn{キー(key)}とは1つの単位を形成する1つ以上の入力イベントのシーケンスです。入力イベントには文字、ファンクションキー、マウスアクション、または@code{iconify-frame}のようなEmacs外部のシステムイベントが含まれます(@ref{Input
+Events}を参照)。キーシーケンスにたいするEmacs
+Lispの表現は文字列かベクターです。特に明記しない限り、引数としてキーシーケンスを受け取るEmacs
+Lisp関数は両方の表現を処理することができます。
+
+  文字列表現ではたとえば@code{"a"}は@kbd{a}、@code{"2"}は@kbd{2}を表すといったように、英数字はその文字自身を意味します。コントロール文字イベントは部分文字列@code{"\C-"}、メタ文字は@code{"\M-"}によりプレフィクスされます。たとえば@code{"\C-x"}はキー@kbd{C-x}を表します。それらに加えて@key{TAB}、@key{RET}、@key{ESC}、@key{DEL}などのイベントはそれぞれ@code{"\t"}、@code{"\r"}、@code{"\e"}、@code{"\d"}で表されます。複雑なキーシーケンスの文字列表現はイベント成分の文字列表現を結合したものです。したがって@code{"\C-xl"}はキーシーケンス@kbd{C-x
+l}を表します。
+
+  キーシーケンスにはファンクションキー、マウスボタンイベント、システムイベント、または@kbd{C-=}や@kbd{H-a}のような文字列で表現できない非@acronym{ASCII}文字が含まれます。これらはベクターとして表現する必要があります。
+
+  ベクター表現ではベクターの各要素は1つの入力イベントをイベントのLisp形式で表します。@ref{Input
+Events}を参照してください。たとえばベクター@code{[?\C-x ?l]}はキーシーケンス@kbd{C-x l}を表します。
+
+  キーシーケンスを文字列やベクターによる表現で記述する例は、@ref{Init Rebinding,,, emacs, The GNU Emacs
+Manual}を参照してください。
+
+@defun kbd keyseq-text
+この関数はテキスト@var{keyseq-text}(文字列定数)をキーシーケンス(文字列かベクターの定数)に変換する。@var{keyseq-text}の内容は@kbd{C-x
+C-k @key{RET}}
+(@code{kmacro-edit-macro})コマンドにより呼び出されたバッファー内と同じ構文を使用するべきである。特にファンクションキーの名前は@samp{<@dots{}>}で囲まなければならない。@ref{Edit
+Keyboard Macro,,, emacs, The GNU Emacs Manual}を参照のこと。
+
+@example
+(kbd "C-x") @result{} "\C-x"
+(kbd "C-x C-f") @result{} "\C-x\C-f"
+(kbd "C-x 4 C-f") @result{} "\C-x4\C-f"
+(kbd "X") @result{} "X"
+(kbd "RET") @result{} "\^M"
+(kbd "C-c SPC") @result{} "\C-c@ "
+(kbd "<f1> SPC") @result{} [f1 32]
+(kbd "C-M-<down>") @result{} [C-M-down]
+@end example
+@end defun
+
+@node Keymap Basics
+@section キーマップの基礎
+@cindex key binding
+@cindex binding of a key
+@cindex complete key
+@cindex undefined key
+
+  キーマップはさまざまなキーシーケンスにたいして@dfn{キーバインディング(key binding)}を指定するLispデータ構造です。
+
+  1つのキーマップが、個々のイベントにたいする定義を直接指定します。単一のイベントでキーシーケンスが構成されるとき、そのキーシーケンスのキーマップ内でのバインディングは、そのイベントにたいするそのキーマップの定義です。それより長いキーシーケンスのバインディングは対話的プロセスによって見つけ出されます。まず最初にイベント(それ自身がキーマップでなければならない)の定義を探します。そして次にそのキーマップ内で2つ目のイベントを探すといったように、そのキーシーケンス内のすべてのイベントが処理されるまで、これを続けます。
+
+  あるキーシーケンスのバインディングがキーマップであるような場合、わたしたちはそのキーシーケンスを@dfn{プレフィクスキー(prefix
+key)}と呼び、それ以外の場合には(それ以上イベントを追加できないので)@dfn{コンプリートキー(complete
+keyl}と呼んでいます。バインディングが@code{nil}の場合、わたしたちはそのキーを@dfn{未定義(undefined)}と呼びます。@kbd{C-c}、@kbd{C-x}、@kbd{C-x
+4}などはプレフィクスキーの例です。@kbd{X}、@key{RET}、@kbd{C-x 4
+C-f}などは定義されたコンプリートキーの例です。@kbd{C-x C-g}や@kbd{C-c
+3}などは未定義なコンプリートキーの例です。詳細は@ref{Prefix Keys}を参照してください。
+
+  キーシーケンスのバインディングを見つけ出すルールは、(最後のイベントの前までに見つかる)中間的なバインディングがすべてキーマップであると仮定します。もしそうでなければ、そのイベントシーケンスは単位を形成せず、実際の単一キーシーケンスではありません。言い換えると任意の有効なキーシーケンスから1つ以上のイベントを取り除くと、常にプレフィクスキーにならなければなりません。たとえば@kbd{C-f
+C-n}はキーシーケンスではありません。@kbd{C-f}はプレフィクスキーではないので、@kbd{C-f}で始まるこれより長いシーケンスは、キーシーケンスではあり得ないからです。
+
+  利用可能な複数イベントキーシーケンスのセットは、プレフィクスキーにたいするバインディングに依存します。したがってこれはキーマップが異なれば異なるかもしれず、バインディングが変更されたときに変更されるかもしれません。しかし単一イベントキーシーケンスは整合性において任意のプレフィクスキーに依存しないので、常に単一のキーシーケンスです。
+
+  常に複数のプライマリーキーマップ(primary keymap:
+主キーマップ)がアクティブであり、これらはキーバインディングを見つけるために使用されます。すべてのバッファーで共有される@dfn{グローバルキーマップ(global
+map)}というキーマップが存在します。@dfn{ローカルキーマップ(local
+keymap)}は通常は特定のメジャーモードに関連します。そして0個以上の@dfn{マイナーモードキーマップ(minor mode
+keymap)}はカレントで有効なマイナーモードに属します(すべてのマイナーモードがキーマップをもつわけでなない)。ローカルキーマップは対応するグローバルバインディングをshadow(訳注:
+隠すという意味)します。マイナーモードキーマップは、ローカルキーマップとグローバルキーマップの両方をshadowします。詳細は@ref{Active
+Keymaps}を参照してください。
+
+@node Format of Keymaps
+@section キーマップのフォーマット
+@cindex format of keymaps
+@cindex keymap format
+@cindex full keymap
+@cindex sparse keymap
+
+  キーマップはそれぞれ@sc{car}がシンボル@code{keymap}であるようなリストです。このリストの残りの要素はそのキーマップのキーバインディングを定義します。関数定義がキーマップであるようなシンボルもキーマップです。あるオブジェクトがキーマップかどうかテストするには、関数@code{keymapp}(以下参照)を使用してください。
+
+  キーマップを開始するシンボル@code{keymap}の後には、いくつかの種類の要素が出現します:
+
+@table @code
+@item (@var{type} .@: @var{binding})
+これは型@var{type}のイベントにたいする1つのバインディングを指定する。通常のバインディングはそれぞれ、常に文字かシンボルであるような特定の@dfn{イベント型(event
+type)}のイベントに適用される。@ref{Classifying
+Events}を参照のこと。この種のバインディングでは、@var{binding}はコマンドである。
+
+@item (@var{type} @var{item-name} .@: @var{binding})
+これはメニュー内で@var{item-name}として表示されるシンプルなメニューアイテムでもあるようなバインディングを指定する。@ref{Simple
+Menu Items}を参照のこと。
+
+@item (@var{type} @var{item-name} @var{help-string} .@: @var{binding})
+これはヘルプ文字列@var{help-string}のシンプルなメニューアイテムである。
+
+@item (@var{type} menu-item .@: @var{details})
+これは拡張されたメニューアイテムでもあるようなバインディングを指定する。これは他の機能も使用できる。@ref{Extended Menu
+Items}を参照のこと。
+
+@item (t .@: @var{binding})
+@cindex default key binding
+これは@dfn{デフォルトキーバインディング(default key
+binding)}を指定する。キーマップの他の要素でバインドされないイベントは、バインディングとして@var{binding}が与えられる。デフォルトバインディングにより、利用可能なすべてのイベント型を列挙することなくバインドできる。デフォルトバインディングをもつキーマップは、明示的に@code{nil}にバインドされるイベント(以下参照)を除いて、より低い優先度にあるすべてのキーマップをマスクする。
+
+@item @var{char-table}
+キーマップのある要素が文字テーブル(char-table)なら、それは修飾ビットなしのすべての文字イベントにたいするバインディングを保持するとみなされる(@ref{modifier
+bits}を参照)。インデックス@var{c}の要素は文字@var{c}にたいしてバインドされる。これは多量のバインディングを記録するためのコンパクトな方法である。そのような文字テーブルのキーマップは、@dfn{fullキーマップ(full
+keymap: 完全なキーマップ)}と呼ばれる。それにたいして他のキーマップは@dfn{sparseキーマップ(sparse keymaps:
+疎なキーマップ)}と呼ばれる。
+
+@item @var{vector}
+この種の要素は文字テーブルと類似する。インデックス@var{c}の要素は文字@var{c}にバインドされる。この方法でバインド可能な文字の範囲はそのベクターのサイズに制限され、かつベクターの作成により0からすべての文字コードまでスペースが割り当てられるので、バインディング自身が問題とならないメニューキーマップ(@ref{Menu
+Keymaps}を参照)の作成以外では、このフォーマットを使用しないこと。
+
+@item @var{string}
+@cindex keymap prompt string
+@cindex overall prompt string
+@cindex prompt string of keymap
+キーにたいするバインディングを指定する要素は別として、キーマップは要素として文字列ももつことができる。これは@dfn{overallプロンプト文字列(overall
+prompt string: 全般的なプロンプト文字列)}と呼ばれ、メニューとしてキーマップを使用することを可能にする。@ref{Defining
+Menus}を参照のこと。
+
+@item (keymap @dots{})
+キーマップのある要素それ自身がキーマップなら、外側のキーマップ内でこれが内側のキーマップとしてinline指定されているかのようにみなされる。これは@code{make-composed-keymap}内で行なわれるような多重継承にたいして使用される。
+@end table
+
+バインディングが@code{nil}なら、それは定義の構成要素ではありませんが、デフォルトバインディングや親キーマップ内のバインディングに優先されます。一方@code{nil}のバインディングは、より低い優先度のキーマップを@emph{オーバーライドしません}。したがってローカルマップで@code{nil}のバインディングが与えられると、Emacsはグローバルマップのバインディングを使用します。
+
+@cindex meta characters lookup
+  キーマップはメタ文字にたいするバインディングを直接記録しません。かわりにメタ文字は１文字目が@key{ESC}(または何であれ@code{meta-prefix-char}のカレント値)であるような、2文字のキーシーケンスをルックアップするものとみなされます。したがってキー@kbd{M-a}は内部的には@kbd{@key{ESC}
+a}で表され、そのグローバルバインディングは@code{esc-map}内の@kbd{a}にたいするスロットで見つけることができます(@ref{Prefix
+Keys}を参照)。
+
+  この変換は文字にたいしてのみ適用され、ファンクションキーや他の入力イベントには適用されないので@kbd{M-@key{end}}は@kbd{@key{ESC}
+@key{end}}と何も関係ありません。
+
+  以下に例としてLispモードにたいするローカルキーマップ(sparseキーマップ)を挙げます。以下では@key{DEL}、@kbd{C-c
+C-z}、@kbd{C-M-q}、@kbd{C-M-x}にたいするバインディングを定義しています(実際の値はメニューバインディングも含まれるが簡潔にするためここでは省略)。
+
+@example
+@group
+lisp-mode-map
+@result{}
+@end group
+@group
+(keymap
+ (3 keymap
+    ;; @kbd{C-c C-z}
+    (26 . run-lisp))
+@end group
+@group
+ (27 keymap
+     ;; @r{@kbd{C-M-x}は@kbd{@key{ESC} C-x}として扱われる}
+     (24 . lisp-send-defun))
+@end group
+@group
+ ;; @r{この部分は@code{lisp-mode-shared-map}から継承}
+ keymap
+ ;; @key{DEL}
+ (127 . backward-delete-char-untabify)
+@end group
+@group
+ (27 keymap
+     ;; @r{@kbd{C-M-q}は@kbd{@key{ESC} C-q}として扱われる}
+     (17 . indent-sexp)))
+@end group
+@end example
+
+@defun keymapp object
+この関数は@var{object}がキーマップなら@code{t}、それ以外は@code{nil}をリターンする。より正確にはこの関数はリストにたいしてその@sc{car}が@code{keymap}か、あるいはシンボルにたいしてその関数定義が@code{keymapp}かどうかをテストする。
+
+@example
+@group
+(keymapp '(keymap))
+    @result{} t
+@end group
+@group
+(fset 'foo '(keymap))
+(keymapp 'foo)
+    @result{} t
+@end group
+@group
+(keymapp (current-global-map))
+    @result{} t
+@end group
+@end example
+@end defun
+
+@node Creating Keymaps
+@section キーマップの作成
+@cindex creating keymaps
+
+  以下はキーマップを作成する関数です。
+
+@defun make-sparse-keymap &optional prompt
+この関数はエントリーをもたない新たなsparseキーマップを作成してそれをリターンする(sparseキーマップはあなたが通常望む類のキーマップのこと)。@code{make-keymap}と異なり新たなキーマップは文字テーブルを含まず、何のイベントもバインドしない。
+
+@example
+@group
+(make-sparse-keymap)
+    @result{} (keymap)
+@end group
+@end example
+
+@var{prompt}を指定すると、それはキーマップにたいするoverallプロンプト文字列になる。これはメニューキーマップ(@ref{Defining
+Menus}を参照)にたいしてのみ指定すべきである。overallプロンプト文字列をともなうキーマップがアクティブなら、次の入力イベントのルックアップにたいしてマウスメニューとキーボードメニューを常に提示する。これはコマンドループにたいして毎回キーボードメニューを提示するので、overallプロンプト文字列をメインマップ、メジャーモードマップ、マイナーモードマップに指定しないこと。
+@end defun
+
+@defun make-keymap &optional prompt
+この関数は新たなfullキーマップを作成してそれをリターンする。このキーマップは修飾されないすべての文字にたいするスロットをもつ文字テーブル(@ref{Char-Tables}を参照)を含む。この新たなキーマップは初期状態ではすべての文字、およびその他の種類のイベントが@code{nil}にバインドされている。引数@var{prompt}は@code{make-sparse-keymap}のようにプロンプト文字列を指定する。
+
+@c This example seems kind of pointless, but I guess it serves
+@c to contrast the result with make-sparse-keymap above.
+@example
+@group
+(make-keymap)
+    @result{} (keymap #^[nil nil keymap nil nil nil @dots{}])
+@end group
+@end example
+
+fullキーマップは多くのスロットを保持するときはsparseキーマップより効果的であり、少ししかスロットを保持しないときはsparseキーマップのほうが適している。
+@end defun
+
+@defun copy-keymap keymap
+この関数は@var{keymap}のコピーをリターンする。これはほとんど必要ないだろう。ほとんど差のないキーマップが必要なら、コピーより以下のように継承を使用するべきである:
+
+@example
+@group
+(let ((map (make-sparse-keymap)))
+  (set-keymap-parent map <theirmap>)
+  (define-key map ...)
+  ...)
+@end group
+@end example
+
+@c Emacs 19 feature
+@code{copy-keymap}を処理する際には、@var{keymap}内でバインディングとして直接出現するすべてのキーマップも、すべてのレベルまで再帰的にコピーされる。しかしある文字の定義が関数定義にキーマップをもつ関数のときには再帰的なコピーは行われず、新たにコピーされたキーマップには同じシンボルがコピーされる。
+
+@example
+@group
+(setq map (copy-keymap (current-local-map)))
+@result{} (keymap
+@end group
+@group
+     ;; @r{(これはメタ文字を実装する)}
+     (27 keymap
+         (83 . center-paragraph)
+         (115 . center-line))
+     (9 . tab-to-tab-stop))
+@end group
+
+@group
+(eq map (current-local-map))
+    @result{} nil
+@end group
+@group
+(equal map (current-local-map))
+    @result{} t
+@end group
+@end example
+@end defun
+
+@node Inheritance and Keymaps
+@section 継承とキーマップ
+@cindex keymap inheritance
+@cindex inheritance, keymap
+
+  キーマップは他のキーマップを継承することができ、この継承元のキーマップを@dfn{親キーマップ(parent
+keymap)}と呼びます。そのようなキーマップは以下のようなキーマップです:
+
+@example
+(keymap @var{elements}@dots{} . @var{parent-keymap})
+@end example
+
+@noindent
+これにはそのキーマップのキールックアップ時に@var{parent-keymap}のすべてのバインディングを継承するものの、それらにバインディングを追加したり@var{elements}でオーバーライドできるという効果があります。
+
+@code{define-key}や他のキーバインディング関数を使用して@var{parent-keymap}内のバインディングを変更すると、変更されたバインディングは@var{elements}で作られたバインディングにshadowされない限り継承されたキーマップ内で可視になります。逆は真ではありません。@code{define-key}を使用して継承されたキーマップ内のバインディングを変更すると、これらの変更は@var{elements}内に記録されますが@var{parent-keymap}に影響はありません。
+
+親キーマップからキーマップを構築するには@code{set-keymap-parent}を使用するのが正しい方法です。親キーマップから直接キーマップを構築するコードがあるなら、かわりに@code{set-keymap-parent}を使用するようにプログラムを変更してください。
+
+@defun keymap-parent keymap
+これは@var{keymap}の親キーマップをリターンする。@var{keymap}に親キーマップがなければ@code{keymap-parent}は@code{nil}をリターンする。
+@end defun
+
+@defun set-keymap-parent keymap parent
+これは@var{keymap}の親キーマップを@var{parent}にセットして@var{parent}をリターンする。@var{parent}が@code{nil}ならこの関数は@var{keymap}に親キーマップを与えない。
+
+@var{keymap}がサブマップ(プレフィクスキーにたいするバインディング)をもつ場合は、それらも新たな親キーマップを受け取ってそれらのプレフィクスキーにたいして@var{parent}が何を指定するかが反映される。
+@end defun
+
+   以下は@code{text-mode-map}から継承してキーマップを作成する方法を示す例です:
+
+@example
+(let ((map (make-sparse-keymap)))
+  (set-keymap-parent map text-mode-map)
+  map)
+@end example
+
+  非sparseキーマップも親キーマップをもつことができますが便利とは言えません。非sparseキーマップは修飾ビットをもたないすべての数値文字コードにたいするバインディングとして、たとえそれが@code{nil}であっても常に何かを指定するので、これらの文字のバインディングが親キーマップから継承されることは決してないのです。
+
+@cindex keymap inheritance from multiple maps
+  複数のマップからキーマップを継承したいときがあるかもしれません。これにたいして関数@code{make-composed-keymap}が使用できます。
+
+@defun make-composed-keymap maps &optional parent
+この関数は既存のキーマップから構成される新たなキーマップをリターンする。またオプションで親キーマップ@var{parent}から継承を行う。@var{maps}には単一のキーマップ、または複数のキーマップのリストを指定できる。リターンされた新たなマップ内でキーをルックアップするとき、Emacsは@var{maps}内のキーマップを順に検索してから@var{parent}内を検索する。この検索は最初のマッチで停止する。@var{maps}のいずれか1つのキーマップ内の@code{nil}バインディングは、@var{parent}内のすべてのバインディングをオーバーライドするが、@var{maps}にないキーマップの非@code{nil}なバインディングはオーバーライドしない。
+@end defun
+
+@noindent For example, here is how Emacs sets the parent of
+たとえば以下は@code{button-buffer-map}と@code{special-mode-map}の両方を継承する@code{help-mode-map}のようなキーマップの親キーマップをEmacsがセットする方法です:
+
+@example
+(defvar help-mode-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map
+      (make-composed-keymap button-buffer-map special-mode-map))
+    ... map) ... )
+@end example
+
+
+@node Prefix Keys
+@section プレフィクスキー
+@cindex prefix key
+
+  @dfn{プレフィクスキー(prefix
+key)}とは、バインディングがキーマップであるようなキーシーケンスです。このキーマップはプレフィクスキーを拡張するキーシーケンスが何を行うかを定義します。たとえば@kbd{C-x}はプレフィクスキーであり、これはキーマップを使用してそのキーマップは変数@code{ctl-x-map}にも格納されています。このキーマップは@kbd{C-x}で始まるキーシーケンスにたいするバインディングを定義します。
+
+  標準的なEmacsのプレフィクスキーのいくつかは、Lisp変数でも見い出すことができるキーマップを使用しています:
+
+@itemize @bullet
+@item
+@vindex esc-map
+@findex ESC-prefix
+@code{esc-map}はプレフィクスキー@key{ESC}にたいするグローバルキーマップである。したがってすべてのメタ文字にたいする定義は、このキーマップで見い出すことができる。このマップは@code{ESC-prefix}の関数定義でもある。
+
+@item
+@cindex @kbd{C-h}
+@code{help-map}はプレフィクスキー@kbd{C-h}にたいするグローバルキーマップである。
+
+@item
+@cindex @kbd{C-c}
+@vindex mode-specific-map
+@code{mode-specific-map}はプレフィクスキー@kbd{C-c}にたいするグローバルキーマップである。このマップは実際にはモード特有(mode-specific)ではなくグローバルであるが、このプレフィクスキーは主にモード特有なバインディングに使用されるので、@kbd{C-h
+b} (@code{display-bindings})の出力内の@kbd{C-c}に関する情報で、この名前は有意義な情報を提供する。
+
+@item
+@cindex @kbd{C-x}
+@vindex ctl-x-map
+@findex Control-X-prefix
+@code{ctl-x-map}はプレフィクスキー@kbd{C-x}にたいして使用されるグローバルキーマップである。このマップはシンボル@code{Control-X-prefix}の関数セルを通して見つけることができる。
+
+@item
+@cindex @kbd{C-x @key{RET}}
+@vindex mule-keymap
+@code{mule-keymap}はプレフィクスキー@kbd{C-x @key{RET}} にたいして使用されるグローバルキーマップである。
+
+@item
+@cindex @kbd{C-x 4}
+@vindex ctl-x-4-map
+@code{ctl-x-4-map}はプレフィクスキー@kbd{C-x 4}にたいして使用されるグローバルキーマップである。
+
+@item
+@cindex @kbd{C-x 5}
+@vindex ctl-x-5-map
+@code{ctl-x-5-map}はプレフィクスキー@kbd{C-x 5}にたいして使用されるグローバルキーマップである。
+
+@item
+@cindex @kbd{C-x 6}
+@vindex 2C-mode-map
+@code{2C-mode-map}はプレフィクスキー@kbd{C-x 6}にたいして使用されるグローバルキーマップである。
+
+@item
+@cindex @kbd{C-x t}
+@vindex tab-prefix-map
+@code{tab-prefix-map}はプレフィクスキー@kbd{C-x t}にたいして使用されるグローバルキーマップである。
+
+@item
+@cindex @kbd{C-x v}
+@vindex vc-prefix-map
+@code{vc-prefix-map}はプレフィクスキー@kbd{C-x v}にたいして使用されるグローバルキーマップである。
+
+@item
+@cindex @kbd{M-g}
+@vindex goto-map
+@code{goto-map}はプレフィクスキー@kbd{M-g}にたいして使用されるグローバルキーマップである。
+
+@item
+@cindex @kbd{M-s}
+@vindex search-map
+@code{search-map}はプレフィクスキー@kbd{M-s}にたいして使用されるグローバルキーマップである。
+
+@item
+@cindex @kbd{M-o}
+@vindex facemenu-keymap
+@code{facemenu-keymap}はプレフィクスキー@kbd{M-o}にたいして使用されるグローバルキーマップである。
+
+@item
+Emacsの他のプレフィクスキーには@kbd{C-x @@}、@kbd{C-x a i}、@kbd{C-x
+@key{ESC}}、@kbd{@key{ESC} @key{ESC}}がある。これらは特別な名前をもたないキーマップを使用する。
+@end itemize
+
+  プレフィクスキーのキーマップバインディングは、プレフィクスキーに続くイベントをルックアップするために使用されます(これは関数定義がキーマップであるようなシンボルかもしれない。効果は同じだがシンボルはプレフィクスキーにたいする名前の役割を果たす)。したがって@kbd{C-x}のバインディングはシンボル@code{Control-X-prefix}であり、このシンボルの関数セルが@kbd{C-x}コマンドにたいするキーマップを保持します(@code{ctl-x-map}の値も同じキーマップ)。
+
+  プレフィクスキー定義は任意のアクティブなキーマップ内に置くことができます。プレフィクスキーとしての@kbd{C-c}、@kbd{C-x}、@kbd{C-h}、@key{ESC}の定義はグローバルマップ内にもあるので、これらのプレフィクスキーは常に使用できます。メジャーモードとマイナーモードは、ローカルマップやマイナーモードのマップ内にプレフィクスキー定義を置くことによってキーをプレフィクスキーとして再定義できます。@ref{Active
+Keymaps}を参照してください。
+
+  あるキーが複数のアクティブなマップ内でプレフィクスキーとして定義されていると、それぞれの定義がマージされて効果をもちます。まずマイナーモードキーマップ内で定義されたコマンド、次にローカルマップのプレフィクス定義されたコマンド、そしてグローバルマップのコマンドが続きます。
+
+  以下の例ではローカルキーマップ内で@kbd{C-p}を@kbd{C-x}と等価なプレフィクスキーにしています。すると@kbd{C-p
+C-f}にたいするバインディングは@kbd{C-x C-f}と同様に関数@code{find-file}になります。キーシーケンス@kbd{C-p
+6}はすべてのアクティブなキーマップで見つけることができません。
+
+@example
+@group
+(use-local-map (make-sparse-keymap))
+    @result{} nil
+@end group
+@group
+(local-set-key "\C-p" ctl-x-map)
+    @result{} nil
+@end group
+@group
+(key-binding "\C-p\C-f")
+    @result{} find-file
+@end group
+
+@group
+(key-binding "\C-p6")
+    @result{} nil
+@end group
+@end example
+
+@defun define-prefix-command symbol &optional mapvar prompt
+@cindex prefix command
+@anchor{Definition of define-prefix-command}
+この関数はプレフィクスキーのバインディングとして使用するために@var{symbol}を用意する。これはsparseキーマップを作成してそれを@var{symbol}の関数定義として格納する。その後は@var{symbol}にキーシーケンスをバインディングすると、そのキーシーケンスはプレフィクスキーになるだろう。リターン値は@code{symbol}。
+
+この関数は値がそのキーマップであるような変数としても@var{symbol}をセットする。しかし@var{mapvar}が非@code{nil}なら、かわりに@var{mapvar}を変数としてセットする。
+
+@var{prompt}が非@code{nil}なら、これはそのキーマップにたいするoverallプロンプト文字列になる。プロンプト文字列はメニューキーマップにたいして与えらること(@ref{Defining
+Menus}を参照)。
+@end defun
+
+@node Active Keymaps
+@section アクティブなキーマップ
+@cindex active keymap
+
+  Emacsには多くのキーマップを含まれていますが、常にいくつかのキーマップだけが@dfn{アクティブ}です。Emacsがユーザー入力を受け取ったとき、それは入力イベントに変換されて(@ref{Translation
+Keymaps}を参照)、アクティブなキーマップ内でキーバインディングがルックアップされます。
+
+  アクティブなキーマップは通常は、(1) @code{keymap}プロパティにより指定されるキーマップ、(2) 有効なマイナーモードのキーマップ、(3)
+カレントバッファーのローカルキーマップ、(4)
+グローバルキーマップの順です。Emacsは入力キーシーケンスそれぞれにたいして、これらすべてのキーマップ内を検索します。
+
+  これらの通常のキーマップのうち最優先されるのは、もしあればポイント位置の@code{keymap}テキストにより指定されるキーマップかoverallプロパティです(マウス入力イベントにたいしてはEmacsはポイント位置のかわりにイベント位置を使用する。
+@iftex
+詳細は次のセクションを参照されたい)。
+@end iftex
+@ifnottex
+@ref{Searching Keymaps}を参照されたい)。
+@end ifnottex
+
+  次に優先されるのは有効なマイナーモードにより指定されるキーマップです。もしあればこれらのキーマップは変数@code{emulation-mode-map-alists}、@code{minor-mode-overriding-map-alist}、@code{minor-mode-map-alist}により指定されます。@ref{Controlling
+Active Maps}を参照してください。
+
+@cindex local keymap
+  次に優先されるのはバッファーの@dfn{ローカルキーマップ(local
+keymap)}で、これにはそのバッファー特有なキーバインディングが含まれます。ミニバッファーもローカルキーマップをもちます(@ref{Intro to
+Minibuffers}を参照)。ポイント位置に@code{local-map}テキスト、またはoverlayプロパティがあるなら、それはバッファーのデフォルトローカルキーマップのかわりに使用するローカルキーマップを指定します。
+
+@cindex major mode keymap
+  ローカルキーマップは通常はそのバッファーのメジャーモードによってセットされます。同じメジャーモードをもつすべてのバッファーは、同じローカルキーマップを共有します。したがってあるバッファーでローカルキーマップを変更するために@code{local-set-key}
+(@ref{Key Binding
+Commands}を参照)を呼び出すと、それは同じメジャーモードをもつ他のバッファーのローカルキーマップにも影響を与えます。
+
+@cindex global keymap
+  最後は@kbd{C-f}のようなカレントバッファーとは関係なく定義されるキーバインディングを含んだ@dfn{グローバルキーマップ(global
+keymap)}です。このキーマップは常にアクティブであり変数@code{global-map}にバインドされています。
+
+  これら通常のキーマップとは別に、Emacsはプログラムが他のキーマップをアクティブにするための特別な手段を提供します。1つ目はグローバルキーマップ以外の通常アクティブなキーマップを置き換えるキーマップを指定する変数@code{overriding-local-map}です。2つ目は他の@emph{すべて}のキーマップより優先されるキーマップを指定する端末ローカル変数@code{overriding-terminal-local-map}です。この端末ローカル変数は通常はmodal(訳注:
+他のキーマップを選択できない状態)かつ一時的なキーバインディングに使用されます(ここの変数にたいして関数@code{set-transient-map}は便利なインターフェイスを提供する)。詳細は@ref{Controlling
+Active Maps}を参照してください。
+
+  これらを使用するのがキーマップをアクティブにする唯一の方法ではありません。キーマップは@code{read-key-sequence}によるイベントの変換のような他の用途にも使用されます。@ref{Translation
+Keymaps}を参照してください。
+
+  いくつかの標準的なキーマップのリストは@ref{Standard Keymaps}を参照してください。
+
+@defun current-active-maps &optional olp position
+これはカレント状況下でコマンドループによりキーシーケンスをルックアップするために使用される、アクティブなキーマップのリストをリターンする。これは通常は@code{overriding-local-map}と@code{overriding-terminal-local-map}を無視するが、@var{olp}が非@code{nil}なら、それらのキーマップにも注意を払う。オプションで@var{position}に@code{event-start}によってリターンされるイベント位置、またはバッファー位置を指定でき、@code{key-binding}で説明されているようにキーマップを変更するかもしれない。
+@end defun
+
+@defun key-binding key &optional accept-defaults no-remap position
+この関数はカレントのアクティブキーマップで@var{key}にたいするバインディングをリターンする。そのキーマップ内で@var{key}が未定義なら結果は@code{nil}。
+
+引数@var{accept-defaults}は@code{lookup-key} (@ref{Functions for Key
+Lookup}を参照)のようにデフォルトバインディングをチェックするかどうかを制御する。
+
+コマンドがリマップ(remap: 再マップ。@ref{Remapping
+Commands}を参照)されたとき、@code{key-binding}が実際に実行されるであろうリマップされたコマンドをリターンするように、通常のようにコマンドのリマップを行う。しかし@var{no-remap}が非@code{nil}なら、@code{key-binding}はリマップを無視して@var{key}にたいして直接指定されたバインディングをリターンする。
+
+@var{key}がマウスイベント(もしかしたらプレフィクスイベントが先行するかもしれない)で始まるなら、照合されるマップはそのイベントの位置を元に決定される。それ以外では、それらのマップはポイント値にもとづき決定される。しかし@var{position}を指定することによってこれらをオーバーライドできる。@var{position}が非@code{nil}なら、それはバッファー位置か@code{event-start}の値のようなイベント位置のいずれかである。その場合には照合されるマップは@var{position}にもとづいて決定される。
+
+@var{key}が文字列とベクターのいずれでもなければEmacsはエラーをシグナルする。
+
+@example
+@group
+(key-binding "\C-x\C-f")
+    @result{} find-file
+@end group
+@end example
+@end defun
+
+@node Searching Keymaps
+@section アクティブなキーマップの検索
+@cindex searching active keymaps for keys
+
+以下はEmacsがアクティブなキーマップを検索する方法を示すLisp処理の概要です:
+
+@lisp
+(or (if overriding-terminal-local-map
+        (@var{find-in} overriding-terminal-local-map))
+    (if overriding-local-map
+        (@var{find-in} overriding-local-map)
+      (or (@var{find-in} (get-char-property (point) 'keymap))
+          (@var{find-in-any} emulation-mode-map-alists)
+          (@var{find-in-any} minor-mode-overriding-map-alist)
+          (@var{find-in-any} minor-mode-map-alist)
+          (if (get-text-property (point) 'local-map)
+              (@var{find-in} (get-char-property (point) 'local-map))
+            (@var{find-in} (current-local-map)))))
+    (@var{find-in} (current-global-map)))
+@end lisp
+
+@noindent
+ここで@var{find-in}と@var{find-in-any}はそれぞれ、1つのキーマップとキーマップのalistを検索する仮の関数です。関数@code{set-transient-map}が@code{overriding-terminal-local-map}
+(@ref{Controlling Active Maps}を参照)をセットすることによって機能する点に注意してください。
+
+  上記の処理概要ではキーシーケンスがマウスイベント(@ref{Mouse
+Events}を参照)で始まる場合には、ポイント位置のかわりにそのイベント位置、カレントバッファーのかわりにそのイベントのバッファーが使用されます。これは特にプロパティ@code{keymap}と@code{local-map}をルックアップする方法に影響を与えます。@code{display}、@code{before-string}、@code{after-string}プロパティ(@ref{Special
+Properties}を参照)が埋め込まれていて@code{keymap}か@code{local-map}プロパティが非@code{nil}の文字列上でマウスイベントが発生すると、それは基調となるバッファーテキストの対応するプロパティをオーバーライドします(バッファーテキストにより指定されたプロパティは無視される)。
+
+  アクティブなキーマップの1つでキーバインディングが見つかって、そのバインディングがコマンドなら検索は終了してそのコマンドが実行されます。しかしそのバインディングが値をもつ変数か文字列なら、Emacsは入力キーシーケンスをその変数の値か文字列で置き換えて、アクティブなキーマップの検索を再開します。
+@ref{Key Lookup}を参照してください。
+
+  最終的に見つかったコマンドもリマップされるかもしれません。@ref{Remapping Commands}を参照してください。
+
+@node Controlling Active Maps
+@section アクティブなキーマップの制御
+@cindex active keymap, controlling
+
+@defvar global-map
+この変数はEmacsキーボード入力をコマンドにマップするデフォルトのグローバルキーマップを含む。通常はこのキーマップがグローバルキーマップである。デフォルトグローバルキーマップは@code{self-insert-command}をすべてのプリント文字にバインドするfullキーマップである。
+
+これはグローバルキーマップ内のバインディングを変更する通常の手段だが、この変数に開始時のキーマップ以外の値を割り当てるべきではない。
+@end defvar
+
+@defun current-global-map
+この関数はカレントのグローバルキーマップをリターンする。デフォルトグローバルキーマップとカレントグローバルキーマップのいずれも変更していなければ@code{global-map}と同じ値。リターン値はコピーではなく参照である。これに@code{define-key}などの関数を使用すると、グローバルバインディングが変更されるだろう。
+
+@example
+@group
+(current-global-map)
+@result{} (keymap [set-mark-command beginning-of-line @dots{}
+            delete-backward-char])
+@end group
+@end example
+@end defun
+
+@defun current-local-map
+この関数はカレントバッファーのローカルキーマップをリターンする。ローカルキーマップがなければ@code{nil}をリターンする。以下の例では、(Lisp
+Interactionモードを使用する)@file{*scratch*}バッファーにたいするキーマップは、@key{ESC}(@acronym{ASCII}コード27)にたいするエントリーが別のsparseキーマップであるようなsparseキーマップである。
+
+@example
+@group
+(current-local-map)
+@result{} (keymap
+    (10 . eval-print-last-sexp)
+    (9 . lisp-indent-line)
+    (127 . backward-delete-char-untabify)
+@end group
+@group
+    (27 keymap
+        (24 . eval-defun)
+        (17 . indent-sexp)))
+@end group
+@end example
+@end defun
+
+@code{current-local-map}はローカルキーマップのコピーではなく参照をリターンします。これに@code{define-key}などの関数を使用するとローカルバインディングが変更されるでしょう。
+
+@defun current-minor-mode-maps
+この関数はカレントで有効なメジャーモードのキーマップリストをリターンする。
+@end defun
+
+@defun use-global-map keymap
+この関数は@var{keymap}を新たなカレントグローバルキーマップにする。これは@code{nil}をリターンする。
+
+グローバルキーマップの変更は異例である。
+@end defun
+
+@defun use-local-map keymap
+この関数は@var{keymap}をカレントバッファーの新たなローカルキーマップにする。@var{keymap}が@code{nil}なら、そのバッファーはローカルキーマップをもたない。@code{use-local-map}は@code{nil}をリターンする。ほとんどのメジャーモードコマンドはこの関数を使用する。
+@end defun
+
+@defvar minor-mode-map-alist
+@anchor{Definition of minor-mode-map-alist}
+この変数はアクティブかどうかに関わらず、特定の変数の値にたいするキーマップを示すalistである。要素は以下のようになる:
+
+@example
+(@var{variable} . @var{keymap})
+@end example
+
+キーマップ@var{keymap}は
+@var{variable}が非@code{nil}値をもつときはアクティブである。@var{variable}は通常はメジャーモードを有効か無効にする変数である。@ref{Keymaps
+and Minor Modes}を参照のこと。
+
+@code{minor-mode-map-alist}の要素が@code{minor-mode-alist}の要素と異なる構造をもつことに注意。マップは要素の@sc{cdr}でなければならず、そうでなければ2つ目の要素にマップリストは用いられないだろう。@sc{cdr}はキーマップ(リスト)、または関数定義がキーマップであるようなシンボルである。
+
+1つ以上のマイナーモードキーマップがアクティブなとき、@code{minor-mode-map-alist}内で前のキーマップが優先される。しかし互いが干渉しないようにマイナーモードをデザインすること。これを正しく行えば順序は問題にならない。
+
+マイナーモードについての詳細な情報は、@ref{Keymaps and Minor
+Modes}を参照のこと。@code{minor-mode-key-binding} (@ref{Functions for Key
+Lookup}を参照)も確認されたい。
+@end defvar
+
+@defvar minor-mode-overriding-map-alist
+この変数はメジャーモードによる特定のマイナーモードにたいするキーバインディングのオーバーライドを可能にする。このalistの要素は@code{minor-mode-map-alist}の要素のような@code{(@var{variable}
+. @var{keymap})}という形式である。
+
+ある変数が@code{minor-mode-overriding-map-alist}の要素として出現するなら、その要素によって指定されるマップは@code{minor-mode-map-alist}内の同じ変数にたいして指定されるすべてのマップを完全に置き換える。
+
+すべてのバッファーにおいて@code{minor-mode-overriding-map-alist}は自動的にバッファーローカルである。
+@end defvar
+
+@defvar overriding-local-map
+この変数が非@code{nil}ならバッファーのローカルキーマップ、テキストプロパティまたはoverlayによるキーマップ、マイナーモードキーマップのかわりに使用されるするキーマップを保持する。このキーマップが指定されると、カレントグローバルキーマップ以外のアクティブだった他のすべてのマップがオーバーライドされる。
+@end defvar
+
+@defvar overriding-terminal-local-map
+この変数が非@code{nil}なら@code{overriding-local-map}、バッファーのローカルキーマップ、テキストプロパティまたはoverlayによるキーマップ、およびすべてのマイナーモードキーマップのかわりに使用されるキーマップを保持する。
+
+この変数はカレント端末にたいして常にローカルでありバッファーローカルにできない。@ref{Multiple
+Terminals}を参照のこと。これはインクリメンタル検索モードの実装に使用される。
+@end defvar
+
+@defvar overriding-local-map-menu-flag
+この変数が非@code{nil}なら、@code{overriding-local-map}と@code{overriding-terminal-local-map}の値がメニューバーの表示に影響し得る。デフォルト値は@code{nil}なので、これらのマップ変数なメニューバーに影響をもたない。
+
+これら2つのマップ変数は、たとえこれらの変数がメニューバー表示に影響し得るを与えない場合でも、メニューバーを使用してエンターされたキーシーケンスの実行には影響を与えることに注意。したがってもしメニューバーキーシーケンスが到着したら、そのキーシーケンスをルックアップして実行する前に変数をクリアーすること。この変数を使用するモードは通常は何らかの手段でこれを行っている。これらのモードは通常は``読み戻し(unread)''とexitによって処理されないイベントに応答する。
+@end defvar
+
+@defvar special-event-map
+この変数はスペシャルイベントにたいするキーマップを保持する。あるイベント型がこのキーマップ内でバインディングをもつなら、それはスペシャルイベントであり、そのイベントにたいするバインディングは@code{read-event}によって直接実行される。@ref{Special
+Events}を参照のこと。
+@end defvar
+
+@defvar emulation-mode-map-alists
+この変数はエミュレーションモードにたいして使用するキーマップのalistのリストを保持する。この変数は複数マイナーモードキーマップを使用するモードとパッケージを意図している。リストの各要素は@code{minor-mode-map-alist}と同じフォーマットと意味をもつキーマップのalistか、そのようなalist形式の変数バインディングをもつシンボルである。それぞれのalist内のアクティブなキーマップは@code{minor-mode-map-alist}と@code{minor-mode-overriding-map-alist}の前に使用される。
+@end defvar
+
+@cindex transient keymap
+@defun set-transient-map keymap &optional keep-pred on-exit
+この関数は@dfn{一時的(transient)}なキーマップとして@var{keymap}を追加する。一時的なキーマップは1つ以上の後続するキーにたいして、他のキーマップより優先される。
+
+@var{keymap}は通常は直後のキーをルックアップするために1回だけ使用される。しかし、オプション引数@var{keep-pred}が@code{t}なら、そのマップはユーザーが@var{keymap}内で定義されたキーをタイプするまでアクティブのままとなる。@var{keymap}内にないキーをユーザーがタイプしたとき一時的キーマップは非アクティブとなり、そのキーにたいして通常のキールックアップが継続される。
+
+@var{keep-pred}には関数も指定できる。この場合には@var{keymap}がアクティブの間は、各コマンドの実行に優先してその関数が引数なしで呼び出される。@var{keymap}がアクティブの間、関数は非@code{nil}をリターンすること。
+
+オプション引数@var{on-exit}が非@code{nil}なら、それは@var{keymap}が非アクティブになった後に引数なしで呼び出される関数を指定する。
+
+この関数は他のすべてのアクティブなキーマップに優先される変数@code{overriding-terminal-local-map}にたいして、@var{keymap}を追加または削除することによって機能する(@ref{Searching
+Keymaps}を参照)。
+@end defun
+
+@node Key Lookup
+@section キーの照合
+@cindex key lookup
+@cindex keymap entry
+
+  @dfn{キールックアップ(key lookup:
+キー照合)}とは与えられたキーマップからキーシーケンスのバインディングを見つけ出すことです。そのバインディングの使用や実行はキールックアップの一部ではありません。
+
+  キールックアップはキーシーケンス内の各イベントのイベント型だけを使用して、そのイベントの残りは無視します。実際のところキールックアップに使用されるキーシーケンスは、マウスイベントをイベント全体(リスト)のかわりにイベント型のみ(シンボル)を用いるでしょう。@ref{Input
+Events}を参照してください。そのようなキーシーケンスは@code{command-execute}による実行には不十分ですが、キーのルックアップやリバインドには十分です。
+
+  キーシーケンスが複数イベントから構成されるとき、キールックアップはイベントを順に処理します。最初のイベントのバインディングが見つかったとき、それはキーマップでなければなりません。そのキーマップ内で2つ目のイベントを見つけ出して、そのキーシーケンス内のすべてのイベントが消費されるまで、このプロセスを続けます(故に最後のイベントにたいして見つかったイベントはキーマップかどうかはわからない)。したがってキールックアッププロセスはキーマップ内で単一イベントを見つけ出す、よりシンプルなプロセスで定義されます。これが行なわれる方法はキーマップ内でそのイベントに関連するオブジェクトの型に依存します。
+
+  キーマップ内のイベント型ルックアップによる値の発見を説明するために、@dfn{キーマップエントリー(keymap
+entry)}という用語を導入しましょう(これにはメニューアイテムにたいするキーマップ内のアイテム文字列や他の余計な要素は含まれない。なぜなら@code{lookup-key}や他のキーマップルックアップ関数がリターン値にそれらを含まないから)。任意のLispオブジェクトがキーマップエントリーとしてキーマップに格納されるかもしれませんが、すべてがキールックアップに意味をもつわけではありません。以下のテーブルはキーマップエントリーで重要な型です:
+
+@table @asis
+@item @code{nil}
+@cindex @code{nil} in keymap
+@code{nil}はそれまでにルックアップに使用されたイベントが未定義キーを形成することを意味する。最終的にキーマップがイベント型を調べるのに失敗してデフォルトバインディングも存在しないときは、そのイベント型のバインディングが@code{nil}であるのと同じである。
+
+@item @var{command}
+@cindex command in keymap
+それまでにルックアップに使用されたイベントがコンプリートキーを形成して、@var{command}がそのバインディングである。@ref{What Is
+a Function}を参照のこと。
+
+@item @var{array}
+@cindex string in keymap
+array(文字列かベクター)はキーボードマクロである。それまでにルックアップに使用されたイベントはコンプリートキーを形成して、arrayがそのバインディングである。詳細は@ref{Keyboard
+Macros}を参照のこと。
+
+@item @var{keymap}
+@cindex keymap in keymap
+それまでにルックアップに使用されたイベントはプレフィクスキーを形成する。そのキーシーケンスの次のイベントは@var{keymap}内でルックアップされる。
+
+@item @var{list}
+@cindex list in keymap
+listの意味はそのリストが何を含んでいるかに依存する:
+
+@itemize @bullet
+@item
+@var{list}の@sc{car}がシンボル@code{keymap}なら、そのリストはキーマップでありキーマップとして扱われる(上記参照)。
+
+@item
+@cindex @code{lambda} in keymap
+@var{list}の@sc{car}が@code{lambda}なら、そのリストはラムダ式である。これは関数とみなされてそのように扱われる(上記参照)。キーバインディングとして正しく実行されるために、この関数はコマンドでなければならず@code{interactive}指定をもたなければならない。@ref{Defining
+Commands}を参照のこと。
+@end itemize
+
+@item @var{symbol}
+@cindex symbol in keymap
+@var{symbol}の関数定義が@var{symbol}のかわりに使用される。もし関数定義もシンボルなら、任意の回数このプロセスが繰り返される。これは最終的にキーマップであるようなオブジェクト、コマンド、またはキーボードマクロに行き着くはずである。
+
+キーマップとキーボードマクロ(文字列かベクター)は有効な関数ではないので関数定義にキーマップ、文字列、ベクターをもつシンボルは関数としては無効であることに注意。しかしキーバインディングとしては有効である。その定義がキーボードマクロなら、そのシンボルは@code{command-execute}(@ref{Interactive
+Call}を参照)の引数としても有効である。
+
+@cindex @code{undefined} in keymap
+シンボル@code{undefined}は特記するに値する。これはそのキーを未定義として扱うことを意味する。厳密に言うとそのキーは定義されているが、そのバインディングがコマンド@code{undefined}なのである。しかしこのコマンドは未定義キーにたいして自動的に行われるのと同じことを行う。これは(@code{ding}を呼び出して)bellを鳴らすがエラーはシグナルしない。
+
+@cindex preventing prefix key
+@code{undefined}はグローバルキーバインディングをオーバーライドして、そのキーをローカルに未定義とするために使用される。@code{nil}にローカルにバインドしてもグローバルバインディングをオーバーライドしないであろうから、これを行うのに失敗するだろう。
+
+@item @var{anything else}
+オブジェクトの他の型が見つかったら、それまでにルックアップで使用されたイベントはコンプリートキーを形成してそのオブジェクトがバインディングになるが、そのバインディングはコマンドとして実行不可能である。
+@end table
+
+  要約するとキーマップエントリーはキーマップ、コマンド、キーボードマクロ、あるいはそれらに導出されるシンボル、あるいは@code{nil}のいずれかです。
+
+@node Functions for Key Lookup
+@section キー照合のための関数
+
+  以下はキールックアップに関連する関数および変数です。
+
+@defun lookup-key keymap key &optional accept-defaults
+この関数は@var{keymap}内の@var{key}の定義をリターンする。このチャプターで説明されているキーをルックアップする他のすべての関数が@code{lookup-key}を使用する。以下は例:
+
+@example
+@group
+(lookup-key (current-global-map) "\C-x\C-f")
+    @result{} find-file
+@end group
+@group
+(lookup-key (current-global-map) (kbd "C-x C-f"))
+    @result{} find-file
+@end group
+@group
+(lookup-key (current-global-map) "\C-x\C-f12345")
+    @result{} 2
+@end group
+@end example
+
+文字列かベクターの@var{key}が@var{keymap}内で指定されるプレフィクスキーとして有効なキーシーケンスでなければ、それは最後に余計なイベントをもった、単一のキーシーケンスに適合しない長過ぎるキーのはずである。その場合のリターン値は数となり、この数はコンプリートキーを構成する@var{key}の前にあるイベントの数である。
+
+@c Emacs 19 feature
+@var{accept-defaults}が非@code{nil}なら、@code{lookup-key}は@var{key}内の特定のイベントにたいするバインディングと同様にデフォルトバインディングも考慮する。それ以外では@code{lookup-key}は特定の@var{key}のシーケンスにたいするバインディングだけを報告して、明示的に指定したとき以外はデフォルトバインディングを無視する(これを行うには@var{key}の要素として@code{t}を与える。@ref{Format
+of Keymaps}を参照されたい)。
+
+@var{key}がメタ文字(ファンクションキーではない)を含むなら、その文字は暗黙に@code{meta-prefix-char}の値と対応する非メタ文字からなる2文字シーケンスに置き換えられる。したがって以下の1つ目の例は2つ目の例に変換されて処理される。
+
+@example
+@group
+(lookup-key (current-global-map) "\M-f")
+    @result{} forward-word
+@end group
+@group
+(lookup-key (current-global-map) "\ef")
+    @result{} forward-word
+@end group
+@end example
+
+@var{keymap}引数はキーマップのリストでもよい。
+
+@code{read-key-sequence}とは異なり、この関数は指定されたイベントの情報を破棄する変更(@ref{Key Sequence
+Input}を参照)を行わない。特にこの関数はアルファベット文字を小文字に変更せず、ドラッグイベントをクリックイベントに変更しない。
+@end defun
+
+@deffn Command undefined
+キーを未定義にするためにキーマップ内で使用される。これは@code{ding}を呼び出すがエラーを発生ささない。
+@end deffn
+
+@defun local-key-binding key &optional accept-defaults
+この関数はカレントのローカルキーマップ内の@var{key}にたいするバインディングをリターンする。カレントのローカルキーマップ内で未定義なら@code{nil}をリターンする。
+
+@c Emacs 19 feature
+引数@var{accept-defaults}は@code{lookup-key}(上記)と同じようにデフォルトバインディングのチェックを制御する。
+@end defun
+
+@defun global-key-binding key &optional accept-defaults
+この関数はカレントのグローバルキーマップ内でコマンド@var{key}にたいするバインディングをリターンする。カレントのグローバルキーマップ内で未定義なら@code{nil}をリターンする。
+
+@c Emacs 19 feature
+引数@var{accept-defaults}は@code{lookup-key}(上記)と同じようにデフォルトバインディングのチェックを制御する。
+@end defun
+
+@c Emacs 19 feature
+@defun minor-mode-key-binding key &optional accept-defaults
+この関数はアクティブなマイナーモードの@var{key}のバインディングをリストでリターンする。より正確にはこの関数は@code{(@var{modename}
+.
+@var{binding})}のようなペアのalistをリターンする。ここで@var{modename}なそのマイナーモードを有効にする変数、@var{binding}はそのモードでの@var{key}のバインディングである。@var{key}がマイナーモードバインディングをもたなければ値は@code{nil}。
+
+最初に見つかったバインディングがプレフィクス定義(キーマップ、またはキーマップとして定義されたシンボル)でなければ、他のマイナーモードに由来するすべての後続するバインディングは完全にshadowされて省略される。同様にこのリストはプレフィクスバインディングに後続する非プレフィクスバインディングは省略される。
+
+引数@var{accept-defaults}は@code{lookup-key}(上記)と同じようにデフォルトバインディングのチェックを制御する。
+@end defun
+
+@defopt meta-prefix-char
+@cindex @key{ESC}
+この変数はメタ/プレフィクス文字コードである。これはメタ文字をキーマップ内でルックアップできるように2文字シーケンスに変換する。有用な結果を得るために値はプレフィクスイベント(@ref{Prefix
+Keys}を参照)であること。デフォルト値は27で、これは@key{ESC}にたいする@acronym{ASCII}コード。
+
+@code{meta-prefix-char}の値が27であるような限り、キールックアップは通常は@code{backward-word}コマンドとして定義される@kbd{M-b}を@kbd{@key{ESC}
+b}に変換する。しかし@code{meta-prefix-char}を24(@kbd{C-x}のコード)にセットすると、Emacsは@kbd{M-b}を@kbd{C-x
+b}に変換するだろうが、これの標準のバインディングは@code{switch-to-buffer}コマンドである。以下に何が起こるかを示す(実際にこれを行ってはならない!):
+
+@smallexample
+@group
+meta-prefix-char                    ; @r{デフォルト値}
+     @result{} 27
+@end group
+@group
+(key-binding "\M-b")
+     @result{} backward-word
+@end group
+@group
+?\C-x                               ; @r{文字.の}
+     @result{} 24                          ; @r{プリント表現}
+@end group
+@group
+(setq meta-prefix-char 24)
+     @result{} 24
+@end group
+@group
+(key-binding "\M-b")
+     @result{} switch-to-buffer            ; @r{今や@kbd{M-b}をタイプすると}
+                                    ;   @r{@kbd{C-x b}をタイプしたようになる}
+
+(setq meta-prefix-char 27)          ; @r{混乱を避けよう!}
+     @result{} 27                          ; @r{デフォルト値をリストア!}
+@end group
+@end smallexample
+
+この単一イベントから2イベントへの変換は文字にたいしてのみ発生し、他の種類の入力イベントには発生しない。したがってファンクションキー@kbd{M-@key{F1}}は@kbd{@key{ESC}
+@key{F1}}に変換されない。
+@end defopt
+
+@node Changing Key Bindings
+@section キーバインディングの変更
+@cindex changing key bindings
+@cindex rebinding
+
+  キーのリバインド(rebind:
+再バインド、再束縛)は、キーマップ内でそのキーのバインディングエントリーを変更することによって行われます。グローバルキーマップ内のバインディングを変更すると、その変更は(たとえローカルバインディングによりグローバルバインディングをshadowしているバッファーでは直接影響しないとしても)すべてのバッファーに影響します。カレントバッファーのローカルマップを変更すると、通常は同じメジャーモードを使用するすべてのバッファーに影響します。関数@code{global-set-key}と@code{local-set-key}は、これらの操作のための使いやすいインターフェイスです(@ref{Key
+Binding
+Commands}を参照)。より汎用的な関数@code{define-key}を使用することもできます。その場合には変更するマップを明示的に指定しなければなりません。
+
+  Lispプログラムでリバインドするキーシーケンスを選択するときは、さまざまなキーの使用についてのEmacsの慣習にしたがってください(@ref{Key
+Binding Conventions}を参照)。
+
+@cindex meta character key constants
+@cindex control character key constants
+  リバインドするキーシーケンスの記述では、コントロール文字とメタ文字にたいして特別なエスケープシーケンスを使用すると良いでしょう(@ref{String
+Type}を参照)。構文@samp{\C-}は後続する文字がコントロール文字でること、@samp{\M-}は後続する文字がメタ文字であることを意味します。したがって文字列@code{"\M-x"}は1つの@kbd{M-x}、@code{"\C-f"}は1つの@kbd{C-f}、@code{"\M-\C-x"}と@code{"\C-\M-x"}は1つの@kbd{C-M-x}として読み取られます。ベクター内でもこのエスケープシーケンス、および文字列では使用できない他のエスケープシーケンスを使用できます。一例は@samp{[?\C-\H-x
+home]}です。@ref{Character Type}を参照してください。
+
+  キー定義とルックアップ関数は、ベクターであるようなキーシーケンス内のイベント型にたいして別の構文を受け入れます。修飾名に基本イベント(文字かファンクションキー名)を付加したものを含んだリストを使用できます。たとえば@code{(control
+?a)}は@code{?\C-a}、@code{(hyper control
+left)}は@code{C-H-left}と等価です。このようなリストの利点の1つは、コンパイル済みファイル内に修飾ビットの正確な数値コードが出現しないことです。
+
+  以下の関数は@var{keymap}がキーマップでない場合、および@var{key}がキーシーケンスを表す文字列やベクターでない場合にはエラーをシグナルします。リストであるようなイベントにたいする略記として、イベント型(シンボル)を使用できます。@code{kbd}関数(@ref{Key
+Sequences}を参照)はキーシーケンスを指定するための便利な方法です。
+
+@defun define-key keymap key binding
+この関数は@var{keymap}内で@var{key}にたいするバインディングをセットする(@var{key}が長さ2以上のイベントなら、その変更は実際は@var{keymap}から辿られる他のキーマップで行なわれる)。引数@var{binding}には任意のLispオブジェクトを指定できるが、意味があるのは特定のオブジェクトだけである(意味のある型のリストは@ref{Key
+Lookup}を参照)。@code{define-key}のリターン値は@var{binding}である。
+
+@var{key}が@code{[t]}なら、それは@var{keymap}内でデフォルトバインディングをセットする。イベントが自身のバインディングをもたないとき、そのキーマップ内にデフォルトバインディングが存在すればEmacsコマンドループはそれを使用する。
+
+@cindex invalid prefix key error
+@cindex key sequence error
+@var{key}のすべてのプレフィクスは、プレフィクスキー(キーマップにバインドされる)か、あるいは未定義でなけらばならず、それ以外ならエラーがシグナルされる。@var{key}のいくつかのプレフィクスが未定義なら、@code{define-key}はそれをプレフィクスキーとして定義するので、残りの@var{key}は指定されたように定義できる。
+
+前に@var{keymap}内で@var{key}にたいするバインディングが存在しなければ、新たなバインディングが@var{keymap}の先頭に追加される。キーマップ内のバインディングの順序はキーボード入力にたいし影響を与えないが、メニューキーマップにたいしては問題となる(@ref{Menu
+Keymaps}を参照)。
+@end defun
+
+  以下はsparseキーマップを作成してその中にバインディングをいくつか作成する例:
+
+@smallexample
+@group
+(setq map (make-sparse-keymap))
+    @result{} (keymap)
+@end group
+@group
+(define-key map "\C-f" 'forward-char)
+    @result{} forward-char
+@end group
+@group
+map
+    @result{} (keymap (6 . forward-char))
+@end group
+
+@group
+;; @r{@kbd{C-x}にたいしsparseサブマップを作成して
+;; その中で@kbd{f}をバインドする}
+(define-key map (kbd "C-x f") 'forward-word)
+    @result{} forward-word
+@end group
+@group
+map
+@result{} (keymap
+    (24 keymap                ; @kbd{C-x}
+        (102 . forward-word)) ;      @kbd{f}
+    (6 . forward-char))       ; @kbd{C-f}
+@end group
+
+@group
+;; @r{@kbd{C-p}を@code{ctl-x-map}にバインド}
+(define-key map (kbd "C-p") ctl-x-map)
+;; @code{ctl-x-map}
+@result{} [nil @dots{} find-file @dots{} backward-kill-sentence]
+@end group
+
+@group
+;; @r{@code{ctl-x-map}内で@kbd{C-f}を@code{foo}にバインド}
+(define-key map (kbd "C-p C-f") 'foo)
+@result{} 'foo
+@end group
+@group
+map
+@result{} (keymap     ; @r{@code{ctl-x-map}内の@code{foo}に注目}
+    (16 keymap [nil @dots{} foo @dots{} backward-kill-sentence])
+    (24 keymap
+        (102 . forward-word))
+    (6 . forward-char))
+@end group
+@end smallexample
+
+@noindent
+@kbd{C-p
+C-f}にたいする新たなバインディングの格納は、実際には@code{ctl-x-map}内のエントリーを変更することによって機能し、これはデフォルトグローバルマップ内の@kbd{C-p
+C-f}と@kbd{C-x C-f}の両方のバインディングを変更する効果をもつことに注意。
+
+  関数@code{substitute-key-definition}はキーマップから特定のバインディングをもつキーをスキャンして、それらを異なるバインディングにリバインドする。より明快かつ多くの場合には同じ結果を生成できる他の機能として、あるコマンドから別のコマンドへのリマップがある(@ref{Remapping
+Commands}を参照)。
+
+@defun substitute-key-definition olddef newdef keymap &optional oldmap
+@cindex replace bindings
+この関数は@var{keymap}内で@var{olddef}にバインドされるすべてのキーについて@var{olddef}を@var{newdef}に置き換える。言い換えると@var{olddef}が出現する箇所のすべてを@var{newdef}に置き換える。この関数は@code{nil}をリターンする。
+
+たとえば以下をEmacsの標準バインディングで行うと@kbd{C-x C-f}を再定義する:
+
+@smallexample
+@group
+(substitute-key-definition
+ 'find-file 'find-file-read-only (current-global-map))
+@end group
+@end smallexample
+
+@c Emacs 19 feature
+@var{oldmap}が非@code{nil}なら、どのキーをリバインドするかを@var{oldmap}内のバインディングが決定するように@code{substitute-key-definition}の動作を変更する。リバインディングは依然として@var{oldmap}ではなく@var{keymap}で発生する。したがって他のマップ内のバインディングの制御下でマップを変更することができる。たとえば、
+
+@smallexample
+(substitute-key-definition
+  'delete-backward-char 'my-funny-delete
+  my-map global-map)
+@end smallexample
+
+@noindent
+これは標準的な削除コマンドにグローバルにバインドされたキーにたいして@code{my-map}内の特別な削除コマンドを設定する。
+
+以下はキーマップの置き換え(substitution)の前後を示した例:
+
+@smallexample
+@group
+(setq map (list 'keymap
+                (cons ?1 olddef-1)
+                (cons ?2 olddef-2)
+                (cons ?3 olddef-1)))
+@result{} (keymap (49 . olddef-1) (50 . olddef-2) (51 . olddef-1))
+@end group
+
+@group
+(substitute-key-definition 'olddef-1 'newdef map)
+@result{} nil
+@end group
+@group
+map
+@result{} (keymap (49 . newdef) (50 . olddef-2) (51 . newdef))
+@end group
+@end smallexample
+@end defun
+
+@defun suppress-keymap keymap &optional nodigits
+@cindex @code{self-insert-command} override
+この関数は@code{self-insert-command}をコマンド@code{undefined}にリマップ(@ref{Remapping
+Commands}を参照)することによってfullキーマップのコンテンツを変更する。これはすべてのプリント文字を未定義にする効果をもつので、通常のテキスト挿入は不可能になる。@code{suppress-keymap}は@code{nil}をリターンする。
+
+@var{nodigits}が@code{nil}なら、@code{suppress-keymap}は数字が@code{digit-argument}、@kbd{-}が@code{negative-argument}を実行するように定義する。それ以外は残りのプリント文字と同じように、それらの文字も未定義にする。
+
+@cindex yank suppression
+@cindex @code{quoted-insert} suppression
+@code{suppress-keymap}関数は@code{yank}や@code{quoted-insert}のようなコマンドを抑制(suppress)しないのでバッファーの変更は可能。バッファーの変更を防ぐには、バッファーを読み取り専用(read-only)にすること(@ref{Read
+Only Buffers}を参照)。
+
+この関数は@var{keymap}を変更するので、通常は新たに作成したキーマップにたいして使用するだろう。他の目的のために使用されている既存のキーマップに操作を行うと恐らくトラブルの原因となる。たとえば@code{global-map}の抑制はEmacsをほとんど使用不可能にするだろう。
+
+この関数はテキストの挿入が望ましくないメジャーモードの、ローカルキーマップ初期化に使用され得る。しかしそのようなモードは通常は@code{special-mode}
+(@ref{Basic Major
+Modes}を参照)から継承される。この場合にはそのモードのキーマップは既に抑制済みの@code{special-mode-map}から自動的に受け継がれる。以下に@code{special-mode-map}が定義される方法を示す:
+
+@smallexample
+@group
+(defvar special-mode-map
+  (let ((map (make-sparse-keymap)))
+    (suppress-keymap map)
+    (define-key map "q" 'quit-window)
+    @dots{}
+    map))
+@end group
+@end smallexample
+@end defun
+
+@node Remapping Commands
+@section コマンドのリマップ
+@cindex remapping commands
+
+  あるコマンドから他のコマンドへの@dfn{リマップ(remap)}には、特別な種類のキーバインディングが使用できます。この機能を使用するためには、ダミーイベント@code{remap}で始まり、その後にリマップしたいコマンド名が続くようなキーシーケンスにたいするキーバインディングを作成します。そしてそのバインディングにたいしては、新たな定義(通常はコマンド名だがキーバインディングにたいして有効な他の任意の定義を指定可能)を指定します。
+
+  たとえばMyモードというモードが、@code{kill-line}のかわりに呼び出される@code{my-kill-line}という特別なコマンドを提供するとします。これを設定するには、このモードのキーマップに以下のようなリマッピングが含まれるはずです:
+
+@smallexample
+(define-key my-mode-map [remap kill-line] 'my-kill-line)
+@end smallexample
+
+@noindent
+その後は@code{my-mode-map}がアクティブなときは常に、ユーザーが@kbd{C-k}
+(@code{kill-line}にたいするデフォルトのグローバルキーシーケンス)をタイプするとEmacsはかわりに@code{my-kill-line}を実行するでしょう。
+
+  リマップはアクティブなキーマップでのみ行なわれることに注意してください。たとえば@code{ctl-x-map}のようなプレフィクスキーマップ内にリマッピングを置いても、そのようなキーマップはそれ自体がアクティブでないので通常は効果がありません。それに加えてリマップは1レベルを通じてのみ機能します。以下の例では、
+
+@smallexample
+(define-key my-mode-map [remap kill-line] 'my-kill-line)
+(define-key my-mode-map [remap my-kill-line] 'my-other-kill-line)
+@end smallexample
+
+@noindent
+これは@code{kill-line}を@code{my-other-kill-line}にリマップ@emph{しません}。かわりに通常のキーバインディングが@code{kill-line}を指定する場合には、それが@code{my-kill-line}にリマップされます。通常のバインディングが@code{my-kill-line}を指定すると、@code{my-other-kill-line}にリマップされます。
+
+コマンドのリマップをアンドゥするには、以下のようにそれを@code{nil}にリマップします：
+
+@smallexample
+(define-key my-mode-map [remap kill-line] nil)
+@end smallexample
+
+@defun command-remapping command &optional position keymaps
+この関数はカレントアクティブキーマップによって与えられる@var{command}(シンボル)にたいするリマッピングをリターンする。@var{command}がリマップされていない(これは普通の状況である)、あるいはシンボル以外なら、この関数は@code{nil}をリターンする。@code{position}は@code{key-binding}の場合と同様、使用するキーマップを決定するためにバッファー位置かイベント位置をオプションで指定できる。
+
+オプション引数@code{keymaps}が非@code{nil}なら、それは検索するキーマップのリストを指定する。この引数は@code{position}が非@code{nil}なら無視される。
+@end defun
+
+@node Translation Keymaps
+@section イベントシーケンス変換のためのキーマップ
+@cindex translation keymap
+@cindex keymaps for translating events
+
+  @code{read-key-sequence}関数がキーシーケンス(@ref{Key Sequence
+Input}を参照)を読み取るときには、特定のイベントシーケンスを他のものに変換(translate)するために@dfn{変換キーマップ(translation
+keymaps)}を使用します。@code{input-decode-map}、@code{local-function-key-map}、@code{key-translation-map}(優先順)は変換キーマップです。
+
+  変換キーマップは他のキーマップと同じ構造をもちますが使い方は異なります。変換キーマップはキーシーケンスを読み取るときに、コンプリートキーシーケンスにたいするバインディングではなくキーシーケンスに行う変換を指定します。キーシーケンスが読み取られると、それらのキーシーケンスは変換キーマップにたいしてチェックされます。ある変換キーマップが@var{k}をベクター@var{v}にバインドするなら、キーシーケンス内の@emph{どこか}にサブシーケンスとして@var{k}が出現すると、それは@var{v}内のイベントに置き換えられます。
+
+  たとえばキーパッドキー@key{PF1}が押下されたとき、VT100端末は@kbd{@key{ESC} O
+P}を送信します。そのような端末ではEmacsはそのイベントシーケンスを単一イベント@code{pf1}に変換しなければなりません。これは@code{input-decode-map}内で@kbd{@key{ESC}
+O P}を@code{[pf1]}にバインドすることにより行われます。したがってその端末上で@kbd{C-c
+@key{PF1}}をタイプしたとき、端末は文字シーケンス@kbd{C-c @key{ESC} O
+P}を発行して、@code{read-key-sequence}がそれを@kbd{C-c @key{PF1}}に変換、ベクター@code{[?\C-c
+pf1]}としてリターンします。
+
+  変換キーマップは、(@code{keyboard-coding-system}で指定された入力コーディングシステムを通じて)Emacsがキーボード入力をデコードした直後だけ効果をもちます。@ref{Terminal
+I/O Encoding}を参照してください。
+
+@defvar input-decode-map
+この変数は通常の文字端末上のファンクションキーから送信された文字シーケンスを記述するキーマップを保持する。
+
+@code{input-decode-map}の値は、通常はその端末のTerminfoかTermcapのエントリーに応じて自動的にセットアップされるが、Lispの端末仕様ファイルの助けが必要なときもある。Emacsには一般的な多くの端末の端末仕様ファイルが同梱されている。これらのファイルの主な目的はTermcapやTerminfoから推定できないエントリーを@code{input-decode-map}内に作成することである。@ref{Terminal-Specific}を参照のこと。
+@end defvar
+
+@defvar local-function-key-map
+この変数は@code{input-decode-map}と同じようにキーマップを保持するが、通常は優先される解釈選択肢(alternative
+interpretation)に変換されるべきキーシーケンスを記述するキーマップを保持する。このキーマップは@code{input-decode-map}の後、@code{key-translation-map}の前に適用される。
+
+@code{local-function-key-map}内のエントリーはマイナーモード、ローカルキーマップ、グローバルキーマップによるバインディングと衝突する場合には無視される。つまり元のキーシーケンスが他にバインディングをもたない場合だけリマッピングが適用される。
+
+@code{local-function-key-map}は@code{function-key-map}を継承する。後者はすべての端末にバインディングを適用したい場合のみ修正するべきなので、ほとんど常に前者の使用が望ましい。
+@end defvar
+
+@defvar key-translation-map
+この変数は入力イベントを他のイベントに変換するために、@code{input-decode-map}と同じように使用される別のキーマップを保持する。@code{input-decode-map}との違いは、@code{local-function-key-map}の前ではなく後に機能する点である。このキーマップは@code{local-function-key-map}による変換結果を受け取る。
+
+@code{input-decode-map}と同様だが@code{local-function-key-map}とは異なり、このキーマップは入力キーシーケンスが通常のバインディングをもつかどうかかに関わらず適用される。しかしこのキーマップによりキーバインディングがオーバーライドされても、@code{key-translation-map}では実際のキーバインディングが効果をもち得ることに注意。確かに実際のキーバインディングは@code{local-function-key-map}をオーバーライドし、したがって@code{key-translation-map}が受け取るキーシーケンスは変更されるだろう。明確にするためにはこのような類の状況は避けたほうがよい。
+
+@code{key-translation-map}は通常は@code{self-insert-command}にバインディングされるような通常文字を含めて、ユーザーがある文字を他の文字にマップすることを意図している。
+@end defvar
+
+@cindex key translation function
+キーシーケンスのかわりにキーの変換として関数を使用することにより、シンプルなエイリアスより多くのことに@code{input-decode-map}、@code{local-function-key-map}、@code{key-translation-map}を使用できます。その場合にはこの関数はそのキーの変換を計算するために呼び出されます。
+
+キー変換関数は引数を1つ受け取ります。この引数は@code{read-key-sequence}内で指定されるプロンプトです。キーシーケンスがエディターコマンドループに読み取られる場合は@code{nil}です。ほとんどの場合にはプロンプト値は無視できます。
+
+関数が自身で入力を読み取る場合、その関数は後続のイベントを変更する効果をもつことができます。たとえば以下は@kbd{C-c
+h}をハイパー文字に後続する文字とするために定義する方法の例です:
+
+@example
+@group
+(defun hyperify (prompt)
+  (let ((e (read-event)))
+    (vector (if (numberp e)
+                (logior (ash 1 24) e)
+              (if (memq 'hyper (event-modifiers e))
+                  e
+                (add-event-modifier "H-" e))))))
+
+(defun add-event-modifier (string e)
+  (let ((symbol (if (symbolp e) e (car e))))
+    (setq symbol (intern (concat string
+                                 (symbol-name symbol))))
+    (if (symbolp e)
+        symbol
+      (cons symbol (cdr e)))))
+
+(define-key local-function-key-map "\C-ch" 'hyperify)
+@end group
+@end example
+
+@subsection 通常のキーマップとの対話
+
+そのキーシーケンスがコマンドにバインドされたとき、またはさらにイベントを追加してもコマンドにバインドされるシーケンスにすることができないとEmacsが判断したときにキーシーケンスの終わりが検出されます。
+
+これは元のキーシーケンスがバインディングをもつかどうかに関わらず、@code{input-decode-map}や@code{key-translation-map}を適用するときに、そのようなバインディングが変換の開始を妨げることを意味します。たとえば前述のVT100の例に戻って、グローバルマップに@kbd{C-c
+@key{ESC}}を追加してみましょう。するとユーザーが@kbd{C-c @key{PF1}}をタイプしたとき、Emacsは@kbd{C-c
+@key{ESC} O P}を@kbd{C-c @key{PF1}}に変換するのに失敗するでしょう。これはEmacsが@kbd{C-x
+@key{ESC}}の直後に読み取りを停止して、@kbd{O P}が読み取られずに残るからです。この場合にはユーザーが実際に@kbd{C-c
+@key{ESC}}をタイプすると、ユーザーが実際に@kbd{@key{ESC}}を押下したのか、あるいは@kbd{@key{PF1}}を押下したのか判断するためにEmacsが待つべきではないのです。
+
+この理由によりキーシーケンスの終わりがキー変換のプレフィクスであるようなキーシーケンスをコマンドにバインドするのは、避けたほうがよいでしょう。そのような問題を起こす主なサフィックス、およびプレフィクスは@kbd{@key{ESC}}、@kbd{M-O}
+(実際は@kbd{@key{ESC} O})、@kbd{M-[} (実際は@kbd{@key{ESC} [})です。
+
+@node Key Binding Commands
+@section キーのバインドのためのコマンド
+
+  このセクションではキーバインディングを変更するための便利な対話的インターフェイスを説明します。これらは@code{define-key}を呼び出すことにより機能します。
+
+  ユーザーはinitファイルにたいしてシンプルなカスタマイズを行うとき、しばしば@code{global-set-key}を使用します。たとえば、
+
+@smallexample
+(global-set-key (kbd "C-x C-\\") 'next-line)
+@end smallexample
+
+@noindent
+または
+
+@smallexample
+(global-set-key [?\C-x ?\C-\\] 'next-line)
+@end smallexample
+
+@noindent
+または
+
+@smallexample
+(global-set-key [(control ?x) (control ?\\)] 'next-line)
+@end smallexample
+
+@noindent
+は、次の行に移動するように@kbd{C-x C-\}を再定義します。
+
+@smallexample
+(global-set-key [M-mouse-1] 'mouse-set-point)
+@end smallexample
+
+@noindent
+は、メタキーを押してマウスの第一ボタン(左ボタン)をクリックすると、クリックした箇所にポイントをセットするように再定義します。
+
+@cindex non-@acronym{ASCII} text in keybindings
+  バインドするキーのLisp指定に非@acronym{ASCII}文字のテキストを使用するときには注意してください。マルチバイトとして読み取られたテキストがあるなら、Lispファイル内でマルチバイトテキストが読み取られるときのように(@ref{Loading
+Non-ASCII}を参照)、マルチバイトとしてキーをタイプしなければなりません。たとえば、
+
+@smallexample
+(global-set-key "ö" 'my-function) ; bind o-umlaut
+@end smallexample
+
+@noindent
+または
+
+@smallexample
+(global-set-key ?ö 'my-function) ; bind o-umlaut
+@end smallexample
+
+@noindent
+をLatin-1のマルチバイト環境で使用すると、これらのコマンドはLatin-1端末から送信されたバイトコード246(@kbd{M-v})ではなく、コード246のマルチバイト文字に実際にはバインドされます。このバインディングを使用するためには適切な入力メソッド(@ref{Input
+Methods, , Input Methods, emacs, The GNU Emacs
+Manual}を参照)を使用して、キーボードをデコードする方法をEmacsに教える必要があります。
+
+@deffn Command global-set-key key binding
+この関数はカレントグローバルマップ内で@var{key}のバインディングを@var{binding}にセットする。
+
+@smallexample
+@group
+(global-set-key @var{key} @var{binding})
+@equiv{}
+(define-key (current-global-map) @var{key} @var{binding})
+@end group
+@end smallexample
+@end deffn
+
+@deffn Command global-unset-key key
+@cindex unbinding keys
+この関数はカレントグローバルマップから@var{key}のバインディングを削除する。
+
+プレフィクスとして@var{key}を使用する長いキーの定義の準備に使用するのもこの関数の1つの用途である。@var{key}が非プレフィクスのようなバインディングをもつならこの使い方は許容されないだろう。たとえば、
+
+@smallexample
+@group
+(global-unset-key "\C-l")
+    @result{} nil
+@end group
+@group
+(global-set-key "\C-l\C-l" 'redraw-display)
+    @result{} nil
+@end group
+@end smallexample
+
+この関数は以下のように@code{define-key}を使用するのと等しい:
+
+@smallexample
+@group
+(global-unset-key @var{key})
+@equiv{}
+(define-key (current-global-map) @var{key} nil)
+@end group
+@end smallexample
+@end deffn
+
+@deffn Command local-set-key key binding
+この関数はカレントローカルキーマップ内の@var{key}のバインディングを@var{binding}にセットする。
+
+@smallexample
+@group
+(local-set-key @var{key} @var{binding})
+@equiv{}
+(define-key (current-local-map) @var{key} @var{binding})
+@end group
+@end smallexample
+@end deffn
+
+@deffn Command local-unset-key key
+この関数はカレントローカルキーマップから@var{key}のバインディングを削除する。
+
+@smallexample
+@group
+(local-unset-key @var{key})
+@equiv{}
+(define-key (current-local-map) @var{key} nil)
+@end group
+@end smallexample
+@end deffn
+
+@node Scanning Keymaps
+@section キーマップのスキャン
+@cindex scanning keymaps
+@cindex keymaps, scanning
+
+  このセクションではヘルプ情報のプリントのために、すべてのカレントキーマップのスキャンに使用される関数を説明します。特定のキーマップのバインディングを表示するには@code{describe-keymap}コマンドを使用してください(@ref{Misc
+Help, , Other Help Commands, emacs, The GNU Emacs Manual}を参照)。
+
+@defun accessible-keymaps keymap &optional prefix
+この関数は、(0個以上のプレフィクスキーを通じて)@var{keymap}から到達可能なすべてのキーマップのリストをリターンする。リターン値は@code{(@var{key}
+.@:
+@var{map})}のような形式の要素をもつ連想配列(alist)である。ここで@var{key}は@var{keymap}内での定義が@var{map}であるようなプレフィクスキーである。
+
+alistの要素は@var{key}の長さにたいして昇順にソートされている。1つ目の要素は常に@code{([] .@:
+@var{keymap})}。これは指定されたキーマップがイベントなしのプレフィクスによって、自分自身からアクセス可能だからである。
+
+@var{prefix}が与えられたら、それはプレフィクスキーシーケンスである。その場合には@var{prefix}で始まるプレフィクスキーをもつサブマップだけが@code{accessible-keymaps}に含まれる。これらの要素の意味は@code{(accessible-keymaps)}の値の場合と同様であり、いくつかの要素が省略されている点だけが異なる。
+
+以下の例ではリターンされるalistにより@samp{^[}と表示されるキー@key{ESC}がプレフィクスキーであり、その定義がsparseキーマップ@code{(keymap
+(83 .@: center-paragraph)  (115 .@: foo))}であることが示される。
+
+@smallexample
+@group
+(accessible-keymaps (current-local-map))
+@result{}(([] keymap
+      (27 keymap   ; @r{以降@key{ESC}にたいするこのキーマップが繰り返されることに注意}
+          (83 . center-paragraph)
+          (115 . center-line))
+      (9 . tab-to-tab-stop))
+@end group
+
+@group
+   ("^[" keymap
+    (83 . center-paragraph)
+    (115 . foo)))
+@end group
+@end smallexample
+
+また以下の例では@kbd{C-h}は@code{(keymap (118
+.
+describe-variable)@dots{})}で始まるsparseキーマップを使用するプレフィクスキーである。他のプレフィクス@kbd{C-x
+4}は変数@code{ctl-x-4-map}の値でもあるキーマップを使用する。イベント@code{mode-line}はウィンドウの特別な箇所でのマウスイベントにたいするプレフィクスとして使用される、いくつかのダミーイベントのうちの1つである。
+
+@smallexample
+@group
+(accessible-keymaps (current-global-map))
+@result{} (([] keymap [set-mark-command beginning-of-line @dots{}
+                   delete-backward-char])
+@end group
+@group
+    ("^H" keymap (118 . describe-variable) @dots{}
+     (8 . help-for-help))
+@end group
+@group
+    ("^X" keymap [x-flush-mouse-queue @dots{}
+     backward-kill-sentence])
+@end group
+@group
+    ("^[" keymap [mark-sexp backward-sexp @dots{}
+     backward-kill-word])
+@end group
+    ("^X4" keymap (15 . display-buffer) @dots{})
+@group
+    ([mode-line] keymap
+     (S-mouse-2 . mouse-split-window-horizontally) @dots{}))
+@end group
+@end smallexample
+
+@noindent
+これらが実際に目にするであろうキーマップのすべてではない。
+@end defun
+
+@defun map-keymap function keymap
+関数@code{map-keymap}は@var{keymap}内のバインディングそれぞれにたいして1回@var{function}を呼び出す。呼び出す際の引数はイベント型と、そのバインディングの値の2つ。@var{keymap}に親キーマップがあれば、その親キーマップのバインディングも含まれる。これは再帰的に機能する。つまりその親キーマップ自身が親キーマップをもてば、それのバインディングも含まれる、といった具合である。
+
+これはキーマップ内のすべてのバインディングを検証するもっとも明快な方法である。
+@end defun
+
+@defun where-is-internal command &optional keymap firstonly noindirect no-remap
+この関数は@code{where-is}コマンド(@ref{Help, , Help, emacs,The GNU Emacs
+Manual}を参照)により使用されるサブルーチンである。これはキーマップのセット内で@var{command}にバインドされる、(任意の長さの)キーシーケンスすべてのリストをリターンする。
+
+引数@var{command}には任意のオブジェクトを指定できる。このオブジェクトはすべてのキーマップエントリーにたいして、@code{eq}を使用して比較される。
+
+@var{keymap}が@code{nil}なら、@code{overriding-local-map}の値とは無関係に(@code{overriding-local-map}の値が@code{nil}であると装って)、カレントアクティブキーマップをマップとして使用する。@var{keymap}がキーマップなら@var{keymap}とグローバルキーマップが検索されるマップとなる。@var{keymap}がキーマップのリストなら、それらのキーマップだけが検索される。
+
+@var{keymap}にたいする式としては、通常は@code{overriding-local-map}を使用するのが最善である。その場合には@code{where-is-internal}は正にアクティブなキーマップを検索する。グローバルマップだけを検索するには@var{keymap}の値に@code{(keymap)}(空のキーマップ)を渡せばよい。
+
+@var{firstonly}が@code{non-ascii}なら、値はすべての可能なキーシーケンスのリストではなく最初に見つかったキーシーケンスを表す単一のベクターとなる。@var{firstonly}が@code{t}なら、値は最初のキーシーケンスだが全体が@acronym{ASCII}文字(またはメタ修飾された@acronym{ASCII}文字)で構成されるキーシーケンスが他のすべてのキーシーケンスに優先されて、リターン値がメニューバインディングになることは決してない。
+
+@var{noindirect}が非@code{nil}なら@code{where-is-internal}は自身のコマンドを探すためにメニューアイテムの内部を調べない。これによりメニューアイテム自体の検索が可能になる。
+
+5つ目の引数@var{no-remap}はこの関数がコマンドリマッピング(@ref{Remapping
+Commands}を参照)を扱う方法を決定する。興味深いケースが2つある:
+
+@table @asis
+@item コマンド@var{other-command}が@var{command}にリマップされる場合:
+@var{no-remap}が@code{nil}なら@var{other-command}にたいするバインディングを探して、@var{command}にたいするバインディングであるかのようにそれらを扱う。@var{no-remap}が非@code{nil}ならそれらのバインディングを探すかわりに、利用可能なキーシーケンスリストにベクター@code{[remap
+@var{other-command}]}を含める。
+
+@item @var{command}が@var{other-command}にリマップされる場合:
+@var{no-remap}が@code{nil}なら、@var{command}ではなく@var{other-command}にたいするバインディングをリターンする。@var{no-remap}が非@code{nil}なら、リマップされていることを無視して@var{command}にたいするバインディングをリターンする。
+@end table
+@end defun
+
+@deffn Command describe-bindings &optional prefix buffer-or-name
+この関数はすべてのカレントキーバインディングのリストを作成して、@file{*Help*}という名前のバッファーにそれを表示する。テキストはモードごとにグループ化されて順番はマイナーモード、メジャーモード、グローバルバインディングの順である。
+
+@var{prefix}が非@code{nil}なら、それはプレフィクスキーである。その場合にはリストに含まれるのは@var{prefix}で始まるキーだけになる。
+
+複数の連続する@acronym{ASCII}コードが同じ定義をもつとき、それらは@samp{@var{firstchar}..@var{lastchar}}のようにまとめて表示される。この場合にはそれがどの文字に該当するかを理解するには、その@acronym{ASCII}コードを知っている必要がある。たとえばデフォルトグローバルマップでは文字@samp{@key{SPC}
+..@:
+~}は1行で記述される。@key{SPC}は@acronym{ASCII}の32，@kbd{~}は@acronym{ASCII}の126で、その間のすべての文字には通常のプリント文字(アルファベット文字や数字、区切り文字等)が含まれる。これらの文字はすべて@code{self-insert-command}にバインドされる。
+
+@var{buffer-or-name}が非@code{nil}のならそれはバッファーかバッファー名である。その場合は@code{describe-bindings}はカレントバッファーのかわりに、そのバッファーのバインディングをリストする。
+@end deffn
+
+@node Menu Keymaps
+@section メニューキーアップ
+@cindex menu keymaps
+
+キーマップはキーボードキーやマウスボタンにたいするバインディング定義と同様に、メニューとして操作することができます。メニューは通常はマウスにより操作されますが、キーボードでも機能させことができます。次の入力イベントにたいしてメニューキーマップがアクティブならキーボードメニュー機能がアクティブになります。
+
+@menu
+* Defining Menus::           メニューを定義するキーマップを作成する方法。
+* Mouse Menus::              ユーザーがマウスでメニューを操作する方法。
+* Keyboard Menus::           ユーザーがキーボードでメニューを操作する方法。
+* Menu Example::             シンプルなメニューの作成。
+* Menu Bar::                 メニューバーのカスタマイズ方法。
+* Tool Bar::                 イメージ行のツールバー。
+* Modifying Menus::          メニューへ新たなアイテムを追加する方法。
+* Easy Menu::                メニュー作成のための便利なマクロ。
+@end menu
+
+@node Defining Menus
+@subsection メニューの定義
+@cindex defining menus
+@cindex menu prompt string
+@cindex prompt string (of menu)
+@cindex menu item
+
+キーマップが@dfn{overallプロンプト文字列(overall prompt
+string)}をもつ場合には、そのキーマップはメニューとして動作します。overallプロンプト文字列はキーマップの要素として表される文字列です(@ref{Format
+of
+Keymaps}を参照)。この文字列にはメニューコマンドの目的を記述します。(もしあれば)Emacsはメニュー表示に使用されるツールキットに応じて、メニュータイトルにoverallメニュー文字列を表示します@footnote{これはテキスト端末のようなツールキットを使用しないメニューにたいして要求されます。}。キーボードメニューもoverallプロンプト文字列を表示します。
+
+プロンプト文字列をもつキーマップを構築するもっとも簡単な方法は@code{make-keymap}、@code{make-sparse-keymap}
+(@ref{Creating Keymaps}を参照)、@code{define-prefix-command} (@ref{Definition of
+define-prefix-command}を参照)を呼び出すときに引数として文字列を指定する方法です。キーマップをメニューとして操作したくなければ、これらの関数にたいしてプロンプト文字列を指定しないでください。
+
+@defun keymap-prompt keymap
+この関数は@var{keymap}のoverallプロンプト文字列、もしなければ@code{nil}をリターンする。
+@end defun
+
+メニューのアイテムは、そのキーマップ内のバインディングです。各バインディングはイベント型と定義を関連付けますが、イベント型はメニューの外見には何の意味ももっていません(通常はイベント型としてキーボードが生成できない擬似イベントのシンボルをメニューアイテムのバインディングに使用する)。メニュー全体はこれらのイベントにたいするキーマップ内のバインディングから生成されます。
+
+メニュー内のアイテムの順序はキーマップ内のバインディングの順序と同じです。@code{define-key}は新たなバインディングを先頭に配置するので、メニューアイテムの順序が重要ならメニューの最後から先頭へメニューアイテムを定義する必要があります。既存のメニューにアイテムを追加するときには、@code{define-key-after}を使用してメニュー内の位置を指定できます(@ref{Modifying
+Menus}を参照)。
+
+@menu
+* Simple Menu Items::        単純なメニューのキーバインディング。
+* Extended Menu Items::      複雑なメニューアイテムの定義。
+* Menu Separators::          メニューに水平ラインを描画する。
+* Alias Menu Items::         メニューアイテムにコマンドエイリアスを使用する。
+@end menu
+
+@node Simple Menu Items
+@subsubsection 単純なメニューアイテム
+
+  メニューアイテムを定義するシンプル(かつ初歩的)な方法は、何らかのイベント型(何のイベント型かは問題ではない)を以下のようにバインドすることです:
+
+@example
+(@var{item-string} . @var{real-binding})
+@end example
+
+@noindent
+@sc{car}の@var{item-string}はメニュー内で表示される文字列です。これは短いほうが望ましく、1個から3個の単語が望ましいでしょう。この文字列は対応するコマンドの動作を記述します。すべてのグラフィカルツールキットが非@acronym{ASCII}テキストを表示できる訳ではないことに注意してください(キーボードメニューとGTK+ツールキットの大部分では機能するだろう)。
+
+  以下のようにヘルプ文字列と呼ばれる2つ目の文字列を与えることもできます:
+
+@example
+(@var{item-string} @var{help} . @var{real-binding})
+@end example
+
+@noindent
+@var{help}はマウスがそのアイテム上にあるときに、@code{help-echo}テキストプロパティ(@ref{Help
+display}を参照)と同じ方法で表示されるhelp-echo文字列を指定します。
+
+  @code{define-key}に関する限り、@var{item-string}と@var{help-string}はそのイベントのバインディングの一部です。しかし@code{lookup-key}は単に@var{real-binding}だけをリターンし、そのキーの実行には@var{real-binding}だけが使用されます。
+
+  @var{real-binding}が@code{nil}なら@var{item-string}はメニューに表示されますが選択できません。
+
+  @var{real-binding}がシンボルで@code{menu-enable}プロパティが非@code{nil}なら、そのプロパティはメニューアイテムが有効か無効かを制御する式です。メニュー表示にキーマップが使用されるたびにEmacsはその式を評価して、式の値が非@code{nil}の場合のみそのメニューのメニューアイテムを有効にします。メニューアイテム無効なときには、そのアイテムはfuzzy形式で表示されて選択できなくなります。
+
+  メニューバーはメニューを調べる際にどのアイテムが有効かを再計算しません。これはXツールキットが事前にメニュー全体を要求するからです。メニューバーの再計算を強制するには@code{force-mode-line-update}を呼び出してください(@ref{Mode
+Line Format}を参照)。
+
+@node Extended Menu Items
+@subsubsection 拡張メニューアイテム
+@kindex menu-item
+@cindex extended menu item
+
+  メニューアイテムの拡張フォーマットは、単純なフォーマットに比べてより柔軟かつ明快です。拡張フォーマットではシンボル@code{menu-item}で始まるリストでイベント型を定義します。選択できない文字列にたいしては以下のようなバインディングになります:
+
+@example
+(menu-item @var{item-name})
+@end example
+
+@noindent
+2つ以上のダッシュで始まる文字列はリストのセパレーターを指定します。@ref{Menu Separators}を参照してください。
+
+  選択可能な実際のメニューアイテムを定義するには以下のような拡張フォーマットでバインドします:
+
+@example
+(menu-item @var{item-name} @var{real-binding}
+    . @var{item-property-list})
+@end example
+
+@noindent
+ここで@var{item-name}はメニューアイテム文字列に評価される式。つまり文字列は定数である必要はない。
+
+3つ目の引数@var{real-binding}は実行するコマンドでもよい(この場合には通常のメニューアイテムを取得する)。キーマップでもよく、この場合には結果はサブメニューとなり、@var{item-name}はサブメニュー名として使用される。最後に@code{nil}でもよく、この場合には選択不可なメニューアイテクを取得する。これは主に区切り線のようなものの作成時に有用。
+
+リスト末尾@var{item-property-list}はその他の情報を含むプロパティリストの形式をもつ。
+
+  以下はサポートされるプロパティのテーブルです:
+
+@table @code
+@item :enable @var{form}
+@var{form}の評価結果はそのアイテムを有効にするかどうかを決定する(非@code{nil}なら有効)。アイテムが無効なら▽まったくクリックできない。
+
+@item :visible @var{form}
+@var{form}の評価結果はそのアイテムを実際にメニューに表示するかどうかを決定する(非@code{nil}なら表示)。アイテムが非表示ならそのアイテムが定義されていないかのようにメニューが表示される。
+
+@item :help @var{help}
+このプロパティ@var{help}の値はそのアイテム上にマウスがある間に表示するhelp-echo文字列を指定する。この文字列は@code{help-echo}テキストプロパティ(@ref{Help
+display}を参照)と同じ方法で表示される。これはテキストやoverlayにたいする@code{help-echo}プロパティとは異なり、文字列定数でなければならないことに注意。
+
+@item :button (@var{type} . @var{selected})
+このプロパティはラジオボタンとトグルボタンを定義する手段を提供する。@sc{car}の@var{type}には、@code{:toggle}か@code{:radio}のいずれかを指定する。@sc{cdr}の@var{selected}はフォームで、評価結果によってそのボタンがカレントで選択されているかどうかを指定する。
+
+@dfn{トグル(toggle)}は@var{selected}の値に応じてonかoffのいずれかがラベルされるメニューアイテムである。コマンド自身は@var{selected}が@code{nil}なら@code{t}、@code{t}なら@code{nil}に@var{selected}を切り替える(toggleする)こと。以下は@code{debug-on-error}フラグが定義されているときにメニューアイテムをトグルする方法の例:
+
+@example
+(menu-item "Debug on Error" toggle-debug-on-error
+           :button (:toggle
+                    . (and (boundp 'debug-on-error)
+                           debug-on-error)))
+@end example
+
+@noindent
+これは@code{toggle-debug-on-error}が変数@code{debug-on-error}をトグルするコマンドとして定義されていることによって機能する。
+
+@dfn{ラジオボタン}とはメニューアイテムのグループであり、常にただ1つのメニューアイテムだけが選択される(selected)。そのためにはどのメニューアイテムが選択されているかを示す変数が存在する必要がある。グループ内の各ラジオボタンにたいする@var{selected}フォームは、そのボタンを選択するためにその変数が正しい値をもつかどうかをチェックする。そしてボタンのクリックにより変数をセットして、クリックされたボタンが選択される。
+
+@item :key-sequence @var{key-sequence}
+このプロパティは等価なキーボード入力として表示するキーシーケンスを指定する。Emacsはメニューに@var{key-sequence}を表示する前に、真に@var{key-sequence}がそのメニューアイテムと等価か検証するので、これは正しいキーシーケンスを指定した場合のみ効果をもつ。@var{key-sequence}にたいする@code{nil}の指定は@code{:key-sequence}属性が存在しないことに等しい。
+
+@item :keys @var{string}
+このプロパティはそのメニューにたいする等価なキーボード入力として表示される文字列@var{string}を指定する。@var{string}内ではドキュメント構文@samp{\\[...]}を使用できる。
+
+@item :filter @var{filter-fn}
+このプロパティはメニューアイテムを直接計算する手段を提供する。このプロパティの値@var{filter-fn}は引数が1つの関数で、呼び出し時の引数は@var{real-binding}。この関数はかわりに使用するバインディングをリターンすること。
+
+Emacs、メニューデータ構造の再表示や操作を行うすべてのタイミングでこの関数を呼び出すかもしれないので、いつ呼び出されても安全なように関数を記述すること。
+@end table
+
+@node Menu Separators
+@subsubsection メニューセパレーター
+@cindex menu separators
+
+  メニューセパレーターはテキストを表示するかわりに、水平ラインでメニューをサブパーツに分割するメニューアイテムの一種です。メニューキーマップ内でセパレーターは以下のように見えるでしょう:
+
+@example
+(menu-item @var{separator-type})
+@end example
+
+@noindent
+ここで@var{separator-type}は2つ以上のダッシュで始まる文字列です。
+
+  もっとも単純なケースではダッシュだけで@var{separator-type}が構成されます。これはデフォルトのセパレーターを指定します(互換性のため@code{""}と@code{-}もセパレーターとみなされる)。
+
+  @var{separator-type}にたいする他の特定の値は、異なるスタイルのセパレーターを指定します。以下はそれらのテーブルです:
+
+@table @code
+@item "--no-line"
+@itemx "--space"
+実際のラインではない余分な垂直スペース。
+
+@item "--single-line"
+メニューのforegroundカラーの一重ライン。
+
+@item "--double-line"
+メニューのforegroundカラーの二重ライン。
+
+@item "--single-dashed-line"
+メニューのforegroundカラーの一重ダッシュライン。
+
+@item "--double-dashed-line"
+メニューのforegroundカラーの二重ダッシュライン。
+
+@item "--shadow-etched-in"
+3Dの窪んだ外観(3D sunken appearance)をもつ一重ライン。これはダッシュだけで構成されるセパレーターに使用されるデフォルト。
+
+@item "--shadow-etched-out"
+3Dの浮き上がった外観(3D raised appearance)をもつ一重ライン。
+
+@item "--shadow-etched-in-dash"
+3Dの窪んだ外観(3D sunken appearance)をもつ一重ダッシュライン。
+
+@item "--shadow-etched-out-dash"
+3Dの浮き上がった外観(3D raised appearance)をもつ一重ダッシュライン。
+
+@item "--shadow-double-etched-in"
+3Dの窪んだ外観をもつ二重ライン。
+
+@item "--shadow-double-etched-out"
+3Dの浮き上がった外観をもつ二重ライン。
+
+@item "--shadow-double-etched-in-dash"
+3Dの窪んだ外観をもつ二重ダッシュライン。
+
+@item "--shadow-double-etched-out-dash"
+3Dの浮き上がった外観をもつ二重ダッシュライン。
+@end table
+
+  2連ダッシュの後にコロンを追加して1連ダッシュの後の単語の先頭の文字を大文字にすることによって、別のスタイルで名前を与えることもできます。つまり@code{"--:singleLine"}は@code{"--single-line"}と等価です。
+
+  メニューセパレーターにたいして@code{:enable}や@code{:visible}のようなキーワードを指定するために長い形式を使用できます。
+
+@code{(menu-item @var{separator-type} nil . @var{item-property-list})}
+
+たとえば:
+
+@example
+(menu-item "--" nil :visible (boundp 'foo))
+@end example
+
+  いくつかのシステムとディスプレイツールキットは、これらすべてのセパレータータイプを実際に処理しません。サポートされていないタイプのセパレーターを使用すると、メニューはサポートされている似た種別のセパレーターを表示します。
+
+@node Alias Menu Items
+@subsubsection メニューアイテムのエイリアス
+
+  同じコマンドを使用するものの有効条件が異なるメニューアイテムを作成できれば便利な場合が時折あります。Emacsでこれを行う最善の方法は拡張メニューアイテム(extended
+menu
+item)です。この機能が存在する以前にはエイリアスコマンドを定義して、それらをメニューアイテムで使用することによってこれを行っていました。以下は@code{read-only-mode}にたいして2つのエイリアスを作成して、それらに異なる有効条件を与える例です:
+
+@example
+(defalias 'make-read-only 'read-only-mode)
+(put 'make-read-only 'menu-enable '(not buffer-read-only))
+(defalias 'make-writable 'read-only-mode)
+(put 'make-writable 'menu-enable 'buffer-read-only)
+@end example
+
+メニュー内でエイリアスを使用するときには、エイリアスではなく実際のコマンド名にたいする等価なキーバインディングを表示する方が便利な場合が多々あります(エイリアスは通常はメニュー自身を除いてキーバインディングをもたない)。これを要求するにはエイリアスシンボルの@code{menu-alias}プロパティに非@code{nil}を与えます。したがって、
+
+@example
+(put 'make-read-only 'menu-alias t)
+(put 'make-writable 'menu-alias t)
+@end example
+
+@noindent
+は@code{make-read-only}と@code{make-writable}にたいするメニューアイテムに@code{read-only-mode}のキーバインディングを表示します。
+
+@node Mouse Menus
+@subsection メニューとマウス
+
+  メニューキーマップがメニューを生成する通常の方法は、それをプレフィクスキーの定義とすることです(Lispプログラムは明示的にメニューをポップアップしてユーザーの選択を受け取ることができる。@ref{Pop-Up
+Menus}を参照)。
+
+  プレフィクスキーがマウスイベントで終わる場合には、Emacsはユーザーがマウスで選択できるように可視なメニューをポップアップすることによってメニューキーマップを処理します。ユーザーがメニューアイテムをクリックしたときは、そのメニューアイテムによりもたらされるバインディングの文字やシンボルが何であれイベントが生成されます(メニューが複数レベルをもつ場合やメニューバー由来ならメニューアイテムは1連のイベントを生成するかもしれない)。
+
+  メニューのトリガーにbutton-downイベントを使用するのが最善な場合もしばしばあります。その場合にはユーザーはマウスボタンをリリースすることによってメニューアイテムを選択できます。
+
+@cindex submenu
+  メニューキーマップがネストされたキーマップにたいするバインディングを含む場合、そのネストされたキーマップは@dfn{サブメニュー(submenu)}を指定します。それはネストされたキーマップのアイテム文字列によってラベル付けされれメニューアイテムをもち、そのアイテムをクリックすることによって指定されたサブメニューが自動的にポップアップされます。特別な例外としてメニューキーマップが単一のネストされたキーマップを含み、それ以外のメニューアイテムを含まなければ、そのメニューはネストされたキーマップの内容をサブメニューとしてではなく直接メニューに表示します。
+
+  しかしXツールキットのサポートなしでEmacsをコンパイルした場合、またはテキスト端末の場合にはサブメニューはサポートされません。ネストされたキーマップはメニューアイテムとして表示されますが、それをクリックしてもサブメニューは自動的にポップアップされません。サブメニューの効果を模倣したければ、ネストされたキーマップに@samp{@@}で始まるアイテム文字列を与えることによってこれを行うことができます。これによりEmacsは別個の@dfn{メニューペイン(menu
+pane)}を使用してネストされたキーマップを表示します。@samp{@@}の後の残りのアイテム文字列はそのペインのラベルです。XツールキットのサポートなしでEmacsをコンパイルした場合、またはメニューがテキスト端末で表示されている場合にはメニューペインは使用されません。この場合はアイテム文字列の先頭の@samp{@@}は、メニューラベル表示時には省略されて他に効果はありません。
+
+@node Keyboard Menus
+@subsection メニューとキーボード
+
+  キーボードイベント(文字かファンクションキー)で終わるプレフィクスキーがメニューキーマップであるような定義をもつときには、そのキーマップはキーボードメニューのように動作します。ユーザーはキーボードでメニューアイテムを選択して次のイベントを指定します。
+
+  Emacsはエコーエリアにキーボードメニュー、そのマップのoverallプロンプト文字列、その後に選択肢(そのマップのバインディングのアイテム文字列)を表示します。そのバインディングを一度に全部表示できない場合、ユーザーは@key{SPC}をタイプして候補の次の行を確認できます。連続して@key{SPC}を使用するとメニューの最後に達して、その後は先頭へ巡回します(変数@code{menu-prompt-more-char}はこのために使用する文字を指定する。デフォルトは@key{SPC})。
+
+  ユーザーがメニューから望ましい候補を見つけたら、バインディングがその候補であるような対応する文字をタイプする必要があります。
+
+@defvar menu-prompt-more-char
+この変数はメニューの次の行を確認するために使用する文字を指定する。初期値は32でこれは@key{SPC}のコード。
+@end defvar
+
+@node Menu Example
+@subsection メニューの例
+@cindex menu definition example
+
+  以下はメニューキーマップを定義する完全な例です。これはメニューバー内の@samp{Edit}メニューにサブメニュー@samp{Replace}を定義して、その定義内で拡張メニューフォーマット(@ref{Extended
+Menu Items}を参照)を使用します。例ではまずキーマップを作成してそれに名前をつけています:
+
+@smallexample
+(defvar menu-bar-replace-menu (make-sparse-keymap "Replace"))
+@end smallexample
+
+@noindent
+次にメニューアイテムを定義します:
+
+@smallexample
+(define-key menu-bar-replace-menu [tags-repl-continue]
+  '(menu-item "Continue Replace" multifile-continue
+              :help "Continue last tags replace operation"))
+(define-key menu-bar-replace-menu [tags-repl]
+  '(menu-item "Replace in tagged files" tags-query-replace
+              :help "Interactively replace a regexp in all tagged files"))
+(define-key menu-bar-replace-menu [separator-replace-tags]
+  '(menu-item "--"))
+;; @r{@dots{}}
+@end smallexample
+
+@noindent
+バインディングがそのシンボルのために作成されることに注意してください。これらのシンボルは定義されるキーシーケンス内の角カッコ内に記述されます。このシンボルはコマンド名と同じときもあれば異なることもあります。これらのシンボルはファンクションキーとして扱われますが、これらはキーボード上の実際のファンクションキーではありません。これらはメニュー自体の機能に影響しませんが、ユーザーがメニューから選択したときにエコーエリアにエコーされて、@code{where-is}と@code{apropos}の出力に現れます。
+
+  この例のメニューはマウスによる使用を意図しています。もしキーボードの使用を意図したメニュー、つまりキーボードイベントで終了するキーシーケンスにバインドされたメニューの場合には、メニューアイテムはキーボードでタイプできる文字、または本当のファンクションキーにバインドされるべきです。
+
+  定義が@code{("--")}のバインディングはセパレーターラインです。実際のメニューアイテムと同様にセパレーターはキーシンボルをもち、この例では@code{separator-replace-tags}です。1つのメニューが2つのセパレーターをもつ場合には、それらは2つの異なるキーシンボルをもたなければなりません。
+
+  以下では親メニュー内のアイテムとしてこのメニューがどのように表示されるかを記述しています:
+
+@example
+(define-key menu-bar-edit-menu [replace]
+  (list 'menu-item "Replace" menu-bar-replace-menu))
+@end example
+
+@noindent
+これはシンボル@code{menu-bar-replace-menu}自体ではなく、変数@code{menu-bar-replace-menu}の値であるサブメニューキーマップを組み込むことに注意してください。@code{menu-bar-replace-menu}はコマンドではないので親メニューアイテムにそのシンボルを使用するのは無意味です。
+
+  同じreplaceメニューをマウスクリックに割り当てたければ以下のようにしてこれを行うことができます:
+
+@example
+(define-key global-map [C-S-down-mouse-1]
+   menu-bar-replace-menu)
+@end example
+
+@node Menu Bar
+@subsection メニューバー
+@cindex menu bar
+
+  Emacsは通常は各フレームの最上部に@dfn{メニューバー(menu bar)}を表示します。@ref{Menu Bars,,,emacs, The
+GNU Emacs
+Manual}を参照してください。メニューバーのアイテムはアクティブキーマップ内で定義される偽りのファンクションキー@key{MENU-BAR}のサブコマンドです。
+
+  メニューバーにアイテムを追加するには、自分で偽りのファンクションキー(これを@var{key}と呼ぶこととする)を創作して、キーシーケンス@code{[menu-bar
+@var{key}]}にたいするキーバインディングを作成します。ほとんどの場合において、そのバインディングはメニューキーマップなので、メニューバーアイテム上でボタンを押下すると他のメニューに導かれます。
+
+  メニューバーにたいして同じファンクションキーを定義するアクティブなキーマップが1つ以上存在するとき、そのアイテムは一度だけ出現します。ユーザーがメニューバーのそのアイテムをクリックすると、そのアイテムのすべてのサブコマンド、すなわちグローバルサブコマンド、ローカルサブコマンド、マイナーモードサブコマンドが組み合わされた単一のメニューを表示します。
+
+  変数@code{overriding-local-map}は通常はメニューバーのコンテンツを決定する際は無視されます。つまりメニューバーは@code{overriding-local-map}が@code{nil}の場合にアクティブになるであろうキーマップから計算されます。@ref{Active
+Keymaps}を参照してください。
+
+  以下はメニューバーのアイテムをセットアップする例です:
+
+@example
+@group
+;; @r{(プロンプト文字列とともに)メニューキーマップを作成して}
+;; @r{それをメニューバーアイテムの定義にする}
+(define-key global-map [menu-bar words]
+  (cons "Words" (make-sparse-keymap "Words")))
+@end group
+
+@group
+;; @r{メニュー内に具体的なサブコマンドを定義する}
+(define-key global-map
+  [menu-bar words forward]
+  '("Forward word" . forward-word))
+@end group
+@group
+(define-key global-map
+  [menu-bar words backward]
+  '("Backward word" . backward-word))
+@end group
+@end example
+
+  ローカルキーマップはグローバルキーマップにより作成されたメニューバーアイテムにたいして、同じ偽ファンクションキーを@code{undefined}にリバインドしてキャンセルすることができます。たとえば以下はDiredが@samp{Edit}メニューバーアイテムを抑制する方法です:
+
+@example
+(define-key dired-mode-map [menu-bar edit] 'undefined)
+@end example
+
+@noindent
+ここで@code{edit}はメニューバーアイテム@samp{Edit}にたいしてグローバルキーマップが使用する偽ファンクションキーが生成するシンボルです。グローバルメニューバーアイテムを抑制する主な理由は、モード特有のアイテムのためのスペースを確保するためです。
+
+@defvar menu-bar-final-items
+メニューバーは通常はローカルマップで定義されるアイテムを終端にもつグローバルアイテムを表示する。
+
+この変数は通常の順番による位置ではなく、メニューの最後に表示するアイテムのための偽ファンクションキーのリストを保持する。デフォルト値は@code{(help-menu)}。したがって@samp{Help}メニューアイテムはメニューバーの最後、ローカルメニューアイテムの後に表示される。
+@end defvar
+
+@defvar menu-bar-update-hook
+このノーマルフックはメニューバーの再表示の前に、メニューバーのコンテンツ更新のための再表示によって実行される。コンテンツを変化させる必要があるメニューの更新に使用できる。このフックは頻繁に実行されるので、フックが呼び出す関数は通常は長い時間を要さないことを確実にするよう助言する。
+@end defvar
+
+Emacsはすべてのメニューバーアイテムの隣に、(もしそのようなキーバインディングが存在するなら)同じコマンドを実行するキーバインディングを表示します。これはキーバインディングを知らないユーザーにたいして有用なヒントを与える役目をもちます。コマンドが複数のバインディングをもつ場合、Emacsは通常は最初に見つけたバインディングを表示します。コマンドのシンボルプロパティ@code{:advertised-binding}に割り当てることによって特定のキーバインディングを指定できます。@ref{Keys
+in Documentation}を参照してください。
+
+@node Tool Bar
+@subsection ツールバー
+@cindex tool bar
+
+  @dfn{ツールバー(tool bar)}とはフレームの最上部、メニューバー直下にあるクリック可能なアイコンの行のことです。@ref{Tool
+Bars,,,emacs, The GNU Emacs
+Manual}を参照してください。Emacsは通常はグラフィカルなディスプレイ上でツールバーを表示します。
+
+  各フレームではツールバーに何行分の高さを割り当てるかをフレームパラメーター@code{tool-bar-lines}で制御します。値0はツールバーを抑制します。値が非0で@code{auto-resize-tool-bars}が非@code{nil}なら、指定されたコンテンツを維持するのに必要な分、ツールバーは拡大縮小されます。値が@code{grow-only}ならツールバーは自動的に拡大されますが、自動的に縮小はされません。
+
+  ツールバーのコンテンツは、(メニューバーが制御されるのと似た方法により)
+@key{TOOL-BAR}と呼ばれる偽りのファンクションキーに割り当てられたメニューキーマップにより制御されます。したがって以下のように@code{define-key}を使用してツールバーアイテムを定義します。
+
+@example
+(define-key global-map [tool-bar @var{key}] @var{item})
+@end example
+
+@noindent
+ここで@var{key}はそのアイテムを他のアイテムと区別する偽ファンクションキー、@var{item}はそのアイテムを表示する方法とアイテムの振る舞いを示すメニューアイテムキーバインディングです(@ref{Extended
+Menu Items}を参照)。
+
+  メニューキーマップの通常のプロパティ@code{:visible}、@code{:enable}、@code{:button}、@code{:filter}はツールバーバインディングでも有用で、いずれのプロパティも通常通りの意味をもちます。アイテム内の@var{real-binding}はキーマップではなくコマンドでなければなりません。言い換えるとこれはツールバーアイコンをプレフィクスキーとして定義するようには機能しないということです。
+
+  @code{:help}プロパティは、そのアイテム上にマウスがある間表示するhelp-echo文字列を指定します。これはテキストプロパティ@code{help-echo}と同じ方法で表示されます(@ref{Help
+display}を参照)。
+
+  これらに加えて@code{:image}プロパティも使用するべきでしょう。ツールバー内にイメージを表示するにはこのプロパティを使用します。
+
+@table @code
+@item :image @var{image}
+@var{image}は単一イメージ様式(single image specification)か4ベクターイメージ様式(vector of four
+image
+specifications)で指定する(@ref{Images}を参照)。4ベクターを使用する場合には状況に応じて以下のいずれかが使用される:
+
+@table @asis
+@item item 0
+アイテムが有効かつ選択されているときに使用。
+@item item 1
+アイテムが有効かつ未選択のときに使用。
+@item item 2
+アイテムが無効かつ選択されているときに使用。
+@item item 3
+アイテムが無効かつ未選択のときに使用。
+@end table
+@end table
+
+GTK+バージョンとNSバージョンのEmacsは、無効および/または未選択のイメージをitem0から自動的に計算するので、item1からitem3は無視されます。
+
+@var{image}が単一イメージ様式なあ、Emacsはそのイメージにエッジ検出アルゴリズム(edge-detection
+algorithm)を適用することによってツールバーの無効な状態のボタンを描画します。
+
+@code{:rtl}プロパティには右から左に記述する言語のためのイメージ候補を指定します。これをサポートするのは現在のところGTK+バージョンのEmacsだけです。
+
+メニューバーと同様、ツールバーはセパレーター(@ref{Menu
+Separators}を参照)を表示できます。ツールバーのセパレーターは水平ラインではなく垂直ラインであり、1つのスタイルだけがサポートされます。これらはツールバーキーマップ内では@code{(menu-item
+"--")}エントリーで表されます。ツールバーのセパレーターでは、@code{:visible}のようなプロパティはサポートされません。GTK+とNextstepのツールバーでは、セパレーターはネイティブに描画されます。それ以外ではセパレーターは垂直ラインイメージを使用して描画されます。
+
+デフォルトツールバーはコマンドシンボルの@code{mode-class}プロパティに@code{special}をもつメジャーモードにたいしては、編集に特化したアイテムは表示しないよう定義されています(@ref{Major
+Mode Conventions}を参照)。メジャーモードは、ローカルマップ内でバインディング@code{[tool-bar
+@var{foo}]}によって、グローバルバーにアイテムを追加するかもしれません。デフォルトツールバーの多くを適宜流用するのができないかもしれないので、デフォルトツールバーを完全に置き換えることは、いくつかのメジャーモードにとっては有意義です。デフォルトバインディングで@code{tool-bar-map}を通じてインダイレクトすることにより、これを簡単に行うことができます。
+
+@defvar tool-bar-map
+デフォルトではグローバルマップは@code{[tool-bar]}を以下のようにバインドする:
+
+@example
+(global-set-key [tool-bar]
+                `(menu-item ,(purecopy "tool bar") ignore
+                            :filter tool-bar-make-keymap))
+@end example
+
+@noindent
+関数@code{tool-bar-make-keymap}は、変数@code{tool-bar-map}の値より順番に実際のツールバーマップをダイナミックに継承する。したがって通常はそのマップを変更することにより、デフォルト(グローバル)ツールバーを調整すること。Infoモードのようないくつかのメジャーモードは、@code{tool-bar-map}をバッファーローカルにして、それに異なるキーマップをセットすることによりグローバルツールバーを完全に置き換える。
+@end defvar
+
+以下のようなツールバーアイテムを定義するのに便利な関数があります。
+
+@defun tool-bar-add-item icon def key &rest props
+この関数は@code{tool-bar-map}を変更することにより、ツールバーにアイテムを追加する。使用するイメージは@var{icon}により定義され、これは@code{find-image}に配置されたXPM、XBM、PBMのイメージファイルの拡張子を除いたファイル名(basename)である。たとえばカラーディスプレイ上では、値に@samp{"exit"}を与えると@file{exit.xpm}、@file{exit.pbm}、@file{exit.xbm}の順に検索されるだろう。モノクロディスプレイでは検索は@samp{.pbm}、@samp{.xbm}、@samp{.xpm}の順になる。使用するバインディングはコマンド@var{def}で、@var{key}はプレフィクスキーマップ内の偽ファンクションキーである。残りの引数@var{props}はメニューアイテム仕様に追加する追加のプロパティリスト要素である。
+
+あるローカルマップ内にアイテムを定義するためには、この関数呼び出しの周囲の@code{let}で@code{tool-bar-map}をバインドする:
+@example
+(defvar foo-tool-bar-map
+  (let ((tool-bar-map (make-sparse-keymap)))
+    (tool-bar-add-item @dots{})
+    @dots{}
+    tool-bar-map))
+@end example
+@end defun
+
+@defun tool-bar-add-item-from-menu command icon &optional map &rest props
+この関数は既存のメニューバインディングと矛盾しないツールバーアイテムの定義に有用。@var{command}のバインディングは@var{map}(デフォルトは@code{global-map})内よりルックアップ(lookup:
+照合)され、@var{icon}にたいするイメージ仕様は@code{tool-bar-add-item}と同じ方法で見つけ出される。結果のバインディングは@code{tool-bar-map}に配置されるので、この関数の使用はグローバルツールバーアイテムに限定される。
+
+@var{map}には@code{[menu-bar]}にバインドされた適切なキーマップが含まれていなければならない。残りの引数@var{props}はメニューアイテム仕様に追加する追加のプロパティリスト要素。
+@end defun
+
+@defun tool-bar-local-item-from-menu command icon in-map &optional from-map &rest props
+この関数は非グローバルツールバーアイテムの作成に使用される。@var{in-map}に定義を作成するローカルマップを指定する以外は@code{tool-bar-add-item-from-menu}と同じように使用する。引数@var{from-map}は@code{tool-bar-add-item-from-menu}の@var{map}と同様。
+@end defun
+
+@defvar auto-resize-tool-bars
+この変数が非@code{nil}なら定義されたすべてのツールバーアイテムを表示するためにツールバーは自動的にリサイズされるが、そのフレーム高さの1/4を超えてリサイズされることはない。
+
+値が@code{grow-only}ならツールバーは自動的に拡張されるが縮小はされない。ツールバーを縮小するためにユーザーは@kbd{C-l}をエンターしてフレームを再描画する必要がある。
+
+GTK+やNextstepとともにEmacsがビルドされた場合には、ツールバーが表示できるのは1行だけであり、この変数は効果がない。
+@end defvar
+
+@defvar auto-raise-tool-bar-buttons
+この変数が非@code{nil}ならツールバーアイテム上をマウスが通過したとき、浮き上がった形式(raised form)で表示される。
+@end defvar
+
+@defvar tool-bar-button-margin
+この変数はツールバーアイテムの周囲に追加する余白(extra margin)を指定する。値はピクセル数を整数で指定する。デフォルトは4。
+@end defvar
+
+@defvar tool-bar-button-relief
+この変数はツールバーアイテムの影(shadow)を指定する。値はピクセル数を整数で指定する。デフォルトは1。
+@end defvar
+
+@defvar tool-bar-border
+この変数はツールバーエリアの下に描画するボーダー高さを指定する。値が整数なら高さのピクセル数。値が@code{internal-border-width}(デフォルト)か@code{border-width}のいずれかなら、ツールバーのボーダー高さはそのフレームの対応するパラメーターとなる。
+@end defvar
+
+  シフトやメタ等の修飾キーを押下した状態でのツールバーアイテムのクリックに特別な意味を付与できます。偽りのファンクションキーを通じて元のアイテムに関連する追加アイテムをセットアップすることによって、これを行うことができます。より具体的には追加アイテムは、元のアイテムの命名に使用されたのと同じ偽ファンクションキーの修飾されたバージョンを使用するべきです。
+
+  つまり元のアイテムが以下のように定義されていれば、
+
+@example
+(define-key global-map [tool-bar shell]
+  '(menu-item "Shell" shell
+              :image (image :type xpm :file "shell.xpm")))
+@end example
+
+@noindent
+シフト修飾とともに同じツールバーイメージをクリックしたときを以下のような方法で定義することができます:
+
+@example
+(define-key global-map [tool-bar S-shell] 'some-command)
+@end example
+
+ファンクションキーに修飾を追加する方法についての詳細な情報は、@ref{Function Keys}を参照してください。
+
+ツールバーアイテムが有効か、あるいは無効かどうかを変更する関数をもっている場合には、その状態は視覚的に即座に更新される必要はありません。ツールバーの再計算を強制するには@code{force-mode-line-update}を呼び出してください(@ref{Mode
+Line Format}を参照)。
+
+@node Modifying Menus
+@subsection メニューの変更
+@cindex menu modification
+
+  既存のメニューに新たなアイテムを挿入するときは、そのメニューの既存のアイテムの中の特定の位置にアイテムを追加したいと思うかもしれません。@code{define-key}を使用してアイテムを追加すると、そのアイテムは通常はメニューの先頭に追加されます。メニュー内の他の位置にアイテムを追加するには@code{define-key-after}を使用します:
+
+@defun define-key-after map key binding &optional after
+@code{define-key}と同じように@var{map}内に@var{key}にたいする値@var{binding}のバインディングを定義するが、@var{map}内でのバインディング位置はイベント@var{after}のバインディングの後になる。引数@var{key}は長さ1
+--- 1要素だけのベクターか文字列にすること。しかし@var{after}は単一のイベント型 ---
+シーケンスではないシンボルか文字にすること。新たなバインディングは@var{after}のバインディングの後に追加される。@var{after}が@code{t}または省略された場合には、新たなバインディングはそのキーマップの最後に追加される。しかし新たなバインディングは継承されたすべてのキーマップの前に追加される。
+
+以下は例:
+
+@example
+(define-key-after my-menu [drink]
+  '("Drink" . drink-command) 'eat)
+@end example
+
+@noindent
+これは偽ファンクションキー@key{DRINK}のバインディングを作成して、@key{EAT}のバインディングの直後に追加する。
+
+以下はShellモードの@samp{Signals}メニュー内のアイテム@code{break}の後に@samp{Work}と呼ばれるアイテムを追加する方法:
+
+@example
+(define-key-after
+  (lookup-key shell-mode-map [menu-bar signals])
+  [work] '("Work" . work-command) 'break)
+@end example
+@end defun
+
+@node Easy Menu
+@subsection easy-menu
+
+  以下のマクロはポップアップメニューおよび/またはメニューバーメニューを定義する便利な方法を提供します。
+
+@defmac easy-menu-define symbol maps doc menu
+このマクロは@var{menu}により与えるコンテンツのポップアップメニューおよび/またはメニューバーサブメニューを定義する。
+
+@var{symbol}が非@code{nil}なら、それはシンボルである。その場合、このマクロはドキュメント文字列@var{doc}をもつ、メニューをポップアップ(@ref{Pop-Up
+Menus}を参照)する関数として@var{symbol}を定義する。@var{symbol}はクォートしないこと。
+
+@var{symbol}の値とは関係なく、@var{maps}がキーマップならメニューはメニューバーのトップレベルのメニュー(@ref{Menu
+Bar}を参照)として@var{maps}に追加される。これにはキーマップのリストも指定でき、その場合メニューはそれらのキーマップに個別に追加される。
+
+@var{menu}の最初の要素は文字列でなければならず、それはメニューラベルの役割をもつ。値には以下のキーワード/引数ペアーが任意の個数続くかもしれない:
+
+@table @code
+@item :filter @var{function}
+@var{function}は1つの引数(他のメニューアイテムのリスト)で呼び出される関数でなければならず、メニュー内に表示される実際のアイテムをリターンする。
+
+@item :visible @var{include}
+@var{include}には式を指定する。その式が@code{nil}に評価されるとメニューは不可視になる。@code{:included}は@code{:visible}にたいするエイリアス。
+
+@item :active @var{enable}
+@var{enable}は式を指定する。その式が@code{nil}に評価されるとメニューは選択不可になる。@code{:enable}は@code{:active}にたいするエイリアス。
+@end table
+
+@var{menu}内の残りの要素はメニューアイテム。
+
+メニューアイテムには3要素のベクター@code{[@var{name} @var{callback}
+@var{enable}]}を指定できる。ここで@var{name}はメニューアイテム名(文字列)、@var{callback}はアイテム選択時に実行するコマンドか評価される式。@var{enable}が式で@code{nil}に評価されると、そのアイテムの選択は無効になる。
+
+かわりにメニューアイテムは以下の形式をもつことができる:
+
+@smallexample
+   [ @var{name} @var{callback} [ @var{keyword} @var{arg} ]... ]
+@end smallexample
+
+@noindent
+ここで@var{name}と@var{callback}は上記と同じ意味をもち、オプションの@var{keyword}と@var{arg}の各ペアーは以下のいずれかである:
+
+@table @code
+@item :keys @var{keys}
+@var{keys}はメニューアイテムにたいする等価なキーボード入力として表示する文字列。等価なキーボード入力は自動的に計算されるので通常は必要ない。@var{keys}は表示前に@code{substitute-command-keys}により展開される(@ref{Keys
+in Documentation}を参照)。
+
+@item :key-sequence @var{keys}
+@var{keys}はコナドが複数のキーシーケンスにバインドされている場合に、等価なキーボード入力としてどのキーシーケンスを表示するかを示すためのヒント。このメニューアイテムとして@var{keys}が同じコマンドがバインドされていなければ効果はない。
+
+@item :active @var{enable}
+@var{enable}には式を指定する。その式が@code{nil}に評価されるとアイテムは選択不可になる。@var{enable}は@code{:active}にたいするエイリアス。
+
+@item :visible @var{include}
+@var{include}には式を指定する。その式が@code{nil}に評価されるとアイテムは不可視になる。@code{:included}は@code{:visible}にたいするエイリアス。
+
+@item :label @var{form}
+@var{form}はメニューアイテムのラベル(デフォルトは@var{name})の役目をもつ値を取得するために表示される式である。
+
+@item :suffix @var{form}
+@var{form}は動的に評価される式であり、値はメニューエントリーのラベルに結合される。
+
+@item :style @var{style}
+@var{style}はメニューアイテムの型を記述するシンボルであり、@code{toggle}(チェックボックス)、@code{radio}(ラジオボタン)、またはそれ以外(通常のメニューアイテムであることを意味する)のいずれかである。
+
+@item :selected @var{selected}
+@var{selected}には式を指定し、その式の値が非@code{nil}のときはチェックボックスまたはラジオボタンが選択状態になる。
+
+@item :help @var{help}
+@var{help}はメニューアイテムを説明する文字列。
+@end table
+
+かわりにメニューアイテムに文字列を指定できる。その場合には文字列は選択不可なテキストとしてメニューに表示される。ダッシュから構成される文字列はセパレーターとして表示される(@ref{Menu
+Separators}を参照)
+
+かわりにメニューアイテムに@var{menu}と同じフォーマットのリストを指定できる。これはサブメニューとなる。
+@end defmac
+
+以下は@code{easy-menu-define}を使用して@ref{Menu Bar}内で定義したメニューと同等なメニューを定義する例:
+
+@example
+(easy-menu-define words-menu global-map
+  "単語単位コマンドにたいするメニュー"
+  '("Words"
+     ["Forward word" forward-word]
+     ["Backward word" backward-word]))
+@end example

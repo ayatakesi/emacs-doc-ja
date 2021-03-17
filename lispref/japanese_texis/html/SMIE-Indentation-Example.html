@@ -1,0 +1,130 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>SMIE Indentation Example (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="SMIE Indentation Example (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="SMIE Indentation Example (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="SMIE.html" rel="up" title="SMIE">
+<link href="SMIE-Customization.html" rel="next" title="SMIE Customization">
+<link href="SMIE-Indentation-Helpers.html" rel="prev" title="SMIE Indentation Helpers">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="SMIE-Indentation-Example"></span><div class="header">
+<p>
+Next: <a href="SMIE-Customization.html" accesskey="n" rel="next">SMIE Customization</a>, Previous: <a href="SMIE-Indentation-Helpers.html" accesskey="p" rel="prev">SMIE Indentation Helpers</a>, Up: <a href="SMIE.html" accesskey="u" rel="up">SMIE</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="indentorurunoLi"></span><h4 class="subsubsection">23.7.1.8 インデントルールの例</h4>
+
+<p>以下はインデント関数の例です:
+</p>
+<div class="example">
+<pre class="example">(defun sample-smie-rules (kind token)
+  (pcase (cons kind token)
+    (`(:elem . basic) sample-indent-basic)
+    (`(,_ . &quot;,&quot;) (smie-rule-separator kind))
+    (`(:after . &quot;:=&quot;) sample-indent-basic)
+    (`(:before . ,(or `&quot;begin&quot; `&quot;(&quot; `&quot;{&quot;)))
+     (if (smie-rule-hanging-p) (smie-rule-parent)))
+    (`(:before . &quot;if&quot;)
+     (and (not (smie-rule-bolp)) (smie-rule-prev-p &quot;else&quot;)
+          (smie-rule-parent)))))
+</pre></div>
+
+<p>注意すべき点がいくつかあります:
+</p>
+<ul>
+<li> 最初のcaseは使用する基本的なインデントの増分を示す。<code>sample-indent-basic</code>が<code>nil</code>なら、SMIEはグローバルセッティング<code>smie-indent-basic</code>を使用する。メジャーモードがかわりに<code>smie-indent-basic</code>をバッファーローカルにセットするかもしれないが推奨しない。
+
+</li><li> トークン<code>&quot;,&quot;</code>にたいするルールによってカンマセパレーターが行頭にある場合にSMIEをより賢明に振る舞わせようとしている。これはセパレーターのインデントを解除(outdent)、カンマの後のコードにアラインされるよう試みる。たとえば:
+
+<div class="example">
+<pre class="example">x = longfunctionname (
+        arg1
+      , arg2
+    );
+</pre></div>
+
+</li><li> そうしなければSMIEが<code>&quot;:=&quot;</code>を2項演算子として扱い、左の引数に併せて右の引数をアラインするであろうから、<code>&quot;:=&quot;</code>の後のインデントのルールが存在する。
+
+</li><li> <code>&quot;begin&quot;</code>の前のインデントのルールはバーチャルインデントの使用例である。このルールは<code>&quot;begin&quot;</code>がhangingのときだけ使用され、これは<code>&quot;begin&quot;</code>が行頭にないときのみ発生し得る。そのためこれは<code>&quot;begin&quot;</code>自体のインデントには使用されないが、この<code>&quot;begin&quot;</code>に関連する何かをインデントするときだけ使用される。このルールは具体的には以下のフォームを:
+
+<div class="example">
+<pre class="example">    if x &gt; 0 then begin
+            dosomething(x);
+        end
+</pre></div>
+<p>以下に変更する
+</p><div class="example">
+<pre class="example">    if x &gt; 0 then begin
+        dosomething(x);
+    end
+</pre></div>
+
+</li><li> <code>&quot;if&quot;</code>の前のインデントのルールは<code>&quot;begin&quot;</code>のインデントルールと似ているが、ここでの目的は<code>&quot;else
+if&quot;</code>を1単位として扱うことにあり、それにより各テストより右にインデントされずに一連のテストにアラインされる。この関数は<code>smie-rule-bolp</code>をテストして<code>&quot;if&quot;</code>が別の行にないときだけこれを行う。
+
+<p><code>&quot;else&quot;</code>がそれの属する<code>&quot;if&quot;</code>にたいして常にアラインされて、かつそれが常に行頭であるることが判っていれば、より効果的なルールを使用できる:
+</p><div class="example">
+<pre class="example">((equal token &quot;if&quot;)
+ (and (not (smie-rule-bolp))
+      (smie-rule-prev-p &quot;else&quot;)
+      (save-excursion
+        (sample-smie-backward-token)
+        (cons 'column (current-column)))))
+</pre></div>
+
+<p>この式の利点はこれがシーケンスの最初の<code>&quot;if&quot;</code>まで戻ってすべてをやり直すのではなく、前の<code>&quot;else&quot;</code>のインデントを再利用することである。
+</p></li></ul>
+
+
+
+
+</body>
+</html>

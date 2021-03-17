@@ -1,0 +1,245 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Window Hooks (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Window Hooks (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Window Hooks (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Windows.html" rel="up" title="Windows">
+<link href="Frames.html" rel="next" title="Frames">
+<link href="Window-Parameters.html" rel="prev" title="Window Parameters">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Window-Hooks"></span><div class="header">
+<p>
+Previous: <a href="Window-Parameters.html" accesskey="p" rel="prev">Window Parameters</a>, Up: <a href="Windows.html" accesskey="u" rel="up">Windows</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="uindounosukurorutoBian-Geng-notamenohutuku"></span><h3 class="section">28.28 ウィンドウのスクロールと変更のためのフック</h3>
+<span id="index-hooks-for-window-operations"></span>
+
+<p>このセクションではLispプログラムがウィンドウのスクロール後や、その他のウィンドウ変更が発生した際にどのようにしてアクションを起こすことができるかを説明します。最初はウィンドウがバッファーの異なる部分を表示するケースについて考えてみます。
+</p>
+<dl>
+<dt id="index-window_002dscroll_002dfunctions">Variable: <strong>window-scroll-functions</strong></dt>
+<dd><p>この変数はウィンドウのスクロールによりEmacsが再表示前に呼び出すべき関数のリストを保持する。そのウィンドウ内への異なるバッファーの表示や新たなウィンドウの作成でもこれらの関数が実行される。
+</p>
+<p>この変数はそれぞれの関数がウィンドウとウィンドウのdisplay-start位置という2つの引数を受け取るのでノーマルフックではない。呼び出し時にはwindow引数のdisplay-start位置は新たな値、そのウィンドウに表示されるバッファーがカレントバッファーとしてセットされる。
+</p>
+<p>これらの関数は<code>window-end</code> (<a href="Window-Start-and-End.html">Window Start and End</a>を参照)を使用する際には気をつけなければならない。最新の値が必要なら、それを確実に入力するために<var>update</var>引数を使用しなければならない。
+</p>
+<p><strong>警告:</strong>
+ウィンドウのスクロール方法を変更するためにこの機能を使用してはならない。これはそのような用途のためにデザインされておらず、そのような使用では機能しないだろう。
+</p></dd></dl>
+
+<p>加えてFont Lockフォント表示関数(Font Lock fontification
+function)を登録するために<code>jit-lock-register</code>を使用できる。バッファーの一部が(再)フォント表示されたときは、ウィンドウがスクロールまたはサイズ変更されたという理由で、これが常に呼び出されるだろう。<a href="Other-Font-Lock-Variables.html">Other Font Lock Variables</a>を参照のこと。
+</p>
+<span id="index-window-change-functions"></span>
+<p>このセクションの残りの部分ではウィンドウのスクロールをともなわないウィンドウの有意な変更を検知した際の再表示の間に呼び出される6つのフックについて補足します。単純化するために、これらのフックおよびそれらが呼び出す関数をまとめて<em>ウィンドウ変更関数(window
+change functions)</em>と呼ぶことにします。
+</p>
+<span id="index-window-buffer-change"></span>
+<p>これらのフックのうち最初のフックは<em>ウィンドウバッファー変更(window buffer
+change)</em>を検知した後に実行されます。ウィンドウバッファー変更とはウィンドウの作成や削除、他のバッファーの割り当てを意味します。
+</p>
+<dl>
+<dt id="index-window_002dbuffer_002dchange_002dfunctions">Variable: <strong>window-buffer-change-functions</strong></dt>
+<dd><p>この変数はウィンドウバッファー変更時の再表示の間に呼び出す関数を指定する。値は1つの引数を受け取る関数のリストであること。
+</p>
+<p>バッファーローカルに指定された関数は、対応するバッファーを表示するすべてのウィンドウにたいして、最後にウィンドウ変更関数が実行されて以降にウィンドウが作成されたり、そのバッファーが割り当てられた場合に呼び出される。この場合にはそのウィンドウが引数として渡される。
+</p>
+<p>デフォルト値として指定された関数はフレームにたいして、最後にウィンドウ変更関数が実行されて以降にそのフレームに少なくとも1つのウィンドウの追加か削除が行われるか、別のバッファーが割り当てられた場合に呼び出される。この場合にはフレームが引数として渡される。
+</p></dd></dl>
+
+<span id="index-window-size-change"></span>
+<p>2つ目のフックは<em>ウィンドウサイズ変更(window size
+change)</em>の検出時に実行されます。ウィンドウサイズ変更とはウィンドウ作成、別バッファーの割り当て、合計サイズやテキストエリアの合計サイズの変更を意味します。
+</p>
+<dl>
+<dt id="index-window_002dsize_002dchange_002dfunctions">Variable: <strong>window-size-change-functions</strong></dt>
+<dd><p>この変数はウィンドウサイズ変更発生時の再表示の間に呼び出される関数を指定する。値は1つの引数を受け取る関数のリストであること。
+</p>
+<p>バッファーローカルに指定された関数は、対応するバッファーを表示するすべてのウィンドウにたいして、最後にウィンドウ変更関数が実行されて以降にウィンドウの追加や別バッファーの割り当て、合計サイズやボディーサイズが変更された場合に呼び出される。この場合にはそのウィンドウが引数として渡される。
+</p>
+<p>デフォルト値として指定された関数は、最後にフレームにたいしてウィンドウ変更関数が実行されて以降に、そのフレーム上の少なくとも1つのウィンドウ追加や別バッファーの割り当て、または合計サイズやボディーサイズが変更された場合に呼び出される。この場合にはフレームが引数として渡される。
+</p></dd></dl>
+
+<span id="index-window-selection-change"></span>
+<p>3つ目のフックは前回の再表示以降に<em>ウィンドウ選択変更(window selection
+change)</em>により別のウィンドウが選択された際に実行されます。
+</p>
+<dl>
+<dt id="index-window_002dselection_002dchange_002dfunctions">Variable: <strong>window-selection-change-functions</strong></dt>
+<dd><p>この変数は選択されたウィンドウやフレームの選択されたウィンドウの変更時の再表示の間に実行される関数を指定する。値は1つの引数を受け取る関数のリストであること。
+</p>
+<p>バッファーローカルに指定された関数は、対応するバッファーを表示するすべてのウィンドウにたいして、最後にウィンドウ変更関数が実行されて以降に(すべてのウィンドウあるいはウィンドウのフレーム上のすべてのウィンドウの中から)ウィンドウが選択されたり選択解除された場合に呼び出される。この場合にはそのウィンドウが引数として渡される。
+</p>
+<p>デフォルト値として指定された関数はフレームにたいして、最後にウィンドウ変更関数が実行されて以降のそのフレームの選択や非選択、あるいはフレームの選択されたウィンドウが変更された場合に呼び出される。この場合にはフレームが引数として渡される。
+</p></dd></dl>
+
+<span id="index-window-state-change"></span>
+<p>4つ目のフックは<em>ウィンドウ状態変更(window state
+change)</em>の検出時に実行されます。ウィンドウ状態変更とは上述の3つのウィンドウ変更のうち少なくとも1つが発生したことを意味します。
+</p>
+<dl>
+<dt id="index-window_002dstate_002dchange_002dfunctions">Variable: <strong>window-state-change-functions</strong></dt>
+<dd><p>この変数はウィンドウのバッファーかサイズの変更発生時、または選択されたウィンドウやフレームの選択されたウィンドウの変更時の再表示の間に呼び出される関数を指定する。値は1つの引数を受け取る関数のリストであること。
+</p>
+<p>バッファーローカルに指定された関数は、対応するバッファーを表示するすべてのウィンドウにたいして、最後にウィンドウ変更関数が実行されて以降にそのウィンドウの追加や別バッファーの割り当て、合計サイズやボディーサイズが変更されたり、(すべてのウィンドウあるいはウィンドウのフレーム上のすべてのウィンドウの中から)ウィンドウが選択されたり選択解除された場合に呼び出される。この場合にはそのウィンドウが引数として渡される。
+</p>
+<p>デフォルト値として指定された関数はフレームにたいして、最後にウィンドウ変更関数が実行されて以降にそのフレームの少なくとも1つのウィンドウが追加や削除、別バッファーを割り当てられるか、合計サイズやボディーサイズの変更、またはフレームの選択または選択されていないウィンドウが変更された場合に呼び出される。この場合にはフレームが引数として渡される。
+</p>
+<p>デフォルト値として指定された関数は、最後の再表示以降にそのフレームのウィンドウ状態変更フラグ(以下参照)がセットされた場合にもフレームにたいして実行される。
+</p></dd></dl>
+
+<span id="index-window-configuration-change"></span>
+<p>5つ目のフックは<em>ウィンドウ構成変更(window configuration
+change)</em>の検出時に実行されます。ウィンドウ構成変更とはバッファーやウィンドウサイズの変更を意味します。このフックは実行方向において前記4つのフックとは異なります。
+</p>
+<dl>
+<dt id="index-window_002dconfiguration_002dchange_002dhook">Variable: <strong>window-configuration-change-hook</strong></dt>
+<dd><p>この変数はウィンドウのバッファーかサイズの変更時の再表示の間に呼び出される関数を指定する。値は引数を受け取らない関数のリストであること。
+</p>
+<p>バッファーローカルに指定された関数は、対応するバッファーを表示するすべてのウィンドウにたいして、最後にウィンドウ変更関数が実行されて以降に、そのフレームの少なくとも1つのウィンドウの追加や削除、別バッファーの割り当て、あるいは合計サイズやボディーサイズが変更された場合に呼び出される。各呼び出しは一時的にそのバッファーを表示するウィンドウを選択して、そのバッファーをカレントにして行われる。
+</p>
+<p>デフォルト値として指定された関数は各フレームにたいして、最後にウィンドウ変更関数が実行されて以降に、そのフレームに少なくとも1つのウィンドウの追加や削除、別バッファーの割り当て、あるいは合計サイズやボディーサイズが変更された場合に呼び出される。各呼び出しは一時的にそのフレームを選択して、その選択されたウィンドウのバッファーをカレントにして行われる。
+</p></dd></dl>
+
+<p>最後にEmacsは<code>window-state-change-functions</code>の振る舞いを一般化したノーマルフックを実行します。
+</p>
+<dl>
+<dt id="index-window_002dstate_002dchange_002dhook">Variable: <strong>window-state-change-hook</strong></dt>
+<dd><p>この変数のデフォルト値はウィンドウ状態変更、または少なくとも1つのフレームでウィンドウ状態変更フラグのセットを検出した際の再表示の間に呼び出される関数を指定する。値は引数を受け取らない関数のリストであること。
+</p>
+<p>アプリケーションは最後の再表示以降に複数のフレームで発生した(またはシグナルされた)変更に対処したい場合のみ、このフックに関数を配置すること。他のすべてのケースにたいしては<code>window-state-change-functions</code>に関数を配置するほうが好ましい。
+</p></dd></dl>
+
+<p>ウィンドウ変更関数は各フレームにたいする再表示の間に次のように呼び出されます。まずすべてのバッファーローカルなウィンドウバッファー変更関数、ウィンドウサイズ変更関数、ウィンドウ選択変更関数、ウィンドウ状態変更関数を順番に呼び出します。次にこれらの関数のデフォルト値を同じ順番で呼び出します。これらの関数のデフォルト値で指定された関数の呼び出した後に、すべてのバッファーローカルなウィンドウ構成変更関数を呼び出します。そして最後に<code>window-state-change-hook</code>の関数が実行されます。
+</p>
+<p>ウィンドウ変更関数は対応する変更が前に登録されている特定のフレームにたいしてのみ実行されます。そのような変更にはウィンドウの作成や削除、ウィンドウへの別バッファーやサイズの割り当てが含まれます。そのような変更が登録されていたとしても、それは上述したフックのいずれかが実行されることを意味しないことに注意してください。たとえばある変更がウィンドウエクスカーション(<a href="Window-Configurations.html">Window Configurations</a>を参照)のスコープ内で登録されると、ウィンドウ変更関数呼び出しはウィンドウ変更関数実行時にそのエクスカーションがまだ持続している場合のみトリガーされるでしょう。それ以前にエクスカーションがexitされていれば、そのエクスカーションのスコープ外で登録された変更の場合のみフックが実行されます。
+</p>
+<span id="index-window-state-change-flag"></span>
+<p>フレームの<em>ウィンドウ状態変更フラグ(window state change
+flag)</em>をセットすることにより、そのフレームにたいしてウィンドウ状態変更が実際に発生したかどうかに関わらず、次回の再表示の間に(そのフレームにたいする)
+<code>window-state-change-functions</code>と<code>window-state-change-hook</code>のデフォルト値が実行されます。これらのフックのすべての関数を実行した後に、各フレームにたいしてフラグをリセットを行います。アプリケーションは以下の関数を使用してこのフラグのセットや検査を行うことができます。
+</p>
+<dl>
+<dt id="index-set_002dframe_002dwindow_002dstate_002dchange">Function: <strong>set-frame-window-state-change</strong> <em>&amp;optional frame arg</em></dt>
+<dd><p>この関数は<var>arg</var>が非<code>nil</code>なら<var>frame</var>のウィンドウ状態変更フラグをセット、それ以外はリセットする。<var>frame</var>は生きたフレームでなければならず、デフォルトは選択されたフレーム。
+</p></dd></dl>
+
+<dl>
+<dt id="index-frame_002dwindow_002dstate_002dchange">Function: <strong>frame-window-state-change</strong> <em>&amp;optional frame</em></dt>
+<dd><p>この関数は<var>frame</var>のウィンドウ状態変更フラグがセットされていれば<code>t</code>、それ以外は<code>nil</code>をリターンする。<var>frame</var>は生きたフレームでなければならず、デフォルトは選択されたフレーム。
+</p></dd></dl>
+
+<p>ウィンドウ変更関数の実行中に下記の関数を呼び出すことにより、最後の再表示以降に特定のウィンドウやフレームにたいして何が変更されたかについてより詳細な知見を得ることができます。これらの関数はすべて生きたウィンドウを単一かつオプションの引数として受け取ります(デフォルトは選択されたウィンドウ)。
+</p>
+<dl>
+<dt id="index-window_002dold_002dbuffer">Function: <strong>window-old-buffer</strong> <em>&amp;optional window</em></dt>
+<dd><p>この関数は<var>window</var>のフレームにたいして最後にウィンドウ変更関数が実行された時点において、<var>window</var>に表示されていたバッファーをリターンする。その時点より後に<var>window</var>が作成された場合には<code>nil</code>をリターンする。その時点では<var>window</var>は表示されていなかったが、後から以前に保存されたウィンドウ構成がリストアされた場合には<code>t</code>をリターンする。それ以外ならリターン値はその時点で<code>window</code>が表示していたバッファー。
+</p></dd></dl>
+
+<dl>
+<dt id="index-window_002dold_002dpixel_002dwidth">Function: <strong>window-old-pixel-width</strong> <em>&amp;optional window</em></dt>
+<dd><p>この関数はウィンドウ変更関数がフレーム上で<code>window</code>が生きていることを確認した最終時点における<code>window</code>のトータルピクセル幅をリターンする。その後に<code>window</code>が作成された場合は0。
+</p></dd></dl>
+
+<dl>
+<dt id="index-window_002dold_002dpixel_002dheight">Function: <strong>window-old-pixel-height</strong> <em>&amp;optional window</em></dt>
+<dd><p>この関数はウィンドウ変更関数がフレーム上で<code>window</code>が生きていることを確認した最終時点における<code>window</code>のトータルピクセル高さをリターンする。その後に<code>window</code>が作成された場合は0。
+</p></dd></dl>
+
+<dl>
+<dt id="index-window_002dold_002dbody_002dpixel_002dwidth">Function: <strong>window-old-body-pixel-width</strong> <em>&amp;optional window</em></dt>
+<dd><p>この関数はウィンドウ変更関数がフレーム上で<code>window</code>が生きていることを確認した最終時点における<code>window</code>のテキストエリアのピクセル幅をリターンする。その後に<code>window</code>が作成された場合は0。
+</p></dd></dl>
+
+<dl>
+<dt id="index-window_002dold_002dbody_002dpixel_002dheight">Function: <strong>window-old-body-pixel-height</strong> <em>&amp;optional window</em></dt>
+<dd><p>この関数はウィンドウ変更関数がフレーム上で<code>window</code>が生きていることを確認した最終時点における<code>window</code>のテキストエリアのピクセル高さをリターンする。その後に<code>window</code>が作成された場合は0。
+</p></dd></dl>
+
+<p>ウィンドウ変更関数が最後に実行された時点でどのウィンドウまたはフレームが選択されていたかを調べるために以下の関数を使用できます:
+</p>
+<dl>
+<dt id="index-frame_002dold_002dselected_002dwindow">Function: <strong>frame-old-selected-window</strong> <em>&amp;optional frame</em></dt>
+<dd><p>この関数はウィンドウ変更関数が最後に実行された時点における<var>frame</var>の選択されていたウィンドウをリターンする。<var>frame</var>が省略または<code>nil</code>の場合のデフォルトは選択されたフレーム。
+</p></dd></dl>
+
+<dl>
+<dt id="index-old_002dselected_002dwindow">Function: <strong>old-selected-window</strong></dt>
+<dd><p>この関数はウィンドウ変更関数が最後に実行された時点において選択されていたウィンドウをリターンする。
+</p></dd></dl>
+
+<dl>
+<dt id="index-old_002dselected_002dframe">Function: <strong>old-selected-frame</strong></dt>
+<dd><p>この関数はウィンドウ変更関数が最後に実行された時点において選択されていたフレームをリターンする。
+</p></dd></dl>
+
+<p>ウィンドウ変更関数は最後に実行されて以降に削除されたウィンドウに関する情報は提供しないことに注意してください。アプリケーションがそれを必要とする場合には、特定のバッファーを表示するすべてのウィンドウをバッファーのローカル変数に記憶するとともに、それをウィンドウバッファー変更の検出時に実行されるすべてのフックのデフォルト値の関数で更新する必要があります。
+</p>
+<p>ウィンドウ変更関数に関数を追加する際には、以下の点を考慮する必要があります:
+</p>
+<ul>
+<li> ウィンドウ変更関数の呼び出しをトリガーしない操作がある。これにはミニバッファーウィンドウでの別バッファー表示やツールチップウィンドウのすべての変更が含まれる。
+
+</li><li> ウィンドウ変更関数はウィンドウの作成や削除、バッファー変更、ウィンドウのサイズや選択状態を何も変更するべきではない。なぜならそのような変更に関する情報が他のウィンドウ変更関数に伝播される保証は何もないから。もしそのような変更行うなら<code>window-state-change-hook</code>のデフォルト値の最後にリストされる関数で行うこと。
+
+</li><li> ウィンドウ変更関数の実行時には<code>save-window-excursion</code>、<code>with-selected-window</code>、<code>with-current-buffer</code>のようなマクロを使用できる。
+
+</li><li> マッチデータはウィンドウ変更関数の実行により保存やリストアされない。<code>window-configuration-change-hook</code>の実行以外では選択されたウィンドウやフレーム、カレントバッファーの保存やリストアは行われない。
+
+</li><li> ウィンドウ変更関数の実行をトリガーするすべての再表示はabort(異常終了)する可能性がある。ウィンドウ変更関数が完了する前にabortが発生すると、ウィンドウ変更関数は以前の値、すなわち再表示が行われなかったかのような値で再実行される。その後にabortした場合には新たな値、すなわち再表示が実際に処理されたかのような値で実行される
+</li></ul>
+
+
+
+</body>
+</html>

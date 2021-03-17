@@ -1,0 +1,128 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>File Locks (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="File Locks (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="File Locks (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Files.html" rel="up" title="Files">
+<link href="Information-about-Files.html" rel="next" title="Information about Files">
+<link href="Writing-to-Files.html" rel="prev" title="Writing to Files">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="File-Locks"></span><div class="header">
+<p>
+Next: <a href="Information-about-Files.html" accesskey="n" rel="next">Information about Files</a>, Previous: <a href="Writing-to-Files.html" accesskey="p" rel="prev">Writing to Files</a>, Up: <a href="Files.html" accesskey="u" rel="up">Files</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="huairunorotuku"></span><h3 class="section">25.5 ファイルのロック</h3>
+<span id="index-file-locks"></span>
+<span id="index-lock-file"></span>
+<span id="index-_002e_0023_002c-lock-file-names"></span>
+
+<p>2人のユーザーが同時に同じファイルを編集する際には、彼らはおそらく互いに干渉しあうでしょう。Emacsはファイルが変更される際に<em>ファイルロック(file
+lock)</em>を記録することにより、このような状況の発生を防ぎます。そしてEmacsは他のEmacsジョブにロックされているファイルをvisitしているバッファーへの変更の最初の試みを検知して、ユーザーに何を行うべきかを尋ねます。このファイルロックの実態は、編集中のファイルと同じディレクトリーに格納される特別な名前をもつシンボリックリンクです。この名前はバッファーのファイル名に<samp>.#</samp>を前置することにより構築されます。シンボリックリンクのターゲットは<code><var>user</var>@<var>host</var>.<var>pid</var>:<var>boot</var></code>という形式になります。ここで<var>user</var>はカレントのユーザー名(
+<code>user-login-name</code>かより得)、<var>host</var>はEmacsを実行中のホスト(
+<code>system-name</code>より取得)、<var>pid</var>はEmacsのプロセスID、<var>boot</var>は最後のブートからの経過時間です。ブート時刻が利用できなければ<code>:<var>boot</var></code>は省略されます。(シンボリックリンクをサポートしないファイルシステムでは、<code><var>user</var>@<var>host</var>.<var>pid</var>:<var>boot</var></code>という形式を構築するか割りに通常のファイルが使用される)。
+</p>
+<p>ファイルのアクセスにNFSを使用する際には、可能性は小さいものの他のユーザーと同じファイルを同時にロックするかもしれません。これが発生すると2人のユーザーが同時にファイルを変更することが可能になりますが、それでもEmacsは2番目に保存するユーザーにたいして警告を発するでしょう。たファイルをvisitしているバッファーでディスク上でファイルの変更を検知することにより、ある種の同時編集を捕捉できます。<a href="Modification-Time.html">Modification Time</a>を参照してください。
+</p>
+<dl>
+<dt id="index-file_002dlocked_002dp">Function: <strong>file-locked-p</strong> <em>filename</em></dt>
+<dd><p>この関数はファイル<var>filename</var>がロックされていなければ<code>nil</code>をリターンする。このEmacsプロセスによりロックされていれば<code>t</code>、他のEmacsジョブによりロックされている場合はロックしたユーザーの名前をリターンする。
+</p>
+<div class="example">
+<pre class="example">(file-locked-p &quot;foo&quot;)
+     &rArr; nil
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-lock_002dbuffer">Function: <strong>lock-buffer</strong> <em>&amp;optional filename</em></dt>
+<dd><p>この関数はカレントバッファーが変更されていればファイル<var>filename</var>をロックする。引数<var>filename</var>のデフォルトはカレントバッファーがvisitしているファイル。カレントバッファーがファイルをvisitしていない、バッファーが変更されていない、または<code>create-lockfiles</code>が<code>nil</code>なら何もしない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-unlock_002dbuffer">Function: <strong>unlock-buffer</strong></dt>
+<dd><p>この関数はカレントバッファーが変更されていればバッファーによりvisitされているファイルをアンロックする。バッファーが変更されていなければ、そのファイルをロックしてはならないのでこの関数は何もしない。カレントバッファーがファイルをvisitしていない、またはファイルがロックされていなければこの関数は何もしない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-create_002dlockfiles">User Option: <strong>create-lockfiles</strong></dt>
+<dd><p>この変数が<code>nil</code>ならEmacsはファイルをロックしない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-ask_002duser_002dabout_002dlock">Function: <strong>ask-user-about-lock</strong> <em>file other-user</em></dt>
+<dd><p>この関数はユーザーが<var>file</var>の変更を試みたが、それが名前<var>other-user</var>のユーザーにロックされていたとき呼び出される。この関数のデフォルト定義は何を行うかユーザーに尋ねる関数。この関数がリターンする値はEmacsが次に何を行うかを決定する:
+</p>
+<ul>
+<li> 値<code>t</code>はそのファイルのロックを奪うことを意味する。その場合には<var>other-user</var>はロックを失い、そのユーザーがファイルを編集することができる。
+
+</li><li> 値<code>nil</code>はロックを無視して、とにかくユーザーがファイルを編集できるようにすることを意味する。
+
+</li><li> <span id="index-file_002dlocked"></span>
+この関数はかわりにエラー<code>file-locked</code>をシグナルする。この場合には、ユーザーが行おうとしていた変更は行われない。
+
+<p>このエラーにたいするエラーメッセージは以下のようになる:
+</p>
+<div class="example">
+<pre class="example">error&rarr; File is locked: <var>file</var> <var>other-user</var>
+</pre></div>
+
+<p>ここで<code>file</code>はファイル名、<var>other-user</var>はそのファイルのロックを所有するユーザーの名前。
+</p></li></ul>
+
+<p>望むなら他の方法で判定を行う独自バージョンで<code>ask-user-about-lock</code>関数を置き換えることができる。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

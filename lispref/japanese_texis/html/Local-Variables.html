@@ -1,0 +1,185 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Local Variables (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Local Variables (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Local Variables (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Variables.html" rel="up" title="Variables">
+<link href="Void-Variables.html" rel="next" title="Void Variables">
+<link href="Constant-Variables.html" rel="prev" title="Constant Variables">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Local-Variables"></span><div class="header">
+<p>
+Next: <a href="Void-Variables.html" accesskey="n" rel="next">Void Variables</a>, Previous: <a href="Constant-Variables.html" accesskey="p" rel="prev">Constant Variables</a>, Up: <a href="Variables.html" accesskey="u" rel="up">Variables</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="rokaruBian-Shu-"></span><h3 class="section">12.3 ローカル変数</h3>
+<span id="index-binding-local-variables"></span>
+<span id="index-local-variables"></span>
+<span id="index-local-binding"></span>
+<span id="index-global-binding"></span>
+
+<p>グローバル変数は新しい値で明示的に置き換えるまで値が持続します。変数に<em>ローカル値(local value)</em> &mdash;
+Lispプログラム内の特定の部分で効果をもつ &mdash;
+を与えると便利なときがあります。変数がローカル値をもつとき、わたしたちは変数がその値に<em>ローカルにバインド(locally
+bound)</em>されていると言い、その変数を<em>ローカル変数(local variable)</em>と呼びます。
+</p>
+<p>たとえば関数が呼び出されるとき、関数の引数となる変数はローカル値(その関数の呼び出しにおいて実際の引数に与えられた値)を受け取ります。これらのローカルバインディングは関数のbody内で効果をもちます。他にもたとえばスペシャルフォーム<code>let</code>は特定の変数にたいして明示的にローカルなバインディングを確立して、これは<code>let</code>フォームのbody内だけで効果を持ちます。
+</p>
+<p>これにたいして<em>グローバルなバインディング(global binding)</em>とは、(概念的には)グローバルな値が保持される場所です。
+</p>
+<span id="index-shadowing-of-variables"></span>
+<p>ローカルバインディングを確立すると、その変数の以前の値は他の場所に保存されます(または失われる)。わたしたちはこれを、以前の値が<em>シャドー(shadowed)</em>されたと言います。シャドーはグローバル変数とローカル変数の両方で発生し得ます。ローカルバインディングが効果を持つときには、ローカル変数に<code>setq</code>を使用することにより、指定した値をローカルバインディングに格納します。ローカルバインディングが効果を持たなくなったとき、以前にシャドーされた値が復元されます(または失われる)。
+</p>
+<span id="index-current-binding"></span>
+<p>変数は同時に複数のローカルバインディングを持つことができます(たとえばその変数をバインドするネストされた<code>let</code>)。<em>カレントバインディング(current
+binding)</em>とは、実際に効果を持つローカルバインディングのことです。カレントバインディングは、その変数の評価によりリターンされる値を決定し、<code>setq</code>により影響を受けるバインディングです。
+</p>
+<p>ほとんどの用途において、最内(innermost)のローカルバインディングとローカルバインディングをもたないグローバルバインディングを、カレントバインディングと考えることができます。より正確に言うと、<em>スコープルール(scoping
+rule)</em>と呼ばれるルールは、プログラム内でローカルバインディングが効果を持つ任意の与えられた場所を決定します。Emacs
+Lispのスコープルールは<em>ダイナミックスコープ(dynamic
+scoping)</em>と呼ばれ、これは単に実行中のプログラム内の与えられた位置でのカレントバインディングを示しており、その変数がまだ存在すれば、その変数にたいしてもっとも最近作成されたバインディングです。ダイナミックスコープについての詳細、およびその代替である<em>レキシカルスコープ(lexical
+scoping)</em>と呼ばれるスコープルールについては、<a href="Variable-Scoping.html">Variable Scoping</a>を参照してください。
+</p>
+<p>スペシャルフォーム<code>let</code>と<code>let*</code>は、ローカルバインディングを作成するために存在します:
+</p>
+<dl>
+<dt id="index-let">Special Form: <strong>let</strong> <em>(bindings&hellip;) forms&hellip;</em></dt>
+<dd><p>このスペシャルフォームは<var>bindings</var>により指定される特定の変数セットにたいするローカルバインディングをセットアップしてから、<var>forms</var>のすべてをテキスト順に評価する。これは<var>forms</var>内の最後のフォームの値をリターンする。<code>let</code>がセットアップしたローカルバインディングは<var>forms</var>のbody内でのみ効果をもつ。
+</p>
+<p><var>bindings</var>の各バインディングは2つの形式のいずれかである。(i)<!-- /@w -->
+シンボルなら、そのシンボルは<code>nil</code>にローカルにバインドされる。(ii)<!-- /@w --> フォーム<code>(<var>symbol</var>
+<var>value-form</var>)</code>のリストなら、<var>symbol</var>は<var>value-form</var>を評価した結果へローカルにバインドされる。<var>value-form</var>が省略されたら<code>nil</code>が使用される。
+</p>
+<p><var>bindings</var>内のすべての<var>value-form</var>は、シンボルがそれらにバインドされる<em>前</em>に、記述された順番に評価される。以下の例では<code>z</code>は<code>y</code>の新しい値(つまり1)にではなく、古い値(つまり2)にバインドされる。
+</p>
+<div class="example">
+<pre class="example">(setq y 2)
+     &rArr; 2
+</pre><pre class="example">
+
+</pre><pre class="example">(let ((y 1)
+      (z y))
+  (list y z))
+     &rArr; (1 2)
+</pre></div>
+
+<p>その一方で<em>bindings</em>の順序は指定されない。以下の例では1か2のどちらかがプリントされる。
+</p>
+<div class="example">
+<pre class="example">(let ((x 1)
+      (x 2))
+  (print x))
+</pre></div>
+
+<p>したがって単一の<code>let</code>フォーム内で変数を複数回バインディングするのは避けること。
+</p></dd></dl>
+
+<dl>
+<dt id="index-let_002a">Special Form: <strong>let*</strong> <em>(bindings&hellip;) forms&hellip;</em></dt>
+<dd><p>このスペシャルフォームは<code>let</code>と似ているが、次の変数値にたいするローカル値を計算する前に、ローカル値を計算してそれを変数にバインドする。したがて<var>bindings</var>内の式は、この<code>let*</code>フォーム内の前のシンボルのバインドを参照できる。以下の例を上記<code>let</code>の例と比較されたい。
+</p>
+<div class="example">
+<pre class="example">(setq y 2)
+     &rArr; 2
+</pre><pre class="example">
+
+</pre><pre class="example">(let* ((y 1)
+       (z y))    ; <span class="roman"><code>y</code>の値に今計算されたばかりの値を使用する</span>
+  (list y z))
+     &rArr; (1 1)
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-letrec">Special Form: <strong>letrec</strong> <em>(bindings&hellip;) forms&hellip;</em></dt>
+<dd><p>このスペシャルフォームは<code>let*</code>と同様だが、ローカル値を計算する前にすべての変数をバインドする。値はその後にバインドされた変数にローカルに割り当てられる。これはレキシカルバインディングが効力をもち、<code>let*</code>の使用しても有効にならないバインディングを参照するクロージャを作成したい場合のみ有用。
+</p>
+<p>たとえば以下は一度実行後にフックから自身を削除するクロージャ:
+</p>
+<div class="lisp">
+<pre class="lisp">(letrec ((hookfun (lambda ()
+                    (message &quot;Run once&quot;)
+                    (remove-hook 'post-command-hook hookfun))))
+  (add-hook 'post-command-hook hookfun))
+</pre></div>
+</dd></dl>
+
+<p>以下はローカルバインディングを作成する他の機能のリストです:
+</p>
+<ul>
+<li> 関数呼び出し(<a href="Functions.html">Functions</a>を参照)。
+
+</li><li> マクロ呼び出し(<a href="Macros.html">Macros</a>を参照)。
+
+</li><li> <code>condition-case</code> (<a href="Errors.html">Errors</a>を参照)。
+</li></ul>
+
+<p>変数はバッファーローカルなバインディングを持つこともできます(<a href="Buffer_002dLocal-Variables.html">Buffer-Local Variables</a>を参照)。数は多くありませんが、端末ローカル(terminal-local)なバインディングをもつ変数もあります(<a href="Multiple-Terminals.html">Multiple Terminals</a>を参照)。この種のバインディングは、通常のローカルバインディングのように機能することもありますが、これらはEmacs内のどこにいるかに依存してローカルになります。
+</p>
+<dl>
+<dt id="index-max_002dspecpdl_002dsize">User Option: <strong>max-specpdl-size</strong></dt>
+<dd><span id="Definition-of-max_002dspecpdl_002dsize"></span><span id="index-variable-limit-error"></span>
+<span id="index-evaluation-error"></span>
+<span id="index-infinite-recursion"></span>
+<p>この変数はローカルな変数バインディングと、<code>unwind-protect</code>にゆるクリーンアップ(<a href="Cleanups.html">Cleaning Up from Nonlocal
+Exits</a>を参照)の総数にたいする制限を定義し、この変数を越えるとEmacsは(データ<code>&quot;Variable binding depth
+exceeds max-specpdl-size&quot;</code>とともに)エラーをシグナルする。
+</p>
+<p>このリミットは、もし超過したときにエラーが関連付けられていれば、誤って定義された関数による無限再起を避けるための1つの手段になる。ネストの深さにたいする他の制限としては、<code>max-lisp-eval-depth</code>がある。<a href="Eval.html#Definition-of-max_002dlisp_002deval_002ddepth">Eval</a>を参照のこと。
+</p>
+<p>デフォルト値は1600。Lispデバッガーのエントリーしたとき、もし残りが少なければ、デバッガーを実行するための空きを作るために値が増加される。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

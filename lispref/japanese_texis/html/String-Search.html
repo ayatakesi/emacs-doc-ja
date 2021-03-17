@@ -1,0 +1,163 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>String Search (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="String Search (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="String Search (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Searching-and-Matching.html" rel="up" title="Searching and Matching">
+<link href="Searching-and-Case.html" rel="next" title="Searching and Case">
+<link href="Searching-and-Matching.html" rel="prev" title="Searching and Matching">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="String-Search"></span><div class="header">
+<p>
+Next: <a href="Searching-and-Case.html" accesskey="n" rel="next">Searching and Case</a>, Up: <a href="Searching-and-Matching.html" accesskey="u" rel="up">Searching and Matching</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="WenZi-Lie-noJian-Suo-"></span><h3 class="section">34.1 文字列の検索</h3>
+<span id="index-string-search"></span>
+
+<p>バッファー内のテキストを検索するためのプリミティブ関数が存在します。これらはプログラム内での使用を意図したものですがインタラクティブに呼び出すこともできます。これらをインタラクティブに呼び出すと検索文字列の入力を求めて、引数<var>limit</var>と<var>noerror</var>は<code>nil</code>、<var>repeat</var>は1になります。インタラクティブ検索に関するより詳細な情報は<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/Search.html#Search">Searching and Replacement</a> in <cite>The GNU Emacs Manual</cite>を参照してください。
+</p>
+<p>以下の検索関数はバッファーがマルチバイトバッファーならマルチバイト、ユニバイトバッファーならユニバイトに検索文字列を変換します。<a href="Text-Representations.html">Text Representations</a>を参照してください。
+</p>
+<dl>
+<dt id="index-search_002dforward">Command: <strong>search-forward</strong> <em>string &amp;optional limit noerror count</em></dt>
+<dd><p>この関数は<var>string</var>にたいする正確なマッチをポイントから前方に検索する。成功したら見つかったマッチの終端にポイントをセットしてポイントの新たな値をリターンする。マッチが見つからない場合の値と副作用は<var>noerror</var>
+(以下参照)に依存する。
+</p>
+<p>以下の例ではポイントは最初は行の先頭にある。その後の<code>(search-forward
+&quot;fox&quot;)</code>によってポイントは&lsquo;<samp>fox</samp>&rsquo;の最後の文字の後に移動する:
+</p>
+<div class="example">
+<pre class="example">---------- Buffer: foo ----------
+&lowast;The quick brown fox jumped over the lazy dog.
+---------- Buffer: foo ----------
+</pre><pre class="example">
+
+</pre><pre class="example">(search-forward &quot;fox&quot;)
+     &rArr; 20
+
+---------- Buffer: foo ----------
+The quick brown fox&lowast; jumped over the lazy dog.
+---------- Buffer: foo ----------
+</pre></div>
+
+<p>引数<var>limit</var>は検索の境界を指定するもので、それはカレントバッファー内の位置であること。その位置を超えるようなマッチは受け入れられない。<var>limit</var>が省略または<code>nil</code>の場合のデフォルトは、そのバッファーのアクセス可能範囲の終端。
+</p>
+<span id="index-search_002dfailed"></span>
+<p>検索失敗時に何が起こるかは<var>noerror</var>の値に依存する。<var>noerror</var>が<code>nil</code>なら<code>search-failed</code>はエラーをシグナルする。<var>noerror</var>が<code>t</code>なら<code>search-forward</code>は<code>nil</code>をリターンして何も行わない。<var>noerror</var>が<code>nil</code>と<code>t</code>いずれでもなければ、<code>search-forward</code>はポイントを境界上限に移動して<code>nil</code>をリターンする。
+</p>
+<p>引数<var>noerror</var>はマッチに失敗した有効な検索だけに影響する。無効な引数は<var>noerror</var>とは無関係にエラーとなる。
+</p>
+<p><var>count</var>が正の数<var>n</var>なら、それは繰り返し回数の役目をもつ。検索は<var>n</var>回繰り返され、前回のマッチの終端から毎回検索が開始される。これらの連続する検索が成功した場合、関数は成功となりポイントを移動して新たな値をリターンする。それ以外は検索失敗となり、上述したように結果は<var>noerror</var>の値に依存する。<var>count</var>が負の数
+-<var>n</var>なら、それは逆方向(後方)への検索の繰り返し回数<var>n</var>としての役目をもつ。
+</p></dd></dl>
+
+<dl>
+<dt id="index-search_002dbackward">Command: <strong>search-backward</strong> <em>string &amp;optional limit noerror count</em></dt>
+<dd><p>この関数はポイントから後方に<var>string</var>を検索する。これは<code>search-forward</code>と似ているが、前方ではなく後方に検索する点が異なる。後方への検索ではポイントはマッチの先頭に残される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-word_002dsearch_002dforward">Command: <strong>word-search-forward</strong> <em>string &amp;optional limit noerror count</em></dt>
+<dd><p>この関数はポイントから前方に<var>string</var>にたいする単語(word)のマッチを検索する。マッチが見つかったら見つかったマッチの終端にポイントをセットしてポイントの新たな値をリターンする。
+</p>
+<p>単語マッチは<var>string</var>を単語のシーケンスとみなし、それらを分割する句読点は無視する。これはバッファーから同じ単語シーケンスを検索する。単語はそれぞれバッファー内で明確に区別されていなければならない(単語&lsquo;<samp>ball</samp>&rsquo;の検索は単語&lsquo;<samp>balls</samp>&rsquo;にマッチしない)が、句読点やスペース等の細部は無視される(&lsquo;<samp>ball
+boy</samp>&rsquo;を検索すると&lsquo;<samp>ball.  Boy!</samp>&rsquo;にマッチする)。
+</p>
+<p>以下の例ではポイントは最初バッファー先頭にある。検索によりポイントは&lsquo;<samp>y</samp>&rsquo;と&lsquo;<samp>!</samp>&rsquo;の間に残される。
+</p>
+<div class="example">
+<pre class="example">---------- Buffer: foo ----------
+&lowast;He said &quot;Please!  Find
+the ball boy!&quot;
+---------- Buffer: foo ----------
+</pre><pre class="example">
+
+</pre><pre class="example">(word-search-forward &quot;Please find the ball, boy.&quot;)
+     &rArr; 39
+
+---------- Buffer: foo ----------
+He said &quot;Please!  Find
+the ball boy&lowast;!&quot;
+---------- Buffer: foo ----------
+</pre></div>
+
+<p><var>limit</var>が非<code>nil</code>なら、それはカレントバッファー内の位置であること。これはその検索の境界上限を指定する。見つかったマッチはその位置を超えてはならない。
+</p>
+<p><var>noerror</var>が<code>nil</code>なら<code>word-search-forward</code>はエラーをシグナルする。<var>noerror</var>が<code>t</code>なら、エラーをシグナルするかわりに<code>nil</code>をリターンする。<var>noerror</var>が<code>nil</code>と<code>t</code>いずれでもなければ、ポイントを<var>limit</var>(またはバッファーのアクセス可能範囲の終端)に移動して<code>nil</code>をリターンする。
+</p>
+<p><var>count</var>が正の数なら、それは連続して検索する回数を指定する。ポイントは最後のマッチの終端に配置される。<var>count</var>が負の数なら、逆方向に検索してポイントは最後のマッチの先頭に配置される。
+</p>
+<span id="index-word_002dsearch_002dregexp"></span>
+<p><code>word-search-forward</code>および関連する関数は、<var>string</var>から句読点を無視した正規表現に変換するために、内部的には関数<code>word-search-regexp</code>を使用する。
+</p></dd></dl>
+
+<dl>
+<dt id="index-word_002dsearch_002dforward_002dlax">Command: <strong>word-search-forward-lax</strong> <em>string &amp;optional limit noerror count</em></dt>
+<dd><p>このコマンドは<code>word-search-forward</code>と同じだが、<var>string</var>が空白で開始か終了していなければ、<var>string</var>の先頭か終端が単語境界にマッチする必要がない点が異なる。たとえば&lsquo;<samp>ball
+boy</samp>&rsquo;の検索は&lsquo;<samp>ball boyee</samp>&rsquo;にはマッチするが、&lsquo;<samp>balls boy</samp>&rsquo;にはマッチしない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-word_002dsearch_002dbackward">Command: <strong>word-search-backward</strong> <em>string &amp;optional limit noerror count</em></dt>
+<dd><p>この関数はポイントから後方へ<var>string</var>にマッチする単語を検索する。この関数は<code>word-search-forward</code>と同様だが、後方に検索して通常はマッチの先頭にポイントを残す点が異なる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-word_002dsearch_002dbackward_002dlax">Command: <strong>word-search-backward-lax</strong> <em>string &amp;optional limit noerror count</em></dt>
+<dd><p>このコマンドは<code>word-search-backward</code>と同じだが、文字列が空白で開始か終了していなければ、<var>string</var>の先頭か終端が単語境界にマッチする必要がない点が異なる。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

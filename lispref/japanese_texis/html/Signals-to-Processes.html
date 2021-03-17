@@ -1,0 +1,138 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Signals to Processes (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Signals to Processes (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Signals to Processes (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Processes.html" rel="up" title="Processes">
+<link href="Output-from-Processes.html" rel="next" title="Output from Processes">
+<link href="Input-to-Processes.html" rel="prev" title="Input to Processes">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Signals-to-Processes"></span><div class="header">
+<p>
+Next: <a href="Output-from-Processes.html" accesskey="n" rel="next">Output from Processes</a>, Previous: <a href="Input-to-Processes.html" accesskey="p" rel="prev">Input to Processes</a>, Up: <a href="Processes.html" accesskey="u" rel="up">Processes</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="purosesuhenosigunarunoSong-Xin-"></span><h3 class="section">38.8 プロセスへのシグナルの送信</h3>
+<span id="index-process-signals"></span>
+<span id="index-sending-signals"></span>
+<span id="index-signals"></span>
+
+<p>サブプロセスへの<em>シグナル送信(sending a
+signal)</em>はプロセス活動に割り込む手段の1つです。異なる複数のシグナルがあり、それぞれが独自に意味をもちます。シグナルのセットとそれらの意味はオペレーティングシステムにより定義されます。たとえばシグナル<code>SIGINT</code>はユーザーが<kbd>C-c</kbd>をタイプしたか、それに類似する何かが発生したことを意味します。
+</p>
+<p>各シグナルはサブプロセスに標準的な効果をもちます。ほとんどのシグナルはサブプロセスをkillしますが、かわりに実行を停止(や再開)するものもいくつかあります。ほとんどのシグナルはオプションでプログラムでハンドル(処理)することができます。プログラムがそのシグナルをハンドルする場合には、その影響についてわたしたちは一般的には何も言うことはできません。
+</p>
+<p>このセクション内の関数を呼び出すことにより明示的にシグナルを送信できます。Emacsも特定のタイミングで自動的にシグナルを送信します。バッファーのkillにより、それに関連するプロセスには<code>SIGHUP</code>シグナル、Emacsのkillにより残されたすべてのプロセスに<code>SIGHUP</code>シグナルが送信されます(<code>SIGHUP</code>は通常はユーザーが&ldquo;hung
+up the phone&rdquo;、電話を切った、つまり接続を断ったことを示す)。
+</p>
+<p>シグナル送信関数はそれぞれ<var>process</var>と<var>current-group</var>いう2つのオプション引数を受け取ります。
+</p>
+<p>引数<var>process</var>はプロセス、プロセス名、バッファー、バッファー名、または<code>nil</code>のいずれかでなければなりません。バッファーやバッファー名は<code>get-buffer-process</code>を通じて得られるプロセスを意味します。<code>nil</code>はカレントバッファーに関連付けられたプロセスを意味します。<code>stop-process</code>
+and
+<code>continue-process</code>を除いて、<var>process</var>がプロセスを識別しない、あるいはネットワーク接続、シリアル接続、pipe接続を表す場合にはエラーがシグナルされます。
+</p>
+<p>引数<var>current-group</var>は、Emacsのサブプロセスとしてジョブ制御shell(job-control
+shell)を実行中の場合に異なる処理を行うためのフラグです。これが非<code>nil</code>なら、そのシグナルはEmacsがサブプロセスとの対話に使用する端末のカレントプロセスグループに送信されます。そのプロセスがジョブ制御shellなら、これはそのshellのカレントのsubジョブになります。<var>current-group</var>が<code>nil</code>なら、そのシグナルはEmacs自身のサブプロセスのプロセスグループに送信されます。そのプロセスがジョブ制御shellなら、それはshell自身になります。<var>current-group</var>が<code>lambda</code>なら、端末を所有するもののそれ自身はshellでない場合にはプロセスグループにシグナルを送信します。
+</p>
+<p>サブプロセスとの対話にpipeが使用されている際には、オペレーティングシステムがpipeの区別をサポートしないのでフラグ<var>current-group</var>に効果はありません。同じ理由によりpipeが使用されていればジョブ制御shellは機能しないでしょう。<a href="Asynchronous-Processes.html">Asynchronous Processes</a>の<code>process-connection-type</code>を参照してください。
+</p>
+<dl>
+<dt id="index-interrupt_002dprocess">Function: <strong>interrupt-process</strong> <em>&amp;optional process current-group</em></dt>
+<dd><p>この関数はシグナル<code>SIGINT</code>を送信することによりプロセス<var>process</var>に割り込む。Emacs外部ではinterrupt
+character(割り込み文字。いくつかのシステムでは通常は<kbd>C-c</kbd>、それ以外のシステムでは<tt class="key">DEL</tt>)をタイプすることによりシグナルが送信される。引数<var>current-group</var>が非<code>nil</code>のときは、Emacsがサブプロセスと対話する端末上で<kbd>C-c</kbd>がタイプされたと考えることができる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-kill_002dprocess">Function: <strong>kill-process</strong> <em>&amp;optional process current-group</em></dt>
+<dd><p>この関数はシグナル<code>SIGKILL</code>を送信することにより、プロセス<var>process</var>をkillする。このシグナルは即座にサブプロセスをkillしてサブプロセスでハンドルすることはできない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-quit_002dprocess">Function: <strong>quit-process</strong> <em>&amp;optional process current-group</em></dt>
+<dd><p>この関数はプロセス<var>process</var>にシグナル<code>SIGQUIT</code>を送信する。これはEmacs外部ではquit
+character(通常は<kbd>C-\</kbd>)により送信されるシグナル。
+</p></dd></dl>
+
+<dl>
+<dt id="index-stop_002dprocess">Function: <strong>stop-process</strong> <em>&amp;optional process current-group</em></dt>
+<dd><p>この関数は指定した<var>process</var>を停止する。それがプログラムを実行中の実際のサブプロセスなら、そのサブプロセスにシグナル<code>SIGTSTP</code>を送信する。<var>process</var>がネットワーク接続、シリアル接続、pipe接続を表す場合には、この関数はその接続から到達するデータのハンドリングを抑制する。ネットワークサーバーでは、これは新たな接続をacceptしないことを意味する。通常の実行の再開には<code>continue-process</code>を使用すること。
+</p>
+<p>ジョブ制御をもつシステム上のEmacs外部ではstop
+character(通常は<kbd>C-z</kbd>)が<code>SIGTSTP</code>シグナルを送信する。<var>current-group</var>が非<code>nil</code>なら、この関数をサブプロセスとの対話にEmacsが使用する端末上で<kbd>C-z</kbd>がタイプされたと考えることができる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-continue_002dprocess">Function: <strong>continue-process</strong> <em>&amp;optional process current-group</em></dt>
+<dd><p>この関数はプロセス<var>process</var>の実行を再開する。それがプログラムを実行中の実際のサブプロセスなら、そのサブプロセスにシグナル<code>SIGCONT</code>を送信する。この関数は<var>process</var>が以前に停止されたとみなす。<var>process</var>がネットワーク接続、シリアル接続、pipe接続を表す場合には、この関数はその接続から到達するデータのハンドリングを再開する。シリアル接続ではプロセス停止中に到達したデータは失われるかもしれない。
+</p></dd></dl>
+
+<dl>
+<dt id="index-signal_002dprocess">Command: <strong>signal-process</strong> <em>process signal</em></dt>
+<dd><p>この関数はプロセス<var>process</var>にシグナルを送信する。引数<var>signal</var>はどのシグナルを送信するかを指定する。これは整数、または名前がシグナルであるようなシンボルであること。
+</p>
+<p><var>process</var>引数にはシステムプロセス<acronym>ID</acronym>
+(整数)を指定できる。これによりEmacsの子プロセス以外のプロセスにシグナルを送信できる。<a href="System-Processes.html">System Processes</a>を参照のこと。
+</p></dd></dl>
+
+<p>非ローカルな非同期プロセスへのシグナル送信が必要になることがあります。これは独自の<code>interrupt-process</code>実装を記述することにより可能です。それからその関数を<code>interrupt-process-functions</code>に追加する必要があります。
+</p>
+<dl>
+<dt id="index-interrupt_002dprocess_002dfunctions">Variable: <strong>interrupt-process-functions</strong></dt>
+<dd><p>この変数は<code>interrupt-process</code>用に呼び出される関数のリスト。関数の引数は<code>interrupt-process</code>にたいする引数と同じ。これらの関数はいずれかが非<code>nil</code>をリターンするまでリスト順に呼び出される。このリスト上で常に最後になるデフォルトの関数は<code>internal-default-interrupt-process</code>。
+</p>
+<p>これはTrampが<code>interrupt-process</code>を実装するメカニズムである。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

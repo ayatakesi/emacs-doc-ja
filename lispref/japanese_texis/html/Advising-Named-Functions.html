@@ -1,0 +1,113 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Advising Named Functions (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Advising Named Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Advising Named Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Advising-Functions.html" rel="up" title="Advising Functions">
+<link href="Advice-Combinators.html" rel="next" title="Advice Combinators">
+<link href="Core-Advising-Primitives.html" rel="prev" title="Core Advising Primitives">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Advising-Named-Functions"></span><div class="header">
+<p>
+Next: <a href="Advice-Combinators.html" accesskey="n" rel="next">Advice Combinators</a>, Previous: <a href="Core-Advising-Primitives.html" accesskey="p" rel="prev">Core Advising Primitives</a>, Up: <a href="Advising-Functions.html" accesskey="u" rel="up">Advising Functions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Ming-Qian-tukiGuan-Shu-nitaisuruadobaisu"></span><h4 class="subsection">13.11.2 名前つき関数にたいするアドバイス</h4>
+<span id="index-advising-named-functions"></span>
+
+<p>アドバイスは名前つき関数やマクロにたいして使用するのが一般的な使い方です。これは単に<code>add-function</code>を使用して以下のように行うことができます:
+</p>
+<div class="example">
+<pre class="example">(add-function :around (symbol-function '<var>fun</var>) #'his-tracing-function)
+</pre></div>
+
+<p>しかしかわりに<code>advice-add</code>と<code>advice-remove</code>を使うべきです。この異なる関数セットは名前つき関数に適用されるアドバイスを操作するためのもので、<code>add-function</code>と比較して以下の追加機能があります。まずこれらはマクロとオートロードされた関数を扱う方法を知っています。次に<code>describe-function</code>にたいして追加されたアドバイスと同様に、元のドキュメント文字列を維持します。さらに関数が定義される前でも、アドバイスの追加と削除ができます。
+</p>
+<p>既存の関数全体を再定義せずに既存の呼び出しを変更するために、<code>advice-add</code>が有用になります。しかしその関数の既存の呼び出し元は古い振る舞いを前提としているかもしれず、アドバイスによりその振る舞いが変更されたときに正しく機能しないかもしれないので、これはソー内スのバグにもなり得ます。アドバイスはデバッグを難しくする可能性もあります。デバッグを行う人はその関数がアドバイスにより変更されたことに気づかなかったり、失念しているかもしれません。
+</p>
+<p>これらの理由により、他の方法で関数の振る舞いを変更できない場合に備えるために、アドバイスの使用は控えるべきです。フックを通じて同じことが行えるならフック(<a href="Hooks.html">Hooks</a>を参照)の使用が望ましい方法です。特定のキーが行う何かを変更したいだけなら、新しいコマンドを記述して、古いコマンドのキーバインドを新しいコマンドにリマップ(<a href="Remapping-Commands.html">Remapping Commands</a>を参照)するのが、おそらくより優れた方法です。
+</p>
+<p>他の人が使用するリリース用のコードを記述する場合には、アドバイスを含めることを避けるよう試みてください。アドバイスしたい関数にその処理を行うフックがなければ、適切なフックの追加についてEmacs開発者に相談してください。特にEmacs自身のソースファイルでは、Emacs関数にアドバイスを配置するべきではありません(現在のところこの慣習にたいするいくつかの例外があるが修正する予定)。一般的には<code>foo</code>にアドバイスとして<code>bar</code>を配置するよりも、<code>foo</code>内に新たなフックを作成して<code>bar</code>にそのフックを使用させるほうが明快です。
+</p>
+<p>スペシャルフォーム(<a href="Special-Forms.html">Special Forms</a>を参照)はアドバイスできませんが、マクロは関数と同じ方法でアドバイスできます。もちろんこれはすでにマクロ展開されたコードには影響しないため、マクロ展開前にアドバイスが確実にインストールされる必要があります。
+</p>
+<p>プリミティブ(<a href="What-Is-a-Function.html">What Is a Function</a>を参照)にアドバイスするのは可能ですが、2つの理由により通常は<em>行うべきではありません</em>。1つ目の理由はいくつかのプリミティブがアドバイスのメカニズム内で使用されているため、それらにたいしてアドバイスを行うと無限再帰が発生するからです。2つ目の理由は多くのプリミティブがCから直接呼び出されていて、そのような呼び出しはアドバイスを無視するからです。したがってプリミティブにたいしてアドバイスの使用を控えることにより、ある呼び出しはアドバイスにしたがい(Lispコードから呼びだされたため)、他の呼び出しではアドバイスにしたがわない(Cコードから呼び出されたため)という混乱した状況を解決できます。
+</p>
+<dl>
+<dt id="index-define_002dadvice">Macro: <strong>define-advice</strong> <em>symbol (where lambda-list &amp;optional name depth) &amp;rest body</em></dt>
+<dd><p>このマクロはアドバイスを定義して<var>symbol</var>という名前の関数に追加する。<var>name</var>が<code>nil</code>か<code>symbol@name</code>という名前の関数ならアドバイスは無名関数。他の引数についての説明は<code>advice-add</code>を参照のこと。
+</p></dd></dl>
+
+<dl>
+<dt id="index-advice_002dadd">Function: <strong>advice-add</strong> <em>symbol where function &amp;optional props</em></dt>
+<dd><p>名前つき関数<var>symbol</var>にアドバイス<var>function</var>を追加する。<var>where</var>と<var>props</var>は<code>add-function</code>(<a href="Core-Advising-Primitives.html">Core Advising Primitives</a>を参照)のときと同じ意味をもつ。
+</p></dd></dl>
+
+<dl>
+<dt id="index-advice_002dremove">Function: <strong>advice-remove</strong> <em>symbol function</em></dt>
+<dd><p>名前つき関数<var>symbol</var>からアドバイス<var>function</var>を取り除く。<var>function</var>にアドバイスの<code>name</code>を指定することもできる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-advice_002dmember_002dp">Function: <strong>advice-member-p</strong> <em>function symbol</em></dt>
+<dd><p>名前つき関数<var>symbol</var>内にすでにアドバイス<var>function</var>があれば非<code>nil</code>をリターンする。<var>function</var>にアドバイスの<code>name</code>を指定することもできる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-advice_002dmapc">Function: <strong>advice-mapc</strong> <em>function symbol</em></dt>
+<dd><p>名前つき関数<var>symbol</var>にすでに追加されたすべての関数にたいして<var>function</var>を呼び出す。<var>function</var>はアドバイス関数とそのプロパティーという2つの引数で呼び出される。
+</p></dd></dl>
+
+
+
+
+</body>
+</html>

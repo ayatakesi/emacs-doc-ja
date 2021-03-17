@@ -1,0 +1,228 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Generic Functions (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Generic Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Generic Functions (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Functions.html" rel="up" title="Functions">
+<link href="Function-Cells.html" rel="next" title="Function Cells">
+<link href="Anonymous-Functions.html" rel="prev" title="Anonymous Functions">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Generic-Functions"></span><div class="header">
+<p>
+Next: <a href="Function-Cells.html" accesskey="n" rel="next">Function Cells</a>, Previous: <a href="Anonymous-Functions.html" accesskey="p" rel="prev">Anonymous Functions</a>, Up: <a href="Functions.html" accesskey="u" rel="up">Functions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="zieneritukuGuan-Shu-"></span><h3 class="section">13.8 ジェネリック関数</h3>
+<span id="index-generic-functions"></span>
+<span id="index-polymorphism"></span>
+
+<p><code>defun</code>を使用して定義された関数は、その引数の型と期待する値に関して、ハードコードされた一連の仮定をもちます。たとえば数字か数字のリストを引数値として処理するようにデザインされた関数は、ベクターや文字列のような他の型の値で呼び出されると失敗したりエラーをシグナルするでしょう。これはその関数実装が、デザイン時に想定した以外の型に対応しないために発生します。
+</p>
+<p>対照的に<em>多相型関数(polymorphic
+functions)</em>を使用したオブジェクト指向プログラムでは、同一の名前をもつ一連の特化した関数のそれぞれが、特定の引数型セットにたいして記述されます。どの関数が実際に呼び出されるかは、実際の引数の型にもとづいて実行時に決定されます。
+</p>
+<span id="index-CLOS"></span>
+<p>Emacsはポリモーフィズム(polymorphism)にたいするサポートを提供します。他のLisp環境、特にCommon LispとCommon
+Lispオブジェクトシステム(<acronym>CLOS</acronym>)と同じように、このサポートは<em>ジェネリック関数(generic
+functions)</em>を基礎としています。Emacsのジェネリック関数は同一名の使用を含む<acronym>CLOS</acronym>に密接にしたがっているので、<acronym>CLOS</acronym>の経験があればこのセクションの残りの部分は非常に身近に感じるでしょう。
+</p>
+<p>ジェネリック関数は、その名前と引数のリストを指定して、(通常は)実装されていない抽象操作(abstract
+operation)を指定します。引数のいくつかの固有クラスにたいする実際の実装は<em>メソッド(methods)</em>により提供され、これは個別に定義されるべきです。ジェネリック関数を実装するそれぞれのメソッドはジェネリック関数としてとして同じ名前をもちますが、そのジェネリック関数で定義された引数の<em>スペシャライジング(specializing)</em>により、メソッドの定義はどの種類の引数を処理可能かを示します。これらの<em>引数スペシャライザー(argument
+specializers)</em>は多少の差はあれ特化したものにできます。たとえば<code>string</code>型は<code>sequence</code>のようなより一般的な型より特化した型です。
+</p>
+<p>C<tt>++</tt>やSimulaのようなメッセージベースのOO言語と異なり、ジェネリック関数を実装するメソッドはクラスに属さずに、それらが実装するジェネリック関数に属することに注意してください。
+</p>
+<p>ジェネリック関数が呼び出されると、呼び出し側に渡された実際の引数と各メソッドの引数スペシャライザーを比較することにより、適用可能なメソッドを呼び出します。その呼び出しの実際の引数がメソッドのスペシャライザーと互換性があれば、そのメソッドが適用可能です。複数のメソッドが適用可能ならば、それらは以下で説明する特定のルールにより合成されて、その組み合わせが呼び出しを処理します。
+</p>
+<dl>
+<dt id="index-cl_002ddefgeneric">Macro: <strong>cl-defgeneric</strong> <em>name arguments [documentation] [options-and-methods&hellip;] &amp;rest body</em></dt>
+<dd><p>このマクロは指定した<var>name</var>と<var>arguments</var>でジェネリック関数を定義する。<var>body</var>が与えられたなら、それは実装のデフォルトを与える。(常に与えられるべきであるが)<var>documentation</var>が与えられたなら、それは<code>(:documentation
+<var>docstring</var>)</code>の形式でそのジェネリック関数のドキュメント文字列を指定する。オプションの<var>options-and-methods</var>は以下のフォームのいずれかを指定できる:
+</p>
+<dl compact="compact">
+<dt><code>(declare <var>declarations</var>)</code></dt>
+<dd><p><a href="Declare-Form.html">Declare Form</a>で説明するようなdeclareフォーム。
+</p></dd>
+<dt><code>(:argument-precedence-order &amp;rest <var>args</var>)</code></dt>
+<dd><p>このフォームは適用可能なメソッド合成にたいするソート順に影響を与える。合成において2つのメソッドを比較する際、メソッドの引数は通常は左から右に試験されて、引数スペシャライザーがより特化した最初のメソッドが他のメソッドより前になる。このフォームで定義された順序はそれをオーバーライドして、左から右ではなくこのフォームの順に応じて試験される。
+</p></dd>
+<dt><code>(:method [<var>qualifiers</var>&hellip;] args &amp;rest body)</code></dt>
+<dd><p>このメソッドは<code>cl-defmethod</code>が行うようなメソッドを定義する。
+</p></dd>
+</dl>
+</dd></dl>
+
+<dl>
+<dt id="index-cl_002ddefmethod">Macro: <strong>cl-defmethod</strong> <em>name [qualifier] arguments [&amp;context (expr spec)&hellip;] &amp;rest [docstring] body</em></dt>
+<dd><p>このマクロは<var>name</var>と呼ばれるジェネリック関数の、特定の実装を定義する。実装コードは<var>body</var>で与えられる。もし与えられたら<var>docstring</var>はそのメソッドのドキュメント文字列である。リスト<var>arguments</var>はジェネリック関数を実装するすべてのメソッドで等しく、その関数の引数リストとマッチしなければならず、<code>(<var>arg</var>
+<var>spec</var>)</code>という形式の引数スペシャライザーを提供する。ここで<var>arg</var>は<code>cl-defgeneric</code>呼び出しで指定された引数名、<var>spec</var>は以下のスペシャライザーフォームのいずれかであること:
+</p>
+<dl compact="compact">
+<dt><code><var>type</var></code></dt>
+<dd><p>このスペシャライザーは、引数が<var>type</var>のいずれかであることを要求する。<var>type</var>は以下で説明する型ヒエラルキーのいずれかの型である。
+</p></dd>
+<dt><code>(eql <var>object</var>)</code></dt>
+<dd><p>このスペシャライザーは、引数が<var>object</var>と<code>eql</code>であることを要求する。
+</p></dd>
+<dt><code>(head <var>object</var>)</code></dt>
+<dd><p>引数は<code>car</code>が<var>object</var>と<code>eql</code>であるようなコンスセルでなければならない。
+</p></dd>
+<dt><code><var>struct-type</var></code></dt>
+<dd><p>引数は<code>cl-defstruct</code> (<a href="https://www.gnu.org/software/emacs/manual/html_node/cl/Structures.html#Structures">Structures</a> in <cite>Common Lisp Extensions for
+GNU Emacs
+Lisp</cite>を参照)で定義された<var>struct-type</var>という名前のクラス、またはその子クラスのインスタンスでなければならない。
+</p></dd>
+</dl>
+
+<p>メソッド定義は新たな引数リストのキーワード<code>&amp;context</code>を使用できる。これはメソッド実行時に環境をテストする余分なスペシャライザーを導入する。このキーワードは必須の引数リストの後、かつすべての<code>&amp;rest</code>と<code>&amp;optional</code>キーワードの前に記述すること。<code>&amp;context</code>スペシャライザーは正規の引数スペシャライザー(<var>expr</var>
+<var>spec</var>)と非常によく似ているが、<var>expr</var>はカレントコンテキストで評価される式であり、<var>spec</var>は比較対象となる値となる。たとえば<code>&amp;context
+(overwrite-mode (eql
+t))</code>は、メソッドを<code>overwrite-mode</code>がオンのとだけ適用可能にする。<code>&amp;context</code>キーワードの後には任意個数のコンテキストスペシャライザーを続けることができる。コンテキストスペシャライザーはジェネリック関数の引数signatureの一部ではないので、これらを必要としないメソッドでは省略できる。
+</p>
+<p>型スペシャライザー<code>(<var>arg</var> <var>type</var>)</code>は以下のリストの<em>システム型(system
+types)</em>のいずれかを指定できる。親の型が指定されたときは、型がより特化した子型、孫型、曾孫型、...のいずれかであるような任意の引数も互換となるだろう。
+</p>
+<dl compact="compact">
+<dt><code>integer</code></dt>
+<dd><p>親型: <code>number</code>。
+</p></dd>
+<dt><code>number</code></dt>
+<dt><code>null</code></dt>
+<dd><p>親型: <code>symbol</code>。
+</p></dd>
+<dt><code>symbol</code></dt>
+<dt><code>string</code></dt>
+<dd><p>親型: <code>array</code>。
+</p></dd>
+<dt><code>array</code></dt>
+<dd><p>親型: <code>sequence</code>。
+</p></dd>
+<dt><code>cons</code></dt>
+<dd><p>親型: <code>list</code>。
+</p></dd>
+<dt><code>list</code></dt>
+<dd><p>親型: <code>sequence</code>。
+</p></dd>
+<dt><code>marker</code></dt>
+<dt><code>overlay</code></dt>
+<dt><code>float</code></dt>
+<dd><p>親型: <code>number</code>。
+</p></dd>
+<dt><code>window-configuration</code></dt>
+<dt><code>process</code></dt>
+<dt><code>window</code></dt>
+<dt><code>subr</code></dt>
+<dt><code>compiled-function</code></dt>
+<dt><code>buffer</code></dt>
+<dt><code>char-table</code></dt>
+<dd><p>親型: <code>array</code>。
+</p></dd>
+<dt><code>bool-vector</code></dt>
+<dd><p>親型: <code>array</code>。
+</p></dd>
+<dt><code>vector</code></dt>
+<dd><p>親型: <code>array</code>。
+</p></dd>
+<dt><code>frame</code></dt>
+<dt><code>hash-table</code></dt>
+<dt><code>font-spec</code></dt>
+<dt><code>font-entity</code></dt>
+<dt><code>font-object</code></dt>
+</dl>
+
+<p>オプションの<var>qualifier</var>は複数の適用可能なメソッドの合成を許容する。与えられなければ定義されるメソッドは<em>primary(主)</em>メソッドとなり、スペシャライズされた引数にたいする主要な実装の提供に責任を有する。<var>qualifier</var>として以下の値のいずれかを使用して<em>auxiliary(副)</em>メソッドも定義できる:
+</p>
+<dl compact="compact">
+<dt><code>:before</code></dt>
+<dd><p>このauxiliaryメソッドはprimaryメソッドの前に実行される。より正確にはすべての<code>:before</code>メソッドは、より特化したメソッドが最初になる順で、primaryメソッドの前に実行される。
+</p></dd>
+<dt><code>:after</code></dt>
+<dd><p>このauxiliaryメソッドはprimaryメソッドの後に実行される。より正確にはすべてのこの類のメソッドは、より特化したメソッドが最後になる順で、primaryメソッドの後に実行される。
+</p></dd>
+<dt><code>:around</code></dt>
+<dd><p>このauxiliaryメソッドはprimaryメソッドの<em>代替え</em>として実行される。この類のメソッドでもっとも特化したものが他のメソッドより前に実行される。このようなメソッドは他のauxiliaryメソッドやprimaryメソッドを呼び出すために、通常は以下で説明する<code>cl-call-next-method</code>を使用する。
+</p></dd>
+<dt><code>:extra <var>string</var></code></dt>
+<dd><p>これにより同一のspecializerとqualifierにたいして、<var>string</var>で区別されるメソッドを追加できる。
+</p></dd>
+</dl>
+
+<p><code>cl-defmethod</code>を使用して定義した関数をインタラクティブにすることはできない。つまり<code>interactive</code>フォームを追加してコマンドにすることはできない(<a href="Defining-Commands.html">Defining Commands</a>を参照)。多相型コマンド(polymorphic
+command)が必要なら、<code>cl-defgeneric</code>と<code>cl-defmethod</code>を通じて定義した多相型関数(polymorphic
+function)を呼び出す通常のコマンドを定義することを推奨する。
+</p></dd></dl>
+
+<span id="index-dispatch-of-methods-for-generic-function"></span>
+<span id="index-multiple_002ddispatch-methods"></span>
+<p>ジェネリック関数が呼び出されると、毎回その関数にたいして定義された適用可能なメソッドを合成することによってその呼び出しを処理する<em>effectiveメソッド(effective
+method)</em>を構築します。適用可能なメソッドを探してeffectiveメソッドを生成するプロセスは<em>dispatch</em>と呼ばれます。その呼び出しの実際の引数と互換性があるスペシャライザーをもつすべてのメソッドが、互換性のあるメソッドです。すべての引数がスペシャライザーと互換でなければならないので、それらはすべてメソッドが適用可能かどうか判定します。複数の引数に明示的に特化したメソッドを<em>multiple-dispatchメソッド(multiple-dispatch
+methods)</em>と呼びます。
+</p>
+<p>適用可能なメソッドはそれらが合成される順にソートされます。最左の引数スペシャライザーがもっとも特化したものであるようなメソッドが、順序の最初になります(上述したように<code>cl-defmethod</code>の一部として<code>:argument-precedence-order</code>を指定することによりこれをオーバーライドできる)。そのメソッドのbodyが<code>cl-call-next-method</code>を呼び出すと、もっとも特化した次のメソッドが実行されます。適用可能な<code>:around</code>メソッドがあれば、それらのうちもっとも特化したメソッドが実行されます。そのメソッドはより特化していない任意の<code>:around</code>メソッドを実行するために、<code>cl-call-next-method</code>を呼び出すべきです。次に<code>:before</code>メソッドがその特化した順に、その後にspecificityメソッドが実行されます。そして後に<code>:after</code>メソッドがその特化した順と逆順で実行されます。
+</p>
+<dl>
+<dt id="index-cl_002dcall_002dnext_002dmethod">Function: <strong>cl-call-next-method</strong> <em>&amp;rest args</em></dt>
+<dd><p>primaryメソッドか<code>:around</code>
+auxiliaryメソッド内のレキシカルbody内で呼び出されると、同じジェネリック関数にたいして適用可能な次のメソッドを呼び出す。通常これは引数なしで呼び出され、これは次の適用可能なメソッドを呼び出すメソッドが、呼び出されたときと同じ引数で次のメソッドを呼び出すことを意味する。それ以外ならかわりに指定された引数が使用される。
+</p></dd></dl>
+
+<dl>
+<dt id="index-cl_002dnext_002dmethod_002dp">Function: <strong>cl-next-method-p</strong></dt>
+<dd><p>primaryメソッドか<code>:around</code>
+auxiliaryメソッドのレキシカルbody内からこの関数を呼び出したときは、呼び出す次のメソッドが存在すれば非<code>nil</code>をリターンする。
+</p></dd></dl>
+
+
+
+
+
+</body>
+</html>

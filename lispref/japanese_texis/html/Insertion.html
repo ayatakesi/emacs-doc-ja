@@ -1,0 +1,139 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Insertion (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Insertion (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Insertion (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Text.html" rel="up" title="Text">
+<link href="Commands-for-Insertion.html" rel="next" title="Commands for Insertion">
+<link href="Comparing-Text.html" rel="prev" title="Comparing Text">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Insertion"></span><div class="header">
+<p>
+Next: <a href="Commands-for-Insertion.html" accesskey="n" rel="next">Commands for Insertion</a>, Previous: <a href="Comparing-Text.html" accesskey="p" rel="prev">Comparing Text</a>, Up: <a href="Text.html" accesskey="u" rel="up">Text</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="tekisutonoCha-Ru-"></span><h3 class="section">32.4 テキストの挿入</h3>
+<span id="index-insertion-of-text"></span>
+<span id="index-text-insertion"></span>
+
+<span id="index-insertion-before-point"></span>
+<span id="index-before-point_002c-insertion"></span>
+<p><em>挿入(insertion)</em>とはバッファーへの新たなテキストの追加を意味します。テキストはポイント位置、すなわちポイント前の文字とポイント後の文字の間に追加されます。挿入関数は挿入されたテキストの後にポイントを残しますが、前にポイントを残す関数もいくつかあります。前者の挿入を<em>ポイント後挿入(after
+point)</em>、後者を<em>ポイント前挿入(before point)</em>と呼びます。
+</p>
+<p>挿入により挿入位置の後にあったマーカーは、テキストを取り囲むように移動されます(<a href="Markers.html">Markers</a>を参照)。マーカーが挿入箇所をさしている際には、挿入によるマーカーの再配置の有無はそのマーカーの挿入タイプに依存します(<a href="Marker-Insertion-Types.html">Marker Insertion Types</a>を参照)。<code>insert-before-markers</code>のような特定のスペシャル関数は、マーカーの挿入タイプとは関係なく挿入されたテキストの後にそのようなすべてのマーカーを再配置します。
+</p>
+<p>カレントバッファーが読み取り専用(<a href="Read-Only-Buffers.html">Read Only Buffers</a>を参照)、または読み取り専用テキスト(<a href="Special-Properties.html">Special Properties</a>を参照)を挿入しようとすると、挿入関数はエラーをシグナルします。
+</p>
+<p>以下の関数は文字列やバッファーからプロパティとともにテキスト文字をコピーします。挿入される文字はコピー元の文字と完全に同一のプロパティをもちます。それとは対照的に文字列やバッファーの一部ではない個別の引数として指定された文字は、隣接するテキストからテキストプロパティを継承します。
+</p>
+<p>テキストが文字列かバッファー由来なら、マルチバイトバッファーに挿入するために挿入関数はユニバイトからマルチバイトへの変換、およびその逆も行います。しかしたとえカレントバッファーがマルチバイトバッファーであったとしても、コード128から255までのユニバイトはマルチバイトに変換しません。<a href="Converting-Representations.html">Converting Representations</a>を参照してください。
+</p>
+<dl>
+<dt id="index-insert">Function: <strong>insert</strong> <em>&amp;rest args</em></dt>
+<dd><p>この関数は文字列および/または1つ以上の文字<var>args</var>をカレントバッファーのポイント位置に挿入して、ポイントを前方に移動する。言い換えるとポイントの前にテキストを挿入する。すべての<var>args</var>が文字列が文字列と文字のいずれでもなければエラーをシグナルする。値は<code>nil</code>。
+</p></dd></dl>
+
+<dl>
+<dt id="index-insert_002dbefore_002dmarkers">Function: <strong>insert-before-markers</strong> <em>&amp;rest args</em></dt>
+<dd><p>この関数は文字列および/または1つ以上の文字<var>args</var>をカレントバッファーのポイント位置に挿入して、ポイントを前方に移動する。すべての<var>args</var>が文字列が文字列と文字のいずれでもなければエラーをシグナルする。値は<code>nil</code>。
+</p>
+<p>この関数は他の挿入関数と異なり、挿入されたテキストの後を指すように、まずマーカーが挿入位置を指すよう再配置する。挿入位置からオーバーレイが開始される場合には、挿入されたテキストはそのオーバーレイの外側に出される。空でないオーバーレイが挿入位置で終わる場合には、挿入されたテキストはそのオーバーレイの内側に入れられる。
+</p></dd></dl>
+
+<dl>
+<dt id="index-insert_002dchar">Command: <strong>insert-char</strong> <em>character &amp;optional count inherit</em></dt>
+<dd><p>このコマンドはカレントバッファーのポイントの前に、<var>character</var>のインスタンスを<var>count</var>個挿入する。引数<var>count</var>は整数、<var>character</var>は文字でなければならない。
+</p>
+<p>インタラクティブに呼び出された際には、このコマンドは<var>character</var>にたいしてコードポイントかUnicode名による入力を求める。<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/Inserting-Text.html#Inserting-Text">Inserting
+Text</a> in <cite>The GNU Emacs Manual</cite>を参照のこと。
+</p>
+<p>この関数はたとえカレントバッファーがマルチバイトバッファーであっても、コード128から255のユニバイト文字をマルチバイト文字に変換しない。<a href="Converting-Representations.html">Converting Representations</a>を参照のこと。
+</p>
+<p><var>inherit</var>が非<code>nil</code>なら、挿入された文字は挿入位置前後の2文字からステッキーテキストプロパティ(sticky text
+properties)を継承する。<a href="Sticky-Properties.html">Sticky Properties</a>を参照のこと。
+</p></dd></dl>
+
+<dl>
+<dt id="index-insert_002dbuffer_002dsubstring">Function: <strong>insert-buffer-substring</strong> <em>from-buffer-or-name &amp;optional start end</em></dt>
+<dd><p>この関数はカレントバッファーのポイント前に、バッファー<var>from-buffer-or-name</var>の一部を挿入する。挿入されるテキストは<var>start</var>
+(を含む)から<var>end</var>
+(を含まない)の間のリージョン(これらの引数のデフォルトは、そのバッファーのアクセス可能範囲の先頭と終端)。この関数は<code>nil</code>をリターンする。
+</p>
+<p>以下の例ではバッファー&lsquo;<samp>bar</samp>&rsquo;をカレントバッファーとしてフォームを実行する。バッファー&lsquo;<samp>bar</samp>&rsquo;は最初は空であるものとする。
+</p>
+<div class="example">
+<pre class="example">---------- Buffer: foo ----------
+We hold these truths to be self-evident, that all
+---------- Buffer: foo ----------
+</pre><pre class="example">
+
+</pre><pre class="example">(insert-buffer-substring &quot;foo&quot; 1 20)
+     &rArr; nil
+
+---------- Buffer: bar ----------
+We hold these truth&lowast;
+---------- Buffer: bar ----------
+</pre></div>
+</dd></dl>
+
+<dl>
+<dt id="index-insert_002dbuffer_002dsubstring_002dno_002dproperties">Function: <strong>insert-buffer-substring-no-properties</strong> <em>from-buffer-or-name &amp;optional start end</em></dt>
+<dd><p>これは<code>insert-buffer-substring</code>と似ているが、テキストプロパティをコピーしない点が異なる。
+</p></dd></dl>
+
+<p>テキスト挿入に加えて、隣接するテキストからテキストプロパティを継承する他の関数については<a href="Sticky-Properties.html">Sticky Properties</a>を参照のこと。インデント関数により挿入された空白文字もテキストプロパティを継承する。
+</p>
+
+
+
+</body>
+</html>

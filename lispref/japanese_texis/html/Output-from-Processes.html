@@ -1,0 +1,103 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Output from Processes (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="Output from Processes (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="Output from Processes (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Processes.html" rel="up" title="Processes">
+<link href="Process-Buffers.html" rel="next" title="Process Buffers">
+<link href="Signals-to-Processes.html" rel="prev" title="Signals to Processes">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="Output-from-Processes"></span><div class="header">
+<p>
+Next: <a href="Sentinels.html" accesskey="n" rel="next">Sentinels</a>, Previous: <a href="Signals-to-Processes.html" accesskey="p" rel="prev">Signals to Processes</a>, Up: <a href="Processes.html" accesskey="u" rel="up">Processes</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="purosesukaranoChu-Li-noShou-Xin-"></span><h3 class="section">38.9 プロセスからの出力の受信</h3>
+<span id="index-process-output"></span>
+<span id="index-output-from-processes"></span>
+
+<p>非同期サブプロセスが自身の標準出力に書き込んだ出力は<em>フィルター関数(filter
+function)</em>と呼ばれる関数に渡されます。デフォルトのフィルター関数は単に出力をバッファーに挿入します。このバッファーをプロセスに関連付けられたバッファーと呼びます(<a href="Process-Buffers.html">Process Buffers</a>を参照)。プロセスがバッファーをもたなければデフォルトフィルターは出力を破棄します。
+</p>
+<p>サブプロセスが標準エラーストリームに書き込む場合には、デフォルトではエラー出力もフィルター関数に渡されて処理されます。Emacsがサブプロセスとの対話に疑似端末(pty:
+pseudo-TTY)を使用する場合には、疑似端末は出力チャンネルを1つしかもてないので、サブプロセスの標準出力ストリームと標準エラーストリームを区別するのは不可能です。それらのストリームの出力を区別して保ちたい場合は、たとえば
+<code>start-process-shell-command</code>や類似コマンドを通じて適当なshellコマンドを使用することにより、いずれか1つをファイルにリダイレクトする必要があります。
+</p>
+<p>エラー出力先を標準出力から区別するためには、かわりに非<code>nil</code>の<code>:stderr</code>パラメーターで<code>make-process</code>
+(<a href="Asynchronous-Processes.html">make-process</a>を参照)を呼び出すことができます。この場合には、サブプロセスとの対話にEmacsはpipeを使用することになります。
+</p>
+<p>サブプロセス終了時にEmacsは保留中の出力を読み取って、その後そのサブプロセスからの出力の読み取りを停止します。したがってそのサブプロセスに生きた子プロセスがあり、まだ出力を生成するような場合には、Emacsはその出力を受け取らないでしょう。
+</p>
+<p>サブプロセスからの出力はEmacsが待機している間、端末入力読み取り時(関数<code>waiting-for-user-input-p</code>、<a href="Waiting.html">Waiting</a>の<code>sit-for</code>と<code>sleep-for</code>、<a href="Accepting-Output.html">Accepting Output</a>の<code>accept-process-output</code>、およびプロセスへのデータ送信関数(<a href="Input-to-Processes.html">Input to Processes</a>を参照)のみ到着可能です。これは並列プログラミングで普遍的に悩みの種であるタイミングエラーの問題を最小化します。たとえば安全にプロセスを作成して、その後でのみプロセスのバッファーやフィルター関数を指定できます。その間にあるコードが待機するプリミティブを何も呼び出さなければ、完了するまで到着可能な出力はありません。
+</p>
+<dl>
+<dt id="index-process_002dadaptive_002dread_002dbuffering">Variable: <strong>process-adaptive-read-buffering</strong></dt>
+<dd><p>いくつかのシステムではEmacsがサブプロセスの出力を読み取る際に出力データを非常に小さいブロックで読み取るために、結果として潜在的に非常に貧弱なパフォーマンスとなることがる。この挙動は変数<code>process-adaptive-read-buffering</code>を非<code>nil</code>値(デフォルト)にセットして拡張することにより改善し得る。これにより、そのようなプロセスからの読み取りを自動的に遅延して、Emacsが読み取りを試みる前に出力がより多く生成されるようになる。
+</p></dd></dl>
+
+<table class="menu" border="0" cellspacing="0">
+<tr><td align="left" valign="top">&bull; <a href="Process-Buffers.html" accesskey="1">Process Buffers</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">デフォルトでは出力はバッファーに送信される。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Filter-Functions.html" accesskey="2">Filter Functions</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">フィルター関数はプロセスからの出力を受け取る。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Decoding-Output.html" accesskey="3">Decoding Output</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">フィルターはユニバイトやマルチバイトの文字列を取得できる。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Accepting-Output.html" accesskey="4">Accepting Output</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">プロセスの出力到着まで待機する方法。
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="Processes-and-Threads.html" accesskey="5">Processes and Threads</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">プロセスとスレッドが相互作用する方法。
+</td></tr>
+</table>
+
+
+
+
+</body>
+</html>

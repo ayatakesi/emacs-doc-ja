@@ -1,0 +1,718 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+@c -*- mode: texinfo; coding: utf-8 -*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2020 Free Software
+@c Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Documentation
+@chapter ドキュメント
+@cindex documentation strings
+
+  GNU
+Emacsには便利なビルトインのヘルプ機能があり、それらのほとんどは関数や変数のドキュメント文字列に付属するドキュメント文字列の情報が由来のものです。このチャプターではLispプログラムからドキュメント文字列にアクセスする方法について説明します。
+
+  ドキュメント文字列のコンテンツはある種の慣習にしたがう必要があります。特に最初の行はその関数や変数を簡単に説明する1つか2つの完全なセンテンスであるべきです。よいドキュメント文字列を記述する方法については@ref{Documentation
+Tips}を参照してください。
+
+  Emacs向けのドキュメント文字列はEmacsマニュアルと同じものではないことに注意してください。マニュアルはTexinfo言語で記述された独自のソースファイルをもちます。それにたいしドキュメント文字列はそれが適用される関数と変数の定義内で指定されたものです。ドキュメント文字列を収集してもそれはマニュアルとしては不十分です。なぜならよいマニュアルはそのやり方でまとめられたものではなく、議論にたいするトピックという観点でまとめられたものだからです。
+
+  ドキュメント文字列を表示するコマンドについては、@ref{Help, , Help, emacs, The GNU Emacs
+Manual}を参照してください。
+
+@menu
+* Documentation Basics::     ドキュメント文字列が定義、格納される場所。
+* Accessing Documentation::  Lispプログラムがドキュメント文字列にアクセスする方法。
+* Keys in Documentation::    カレントキーバインディングの置き換え。
+* Text Quoting Style::       ドキュメント文字列やメッセージの中のクォーテーションマーク。
+* Describing Characters::    非プリント文字やキーシーケンスをプリント可能な記述にする。
+* Help Functions::           Emacsヘルプ機能により使用されるサブルーチン。
+* Documentation Groups::     グループごとに関数をリストする。
+@end menu
+
+@node Documentation Basics
+@section ドキュメントの基礎
+@cindex documentation conventions
+@cindex writing a documentation string
+@cindex string, writing a doc string
+
+  ドキュメント文字列はテキストをダブルクォート文字で囲んだ文字列にたいするLisp構文を使用して記述されます。実はこれは実際のLisp文字列です。関数または変数の定義内の適切な箇所に文字列があると、それは関数や変数のドキュメントの役割を果たします。
+
+@cindex @code{function-documentation} property
+  関数定義(@code{lambda}や@code{defun}フォーム)の中では、ドキュメント文字列は引数リストの後に指定され、通常は関数オブジェクト内に直接格納されます。@ref{Function
+Documentation}を参照してください。関数名の@code{function-documentation}プロパティに関数ドキュメントをputすることもできます(@ref{Accessing
+Documentation}を参照)。
+
+@cindex @code{variable-documentation} property
+  変数定義(@code{defvar}フォーム)の中では、ドキュメント文字列は初期値の後に指定されます。@ref{Defining
+Variables}を参照してください。この文字列はその変数の@code{variable-documentation}プロパティに格納されます。
+
+@cindex @file{DOC} (documentation) file
+  Emacsがメモリー内にドキュメント文字列を保持しないときがあります。それには、これには2つの状況があります。1つ目はメモリーを節約するためで、事前ロードされた関数と変数(プリミティブを含む)のドキュメントは、@code{doc-directory}で指定されたディレクトリー内の@file{DOC}という名前のファイルに保持されます(@ref{Accessing
+Documentation}を参照)。2つ目は関数や変数がバイトコンパイルされたファイルからロードされたときで、Emacsはそれらのドキュメント文字列のロードを無効にします(@ref{Docs
+and Compilation}を参照)。どちらの場合も、ある関数にたいしてユーザーが@kbd{C-h
+f}(@code{describe-function})を呼び出したとき等の必要なときだけEmacsはファイルのドキュメント文字列を照会します。
+
+  ドキュメント文字列にはユーザーがドキュメントを閲覧するときのみルックアップされるキーバインディングを参照する、特別な@dfn{キー置換シーケンス(key
+substitution
+sequences)}を含めることができます。これにより、たとえユーザーがデフォルトのキーバインディングを変更していてもヘルプコマンドが正しいキーを表示できるようになります。
+
+  オートロードされたコマンド(@ref{Autoload}を参照)のドキュメント文字列ではこれらのキー置換シーケンスは特別な効果をもち、そのコマンドにたいする@kbd{C-h
+f}によってオートロードをトリガーします(これは@file{*Help*}バッファー内のハイパーリンクを正しくセットアップするために必要となる)。
+
+@node Accessing Documentation
+@section ドキュメント文字列へのアクセス
+@cindex accessing documentation strings
+
+@defun documentation-property symbol property &optional verbatim
+この関数はプロパティ@var{property}配下の@var{symbol}のプロパティリスト内に記録されたドキュメント文字列をリターンする。これはほとんどの場合@var{property}を@code{variable-documentation}にして、変数のドキュメント文字列の照会に使用される。しかしカスタマイゼーショングループのような他の種類のドキュメント照会にも使用できる(が関数のドキュメントには以下の@code{documentation}関数を使用する)。
+
+そのプロパティの値が@file{DOC}ファイルやバイトコンパイル済みファイルに格納されたドキュメント文字列を参照する場合、この関数はその文字列を照会してそれをリターンする。
+
+プロパティの値が@code{nil}や文字列以外でファイル内のテキストも参照しなければ、文字列を取得するLisp式として評価される。
+
+最終的にこの関数はキーバインディングを置換するために、文字列を@code{substitute-command-keys}に引き渡す(@ref{Keys
+in Documentation}を参照)。@var{verbatim}が非@code{nil}ならこのステップはスキップされる。
+
+@smallexample
+@group
+(documentation-property 'command-line-processed
+   'variable-documentation)
+     @result{} "Non-nil once command line has been processed"
+@end group
+@group
+(symbol-plist 'command-line-processed)
+     @result{} (variable-documentation 188902)
+@end group
+@group
+(documentation-property 'emacs 'group-documentation)
+     @result{} "Customization of the One True Editor."
+@end group
+@end smallexample
+@end defun
+
+@defun documentation function &optional verbatim
+この関数は@var{function}のドキュメント文字列をリターンする。この関数はマクロ、名前付きキーボードマクロ、およびスペシャルフォームも通常の関数と同様に処理する。
+
+@var{function}がシンボルならそのシンボルの@code{function-documentation}プロパティを最初に調べる。それが非@code{nil}値をもつなら、その値(プロパティの値が文字列以外ならそれを評価した値)がドキュメントとなる。
+
+@var{function}がシンボル以外、あるいは@code{function-documentation}プロパティをもたなければ、@code{documentation}は必要ならファイルを読み込んで実際の関数定義のドキュメント文字列を抽出する。
+
+最後に@var{verbatim}が@code{nil}なら、この関数は@code{substitute-command-keys}を呼び出す。結果はリターンするための文字列。
+
+@code{documentation}関数は@var{function}が関数定義をもたなければ@code{void-function}エラーをシグナルする。しかし関数定義がドキュメントをもたない場合は問題ない。その場合は@code{documentation}は@code{nil}をリターンする。
+@end defun
+
+@defun face-documentation face
+この関数は@var{face}のドキュメント文字列をフェイスとしてリターンする。
+@end defun
+
+以下は@code{documentation}と@code{documentation-property}を使用した例で、いくつかのシンボルのドキュメント文字列を@file{*Help*}バッファー内に表示します。
+
+@anchor{describe-symbols example}
+@smallexample
+@group
+(defun describe-symbols (pattern)
+  "Describe the Emacs Lisp symbols matching PATTERN.
+All symbols that have PATTERN in their name are described
+in the *Help* buffer."
+  (interactive "sDescribe symbols matching: ")
+  (let ((describe-func
+         (lambda (s)
+@end group
+@group
+            ;; @r{シンボルの説明をプリントする}
+            (if (fboundp s)             ; @r{これは関数}
+                (princ
+                 (format "%s\t%s\n%s\n\n" s
+                   (if (commandp s)
+                       (let ((keys (where-is-internal s)))
+                         (if keys
+                             (concat
+                              "Keys: "
+                              (mapconcat 'key-description
+                                         keys " "))
+                           "Keys: none"))
+                     "Function")
+@end group
+@group
+                  (or (documentation s)
+                      "not documented"))))
+
+           (if (boundp s)              ; @r{これは変数}
+@end group
+@group
+               (princ
+                (format "%s\t%s\n%s\n\n" s
+                  (if (custom-variable-p s)
+                      "Option " "Variable")
+@end group
+@group
+                  (or (documentation-property
+                        s 'variable-documentation)
+                      "not documented"))))))
+        sym-list)
+@end group
+
+@group
+    ;; @r{パターンにマッチするシンボルのリストを構築}
+    (mapatoms (lambda (sym)
+                (if (string-match pattern (symbol-name sym))
+                    (setq sym-list (cons sym sym-list)))))
+@end group
+
+@group
+    ;; @r{データを表示}
+    (help-setup-xref (list 'describe-symbols pattern)
+                 (called-interactively-p 'interactive))
+    (with-help-window (help-buffer)
+      (mapcar describe-func (sort sym-list 'string<)))))
+@end group
+@end smallexample
+
+  @code{describe-symbols}関数は@code{apropos}のように機能しますが、より多くの情報を提供します。
+
+@smallexample
+@group
+(describe-symbols "goal")
+
+---------- Buffer: *Help* ----------
+goal-column     Option
+Semipermanent goal column for vertical motion, as set by @dots{}
+@end group
+@c Do not blithely break or fill these lines.
+@c That makes them incorrect.
+
+@group
+minibuffer-temporary-goal-position      Variable
+not documented
+@end group
+
+@group
+set-goal-column Keys: C-x C-n
+Set the current horizontal position as a goal for C-n and C-p.
+@end group
+@c DO NOT put a blank line here!  That is factually inaccurate!
+@group
+Those commands will move to this position in the line moved to
+rather than trying to keep the same horizontal position.
+With a non-nil argument ARG, clears out the goal column
+so that C-n and C-p resume vertical motion.
+The goal column is stored in the variable ‘goal-column’.
+
+msgid ""
+"(defun describe-symbols (pattern)\n"
+"  \"Describe the Emacs Lisp symbols matching PATTERN.\n"
+"All symbols that have PATTERN in their name are described\n"
+"in the `*Help*' buffer.\"\n"
+"  (interactive \"sDescribe symbols matching: \")\n"
+"  (let ((describe-func\n"
+"         (function\n"
+"          (lambda (s)\n"
+@end group
+
+@group
+temporary-goal-column   Variable
+Current goal column for vertical motion.
+It is the column where point was at the start of the current run
+of vertical motion commands.
+
+When moving by visual lines via the function ‘line-move-visual’, it is a cons
+cell (COL . HSCROLL), where COL is the x-position, in pixels,
+divided by the default column width, and HSCROLL is the number of
+columns by which window is scrolled from left margin.
+
+When the ‘track-eol’ feature is doing its job, the value is
+‘most-positive-fixnum’.
+---------- Buffer: *Help* ----------
+@end group
+@end smallexample
+
+@anchor{Definition of Snarf-documentation}
+@defun Snarf-documentation filename
+この関数はEmacsビルド時の実行可能なEmacsダンプ直前に使用される。これはファイル@var{filename}内に格納されたドキュメント文字列の位置を探して、メモリー上の関数定義および変数のプロパティリスト内にそれらの位置を記録する。@ref{Building
+Emacs}を参照のこと。
+
+Emacsは@file{emacs/etc}ディレクトリーからファイル@var{filename}を読み込む。その後ダンプされたEmacs実行時に、ディレクトリー@code{doc-directory}内の同じファイルを照会する。@var{filename}は通常は@code{"DOC"}。
+@end defun
+
+@defvar doc-directory
+この変数はビルトインおよび事前ロードされた関数と変数のドキュメント文字列を含んだファイル@code{"DOC"}があるべきディレクトリーの名前を保持する。
+
+これはほとんどの場合は@code{data-directory}と同一。実際にインストールしたEmacsではなくEmacsをビルドしたディレクトリーからEmacsを実行したときは異なるかもしれない。@ref{Definition
+of data-directory}を参照のこと。
+@end defvar
+
+@node Keys in Documentation
+@section ドキュメント内でのキーバインディングの置き換え
+@cindex documentation, keys in
+@cindex keys in documentation strings
+@cindex substituting keys in documentation
+@cindex key substitution sequence
+
+  ドキュメント文字列がキーシーケンスを参照する際、それらはカレントである実際のキーバインディングを使用するべきです。これらは以下で説明する特別なキーシーケンスを使用して行うことができます。通常の方法によるドキュメント文字列へのアクセスは、これらの特別なキーシーケンスをカレントキーバインディングに置き換えます。これは@code{substitute-command-keys}を呼び出すことにより行われます。あなた自身がこの関数を呼び出すこともできます。
+
+  以下はそれら特別なシーケンスと、その意味についてのリストです:
+
+@table @code
+@item \[@var{command}]
+これは@var{command}を呼び出すキーシーケンス、または@var{command}がキーバインディングをもたなければ@samp{M-x
+@var{command}}。
+
+@item \@{@var{mapvar}@}
+これは変数@var{mapvar}の値であるようなキーマップの要約(summary)を意味する。この要約は@code{describe-bindings}を用いて作成される。
+
+@item \<@var{mapvar}>
+これ自体は何のテキストも意味せず副作用のためだけに使用される。これはこのドキュメント文字列内にある、後続のすべての@samp{\[@var{command}]}にたいするキーマップとして@var{mapvar}の値を指定する。
+
+@item `
+グレイブアクセント(grave
+accent)は左クォートを意味する。これは@code{text-quoting-style}の値に応じて左シングルクォーテーションマーク、アポストロフィ、グレイブアクセントのいずれかを生成する。@ref{Text
+Quoting Style}を参照のこと。
+
+@item '
+アポストロフィ(apostrophe)は右クォートを意味する。これは@code{text-quoting-style}の値に応じて右シングルクォーテーションマーク、アポストロフィのいずれかを生成する。@ref{Text
+Quoting Style}を参照のこと。
+
+@item \=
+これは後続の文字をクォートして無効にする。したがって@samp{\=\[}は@samp{\[}、@samp{\=\=}は@samp{\=}を出力する。
+@end table
+
+@strong{注意してください:} Emacs Lisp内の文字列として記述する際は@samp{\}を2つ記述しなければなりません。
+
+@defopt text-quoting-style
+@cindex curved quotes
+@cindex curly quotes
+この変数の値はヘルプやメッセージの文章内のシングルクォートにたいしてEmacsが使用するべきスタイルを指定するシンボル。この変数の値が@code{curve}なら@t{‘like
+this’}のようなcurved single quotesスタイル。値が@code{straight}なら@t{'like
+this'}のようなstraight apostrophesスタイル。値が@code{grave}ならクォートは変換せずに、@t{`like
+this'}のようなEmacsバージョン25以前の標準のgrave
+accentとapostropheによるスタイル。デフォルト値の@code{nil}はcurved single
+quotesが表示可能なようなら@code{curve}、それ以外なら@code{grave}のように機能する。
+
+このオプションはcurved quotesに問題があるプラットフォームで有用。個人の好みに応じてこれを自由にカスタマイズできる。
+@end defopt
+
+@defun substitute-command-keys string
+この関数は上述の特別なシーケンスを@var{string}からスキャンして、それらが意味するもので置き換えてその結果を文字列としてリターンする。これによりそのユーザー自身がカスタマイズした実際のキーシーケンスを参照するドキュメントが表示できる。
+
+@cindex advertised binding
+あるコマンドが複数のバインディングをもつ場合、通常この関数は最初に見つかったバインディングを使用する。以下のようにしてコマンドのシンボルプロパティ@code{:advertised-binding}に割り当てることにより、特定のキーバインディングを指定できる:
+
+@smallexample
+(put 'undo :advertised-binding [?\C-/])
+@end smallexample
+
+@noindent
+@code{:advertised-binding}プロパティはメニューアイテム(@ref{Menu
+Bar}を参照)に表示されるバインディングにも影響する。コマンドが実際にもたないキーバインディングを指定するとこのプロパティは無視される。
+@end defun
+
+  以下は特別なキーシーケンスの例:
+
+@smallexample
+@group
+(substitute-command-keys
+   "To abort recursive edit, type `\\[abort-recursive-edit]'.")
+@result{} "To abort recursive edit, type ‘C-]’."
+@end group
+
+@group
+(substitute-command-keys
+   "The keys that are defined for the minibuffer here are:
+  \\@{minibuffer-local-must-match-map@}")
+@result{} "The keys that are defined for the minibuffer here are:
+@end group
+
+?               minibuffer-completion-help
+SPC             minibuffer-complete-word
+TAB             minibuffer-complete
+C-j             minibuffer-complete-and-exit
+RET             minibuffer-complete-and-exit
+C-g             abort-recursive-edit
+"
+
+@group
+(substitute-command-keys
+   "To abort a recursive edit from the minibuffer, type \
+`\\<minibuffer-local-must-match-map>\\[abort-recursive-edit]'.")
+@result{} "To abort a recursive edit from the minibuffer, type ‘C-g’."
+@end group
+@end smallexample
+
+  ドキュメント文字列内のテキストにたいしては他にも特別な慣習があります。それらはたとえばこのマニュアルの関数、変数、およびセクションで参照できます。詳細は@ref{Documentation
+Tips}を参照してください。
+
+@node Text Quoting Style
+@section テキストのクォートスタイル
+
+  ドキュメント文字列や診断メッセージの中では、グレイブアクセント(grave
+accent)とアポストロフィ(apostrophe)は通常は特別に扱われてマッチするシングルクォーテーションマーク(``curved
+quotes''とも呼ばれる)に変換されます。たとえばドキュメント文字列@t{"Alias for
+`foo'."}と関数呼び出し@code{(message "Alias for `foo'.")}はどちらも@t{"Alias for
+‘foo’."}に変換されます。あまり一般的ではありませんが、Emacsがグレイブアクセントとアポストロフィをそのまま表示したり、アポストロフィだけ(@t{"Alias
+for
+'foo'."})を表示する場合もあります。ドキュメント文字列やメッセージフォーマットは、これらのスタイルすべてで良好に表示されるように記述する必要があります。たとえば通常の英語スタイル@t{"Alias
+for ’foo’."}で表示できるのならば、ドキュメント文字列@t{"Alias for 'foo'."}はあなたが望むスタイルではないでしょう。
+
+  テキストのクォートスタイルとは無関係に変換なしでグレイブアクセントやアポストロフィの表示を要するときがあるかもしれません。ドキュメント文字列ではエスケープでこれを行うことができます。たとえばドキュメント文字列@t{"\\=`(a
+,(sin 0)) ==> (a
+0.0)"}では、グレイブアクセントはLispコードの表現を意図しているので、グレイブアクセントエスケープしてクォートスタイルとは無関係にそれ自身を表示します。@code{message}や@code{error}の呼び出しでは、フォーマット@t{"%s"}と@code{format}呼び出しを引数として変換を回避できます。たとえば@code{(message
+"%s" (format "`(a ,(sin %S)) ==> (a %S)" x (sin
+x)))}はテキストのクォートスタイルに関わらず、グレイブアクセントで始まるメッセージを表示します。
+
+@defopt text-quoting-style
+@cindex curved quotes
+@cindex curly quotes
+このユーザーオプションの値はヘルプやメッセージの文言中のシングルクォートにたいして、Emacsが使用するべきスタイルを指定するシンボル。このオプションの値が@code{curve}なら@t{‘like
+this’}のようなcurved single quotesスタイル。値が@code{straight}なら@t{'like
+this'}のような素のアポストロフィスタイル。値が@code{grave}ならクォートは変換せずに、@t{`like
+this'}のようなEmacsバージョン25以前の標準スタイルであるグレイブアクセントとアポストロフィのスタイル。デフォルト値の@code{nil}はcurved
+single quotesが表示可能なようなら@code{curve}、それ以外なら@code{grave}のように機能する。
+
+このオプションはcurved quotesに問題があるプラットフォームで有用。個人の好みに応じてこれを自由にカスタマイズできる。
+@end defopt
+
+@node Describing Characters
+@section ヘルプメッセージの文字記述
+@cindex describe characters and events
+
+  以下の関数はイベント、キーシーケンス、文字をテキスト表記(textual
+descriptions)に変換します。これらの変換された表記は、メッセージ内に任意のテキスト文字やキーシーケンスを含める場合に有用です。なぜなら非プリント文字や空白文字はプリント文字シーケンスに変換されるからです。空白文字以外のプリント文字はその文字自身が表記になります。
+
+@defun key-description sequence &optional prefix
+@cindex Emacs event standard notation
+この関数は@var{sequence}内の入力イベントにたいしてEmacsの標準表記を含んだ文字列をリターンする。@var{prefix}が非@code{nil}なら、それは@var{sequence}に前置される入力イベントシーケンスであり、リターン値にも含まれる。引数には文字列、ベクター、またはリストを指定できる。有効なイベントに関する詳細は@ref{Input
+Events}を参照のこと。
+
+@smallexample
+@group
+(key-description [?\M-3 delete])
+     @result{} "M-3 <delete>"
+@end group
+@group
+(key-description [delete] "\M-3")
+     @result{} "M-3 <delete>"
+@end group
+@end smallexample
+
+  以下の@code{single-key-description}の例も参照のこと。
+@end defun
+
+@defun single-key-description event &optional no-angles
+@cindex event printing
+@cindex character printing
+@cindex control character printing
+@cindex meta character printing
+この関数はキーボード入力にたいするEmacsの標準表記として@var{event}を表記する文字列をリターンする。通常のプリント文字はその文字自身で表れるが、コントロール文字は@samp{C-}で始まる文字列、メタ文字は@samp{M-}で始まる文字列、スペースやタブ等は@samp{SPC}や@samp{TAB}のように変換される。ファンクションキーのシンボルは@samp{<@dots{}>}のように角カッコ(angle
+brackets)の内側に表れる。リストであるようなイベントは、そのリストの@sc{car}内のシンボル名が角カッコの内側に表れる。
+
+オプション引数@var{no-angles}が非@code{nil}なら、ファンクションキーやイベントシンボルを括る角カッコは省略される。これは角カッコを使用しない古いバージョンのEmacsとの互換性のため。
+
+@smallexample
+@group
+(single-key-description ?\C-x)
+     @result{} "C-x"
+@end group
+@group
+(key-description "\C-x \M-y \n \t \r \f123")
+     @result{} "C-x SPC M-y SPC C-j SPC TAB SPC RET SPC C-l 1 2 3"
+@end group
+@group
+(single-key-description 'delete)
+     @result{} "<delete>"
+@end group
+@group
+(single-key-description 'C-mouse-1)
+     @result{} "<C-mouse-1>"
+@end group
+@group
+(single-key-description 'C-mouse-1 t)
+     @result{} "C-mouse-1"
+@end group
+@end smallexample
+@end defun
+
+@defun text-char-description character
+この関数はテキスト内に出現し得る文字にたいするEmacsの標準表記として@var{character}を記述する文字列をリターンする。これは@code{single-key-description}と似ているが、引数が@code{characterp}によるテスト(@ref{Character
+Codes}を参照)をパスする有効な文字コードでなければならない点が異なる。この関数は先頭のカレットによりコントロール文字の記述を生成する(Emacsがバッファー内にコントロール文字を表示する通常の方法)。修飾ビットをもつ文字にたいして、この関数はエラーをシグナルする(コントロール修飾された@acronym{ASCII}文字は例外であり、これらはコントロール文字として表現される)。
+
+@smallexample
+@group
+(text-char-description ?\C-c)
+     @result{} "^C"
+@end group
+@group
+(text-char-description ?\M-m)
+     @error{} Wrong type argument: characterp, 134217837
+@end group
+@end smallexample
+@end defun
+
+@deffn Command read-kbd-macro string &optional need-vector
+この関数は主にキーボードマクロを操作するために使用されるが、大雑把な意味で@code{key-description}の逆の処理にも使用できる。キー表記を含むスペース区切りの文字列でこれを呼び出すと、それに対応するイベントを含む文字列かベクターをリターンする(これは単一の有効なキーシーケンスであるか否かは問わず何のイベントを使用するかに依存する。@ref{Key
+Sequences}を参照のこと)。@var{need-vector}が非@code{nil}ならリターン値は常にベクター。
+@end deffn
+
+@node Help Functions
+@section ヘルプ関数
+@cindex help functions
+
+  Emacsはさまざまなビルトインのヘルプ関数を提供しており、それらはすべてプレフィックス@kbd{C-h}のサブコマンドとしてユーザーがアクセスできます。それらについての詳細は@ref{Help,
+, Help, emacs, The GNU Emacs
+Manual}を参照してください。ここでは同様な情報に関するプログラムレベルのインターフェイスを説明します。
+
+@deffn Command apropos pattern &optional do-all
+この関数は名前にaproposパターン(apropos pattern: 適切なパターン)
+@var{pattern}を含む重要なすべてのシンボルを探す。マッチに使用されるaproposパターンは単語、最低2つはマッチしなければならないスペース区切りの単語、または(特別な正規表現文字があれば)正規表現のいずれか。あるシンボルが関数、変数、フェイスとしての定義、あるいはプロパティをもつならそのシンボルは重要とみなされる。
+
+この関数は以下のような要素のリストをリターンする:
+
+@example
+(@var{symbol} @var{score} @var{function-doc} @var{variable-doc}
+ @var{plist-doc} @var{widget-doc} @var{face-doc} @var{group-doc})
+@end example
+
+ここで@var{score}はマッチの面からそのシンボルがどれだけ重要に見えるかを比較する整数である。残りの各要素は@var{symbol}にたいする関数、変数、...等のドキュメント文字列(または@code{nil})。
+
+これは@file{*Apropos*}という名前のバッファーにもシンボルを表示する。その際、各行にはドキュメント文字列の先頭から取得した1行説明とともに表示される。
+
+@var{do-all}が非@code{nil}、またはユーザーオプション@code{apropos-do-all}が非@code{nil}なら、@code{apropos}は見つかった関数のキーバインディングも表示する。これは重要なものだけでなく、internされた@emph{すべて}のシンボルも表示する(同様にリターン値としてもそれらをリストする)。
+@end deffn
+
+@defvar help-map
+この変数の値はHelpキー@kbd{C-h}に続く文字にたいするローカルキーマップである。
+@end defvar
+
+@deffn {Prefix Command} help-command
+このシンボルは関数ではなく関数定義セルには@code{help-map}としてキーマップを保持する。これは@file{help.el}内で以下のように定義されている:
+
+@smallexample
+@group
+(define-key global-map (string help-char) 'help-command)
+(fset 'help-command help-map)
+@end group
+@end smallexample
+@end deffn
+
+@defopt help-char
+この変数の値はヘルプ文字(help character:
+Helpを意味する文字としてEmacsが認識する文字)。デフォルトの値は@kbd{C-h}を意味する8。この文字を読み取った際に@code{help-form}が非@code{nil}のLisp式なら、Emacsはその式を評価して結果が文字列の場合はウィンドウ内にそれを表示する。
+
+@code{help-form}の値は通常は@code{nil}。その場合にはヘルプ文字はコマンド入力のレベルにおいて特別な意味を有さず、通常の方法におけるキーシーケンスの一部となる。@kbd{C-h}の標準的なキーバインディングは、複数の汎用目的をもつヘルプ機能のプレフィックスキー。
+
+ヘルプ文字はプレフィックスキーの後でも特別な意味をもつ。ヘルプ文字がプレフィックスキーのサブコマンドとしてバインディングをもたなければ、そのプレフィックスキーのすべてのサブコマンドのリストを表示する@code{describe-prefix-bindings}を実行する。
+@end defopt
+
+@defopt help-event-list
+この変数の値はヘルプ文字の選択肢の役割を果たすイベント型のリスト。これらのイベントは@code{help-char}で指定されるイベントと同様に処理される。
+@end defopt
+
+@defvar help-form
+この変数が非@code{nil}なら、その値は文字@code{help-char}が読み取られるたびに評価されるフォームであること。そのフォームの評価によって文字列が生成されたらその文字列が表示される。
+
+@code{read-event}、@code{read-char-choice}、@code{read-char}、@code{read-char-from-minibuffer}、@code{y-or-n-p}を呼び出すコマンドは、それが入力を行う間は恐らく@code{help-form}を非@code{nil}にバインドするべきだろう(@kbd{C-h}が他の意味をもつなら行わないこと)。この式を評価した結果は、それが何にたいする入力なのかと、それを正しくエンターする方法を説明する文字列であること。
+
+ミニバッファーへのエントリーにより、この変数は@code{minibuffer-help-form}の値にバインドされる(@ref{Definition
+of minibuffer-help-form}を参照)。
+@end defvar
+
+@defvar prefix-help-command
+この変数はプレフィックスキーにたいするヘルプをプリントする関数を保持する。その関数はユーザーが後にヘルプ文字を伴うプレフィックスキーをタイプして、そのヘルプ文字がプレフィックスの後のバインディングをもたないたときに呼び出される。この変数のデフォルト値は@code{describe-prefix-bindings}。
+@end defvar
+
+@deffn Command describe-prefix-bindings
+この関数はもっとも最近のプレフィックスキーのサブコマンドすべてにたいするリストを表示する@code{describe-bindings}を呼び出す。記述されるプレフィックスは、そのキーシーケンスの最後のイベントを除くすべてから構成される(最後のイベントは恐らくヘルプ文字)。
+@end deffn
+
+  以下の2つの関数はelectricモードのように制御を放棄せずにヘルプを提供したいモードを意図しています。これらは通常のヘルプ関数と区別するために名前が@samp{Helper}で始まります。
+
+@deffn Command Helper-describe-bindings
+このコマンドはローカルキーマップとグローバルキーマップの両方のキーバインディングすべてのリストを含むヘルプバッファーを表示するウィンドウをポップアップする。これは@code{describe-bindings}を呼び出すことによって機能する。
+@end deffn
+
+@deffn Command Helper-help
+このコマンドはカレントモードにたいするヘルプを提供する。これはミニバッファー内でメッセージ@samp{Help (Type ? for further
+options)}とともにユーザーに入力を求めて、その後キーバインディングが何か、何を意図するモードなのかを探すための助けを提供する。これは@code{nil}をリターンする。
+
+@vindex Helper-help-map
+これはマップ@code{Helper-help-map}を変更することによってカスタマイズできる。
+@end deffn
+
+@defvar data-directory
+@anchor{Definition of data-directory}
+この変数はEmacsに付随する特定のドキュメントおよびテキストファイルを探すディレクトリーの名前を保持する。
+@end defvar
+
+@defun help-buffer
+この関数はヘルプバッファーの名前(通常は@file{*Help*})をリターンする。そのようなバッファーが存在しなければ最初にそれを作成する。
+@end defun
+
+@vindex help-window-select
+@defmac with-help-window buffer-or-name body@dots{}
+このマクロは@code{with-output-to-temp-buffer} (@ref{Temporary
+Displays}を参照)のように@var{body}を評価して、そのフォームが生成したすべての出力を@var{buffer-name}で指定されるバッファーに挿入する(@var{buffer-name}は関数@code{help-buffer}によりリターンされる値であることが多い)。このマクロは指定されたバッファーをHelpモードにして、ヘルプウィンドウのquitやスクロールする方法を告げるメッセージを表示する。これはユーザーオプション@code{help-window-select}のカレント値が適切にセットされていればヘルプウィンドウの選択も行う。これは@var{body}内の最後の値をリターンする。
+@end defmac
+
+@defun help-setup-xref item interactive-p
+この関数は@file{*Help*}バッファー内のクロスリファレンスデータを更新する。このクロスリファレンスはユーザーが@samp{Back}ボタンか@samp{Forward}ボタン上でクリックした際のヘルプ情報の再生成に使用される。@file{*Help*}バッファーを使用するほとんどのコマンドは、バッファーをクリアーする前にこの関数を呼び出すべきである。@var{item}引数は@code{(@var{function}
+.
+@var{args})}という形式であること。ここで@var{function}は引数リスト@var{args}で呼び出されるヘルプバッファーを再生成する関数。コマンド呼び出しがinteractiveに行われた場合、@var{interactive-p}引数は非@code{nil}。この場合には@file{*Help*}バッファーの@samp{Back}ボタンにたいするitemのスタックはクリアーされる。
+@end defun
+
+@code{help-buffer}、@code{with-help-window}、@code{help-setup-xref}の使用例は@ref{describe-symbols
+example}を参照してください。
+
+@defmac make-help-screen fname help-line help-text help-map
+このマクロは提供するサブコマンドのリストを表示するプレフィックスキーのように振る舞う、@var{fname}という名前のヘルプコマンドを定義する。
+
+呼び出された際、@var{fname}はウィンドウ内に@var{help-text}を表示してから@var{help-map}に応じてキーシーケンスの読み取りと実行を行う。文字列@var{help-text}は@var{help-map}内で利用可能なバインディングを説明すること。
+
+コマンド@var{fname}は@var{help-text}の表示をスクロールすることによる、自身のいくつかのイベントを処理するために定義される。@var{fname}がこれらのスペシャルイベントのいずれかを読み取った際には、スクロールを行った後で他のイベントを読み取る。自身が処理する以外のイベントを読み取りそのイベントが@var{help-map}内にバインディングを有す際は、そのキーのバインディングを実行した後にリターンする。
+
+引数@var{help-line}は@var{help-map}内の候補の1行要約であること。Emacsのカレントバージョンでは、オプション@code{three-step-help}を@code{t}にセットした場合のみこの引数が使用される。
+
+このマクロは@kbd{C-h C-h}にバインドされるコマンド@code{help-for-help}内で使用される。
+@end defmac
+
+@defopt three-step-help
+この変数が非@code{nil}なら、@code{make-help-screen}で定義されたコマンドは最初にエコーエリア内に自身の@var{help-line}文字列を表示して、ユーザーが再度ヘルプ文字をタイプした場合のみ長い@var{help-text}文字列を表示する。
+@end defopt
+
+
+@node Documentation Groups
+@section Documentation Groups
+@cindex documentation groups
+@cindex groups of functions
+@cindex function groups
+
+Emacsは種々のグループにもとづいて関数をリストできます。たとえば@code{string-trim}や@code{mapconcat}などは``string(文字列)''の関数ですが、@kbd{M-x
+shortdoc-display-group RET string RET}によって文字列を操作する関数の概要を得ることができます。
+
+ドキュメンテーショングループは@code{define-short-documentation-group}マクロにより作成されます。
+
+@defmac define-short-documentation-group group &rest functions
+関数グループとして@var{group}を定義して、それらの関数の使用に関する短いサマリーを提供する。オプション引数@var{functions}は要素が以下の形式であるようなリスト:
+
+@lisp
+(@var{func} @var{keyword} @var{val} @dots{})
+@end lisp
+
+以下のキーワードが認識される:
+
+@table @code
+
+@item :eval
+値は評価時の副作用をもたないフォームであること。このフォームはドキュメント内で@code{prin1}でプリントして使用されることになる(@ref{Output
+Functions}を参照)。しかしこのフォームが文字列ならそのまま挿入されてから、フォームを生成するために@code{read}される。いずれのケースでも、その後にフォームは評価されて結果が使用される。たとえば:
+
+@example
+:eval (concat "foo" "bar" "zot")
+:eval "(make-string 5 ?x)"
+@end example
+
+@noindent
+は以下のようにプリントされる
+
+@example
+(concat "foo" "bar" "zot")
+@result{} "foobarzot"
+(make-string 5 ?x)
+@result{} "xxxxx"
+@end example
+
+(Lispフォームと文字列の両方を受け付けるのは、特定のフォーム表現が望まれるいくつかのケースにおいてプリントのコントロールを可能にするのが理由。この例では@samp{?x}が文字列に含まれていなければ@samp{120}としてプリントされるだろう。)
+
+@item :no-eval
+
+これは@code{:eval}と似ているが、フォームを評価しない点が異なる。この場合では何らかの類の@code{:result}要素が含まれている必要がある。
+
+@example
+:no-eval (file-symlink-p "/tmp/foo")
+:eg-result t
+@end example
+
+@item :no-eval*
+@code{:no-eval}と同様だが、常に@samp{[it depends]}を結果として挿入する。
+
+@example
+:no-eval* (buffer-string)
+@end example
+
+は以下の結果になる:
+
+@example
+(buffer-string)
+@click{} [it depends]
+@end example
+
+@item :no-value
+@code{:no-eval}と同様だが、対象となっている関数が明確に定義されたリターン値をもち、副作用のためだけに使用される際に用いられる。
+
+@item :result
+評価されないフォーム例の結果を出力するために使用される。
+
+@example
+:no-eval (setcar list 'c)
+:result c
+@end example
+
+@item :eg-result
+評価されないフォーム例の結果例を出力するために使用される。
+
+@example
+:no-eval (looking-at "f[0-9]")
+:eg-result t
+@end example
+
+@item :result-string
+@itemx :eg-result-string
+これら2つはそれぞれ@code{:result}や@code{:eg-result}と同じだが、そのまま挿入される。これは結果が読めなかったり、特定の形式が要求される際に有用:
+
+@example
+:no-eval (find-file "/tmp/foo")
+:eg-result-string "#<buffer foo>"
+:no-eval (default-file-modes)
+:eg-result-string "#o755"
+@end example
+
+@item :no-manual
+その関数がマニュアルにドキュメントされていないことを示す。
+
+@item :args
+デフォルトではその関数の実際の引数リストが表示される。@code{:args}が与えられたら、かわりにそれらが使用される。
+
+@example
+:args (regexp string)
+@end example
+
+@end table
+
+以下に非常に短い例を示す:
+
+@lisp
+(define-short-documentation-group string
+  "Creating Strings"
+  (substring
+   :eval (substring "foobar" 0 3)
+   :eval (substring "foobar" 3))
+  (concat
+   :eval (concat "foo" "bar" "zot")))
+@end lisp
+
+1つ目の引数は定義するグループ名、その後に任意個数の関数説明が続く。
+
+@end defmac
+
+関数は任意個数のドキュメンテーショングループに所属できます。
+
+このリストは関数説明に加えて、ドキュメントからセクションへの分割に使用される文字列要素ももつことができます。
+
+@defun shortdoc-add-function shortdoc-add-function group section elem
+Lispパッケージはこのコマンで関数をグループに追加できる。@var{elem}はそれぞれ上述したような関数説明であること。@var{group}は関数グループ、@var{section}は関数を挿入する関数グループのセクション。
+
+@var{group}が存在しなければ作成する。@var{section}が存在しなければ、その関数グループの最後に追加される。
+@end defun

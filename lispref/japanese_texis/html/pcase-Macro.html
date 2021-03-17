@@ -1,0 +1,415 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- This is the GNU Emacs Lisp Reference Manual
+corresponding to Emacs version 27.1.
+
+Copyright (C) 1990-1996, 1998-2020 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; with the Invariant
+Sections being "GNU General Public License," with the Front-Cover Texts
+being "A GNU Manual," and with the Back-Cover Texts as in (a) below.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License."
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>pcase Macro (GNU Emacs Lisp Reference Manual)</title>
+
+<meta name="description" content="pcase Macro (GNU Emacs Lisp Reference Manual)">
+<meta name="keywords" content="pcase Macro (GNU Emacs Lisp Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Pattern_002dMatching-Conditional.html" rel="up" title="Pattern-Matching Conditional">
+<link href="Extending-pcase.html" rel="next" title="Extending pcase">
+<link href="Pattern_002dMatching-Conditional.html" rel="prev" title="Pattern-Matching Conditional">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<span id="pcase-Macro"></span><div class="header">
+<p>
+Next: <a href="Extending-pcase.html" accesskey="n" rel="next">Extending pcase</a>, Up: <a href="Pattern_002dMatching-Conditional.html" accesskey="u" rel="up">Pattern-Matching Conditional</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="pcasemakuro"></span><h4 class="subsection">11.4.1 <code>pcase</code>マクロ</h4>
+
+<p>背景は<a href="Pattern_002dMatching-Conditional.html">Pattern-Matching Conditional</a>を参照してください。
+</p>
+<dl>
+<dt id="index-pcase-1">Macro: <strong>pcase</strong> <em>expression &amp;rest clauses</em></dt>
+<dd><p><var>clauses</var>内のclauseは<code>(<var>pattern</var>&nbsp;<var><span class="nolinebreak">body-forms</span></var>&hellip;)</code><!-- /@w -->という形式をもつ。
+</p>
+<p><var>expression</var>の値( <var>expval</var>
+)を決定するために評価する。<var>pattern</var>が<var>expval</var>にマッチするような最初のclauseを探して、そのclauseの<var>body-forms</var>に制御を渡す。
+</p>
+<p>マッチが存在すれば<code>pcase</code>の値はマッチが成功したclauseの<var>body-forms</var>の最後の値、それ以外なら<code>pcase</code>は<code>nil</code>に評価される。
+</p></dd></dl>
+
+<span id="index-pcase-pattern"></span>
+<p>各<var>pattern</var>は<em>pcaseパターン(pcase
+pattern)</em>である必要があります。これは以下に定義されるコアパターンのいずれか、または<code>pcase-defmacro</code>
+(<a href="Extending-pcase.html">Extending pcase</a>を参照)を通じて定義されるパターンの1つを使用できます。
+</p>
+<p>このサブセクションの残りの部分ではコアパターンの異なるフォームをいくつかの例を交えて説明して、いくつかのパターンフォームが提供するletバイディング機能を使用する上で重要な注意点で締めくくります。コアパターンは以下のフォームをもつことができます:
+</p>
+<dl compact="compact">
+<dt><code>_</code></dt>
+<dd><p>任意の<var>expval</var>にマッチ。これは<em>don&rsquo;t care</em>、あるいは<em>ワイルドカード(wildcard)</em>としても知られる。
+</p>
+</dd>
+<dt><code>'<var>val</var></code></dt>
+<dd><p><var>expval</var>と<var>val</var>が等しければマッチ。比較は<code>equal</code>のように行われる(<a href="Equality-Predicates.html">Equality Predicates</a>を参照)。
+</p>
+</dd>
+<dt><code><var>keyword</var></code></dt>
+<dt><code><var>integer</var></code></dt>
+<dt><code><var>string</var></code></dt>
+<dd><p><var>expval</var>がリテラルオブジェクトと等しければマッチ。これは上述の<code>'<var>val</var></code>の特殊なケースであり、これらのタイプのリテラルオブジェクトが自己クォート(self-quoting)を行うために可能となる。
+</p>
+</dd>
+<dt><code><var>symbol</var></code></dt>
+<dd><p>任意の<var>expval</var>にマッチするとともに、追加で<var>symbol</var>を<var>expval</var>にletバインドする。このようなバインディングは<var>body-forms</var>内でも利用できる(<a href="Dynamic-Binding.html">Dynamic Binding</a>を参照)。
+</p>
+<p><var>symbol</var>が(以下の<code>and</code>を使用することにより)シーケンスパターン<var>seqpat</var>の一部なら、<var>symbol</var>に後続する<var>seqpat</var>部分でもバインディングは利用可能。この使用法にはいくつかの注意点がある。<a href="#pcase_002dsymbol_002dcaveats">caveats</a>を参照のこと。
+</p>
+<p>使用を避けるべき2つのシンボルは<code>_</code>
+(上述)と同様に振る舞う非推奨の<code>t</code>と<code>nil</code>(エラーをシグナルする)。同様にキーワードシンボルへのバインドは無意味(<a href="Constant-Variables.html">Constant Variables</a>を参照)。
+</p>
+</dd>
+<dt><code>(pred <var>function</var>)</code></dt>
+<dd><p><var>expval</var>にたいして述語<var>function</var>が非<code>nil</code>をリターンしたらマッチ。述語<var>function</var>は以下のフォームのいずれかが可能:
+</p>
+<dl compact="compact">
+<dt>関数名(シンボル)</dt>
+<dd><p><var>expval</var>を単一の引数として名前つきの関数を呼び出す。
+</p>
+<p>例: <code>integerp</code>
+</p>
+</dd>
+<dt>lambda式</dt>
+<dd><p><var>expval</var>を単一の引数として無名関数を呼び出す(<a href="Lambda-Expressions.html">Lambda Expressions</a>を参照)。
+</p>
+<p>例: <code>(lambda (n) (= 42 n))</code>
+</p>
+</dd>
+<dt><var>n</var>個の引数での関数呼び出し</dt>
+<dd><p>関数(関数呼び出しの1つ目の要素)を<var>n</var>個の引数(残りの要素)、および<var>expval</var>を<var>n</var>+1番目の追加の引数としてで呼び出す。
+</p>
+<p>例: <code>(= 42)</code><br> この例では関数が<code>=</code>、<var>n</var>が1であり、実際の関数呼び出しは<code>(=&nbsp;42&nbsp;<var>expval</var>)</code><!-- /@w -->になる。
+</p></dd>
+</dl>
+
+</dd>
+<dt><code>(app <var>function</var> <var>pattern</var>)</code></dt>
+<dd><p><var>expval</var>にたいして呼び出した<var>function</var>が<var>pattern</var>にマッチする値をリターンすればマッチ。<var>function</var>は上述の<code>pred</code>で説明したフォームのいずれかが可能。しかし<code>pred</code>とは異なり、<code>app</code>はブーリーンの真値ではなく<var>pattern</var>にたいして結果をテストする点が異なる。
+</p>
+</dd>
+<dt><code>(guard <var>boolean-expression</var>)</code></dt>
+<dd><p><var>boolean-expression</var>が非<code>nil</code>に評価されればマッチ。
+</p>
+</dd>
+<dt><code>(let <var>pattern</var> <var>expr</var>)</code></dt>
+<dd><p><var>exprval</var>を取得するために<var>expr</var>を評価して、<var>exprval</var>が<var>pattern</var>にマッチすればマッチ(<var>pattern</var>は<var>symbol</var>を使用することでシンボルに値をバインドできるので<code>let</code>と呼ばれる)。
+</p></dd>
+</dl>
+
+<span id="index-sequencing-pattern"></span>
+<p><var>seqpat</var>としても知られる<em>シーケンスパターン(sequencing
+pattern)</em>はサブパターンを順に処理するパターンです。<code>pcase</code>にたいしては<code>and</code>と<code>or</code>の2つが存在します。これらは同じ名前のスペシャルフォーム(<a href="Combining-Conditions.html">Combining Conditions</a>を参照)と同様の方式で振る舞いますが、値ではなくサブパターンを処理します。
+</p>
+<dl compact="compact">
+<dt><code>(and <var>pattern1</var>&hellip;)</code></dt>
+<dd><p><var>pattern1</var>&hellip;のいずれかがマッチに失敗するまで順にマッチを試みる。この場合には<code>and</code>もマッチに失敗して、残りのサブパターンはテストしない。すべてのサブパターンがマッチすれば<code>and</code>はマッチする。
+</p>
+</dd>
+<dt><code>(or <var>pattern1</var> <var>pattern2</var>&hellip;)</code></dt>
+<dd><p><var>pattern1</var>、<var>pattern2</var>、&hellip;のいずれかがマッチに成功するまで順にマッチを試みる。この場合には<code>or</code>もマッチして、残りのサブパターンはテストしない(少なくともサブパターンが2つなければならにことに注意。単なる<code>(or&nbsp;<var>pattern1</var>)</code><!-- /@w -->はエラーをシグナルする)。
+</p>
+<p><var>body-forms</var>に一定の環境(<a href="Intro-Eval.html">Intro Eval</a>を参照)を与えるためには、シンボルセットをletバインドするサブパターンがある場合には、それらは同一のシンボルセットすべてを<em>バインドしなければならない</em>。
+</p>
+<span id="rx-in-pcase"></span></dd>
+<dt><code>(rx <var>rx-expr</var>&hellip;)</code></dt>
+<dd><p><code>string-match</code>が行うように<code>rx</code>正規表現表記を使用して文字列を正規表現<var>rx-expr</var>&hellip;にマッチする(<a href="Rx-Notation.html">Rx Notation</a>を参照)。
+</p>
+<p>通常の<code>rx</code>構文に加えて、<var>rx-expr</var>&hellip;には以下の構文を含めることができる:
+</p>
+<dl compact="compact">
+<dt><code>(let <var>ref</var> <var>rx-expr</var>&hellip;)</code></dt>
+<dd><p>シンボル<var>ref</var>を<var>rx-expr</var><small class="enddots">...</small>にマッチする部分マッチにバインドする。<var>ref</var>は<var>body-forms</var>内で部分マッチの文字列かnilにバインドされるが、<code>backref</code>でも使用可能。
+</p>
+</dd>
+<dt><code>(backref <var>ref</var>)</code></dt>
+<dd><p>標準の<code>backref</code>構文と同様だが、<var>ref</var>は前の<code>(let <var>ref</var>
+&hellip;)</code>構文で導入された名前にもなる。
+</p></dd>
+</dl>
+
+</dd>
+</dl>
+
+<span id="pcase_002dexample_002d0"></span><span id="Li_003a-cl_002dcasenitaisuruLi-Dian-"></span><h4 class="subheading">例: <code>cl-case</code>にたいする利点</h4>
+
+<p>以下は<code>cl-case</code> (<a href="https://www.gnu.org/software/emacs/manual/html_node/cl/Conditionals.html#Conditionals">Conditionals</a> in <cite>Common Lisp
+Extensions</cite>を参照)にたいする<code>pcase</code>の利点のいくつかを強調する例です。
+</p>
+<div class="example">
+<pre class="example">(pcase (get-return-code x)
+  ;; 文字列
+  ((and (pred stringp) msg)
+   (message &quot;%s&quot; msg))
+</pre><pre class="example">  ;; シンボル
+  ('success       (message &quot;完了!&quot;))
+  ('would-block   (message &quot;残念、今は実行できない&quot;))
+  ('read-only     (message &quot;shmliblickは読み取り専用&quot;))
+  ('access-denied (message &quot;必要な権限がない&quot;))
+</pre><pre class="example">  ;; default
+  (code           (message &quot;未知のリターンコード %S&quot; code)))
+</pre></div>
+
+<p><code>cl-case</code>では<code>get-return-code</code>のリターン値を保持するためにローカル変数<code>code</code>を宣言する必要があります。さらに<code>cl-case</code>は比較に<code>eql</code>を使用するので文字列の使用も難しくなります。
+</p>
+<span id="pcase_002dexample_002d1"></span><span id="Li_003a-andnoShi-Yong-"></span><h4 class="subheading">例: <code>and</code>の使用</h4>
+
+<p>後続のサブパターン(と同様にbodyフォーム)にバインディングを提供する1つ以上の<var>symbol</var>サブパターンをもつ<code>and</code>で開始するのが、パターンを記述する際の一般的なイディオムです。たとえば以下のパターンは1桁の整数にマッチします。
+</p>
+<div class="example">
+<pre class="example">(and
+  (pred integerp)
+  n                     ; <span class="roman"><code>n</code>に<var>expval</var>をバインド</span>
+  (guard (&lt;= -9 n 9)))
+</pre></div>
+
+<p>まず<code>pred</code>は<code>(integerp&nbsp;<var>expval</var>)</code><!-- /@w -->が非<code>nil</code>に評価されればマッチになります。次に<code>n</code>はすべてにマッチする<var>symbol</var>パターンであり、<code>n</code>に<var>expval</var>がバインドされます。最後に<code>guard</code>はブーリーン式<code>(&lt;=&nbsp;<span class="nolinebreak">-9</span>&nbsp;n&nbsp;9)</code><!-- /@w -->が非<code>nil</code>に評価されればマッチになります(<code>n</code>への参照に注意)。これらすべてのサブパターンがマッチすれば<code>and</code>がマッチになります。
+</p>
+<span id="pcase_002dexample_002d2"></span><span id="Li_003a-pcaseniyoruShu-kiHuan-e"></span><h4 class="subheading">例: <code>pcase</code>による書き換え</h4>
+
+<p>以下はシンプルなマッチングタスクを伝統的な実装(関数<code>grok/traditional</code>から、<code>pcase</code>を使用する実装(関数<code>grok/pcase</code>)に書き換える別の例です。これらの関数のdocstringはいずれも&ldquo;If
+OBJ is a string of the form &quot;key:NUMBER&quot;, return NUMBER (a
+string). Otherwise, return the list (&quot;149&quot;
+default).&rdquo;です。最初は伝統的な実装です(<a href="Regular-Expressions.html">Regular Expressions</a>を参照):
+</p>
+<div class="example">
+<pre class="example">(defun grok/traditional (obj)
+  (if (and (stringp obj)
+           (string-match &quot;^key:\\([[:digit:]]+\\)$&quot; obj))
+      (match-string 1 obj)
+    (list &quot;149&quot; 'default)))
+</pre><pre class="example">
+
+</pre><pre class="example">(grok/traditional &quot;key:0&quot;)   &rArr; &quot;0&quot;
+(grok/traditional &quot;key:149&quot;) &rArr; &quot;149&quot;
+(grok/traditional 'monolith) &rArr; (&quot;149&quot; default)
+</pre></div>
+
+<p>この書き換えでは<var>symbol</var>バインディング、および<code>or</code>、<code>and</code>、<code>pred</code>、<code>app</code>、<code>let</code>を実演します。
+</p>
+<div class="example">
+<pre class="example">(defun grok/pcase (obj)
+  (pcase obj
+    ((or                                     ; <span class="roman">L1</span>
+      (and                                   ; <span class="roman">L2</span>
+       (pred stringp)                        ; <span class="roman">L3</span>
+       (pred (string-match                   ; <span class="roman">L4</span>
+              &quot;^key:\\([[:digit:]]+\\)$&quot;))   ; <span class="roman">L5</span>
+       (app (match-string 1)                 ; <span class="roman">L6</span>
+            val))                            ; <span class="roman">L7</span>
+      (let val (list &quot;149&quot; 'default)))       ; <span class="roman">L8</span>
+     val)))                                  ; <span class="roman">L9</span>
+</pre><pre class="example">
+
+</pre><pre class="example">(grok/pcase &quot;key:0&quot;)   &rArr; &quot;0&quot;
+(grok/pcase &quot;key:149&quot;) &rArr; &quot;149&quot;
+(grok/pcase 'monolith) &rArr; (&quot;149&quot; default)
+</pre></div>
+
+<p><code>grok/pcase</code>は主に1つの<code>pcase</code>フォームのclause、L1からL8のパターン、L9の(1つの)フォームからなります。パターンは引数であるサブパターンにたいして順にマッチを試みる<code>or</code>です。これは最初に<code>and</code>
+(L2からL7)、次に<code>let</code> (L8)のように、いずれかが成功するまで順にマッチを試みます。
+</p>
+<p>前出の例(<a href="#pcase_002dexample_002d1">Example
+1</a>を参照)のように、<code>and</code>は以降のサブパターンが正しいタイプのオブジェクト(この場合は文字列)に作用することを保証するために<code>pred</code>サブパターンで始まります。<code>(stringp&nbsp;<var>expval</var>)</code><!-- /@w -->が<code>nil</code>なら<code>pred</code>は失敗となり、したがって<code>and</code>も失敗となります。
+</p>
+<p>次の<code>pred</code> (L4からL5)は<code><span class="nolinebreak">(string-match</span>&nbsp;RX&nbsp;<var>expval</var>)</code><!-- /@w -->を評価して結果が非<code>nil</code> (
+<var>expval</var>が期待するフォーム<code>key:NUMBER</code>であることを意味する)ならマッチになります。これが失敗すると再び<code>pred</code>は失敗となり、したがって<code>and</code>も失敗となります。
+</p>
+<p>(<code>and</code>の一連のサブパターンでは)最後の<code>app</code>は一時的な値<var>tmp</var> (部分文字列
+&ldquo;NUMBER&rdquo;)を取得するために<code><span class="nolinebreak">(match-string</span>&nbsp;1&nbsp;<var>expval</var>)</code><!-- /@w -->
+(L6)を評価して、パターン<code>val</code>
+(L7)と<var>tmp</var>のマッチを試みます。これは<var>symbol</var>パターンなので無条件でマッチして、<code>val</code>に<var>tmp</var>を追加でバインドします。
+</p>
+<p>ついに<code>app</code>がマッチしたので、<code>and</code>のすべてのサブパターンがマッチして、<code>and</code>がマッチとなります。同じように一度<code>and</code>がマッチすれば<code>or</code>がマッチするので、サブパターン<code>let</code>
+(L8)の処理が試みられることはありません。
+</p>
+<p><code>obj</code>が文字列以外、あるいは間違った形式の文字列の場合を考えてみましょう。この場合にはいずれかの<code>pred</code>
+(L3からL5)がマッチに失敗するので、<code>and</code> (L2)がマッチに失敗して、<code>or</code> (L1)がサブパターン<code>let</code>
+(L8)の処理を試みます。
+</p>
+<p>まず<code>let</code>は<code>(&quot;149&quot;&nbsp;default)</code><!-- /@w -->を取得するために<code>(list&nbsp;&quot;149&quot;&nbsp;'default)</code><!-- /@w -->を評価して、それからパターン<code>val</code>にたいして<var>exprval</var>のマッチを試みます。これは<var>symbol</var>パターンなので無条件にマッチして、追加で<code>val</code>に<var>exprval</var>をバインドします。これで<code>let</code>がマッチしたので、<code>or</code>がマッチとなります。
+</p>
+<p><code>and</code>と<code>let</code>のサブパターンはどちらも同じ方法、すなわち<code>val</code>をバインドする過程で<var>symbol</var>パターンの<code>val</code>に(常に成功する)マッチを試みることにより完了することに注意してください。したがって<code>or</code>は常にマッチして、常に制御をbodyフォーム(L9)に渡します。マッチが成功した<code>pcase</code>のclauseとしては最後のbodyなので、これは<code>pcase</code>の値となり、同様に<code>grok/pcase</code>のリターン値になります(<a href="What-Is-a-Function.html">What Is a Function</a>を参照)。
+</p>
+<span id="pcase_002dsymbol_002dcaveats"></span><span id="sikensupatanniokerusymbolnoZhu-Yi-Dian-"></span><h4 class="subheading">シーケンスパターンにおける<var>symbol</var>の注意点</h4>
+
+<p>前出の例のすべてでは、何らかの方法により<var>symbol</var>サブパターンが含まれるシーケンスパターンが使用されています。以下に使用法に関する重要な詳細をいくつか挙げます。
+</p>
+<ol>
+<li> <var>seqpat</var>内に<var>symbol</var>が複数回出現する場合には、
+2回目以降に出現してもリバインドには展開されないが、かわりに<code>eq</code>を使用した等価性テストに展開される。
+
+<p>以下の例には2つのclauseと2つの<var>seqpat</var>
+(AとB)を使用している。AとBはいずれも最初に(<code>pred</code>を使用することにより)<var>expval</var>がペアであることをチェックして、それから(それぞれにたいして<code>app</code>を使用することにより)
+<var>expval</var>の<code>car</code>と<code>cdr</code>にシンボルをバインドする。
+</p>
+<p>Aではシンボル<code>st</code>が2回記述されているので、2つ目の記述は<code>eq</code>を使用した等価性チェックになる。一方でBは<code>s1</code>と<code>s2</code>という別個のシンボルを使用するので、独立したバインディングになる。
+</p>
+<div class="example">
+<pre class="example">(defun grok (object)
+  (pcase object
+    ((and (pred consp)        ; seqpat A
+          (app car st)        ; st: 1回目
+          (app cdr st))       ; st: 2回目
+     (list 'eq st))
+</pre><pre class="example">    ((and (pred consp)        ; seqpat B
+          (app car s1)        ; s1: 1回目
+          (app cdr s2))       ; s2: 1回目
+     (list 'not-eq s1 s2))))
+</pre><pre class="example">
+
+</pre><pre class="example">(let ((s &quot;yow!&quot;))
+  (grok (cons s s)))      &rArr; (eq &quot;yow!&quot;)
+(grok (cons &quot;yo!&quot; &quot;yo!&quot;)) &rArr; (not-eq &quot;yo!&quot; &quot;yo!&quot;)
+(grok '(4 2))             &rArr; (not-eq 4 (2))
+</pre></div>
+
+</li><li> <var>symbol</var>を参照するコードの副作用は未定義。
+無視する。たとえば以下2つの関数は類似している。いずれの関数も<code>and</code>、<var>symbol</var>、<code>guard</code>を使用する:
+
+<div class="example">
+<pre class="example">(defun square-double-digit-p/CLEAN (integer)
+  (pcase (* integer integer)
+    ((and n (guard (&lt; 9 n 100))) (list 'yes n))
+    (sorry (list 'no sorry))))
+
+(square-double-digit-p/CLEAN 9) &rArr; (yes 81)
+(square-double-digit-p/CLEAN 3) &rArr; (no 9)
+</pre><pre class="example">
+
+</pre><pre class="example">(defun square-double-digit-p/MAYBE (integer)
+  (pcase (* integer integer)
+    ((and n (guard (&lt; 9 (incf n) 100))) (list 'yes n))
+    (sorry (list 'no sorry))))
+
+(square-double-digit-p/MAYBE 9) &rArr; (yes 81)
+(square-double-digit-p/MAYBE 3) &rArr; (yes 9)  ; <span class="roman">WRONG!</span>
+</pre></div>
+
+<p>違いは<code>guard</code>内の<var>boolean-expression</var>である。<code>CLEAN</code>は単に直接<code>n</code>を参照するのにたいして、<code>MAYBE</code>は式<code>(incf
+n)</code>の中で副作用により<code>n</code>を参照している。<code>integer</code>の際には以下のようなことが発生している:
+</p>
+<ul>
+<li> 最初の<code>n</code>は<var>expval</var>
+(評価した結果である<code>(* 3 3)</code>、つまり9)にバインドされる。
+
+</li><li> <var>boolean-expression</var>が評価される:
+
+<div class="example">
+<pre class="example">start:   (&lt; 9 (incf n)        100)
+becomes: (&lt; 9 (setq n (1+ n)) 100)
+becomes: (&lt; 9 (setq n (1+ 9)) 100)
+</pre><pre class="example">becomes: (&lt; 9 (setq n 10)     100)
+                                   ; <span class="roman">ここで副作用!</span>
+becomes: (&lt; 9       n         100) ; <span class="roman"><code>n</code>は10にバインドされている</span>
+becomes: (&lt; 9      10         100)
+becomes: t
+</pre></div>
+
+</li><li> 結果は非<code>nil</code>なので
+<code>guard</code>がマッチして<code>and</code>がマッチとなり、制御はそのclauseのbodyフォームに渡される。
+</li></ul>
+
+<p><code>MAYBE</code>には9が2桁の整数だと判定してしまう数学的な誤り以外にも問題がある。bodyフォームは<code>n</code>の更新された値(10)を確認せずに参照を複数回行う。するとどうなるか?
+</p>
+<p>要約すると( <code>guard</code>での) <var>boolean-expression</var>だけではなく( <code>let</code>での)
+<var>expr</var>、( <code>pred</code>と<code>app</code>での)
+<var>function</var>でも副作用をもつ<var>symbol</var>パターンにたいする参照は完全に避けることが最良である。
+</p>
+</li><li> マッチではclauseのbodyフォームはletバインドされたパターンのシンボルセットを参照できる。
+このシンボルセットは<var>seqpat</var>が<code>and</code>の際には、各サブパターンでletバインドされるすべてのシンボルそれぞれを結合したものになる。<code>and</code>のマッチではすべてのサブパターンがマッチしなければならないので、これには意味がある。
+
+<p><var>seqpat</var>が<code>or</code>なら事情は異なる。<code>or</code>は最初にマッチしたサブパターンでマッチとなり、残りのサブパターンは無視される。bodyフォームにはどのサブパターンがマッチして異なるセットの中からどれが選択されたかを知る術はないので、各シンボルが異なるシンボルセットをletバインドすることに意味はない。たとえば以下は無効:
+</p>
+<div class="example">
+<pre class="example">(require 'cl-lib)
+(pcase (read-number &quot;Enter an integer: &quot;)
+  ((or (and (pred cl-evenp)
+            e-num)      ; <span class="roman"><code>e-num</code>を<var>expval</var>にバインド</span>
+       o-num)           ; <span class="roman"><code>o-num</code>を<var>expval</var>にバインド</span>
+   (list e-num o-num)))
+</pre><pre class="example">
+
+</pre><pre class="example">Enter an integer: 42
+error&rarr; Symbol’s value as variable is void: o-num
+</pre><pre class="example">Enter an integer: 149
+error&rarr; Symbol’s value as variable is void: e-num
+</pre></div>
+
+<p>bodyフォーム<code>(list&nbsp;<span class="nolinebreak">e-num</span>&nbsp;<span class="nolinebreak">o-num)</span></code><!-- /@w -->の評価によりエラーがシグナルされる。サブパターンを区別するために、すべてのサブパターンごとに異なる値をもつ同一名のシンボルを使用できる。上記の例を書き換えると:
+</p>
+<div class="example">
+<pre class="example">(require 'cl-lib)
+(pcase (read-number &quot;Enter an integer: &quot;)
+  ((and num                                ; <span class="roman">L1</span>
+        (or (and (pred cl-evenp)           ; <span class="roman">L2</span>
+                 (let spin 'even))         ; <span class="roman">L3</span>
+            (let spin 'odd)))              ; <span class="roman">L4</span>
+   (list spin num)))                       ; <span class="roman">L5</span>
+</pre><pre class="example">
+
+</pre><pre class="example">Enter an integer: 42
+&rArr; (even 42)
+</pre><pre class="example">Enter an integer: 149
+&rArr; (odd 149)
+</pre></div>
+
+<p>L1では<var>expval</var>のバインディング(この場合は<code>num</code>
+)を<code>and</code>と<var>symbol</var>で&ldquo;分解&rdquo;している。L2では前と同じ方法で<code>or</code>は始まるが、異なるシンボルにバインドするかわりに、両方のサブパターン内で同一のシンボル<code>spin</code>に回バインドするために2回<code>let</code>を使用している(L3からL4)。<code>spin</code>の値によりサブパターンは区別される。そしてbodyフォームでは両方のシンボルを参照している(L5)。
+</p></li></ol>
+
+<hr>
+<div class="header">
+<p>
+Next: <a href="Extending-pcase.html" accesskey="n" rel="next">Extending pcase</a>, Up: <a href="Pattern_002dMatching-Conditional.html" accesskey="u" rel="up">Pattern-Matching Conditional</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>
