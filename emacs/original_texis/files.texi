@@ -1,5 +1,5 @@
 @c This is part of the Emacs manual.
-@c Copyright (C) 1985--1987, 1993--1995, 1997, 1999--2020 Free Software
+@c Copyright (C) 1985--1987, 1993--1995, 1997, 1999--2021 Free Software
 @c Foundation, Inc.
 @c See file emacs.texi for copying conditions.
 @node Files
@@ -921,14 +921,15 @@ Manual}).  For customizations, see the Custom group @code{time-stamp}.
 @node Reverting
 @section Reverting a Buffer
 @findex revert-buffer
+@findex revert-buffer-with-fine-grain
 @cindex drastic changes
 @cindex reread a file
 
   If you have made extensive changes to a file-visiting buffer and
 then change your mind, you can @dfn{revert} the changes and go back to
-the saved version of the file.  To do this, type @kbd{M-x
-revert-buffer}.  Since reverting unintentionally could lose a lot of
-work, Emacs asks for confirmation first.
+the saved version of the file.  To do this, type @kbd{C-x x g}.  Since
+reverting unintentionally could lose a lot of work, Emacs asks for
+confirmation first.
 
   The @code{revert-buffer} command tries to position point in such a
 way that, if the file was edited only slightly, you will be at
@@ -940,6 +941,19 @@ reverted changes as a single modification to the buffer's undo history
 (@pxref{Undo}).  Thus, after reverting, you can type @kbd{C-/} or its
 aliases to bring the reverted changes back, if you happen to change
 your mind.
+
+@vindex revert-buffer-with-fine-grain-max-seconds
+  To revert a buffer more conservatively, you can use the command
+@code{revert-buffer-with-fine-grain}.  This command acts like
+@code{revert-buffer}, but it tries to be as non-destructive as
+possible, making an effort to preserve all markers, properties and
+overlays in the buffer.  Since reverting this way can be very slow
+when you have made a large number of changes, you can modify the
+variable @code{revert-buffer-with-fine-grain-max-seconds} to
+specify a maximum amount of seconds that replacing the buffer
+contents this way should take.  Note that it is not ensured that the
+whole execution of @code{revert-buffer-with-fine-grain} won't take
+longer than this.
 
   Some kinds of buffers that are not associated with files, such as
 Dired buffers, can also be reverted.  For them, reverting means
@@ -1615,6 +1629,10 @@ Convert the entire buffer to unified diff format
 unified format to context format.  When the mark is active, convert
 only the hunks within the region.
 
+@item C-c C-l
+@findex diff-refresh-hunk
+Re-generate the current hunk (@code{diff-refresh-hunk}).
+
 @item C-c C-w
 @findex diff-ignore-whitespace-hunk
 Re-generate the current hunk, disregarding changes in whitespace
@@ -2149,7 +2167,12 @@ To reset all transformations to the initial state, use
 @findex image-previous-file
 You can press @kbd{n} (@code{image-next-file}) and @kbd{p}
 (@code{image-previous-file}) to visit the next image file and the
-previous image file in the same directory, respectively.
+previous image file in the same directory, respectively.  These
+commands will consult the ``parent'' dired buffer to determine what
+the next/previous image file is.  These commands also work when
+opening a file from archive files (like zip or tar files), and will
+then instead consult the archive mode buffer.  If neither an archive
+nor a dired ``parent'' buffer can be found, a dired buffer is opened.
 
 @findex image-mode-mark-file
 @findex image-mode-unmark-file

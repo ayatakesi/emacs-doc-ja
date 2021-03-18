@@ -1,6 +1,6 @@
 @c -*- coding: utf-8 -*-
 @c This is part of the Emacs manual.
-@c Copyright (C) 1985--1987, 1993--1995, 1997, 2000--2020 Free Software
+@c Copyright (C) 1985--1987, 1993--1995, 1997, 2000--2021 Free Software
 @c Foundation, Inc.
 @c See file emacs.texi for copying conditions.
 @node Basic
@@ -115,7 +115,7 @@ just like digits.  Case is ignored.
 starting with @kbd{C-x 8}.  For example, @kbd{C-x 8 [} inserts @t{‘}
 which is Unicode code-point U+2018 @sc{left single quotation mark},
 sometimes called a left single ``curved quote'' or ``curly quote''.
-Similarly, @kbd{C-x 8 ]}, @kbd{C-x 8 @{} and @kbd{C-x 8 @}} insert the
+Similarly, @w{@kbd{C-x 8 ]}}, @kbd{C-x 8 @{} and @kbd{C-x 8 @}} insert the
 curved quotes @t{’}, @t{“} and @t{”}, respectively.  Also, a working
 @key{Alt} key acts like @kbd{C-x 8} (unless followed by @key{RET});
 e.g., @kbd{A-[} acts like @kbd{C-x 8 [} and inserts @t{‘}.  To see
@@ -144,6 +144,12 @@ the buffer.
 
   A numeric argument to @kbd{C-q} or @kbd{C-x 8 ...} specifies
 how many copies of the character to insert (@pxref{Arguments}).
+
+  As an alternative to @kbd{C-x 8}, you can select the corresponding
+transient input method by typing @kbd{C-u C-x \ iso-transl @key{RET}},
+then temporarily activating this transient input method by typing
+@kbd{C-x \ [} will insert the same character @t{‘} (@pxref{transient
+input method}).
 
   In addition, in some contexts, if you type a quotation using grave
 accent and apostrophe @kbd{`like this'}, it is converted to a form
@@ -304,20 +310,31 @@ Scroll one screen backward, and move point onscreen if necessary
 @kindex M-g c
 @findex goto-char
 Read a number @var{n} and move point to buffer position @var{n}.
-Position 1 is the beginning of the buffer.
+Position 1 is the beginning of the buffer.  If point is on or just
+after a number in the buffer, that is the default for @var{n}.  Just
+type @key{RET} in the minibuffer to use it.  You can also specify
+@var{n} by giving @kbd{M-g c} a numeric prefix argument.
 
 @item M-g M-g
 @itemx M-g g
 @kindex M-g M-g
 @kindex M-g g
 @findex goto-line
+@findex goto-line-relative
 Read a number @var{n} and move point to the beginning of line number
 @var{n} (@code{goto-line}).  Line 1 is the beginning of the buffer.  If
 point is on or just after a number in the buffer, that is the default
 for @var{n}.  Just type @key{RET} in the minibuffer to use it.  You can
 also specify @var{n} by giving @kbd{M-g M-g} a numeric prefix argument.
 @xref{Select Buffer}, for the behavior of @kbd{M-g M-g} when you give it
-a plain prefix argument.
+a plain prefix argument.  Alternatively, you can use the command
+@code{goto-line-relative} to move point to the line relative to the
+accessible portion of the narrowed buffer.
+
+@code{goto-line} has its own history list (@pxref{Minibuffer
+History}).  You can have either a single list shared between all
+buffers (the default) or a separate list for each buffer, by
+customizing the user option @code{goto-line-history-local}.
 
 @item M-g @key{TAB}
 @kindex M-g TAB
@@ -460,6 +477,15 @@ which is bound to @kbd{C-/} (as well as @kbd{C-x u} and @kbd{C-_}).
 Normally, this command undoes the last change, moving point back to
 where it was before the change.  The undo command applies only to
 changes in the buffer; you can't use it to undo cursor motion.
+
+  On a terminal that supports the @key{Control} modifier on all other
+keys, the easiest way to invoke @code{undo} is with @kbd{C-/}, since
+that doesn't need the @key{Shift} modifier.  On terminals which allow
+only the ASCII control characters, @kbd{C-/} does not exist, but for
+many of them @kbd{C-/} still works because it actually sends @kbd{C-_}
+to Emacs, while many others allow you to omit the @key{Shift} modifier
+when you type @kbd{C-_} (in effect pressing @kbd{C--}), making that
+the most convenient way to invoke @code{undo}.
 
   Although each editing command usually makes a separate entry in the
 undo records, very simple commands may be grouped together.
@@ -859,3 +885,14 @@ characters.  You can repeat that command (including its argument) three
 additional times, to delete a total of 80 characters, by typing @kbd{C-x
 z z z}.  The first @kbd{C-x z} repeats the command once, and each
 subsequent @kbd{z} repeats it once again.
+
+@findex repeat-mode
+  Also you can activate @code{repeat-mode} that temporarily enables
+a transient mode with short keys after a limited number of commands.
+Currently supported shorter key sequences are @kbd{C-x u u} instead of
+@kbd{C-x u C-x u} to undo many changes, @kbd{C-x o o} instead of
+@kbd{C-x o C-x o} to switch several windows, @kbd{C-x @{ @{ @} @} ^ ^
+v v} to resize the selected window interactively, @kbd{M-g n n p p} to
+navigate @code{next-error} matches.  Any other key exits transient mode
+and then is executed normally.  The user option @code{repeat-exit-key}
+defines an additional key to exit this transient mode.

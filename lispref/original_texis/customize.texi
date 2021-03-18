@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1997--2020 Free Software Foundation, Inc.
+@c Copyright (C) 1997--2021 Free Software Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Customization
 @chapter Customization Settings
@@ -123,6 +123,11 @@ which specifies the name of the function to describe with
 Link to the documentation of a variable; @var{variable} is a string
 which specifies the name of the variable to describe with
 @code{describe-variable} when the user invokes this link.
+
+@item (face-link @var{face})
+Link to the documentation of a face; @var{face} is a string which
+specifies the name of the face to describe with @code{describe-face}
+when the user invokes this link.
 
 @item (custom-group-link @var{group})
 Link to another customization group.  Invoking it creates a new
@@ -358,6 +363,10 @@ This is meaningful only for certain types, currently including
 @code{hook}, @code{plist} and @code{alist}.  See the definition of the
 individual types for a description of how to use @code{:options}.
 
+Re-evaluating a @code{defcustom} form with a different @code{:options}
+value does not clear the values added by previous evaluations, or
+added by calls to @code{custom-add-frequent-value} (see below).
+
 @item :set @var{setfunction}
 @kindex set@r{, @code{defcustom} keyword}
 Specify @var{setfunction} as the way to change the value of this
@@ -485,6 +494,10 @@ list of reasonable values.
 
 The precise effect of adding a value depends on the customization type
 of @var{symbol}.
+
+Since evaluating a @code{defcustom} form does not clear values added
+previously, Lisp programs can use this function to add values for user
+options not yet defined.
 @end defun
 
 Internally, @code{defcustom} uses the symbol property
@@ -1189,6 +1202,13 @@ current value is valid for the widget.  Otherwise, it should return
 the widget containing the invalid data, and set that widget's
 @code{:error} property to a string explaining the error.
 
+@item :type-error @var{string}
+@kindex type-error@r{, customization keyword}
+@var{string} should be a string that describes why a value doesn't
+match the type, as determined by the @code{:match} function.  When the
+@code{:match} function returns @code{nil}, the widget's @code{:error}
+property will be set to @var{string}.
+
 @ignore
 @item :indent @var{columns}
 Indent this item by @var{columns} columns.  The indentation is used for
@@ -1454,7 +1474,7 @@ To protect against loading themes containing malicious code, Emacs
 displays the source file and asks for confirmation from the user
 before loading any non-built-in theme for the first time.  As
 such, themes are not ordinarily byte-compiled, and source files
-always take precedence when Emacs is looking for a theme to load.
+usually take precedence when Emacs is looking for a theme to load.
 
   The following functions are useful for programmatically enabling and
 disabling themes:
@@ -1487,6 +1507,30 @@ variable and face settings to take effect.  It prompts the user for
 confirmation before loading the theme, unless the optional argument
 @var{no-confirm} is non-@code{nil}.
 @end deffn
+
+@defun require-theme feature &optional noerror
+This function searches @code{custom-theme-load-path} for a file that
+provides @var{feature} and then loads it.  This is like the function
+@code{require} (@pxref{Named Features}), except it searches
+@code{custom-theme-load-path} instead of @code{load-path}
+(@pxref{Library Search}).  This can be useful in Custom themes that
+need to load supporting Lisp files when @code{require} is unsuitable
+for that.
+
+If @var{feature}, which should be a symbol, is not already present in
+the current Emacs session according to @code{featurep}, then
+@code{require-theme} searches for a file named @var{feature} with an
+added @samp{.elc} or @samp{.el} suffix, in that order, in the
+directories specified by @code{custom-theme-load-path}.
+
+If a file providing @var{feature} is successfully found and loaded,
+then @code{require-theme} returns @var{feature}.  The optional
+argument @var{noerror} determines what happens if the search or
+loading fails.  If it is @code{nil}, the function signals an error;
+otherwise, it returns @code{nil}.  If the file loads successfully but
+does not provide @var{feature}, then @code{require-theme} signals an
+error; this cannot be suppressed.
+@end defun
 
 @deffn Command enable-theme theme
 This function enables the Custom theme named @var{theme}.  It signals

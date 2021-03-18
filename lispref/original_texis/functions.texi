@@ -1,6 +1,6 @@
 @c -*- mode: texinfo; coding: utf-8 -*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990--1995, 1998--1999, 2001--2020 Free Software
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2021 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Functions
@@ -762,6 +762,11 @@ arguments, rather than a single list.  We say that @code{apply}
 @dfn{spreads} this list so that each individual element becomes an
 argument.
 
+@code{apply} with a single argument is special: the first element of
+the argument, which must be a non-empty list, is called as a function
+with the remaining elements as individual arguments.  Passing two or
+more arguments will be faster.
+
 @code{apply} returns the result of calling @var{function}.  As with
 @code{funcall}, @var{function} must either be a Lisp function or a
 primitive function; special forms and macros do not make sense in
@@ -788,6 +793,11 @@ primitive function; special forms and macros do not make sense in
 @group
 (apply 'append '((a b c) nil (x y z) nil))
      @result{} (a b c x y z)
+@end group
+
+@group
+(apply '(+ 3 4))
+     @result{} 7
 @end group
 @end example
 
@@ -851,6 +861,10 @@ This function returns @var{argument} and has no side effects.
 
 @defun ignore &rest arguments
 This function ignores any @var{arguments} and returns @code{nil}.
+@end defun
+
+@defun always &rest arguments
+This function ignores any @var{arguments} and returns @code{t}.
 @end defun
 
   Some functions are user-visible @dfn{commands}, which can be called
@@ -1167,7 +1181,7 @@ This form defines a method like @code{cl-defmethod} does.
 @end table
 @end defmac
 
-@defmac cl-defmethod name [qualifier] arguments [&context (expr spec)@dots{}] &rest [docstring] body
+@defmac cl-defmethod name [extra] [qualifier] arguments [&context (expr spec)@dots{}] &rest [docstring] body
 This macro defines a particular implementation for the generic
 function called @var{name}.  The implementation code is given by
 @var{body}.  If present, @var{docstring} is the documentation string
@@ -1253,6 +1267,10 @@ Parent type: @code{array}.
 @item font-object
 @end table
 
+The optional @var{extra} element, expressed as @samp{:extra
+@var{string}}, allows you to add more methods, distinguished by
+@var{string}, for the same specializers and qualifiers.
+
 The optional @var{qualifier} allows combining several applicable
 methods.  If it is not present, the defined method is a @dfn{primary}
 method, responsible for providing the primary implementation of the
@@ -1274,9 +1292,6 @@ This auxiliary method will run @emph{instead} of the primary method.
 The most specific of such methods will be run before any other method.
 Such methods normally use @code{cl-call-next-method}, described below,
 to invoke the other auxiliary or primary methods.
-@item :extra @var{string}
-This allows you to add more methods, distinguished by @var{string},
-for the same specializers and qualifiers.
 @end table
 
 Functions defined using @code{cl-defmethod} cannot be made
@@ -2163,15 +2178,24 @@ the backquote (@pxref{Backquote}), but quotes code and accepts only
 @end defmac
 
 @defmac inline-letevals (bindings@dots{}) body@dots{}
-This is similar to @code{let} (@pxref{Local Variables}): it sets up
-local variables as specified by @var{bindings}, and then evaluates
-@var{body} with those bindings in effect.  Each element of
-@var{bindings} should be either a symbol or a list of the form
-@w{@code{(@var{var} @var{expr})}}; the result is to evaluate
-@var{expr} and bind @var{var} to the result.  The tail of
-@var{bindings} can be either @code{nil} or a symbol which should hold
-a list of arguments, in which case each argument is evaluated, and the
-symbol is bound to the resulting list.
+This provides a convenient way to ensure that the arguments to an
+inlined function are evaluated exactly once, as well as to create
+local variables.
+
+It's similar to @code{let} (@pxref{Local Variables}): It sets up local
+variables as specified by @var{bindings}, and then evaluates
+@var{body} with those bindings in effect.
+
+Each element of @var{bindings} should be either a symbol or a list of
+the form @w{@code{(@var{var} @var{expr})}}; the result is to evaluate
+@var{expr} and bind @var{var} to the result.  However, when an element
+of @var{bindings} is just a symbol @var{var}, the result of evaluating
+@var{var} is re-bound to @var{var} (which is quite different from the
+way @code{let} works).
+
+The tail of @var{bindings} can be either @code{nil} or a symbol which
+should hold a list of arguments, in which case each argument is
+evaluated, and the symbol is bound to the resulting list.
 @end defmac
 
 @defmac inline-const-p expression
@@ -2290,6 +2314,16 @@ form @code{(lambda (@var{arg}) @var{body})} in which case that function will
 additionally have access to the macro (or function)'s arguments and it will
 be passed to @code{gv-define-setter}.
 
+@item (completion @var{completion-predicate})
+Declare @var{completion-predicate} as a function to determine whether
+to include the symbol in the list of functions when asking for
+completions in @kbd{M-x}.  @var{completion-predicate} is called with
+two parameters: The first parameter is the symbol, and the second is
+the current buffer.
+
+@item (modes @var{modes})
+Specify that this command is meant to be applicable for @var{modes}
+only.
 @end table
 
 @end defmac

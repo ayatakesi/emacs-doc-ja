@@ -1,6 +1,6 @@
 @c -*- mode: texinfo; coding: utf-8 -*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990--1995, 1998--2020 Free Software Foundation, Inc.
+@c Copyright (C) 1990--1995, 1998--2021 Free Software Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Display
 @chapter Emacs Display
@@ -1318,12 +1318,6 @@ the buffer specified by @var{buffer-or-name} current for running
 @var{body}.
 @end defmac
 
-@defmac with-displayed-buffer-window buffer-or-name action quit-function &rest body
-This macro is like @code{with-current-buffer-window} but unlike that
-displays the buffer specified by @var{buffer-or-name} @emph{before}
-running @var{body}.
-@end defmac
-
 A window showing a temporary buffer can be fitted to the size of that
 buffer using the following mode:
 
@@ -1976,36 +1970,45 @@ This function returns the width in columns of the string @var{string},
 if it were displayed in the current buffer and the selected window.
 @end defun
 
-@defun truncate-string-to-width string width &optional start-column padding ellipsis
-This function returns the part of @var{string} that fits within
-@var{width} columns, as a new string.
+@defun truncate-string-to-width string width &optional start-column padding ellipsis ellipsis-text-property
+This function returns a new string that is a truncation of @var{string}
+which fits within @var{width} columns on display.
 
-If @var{string} does not reach @var{width}, then the result ends where
-@var{string} ends.  If one multi-column character in @var{string}
-extends across the column @var{width}, that character is not included in
-the result.  Thus, the result can fall short of @var{width} but cannot
-go beyond it.
+If @var{string} is narrower than @var{width}, the result is equal to
+@var{string}; otherwise excess characters are omitted from the result.
+If a multi-column character in @var{string} exceeds the goal
+@var{width}, that character is omitted from the result.  Thus, the
+result can sometimes fall short of @var{width}, but cannot go beyond
+it.
 
 The optional argument @var{start-column} specifies the starting column.
 If this is non-@code{nil}, then the first @var{start-column} columns of
-the string are omitted from the value.  If one multi-column character in
+the string are omitted from the result.  If one multi-column character in
 @var{string} extends across the column @var{start-column}, that
-character is not included.
+character is omitted.
 
 The optional argument @var{padding}, if non-@code{nil}, is a padding
-character added at the beginning and end of the result string, to extend
-it to exactly @var{width} columns.  The padding character is used at the
-end of the result if it falls short of @var{width}.  It is also used at
-the beginning of the result if one multi-column character in
+character added at the beginning and end of the result string, to
+extend it to exactly @var{width} columns.  The padding character is
+appended at the end of the result if it falls short of @var{width}, as
+many times as needed to reach @var{width}.  It is also prepended at
+the beginning of the result if a multi-column character in
 @var{string} extends across the column @var{start-column}.
 
-@vindex truncate-string-ellipsis
 If @var{ellipsis} is non-@code{nil}, it should be a string which will
-replace the end of @var{string} (including any padding) if it extends
-beyond @var{width}, unless the display width of @var{string} is equal
-to or less than the display width of @var{ellipsis}.  If
-@var{ellipsis} is non-@code{nil} and not a string, it stands for
-the value of the variable @code{truncate-string-ellipsis}.
+replace the end of @var{string} when it is truncated.  In this case,
+more characters will be removed from @var{string} to free enough space
+for @var{ellipsis} to fit within @var{width} columns.  However, if
+the display width of @var{string} is less than the display width of
+@var{ellipsis}, @var{ellipsis} will not be appended to the result.  If
+@var{ellipsis} is non-@code{nil} and not a string, it stands for the
+value returned by the function @code{truncate-string-ellipsis},
+described below.
+
+The optional argument @var{ellipsis-text-property}, if non-@code{nil},
+means hide the excess parts of @var{string} with a @code{display} text
+property (@pxref{Display Property}) showing the ellipsis, instead of
+actually truncating the string.
 
 @example
 (truncate-string-to-width "\tab\t" 12 4)
@@ -2014,6 +2017,16 @@ the value of the variable @code{truncate-string-ellipsis}.
      @result{} "    ab  "
 @end example
 @end defun
+
+@defun truncate-string-ellipsis
+This function returns the string to be used as an ellipses in
+@code{truncate-string-to-width} and other similar contexts.  The value
+is that of the variable @code{truncate-string-ellipsis}, if it's
+non-@code{nil}, the string with the single character @sc{U+2026
+HORIZONTAL ELLIPSIS} if that character can be displayed on the
+selected frame, and the string @samp{...} otherwise.
+@end defun
+
 
 The following function returns the size in pixels of text as if it were
 displayed in a given window.  This function is used by
@@ -2462,22 +2475,26 @@ Draw a box with lines of width 1, in the foreground color.
 @item @var{color}
 Draw a box with lines of width 1, in color @var{color}.
 
-@item @code{(:line-width @var{width} :color @var{color} :style @var{style})}
-This way you can explicitly specify all aspects of the box.  The value
-@var{width} specifies the width of the lines to draw; it defaults to
-1.  A negative width @minus{}@var{n} means to draw a line of width @var{n}
-whose top and bottom parts occupy the space of the underlying text,
-thus avoiding any increase in the character height.
-
-The value @var{color} specifies the color to draw with.  The default is
-the foreground color of the face for simple boxes, and the background
-color of the face for 3D boxes.
+@item @code{(:line-width (@var{vwidth} . @var{hwidth}) :color @var{color} :style @var{style})}
+This way you can explicitly specify all aspects of the box.  The values
+@var{vwidth} and @var{hwidth} specifies respectively the width of the
+vertical and horizontal lines to draw; they default to (1 . 1).
+A negative horizontal or vertical width @minus{}@var{n} means to draw a line
+of width @var{n} that occupies the space of the underlying text, thus
+avoiding any increase in the character height or width. For simplification
+the width could be specified with only a single number @var{n} instead
+of a list, such case is equivalent to @code{((abs @var{n}) . @var{n})}.
 
 The value @var{style} specifies whether to draw a 3D box.  If it is
-@code{released-button}, the box looks like a 3D button that is not being
-pressed.  If it is @code{pressed-button}, the box looks like a 3D button
-that is being pressed.  If it is @code{nil} or omitted, a plain 2D box
-is used.
+@code{released-button}, the box looks like a 3D button that is not
+being pressed.  If it is @code{pressed-button}, the box looks like a
+3D button that is being pressed.  If it is @code{nil},
+@code{flat-button} or omitted, a plain 2D box is used.
+
+The value @var{color} specifies the color to draw with.  The default
+is the background color of the face for 3D boxes and
+@code{flat-button}, and the foreground color of the face for other
+boxes.
 @end table
 
 @item :inverse-video
@@ -2616,10 +2633,12 @@ appearance of @var{face} will again be determined by its default face
 spec.
 
 @cindex @code{eval-defun}, and @code{defface} forms
+@cindex @code{eval-last-sexp}, and @code{defface} forms
 As an exception, if you evaluate a @code{defface} form with
-@kbd{C-M-x} in Emacs Lisp mode (@code{eval-defun}), a special feature
-of @code{eval-defun} overrides any custom face specs on the face,
-causing the face to reflect exactly what the @code{defface} says.
+@kbd{C-M-x} (@code{eval-defun}) or with @kbd{C-x C-e}
+(@code{eval-last-sexp}) in Emacs Lisp mode, a special feature of these
+commands overrides any custom face specs on the face, causing the face
+to reflect exactly what the @code{defface} says.
 
 The @var{spec} argument is a @dfn{face spec}, which states how the
 face should appear on different kinds of terminals.  It should be an
@@ -3652,12 +3671,16 @@ the charset @code{japanese-jisx0208}.
 @end defun
 
 @defun char-displayable-p char
-This function returns @code{t} if Emacs ought to be able to display
-@var{char}.  More precisely, if the selected frame's fontset has a
-font to display the character set that @var{char} belongs to.
+This function returns non-@code{nil} if Emacs ought to be able to
+display @var{char}.  Or more precisely, if the selected frame's fontset
+has a font to display the character set that @var{char} belongs to.
 
 Fontsets can specify a font on a per-character basis; when the fontset
 does that, this function's value may not be accurate.
+
+This function may return non-@code{nil} even when there is no font
+available, since it also checks whether the coding system for the text
+terminal can encode the character (@pxref{Terminal I/O Encoding}).
 @end defun
 
 @node Low-Level Font
@@ -5369,6 +5392,21 @@ are supported, unless the image type is @code{imagemagick}.  Positive
 values rotate clockwise, negative values counter-clockwise.  Rotation
 is performed after scaling and cropping.
 
+@item :transform-smoothing @var{smooth}
+If this is @code{t}, any image transform will have smoothing applied;
+if @code{nil}, no smoothing will be applied.  The exact algorithm used
+is platform dependent, but should be equivalent to bilinear
+filtering.  Disabling smoothing will use the nearest neighbor
+algorithm.
+
+If this property is not specified, @code{create-image} will use the
+@code{image-transform-smoothing} user option to say whether scaling
+should be done or not.  This option can be @code{nil} (no smoothing),
+@code{t} (use smoothing) or a predicate function that's called with
+the image object as the only parameter, and should return either
+@code{nil} or @code{t}.  The default is for down-scaling to apply
+smoothing, and for large up-scaling to not apply smoothing.
+
 @item :index @var{frame}
 @xref{Multi-Frame Images}.
 
@@ -5591,6 +5629,15 @@ The value, @var{width}, specifies the width of the image, in pixels.
 
 @item :height @var{height}
 The value, @var{height}, specifies the height of the image, in pixels.
+
+Note that @code{:width} and @code{:height} can only be used if passing
+in data that doesn't specify the width and height (e.g., a string or a
+vector containing the bits of the image).  @acronym{XBM} files usually
+specify this themselves, and it's an error to use these two properties
+on these files.  Also note that @code{:width} and @code{:height} are
+used by most other image formats to specify what the displayed image
+is supposed to be, which usually means performing some sort of
+scaling.  This isn't supported for @acronym{XBM} images.
 
 @item :stride @var{stride}
 The number of bool vector entries stored for each row; the smallest
@@ -5866,6 +5913,32 @@ string containing the image data as raw bytes.  @var{image-type} should be a
 (svg-embed svg "~/rms.jpg" "image/jpeg" nil
            :width "100px" :height "100px"
            :x "50px" :y "75px")
+@end lisp
+@end defun
+
+@defun svg-embed-base-uri-image svg relative-filename &rest args
+To @var{svg} add an embedded (raster) image placed at
+@var{relative-filename}.  @var{relative-filename} is searched inside
+@code{file-name-directory} of the @code{:base-uri} svg image property.
+@code{:base-uri} specifies a (possibly non-existing) file name of the
+svg image to be created, thus all the embedded files are searched
+relatively to the @code{:base-uri} filename's directory.  If
+@code{:base-uri} is ommited, then filename from where svg image is
+loaded is used.  Using @code{:base-uri} improves the performance of
+embedding large images, comparing to @code{svg-embed}, because all the
+work is done directly by librsvg.
+
+@lisp
+;; Embeding /tmp/subdir/rms.jpg and /tmp/another/rms.jpg
+(svg-embed-base-uri-image svg "subdir/rms.jpg"
+           :width "100px" :height "100px"
+           :x "50px" :y "75px")
+(svg-embed-base-uri-image svg "another/rms.jpg"
+           :width "100px" :height "100px"
+           :x "75px" :y "50px")
+(svg-image svg :scale 1.0
+           :base-uri "/tmp/dummy"
+           :width 175 :height 175)
 @end lisp
 @end defun
 
@@ -6546,6 +6619,12 @@ except when you explicitly clear it.  This mode can be useful for
 debugging.
 @end defvar
 
+@defun image-cache-size
+This function returns the total size of the current image cache, in
+bytes.  An image of size 200x100 with 24 bits per color will have a
+cache size of 60000 bytes, for instance.
+@end defun
+
 @node Xwidgets
 @section Embedded Native Widgets
 @cindex xwidget
@@ -6850,6 +6929,16 @@ This inserts a button with the label @var{label} at point, using text
 properties.
 @end defun
 
+@defun button-buttonize string callback &optional data
+Sometimes it's more convenient to make a string into a button without
+inserting it into a buffer immediately, for instance when creating
+data structures that may then, later, be inserted into a buffer.  This
+function makes @var{string} into such a string, and @var{callback}
+will be called when the user clicks on the button.  The optional
+@var{data} parameter will be used as the parameter when @var{callback}
+is called.  If @code{nil}, the button is used as the parameter instead.
+@end defun
+
 @node Manipulating Buttons
 @subsection Manipulating Buttons
 @cindex manipulating buttons
@@ -6937,6 +7026,9 @@ such as @code{forward-button} and @code{backward-button} are
 additionally available in the keymap stored in
 @code{button-buffer-map}; a mode which uses buttons may want to use
 @code{button-buffer-map} as a parent keymap for its keymap.
+Alternatively, the @code{button-mode} can be switched on for much the
+same effect: It's a minor mode that does nothing else than install
+@code{button-buffer-map} as a minor mode keymap.
 
 If the button has a non-@code{nil} @code{follow-link} property, and
 @code{mouse-1-click-follows-link} is set, a quick @key{mouse-1} click
@@ -8019,7 +8111,7 @@ positions do not increase monotonically with string or buffer
 position.  In performing this @dfn{bidirectional reordering}, Emacs
 follows the Unicode Bidirectional Algorithm (a.k.a.@: @acronym{UBA}),
 which is described in Annex #9 of the Unicode standard
-(@url{http://www.unicode.org/reports/tr9/}).  Emacs provides a ``Full
+(@url{https://www.unicode.org/reports/tr9/}).  Emacs provides a ``Full
 Bidirectionality'' class implementation of the @acronym{UBA},
 consistent with the requirements of the Unicode Standard v9.0.  Note,
 however, that the way Emacs displays continuation lines when text

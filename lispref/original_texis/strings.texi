@@ -1,6 +1,6 @@
 @c -*- mode: texinfo; coding: utf-8 -*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990--1995, 1998--1999, 2001--2020 Free Software
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2021 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Strings and Characters
@@ -120,7 +120,10 @@ character (i.e., an integer), @code{nil} otherwise.
 @cindex string creation
 
   The following functions create strings, either from scratch, or by
-putting strings together, or by taking them apart.
+putting strings together, or by taking them apart.  (For functions
+that create strings based on the modified contents of other strings,
+like @code{string-replace} and @code{replace-regexp-in-string}, see
+@ref{Search and Replace}.)
 
 @defun make-string count character &optional multibyte
 This function returns a string made up of @var{count} repetitions of
@@ -380,6 +383,52 @@ practice:
 The default value of @var{separators} for @code{split-string}.  Its
 usual value is @w{@code{"[ \f\t\n\r\v]+"}}.
 @end defvar
+
+@defun string-clean-whitespace string
+Clean up the whitespace in @var{string} by collapsing stretches of
+whitespace to a single space character, as well as removing all
+whitespace from the start and the end of @var{string}.
+@end defun
+
+@defun string-fill string length
+Attempt to Word-wrap @var{string} so that no lines are longer than
+@var{length}.  Filling is done on whitespace boundaries only.  If
+there are individual words that are longer than @var{length}, these
+will not be shortened.
+@end defun
+
+@defun string-limit string length &optional end coding-system
+If @var{string} is shorter than @var{length}, @var{string} is returned
+as is.  Otherwise, return a substring of @var{string} consisting of
+the first @var{length} characters.  If the optional @var{end}
+parameter is given, return a string of the @var{length} last
+characters instead.
+
+If @var{coding-system} is non-@code{nil}, @var{string} will be encoded
+before limiting, and the result will be a unibyte string that's
+shorter than @code{length}.  If @var{string} contains characters that
+are encoded into several bytes (for instance, when using
+@code{utf-8}), the resulting unibyte string is never truncated in the
+middle of a character representation.
+@end defun
+
+@defun string-lines string &optional omit-nulls
+Split @var{string} into a list of strings on newline boundaries.  If
+@var{omit-nulls}, remove empty lines from the results.
+@end defun
+
+@defun string-pad string length &optional padding start
+Pad @var{string} to the be of @var{length} using @var{padding} as the
+padding character (defaulting to the space character).  If
+@var{string} is shorter than @var{length}, no padding is done.  If
+@var{start} is @code{nil} (or not present), the padding is done to the
+end of the string, and if it's non-@code{nil}, to the start of the
+string.
+@end defun
+
+@defun string-chop-newline string
+Remove the final newline, if any, from @var{string}.
+@end defun
 
 @node Modifying Strings
 @section Modifying Strings
@@ -654,6 +703,16 @@ This function returns non-@code{nil} if @var{suffix} is a suffix of
 @var{string}; i.e., if @var{string} ends with @var{suffix}.  If the
 optional argument @var{ignore-case} is non-@code{nil}, the comparison
 ignores case differences.
+@end defun
+
+@defun string-search needle haystack &optional start-pos
+Return the position of the first instance of @var{needle} in
+@var{haystack}, both of which are strings.  If @var{start-pos} is
+non-@code{nil}, start searching from that position in @var{needle}.
+Return @code{nil} if no match was found.
+This function only considers the characters in the strings when doing
+the comparison; text properties are ignored.  Matching is always
+case-sensitive.
 @end defun
 
 @defun compare-strings string1 start1 end1 string2 start2 end2 &optional ignore-case
@@ -1157,7 +1216,7 @@ The function @code{format-spec} described in this section performs a
 similar function to @code{format}, except it operates on format
 control strings that use arbitrary specification characters.
 
-@defun format-spec template spec-alist &optional only-present
+@defun format-spec template spec-alist &optional ignore-missing split
 This function returns a string produced from the format string
 @var{template} according to conversions specified in @var{spec-alist},
 which is an alist (@pxref{Association Lists}) of the form
@@ -1190,12 +1249,25 @@ The order of specifications in @var{template} need not correspond to
 the order of associations in @var{spec-alist}.
 @end itemize
 
-The optional argument @var{only-present} indicates how to handle
+The optional argument @var{ignore-missing} indicates how to handle
 specification characters in @var{template} that are not found in
 @var{spec-alist}.  If it is @code{nil} or omitted, the function
-signals an error.  Otherwise, those format specifications and any
-occurrences of @samp{%%} in @var{template} are left verbatim in the
-output, including their text properties, if any.
+signals an error; if it is @code{ignore}, those format specifications
+are left verbatim in the output, including their text properties, if
+any; if it is @code{delete}, those format specifications are removed
+from the output; any other non-@code{nil} value is handled like
+@code{ignore}, but any occurrences of @samp{%%} are also left verbatim
+in the output.
+
+If the optional argument @var{split} is non-@code{nil}, instead of
+returning a single string, @code{format-spec} will split the result
+into a list of strings, based on where the substitutions were
+performed.  For instance:
+
+@example
+(format-spec "foo %b bar" '((?b . "zot")) nil t)
+     @result{} ("foo " "zot" " bar")
+@end example
 @end defun
 
 The syntax of format specifications accepted by @code{format-spec} is
@@ -1243,7 +1315,7 @@ the right rather than the left.
 
 @item <
 This flag causes the substitution to be truncated on the left to the
-given width, if specified.
+given width and precision, if specified.
 
 @item >
 This flag causes the substitution to be truncated on the right to the
@@ -1262,15 +1334,29 @@ The result of using contradictory flags (for instance, both upper and
 lower case) is undefined.
 
 As is the case with @code{format}, a format specification can include
-a width, which is a decimal number that appears after any flags.  If a
-substitution contains fewer characters than its specified width, it is
-padded on the left:
+a width, which is a decimal number that appears after any flags, and a
+precision, which is a decimal-point @samp{.} followed by a decimal
+number that appears after any flags and width.
+
+If a substitution contains fewer characters than its specified width,
+it is padded on the left:
 
 @example
 @group
 (format-spec "%8a is padded on the left with spaces"
              '((?a . "alpha")))
      @result{} "   alpha is padded on the left with spaces"
+@end group
+@end example
+
+If a substitution contains more characters than its specified
+precision, it is truncated on the right:
+
+@example
+@group
+(format-spec "%.2a is truncated on the right"
+             '((?a . "alpha")))
+     @result{} "al is truncated on the right"
 @end group
 @end example
 
