@@ -1,0 +1,701 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1994, 1998--1999, 2001--2021 Free Software
+@c Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Debugging
+@chapter Lispプログラムのデバッグ
+@cindex debugging lisp programs
+
+  Emacs Lispプログラム内の問題を見つけて詳細に調べる方法がいくつかあります。
+
+@itemize @bullet
+@item
+プログラム実行中に問題が発生した場合には、Lisp評価機能をサスペンドするためにビルトインのEmacs
+Lispデバッガを使用して評価機能の内部状態の調査および/または変更を行なうことができる。
+
+@item
+Emacs LispにたいするソースレベルデバッガのEdebugを使用できる。
+
+@item
+@cindex tracing Lisp programs
+@file{trace.el}パッケージが提供するトレース機能を使用して問題に関する関数の実行をトレースできます。このパッケージは関数呼び出しのトレース用に@code{trace-function-foreground}と@code{trace-function-background}、値をトレースする変数の追加用に@code{trace-values}という関数を提供する。詳細は@file{trace.el}にあるこれらの機能のドキュメントを参照のと。
+
+@item
+文法的な問題によりLispがプログラムを読むことさえできない場合には、Lisp編集コマンドを使用して該当箇所を見つけることができる。
+
+@item
+バイトコンパイラーがプログラムをコンパイルするとき、コンパイラーにより生成されるエラーメッセージと警告メッセージを調べることができる。@ref{Compiler
+Errors}を参照のこと。
+
+@item
+Testcoverパッケージを使用してプログラムのテストカバレッジを行なうことができる。
+
+@item
+ERTパッケージを使用してプログラムにたいするリグレッションテストを記述できる。@ref{Top,the ERT manual,, ert, ERT:
+Emacs Lisp Regression Testing}を参照のこと。
+
+@item
+プログラムをプロファイルしてプログラムをより効果的にするためのヒントを取得できる。
+@end itemize
+
+  入出力の問題をデバックする便利なその他のツールとして、ドリブルファイル(dribble file: @ref{Terminal
+Input}を参照)と、@code{open-termscript}関数(@ref{Terminal Output})があります。
+
+@menu
+* Debugger::                 Emacs 
+                               Lisp評価機能にたいするデバッガ。
+* Edebug::                   Emacs Lispソースレベルデバッガ。
+* Syntax Errors::            シンタックスエラーを見つける方法。
+* Test Coverage::            プログラムのすべての分岐を確実にテストする。
+* Profiling::                あなたのコードが使用するリソースの計測。
+@end menu
+
+@node Debugger
+@section Lispデバッガ
+@cindex debugger for Emacs Lisp
+@cindex Lisp debugger
+@cindex break
+
+  普通の@dfn{Lispデバッガ}は、フォーム評価のサスペンド機能を提供します。評価がサスペンド(一般的には@dfn{break}の状態として知られる)されている間、実行時スタックを調べたり、ローカル変数やグローバル変数の値を調べたり変更することができます。breakは再帰編集(recursive
+edit)なので、Emacsの通常の編集機能が利用可能です。デバッガにエンターするようにプログラムを実行することさえ可能です。@ref{Recursive
+Editing}を参照してください。
+
+@menu
+* Error Debugging::          エラー発生時にデバッガにエンターする。
+* Infinite Loops::           exitしないプログラムの停止デバッグ。
+* Function Debugging::       特定の関数が呼び出されたときにデバッガにエンターする。
+* Variable Debugging::       変数が変更されたときにデバッガにエンターする。
+* Explicit Debug::           プログラム内の特定箇所でデバッガにエンターする。
+* Using Debugger::           デバッガが行なうこと。
+* Backtraces::               デバッガ内で何を目にするか。
+* Debugger Commands::        デバッガで使用するコマンド。
+* Invoking the Debugger::    関数@code{debug}の呼び出し方。
+* Internals of Debugger::    デバッガのサブルーチンとグローバル変数。
+@end menu
+
+@node Error Debugging
+@subsection エラーによるデバッガへのエンター
+@cindex error debugging
+@cindex debugging errors
+
+  デバッガに入るタイミングとして一番重要なのは、Lispエラーが発生したときです。デバッガではエラーの直接原因を調査できます。
+
+  しかしデバッガへのエンターは、エラーによる通常の結末ではありません。多くのコマンドは不適切に呼び出されたときにLispエラーをシグナルするので、通常の編集の間にこれが発生するたびデバッガにエンターするのは、とても不便でしょう。したがってエラーの際にデバッガにエンターしたいなら、変数@code{debug-on-error}に非@code{nil}をセットします(コマンド@code{toggle-debug-on-error}はこれを簡単に行う方法を提供する)。
+
+@defopt debug-on-error
+この変数はエラーがシグナルされて、それがハンドルされていないときにデバッガを呼び出すかどうかを決定する。@code{debug-on-error}が@code{t}なら、@code{debug-ignored-errors}(以下参照)にリストされているエラー以外の、すべての種類のエラーがデバッガを呼び出す。@code{nil}ならデバッガを呼び出さない。
+
+値にはエラー条件(@ref{Signaling
+Errors}を参照)のリストも指定できる。その場合はこのリスト内のエラー条件だけによってデバッガが呼び出される(@code{debug-ignored-errors}にもリストされているエラー条件は除外される)。たとえば@code{debug-on-error}をリスト@code{(void-variable)}にセットすると、値をもたない変数に関するエラーにたいしてのみデバッガが呼び出される。
+
+@code{eval-expression-debug-on-error}がこの変数をオーバーライドするケースがいくつかあることに注意(以下参照)。
+
+この変数が非@code{nil}のとき、Emacsはプロセスフィルター関数と番兵(sentinel)の周囲にエラーハンドラーを作成しない。したがってこれらの関数内でのエラーは、デバッガを呼び出す。@ref{Processes}を参照のこと。
+@end defopt
+
+@defopt debug-ignored-errors
+この変数は@code{debug-on-error}の値に関わらず、デバッガにエンターすべきでないエラーを指定する。変数の値はエラー条件のシンボルおよび/または正規表現のリスト。エラーがこれら条件シンボルのいずれか、またはエラーメッセージが正規表現のいずれかにマッチすれば、そのエラーはデバッガにエンターしない。
+
+この変数の通常の値には@code{user-error}、および編集中に頻繁に発生するがLispプログラムのバグに起因することは稀であるような、いくつかのエラーが含まれる。しかし``稀である''ことは``絶対ない''ということではない。あなたのプログラムがこのリストにマッチするエラーによって機能しないなら、そのエラーをデバッグするためにこのリストの変更を試みるのもよいだろう。通常は@code{debug-ignored-errors}を@code{nil}にセットしておくのが、もっとも簡単な方法である。
+@end defopt
+
+@defopt eval-expression-debug-on-error
+この変数が非@code{nil}値(デフォルト)なら、コマンド@code{eval-expression}の実行により一時的に@code{debug-on-error}が@code{t}がバインドされる。@ref{Lisp
+Eval,, Evaluating Emacs Lisp Expressions, emacs, The GNU Emacs
+Manual}を参照のこと。
+
+@code{eval-expression-debug-on-error}が@code{nil}なら、@code{eval-expression}の間も@code{debug-on-error}の値は変更されない。
+@end defopt
+
+@defopt debug-on-signal
+@code{condition-case}でキャッチされたエラー、は通常は決してデバッガを呼び出さない。@code{condition-case}はデバッガがそのエラーをハンドルする前にエラーをハンドルする機会を得る。
+
+@code{debug-on-signal}を非@code{nil}値に変更すると、@code{condition-case}の存在如何に関わらずすべてのエラーにおいてデバッガが最初に機会を得る(デバッガを呼び出すためには依然としてそのエラーが@code{debug-on-error}と@code{debug-ignored-errors}で指定された条件を満たさなければならない)。
+
+@cindex emacsclient, getting a backtrace
+@cindex backtrace from emacsclient's @option{--eval}
+たとえばemacsclientの@option{--eval}オプションによるコードの評価からバックトレースを取得するためにはこの変数をセットすると便利。この変数が非@code{nil}のときにemacsclientで評価されたLispコードがエラーをシグナルすると、バックトレースは実行中のEmacsにポップアップされる。
+
+@strong{警告:}
+この変数を非@code{nil}にセットすると、芳しくない効果があるかもしれない。Emacsのさまざまな部分で処理の通常の過程としてエラーがキャッチされており、そのエラーが発生したことに気づかないことさえあるかもしれない。@code{condition-case}でラップされたコードをデバッグする必要があるなら、@code{condition-case-unless-debug}(@pxref{Handling
+Errors}を参照)の使用を考慮されたい。
+@end defopt
+
+@defopt debug-on-event
+@code{debug-on-event}をスペシャルイベント(@ref{Special
+Events}を参照)にセットすると、Emacsは@code{special-event-map}をバイパスしてこのイベントを受け取ると即座にデバッガへのエンターを試みる。現在のところサポートされる値は、シグナル@code{SIGUSR1}と@code{SIGUSR2}に対応する値のみ(これがデフォルト)。これは@code{inhibit-quit}がセットされていて、それ以外はEmacsが応答しない場合に有用かもしれない。
+@end defopt
+
+@cindex message, finding what causes a particular message
+@defvar debug-on-message
+@code{debug-on-message}に正規表現をセットした場合は、それにマッチするメッセージがエコーエリアに表示されると、Emacsはデバッガにエンターする。たとえばこれは特定のメッセージの原因を探すのに有用かもしれない。
+@end defvar
+
+  initファイルロード中に発生したエラーをデバッグするには、オプション@samp{--debug-init}を使用する。これはinitファイルロードの間に@code{debug-on-error}を@code{t}にバインドして、通常はinitファイル内のエラーをキャッチする@code{condition-case}をバイパスする。
+
+@node Infinite Loops
+@subsection 無限ループのデバッグ
+@cindex infinite loops
+@cindex loops, infinite
+@cindex quitting from infinite loop
+@cindex stopping an infinite loop
+
+  プログラムが無限にループしてリターンできないとき、最初の問題はそのループをいかに停止するかです。ほとんどのオペレーティングシステムでは、(@dfn{quit}させる)@kbd{C-g}でこれを行うことができます。@ref{Quitting}を参照してください。
+
+  普通のquitでは、なぜそのプログラムがループしたかについての情報は与えられません。変数@code{debug-on-quit}に非@code{nil}をセットすることにより、より多くの情報を得ることができます。無限ループの途中でデバッガを実行すれば、デバッガからステップコマンドで先へ進むことができます。ループ全体をステップで追えば、問題を解決するために十分な情報が得られるでしょう。
+
+  @kbd{C-g}によるquitはエラーとは判断されないので、@kbd{C-g}のハンドルに@code{debug-on-error}は効果がありません。同じように@code{debug-on-quit}はエラーにたいして効果がありません。
+
+@defopt debug-on-quit
+この変数は@code{quit}がシグナルされて、それがハンドルされていないときにデバッガを呼び出すかどうかを決定する。@code{debug-on-quit}が非@code{nil}なら、quit(つまり@kbd{C-g}をタイプ)したときは常にデバッガが呼び出される。@code{debug-on-quit}が@code{nil}(デフォルト)なら、quitしてもデバッガは呼び出されない。
+@end defopt
+
+@node Function Debugging
+@subsection 関数呼び出しによるデバッガへのエンター
+@cindex function call debugging
+@cindex debugging specific functions
+
+  プログラムの途中で発生する問題を調べるための有用なテクニックの1つは、特定の関数が呼び出されたときデバッガにエンターする方法です。問題が発生した関数にこれを行ってその関数をステップで追ったり、問題箇所の少し手前の関数呼び出しでこれを行って、その関数をステップオーバーしてその後をステップで追うことができます。
+
+@deffn Command debug-on-entry function-name
+この関数は@var{function-name}が呼び出されるたびにデバッガの呼び出しを要求する。
+
+Lispコードで定義された任意の関数とマクロは、インタープリターに解釈されたコードかコンパイル済みのコードかに関わらず、エントリーにbreakをセットできる。その関数がコマンドならLispから呼び出されたときと、インタラクティブに呼び出されたときにデバッガにエンターする。(たとえばCで記述された)プリミティブ関数にもこの方法で@code{debug-on-entry}をセットできるが、そのプリミティブがLispコードから呼び出されたときだけ効果がある。@code{debug-on-entry}はスペシャルフォームにはセットできない。
+
+@code{debug-on-entry}がインタラクティブに呼び出されたときは、ミニバッファーで@var{function-name}の入力を求める。その関数がすでにエントリーでデバッガを呼び出すようにセットアップされていたら、@code{debug-on-entry}は何も行わない。@code{debug-on-entry}は常に@var{function-name}をリターンする。
+
+以下はこの関数の使い方を説明するための例である:
+
+@example
+@group
+(defun fact (n)
+  (if (zerop n) 1
+      (* n (fact (1- n)))))
+     @result{} fact
+@end group
+@group
+(debug-on-entry 'fact)
+     @result{} fact
+@end group
+@group
+(fact 3)
+@end group
+
+@group
+------ Buffer: *Backtrace* ------
+Debugger entered--entering a function:
+* fact(3)
+  eval((fact 3))
+  eval-last-sexp-1(nil)
+  eval-last-sexp(nil)
+  call-interactively(eval-last-sexp)
+------ Buffer: *Backtrace* ------
+@end group
+
+@end example
+@end deffn
+
+@deffn Command cancel-debug-on-entry &optional function-name
+この関数は@var{function-name}にたいする@code{debug-on-entry}の効果をアンドゥする。インタラクティブに呼び出されたときは、ミニバッファーで@var{function-name}の入力を求める。@var{function-name}が省略または@code{nil}なら、すべての関数にたいするbreak-on-entryをキャンセルする。エントリー時にbreakするようセットアップされていない関数に@code{cancel-debug-on-entry}を呼び出したときは何も行わない。
+@end deffn
+
+@node Variable Debugging
+@subsection 変数の変更時にデバッガにエンターする。
+@cindex variable write debugging
+@cindex debugging changes to variables
+
+不正な変数のセッティングが関数に問題をもたらすときがあります。元のセッティングを調べるためには、変数の変更時に常にデバッガがトリガーされるようにセットアップするのが手軽な方法です。
+
+@deffn Command debug-on-variable-change variable
+この関数は@var{variable}の変更時に常にデバッガが呼び出されるようにアレンジする。
+
+これはwatchpointメカニズムを使用して実装されているので同じような特徴と制限を継承する。つまり@var{variable}のすべてのエイリアスは一緒にwatchされて、watch対象はダイナミック変数のみであり変数から参照されるオブジェクトの変更は検出されない。詳細は@ref{Watching
+Variables}を参照のこと。
+@end deffn
+
+@deffn Command cancel-debug-on-variable-change &optional variable
+この関数は@var{variable}にたいする@code{debug-on-variable-change}の効果をアンドゥする。インタラクティブに呼び出されたときはミニバッファーで@var{variable}の入力をもとめる。@var{variable}が省略か@code{nil}ならすべての変数にたいする変更時のブレークを取り消す。カレントで変更時にブレークするようにセットアップされていない変数にたいして@code{cancel-debug-on-variable-change}の呼び出しは何も行わない。
+@end deffn
+
+
+@node Explicit Debug
+@subsection 明示的なデバッガへのエントリー
+@cindex debugger, explicit entry
+@cindex force entry to debugger
+
+@cindex @code{eval-defun}, and explicit entry to debugger
+  プログラム内の特定箇所に式@code{(debug)}を記述することによって、その箇所でデバッガが呼び出されるようにできます。これを行うにはソースファイルをvisitして、適切な箇所にテキスト@samp{(debug)}を挿入し、@kbd{C-M-x}(Lispモードでの@code{eval-defun}にたいするキーバインド)をタイプします。@strong{警告:}
+一時的なデバッグ目的のためにこれを行なう場合には、ファイルを保存する前に確実にアンドゥしてください!
+
+  @samp{(debug)}を挿入する箇所は追加フォームが評価されることができ、かつその値を無視することができる箇所でなければなりません(@samp{(debug)}の値を無視しないとプログラムの実行が変更されてしまうだろう!)。一般的にもっとも適した箇所は、@code{progn}または暗黙的な@code{progn}(@ref{Sequencing}を参照)の内部です。
+
+  デバッグ命令を配置したいソースコード中の正確な箇所がわからないが、特定のメッセージが表示されたときにバックトレースを表示したい場合には、意図するメッセージにマッチする正規表現を@code{debug-on-message}にセットできます。
+
+@node Using Debugger
+@subsection デバッガの使用
+
+  デバッガにエンターすると、その前に選択されていたウィンドウを1つのウィンドウに表示して、他のウィンドウに@file{*Backtrace*}という名前のバッファーを表示します。backtraceバッファーには、現在実行されているLisp関数の各レベルが1行ずつ含まれます。このバッファーの先頭は、デバッガが呼び出された理由を説明するメッセージ(デバッガがエラーにより呼び出された場合はエラーメッセージや関連するデータなど)です。
+
+@vindex debugger-bury-or-kill
+  backtraceバッファーは読み取り専用で、文字キーにデバッガコマンドが定義されたDebuggerモードという特別なメジャーモードを使用します。通常のEmacs編集コマンドが利用できます。したがってエラー時に編集されていたバッファーを調べるためにウィンドウを切り替えたり、バッファーの切り替えやファイルのvisit、その他一連の編集処理を行なうことができます。しかしデバッガは再帰編集レベル(@ref{Recursive
+Editing}を参照)にあり、編集が終わったらそれはbacktraceバッファーに戻って、(@kbd{q}コマンドで)デバッガをexitできます。デバッガをexitすることによって再帰編集を抜け出し、backtraceバッファーはバリー(bury:
+覆い隠す)されます(変数@code{debugger-bury-or-killw}をセットすることによってbacktraceバッファーで@kbd{q}コマンドが何を行うかをカスタマイズできる。たとえばバッファーをバリーせずにkillしたいなら、この変数を@code{kill}にセットする。他の値については変数のドキュメントを調べてほしい)。
+
+  デバッガにエンターしたとき、@code{eval-expression-debug-on-error}に一致するように変数@code{debug-on-error}が一時的にセットされます。変数@code{eval-expression-debug-on-error}が非@code{nil}なら、@code{debug-on-error}は一時的に@code{t}にセットされます。これはデバッグセッション行っている間にさらにエラーが発生すると、(デフォルトでは)他のbacktraceがトリガーされることを意味します。これが望ましくなければ、@code{debugger-mode-hook}内で@code{eval-expression-debug-on-error}を@code{nil}にセットするか、@code{debug-on-error}を@code{nil}にセットすることができます。
+
+  デバッガはLispインタープリターの状態について想定を行うので、バイトコンパイルされて実行されなければなりません。デバッガがインタープリターに解釈されて実行されているときは、これらの想定は正しくなくなります。
+
+@node Backtraces
+@subsection バックトレース
+@cindex backtrace buffer
+
+DebuggerモードはEdebugとERT(@ref{Edebug}と@ref{Top,the ERT manual,, ert, ERT:
+Emacs Lisp Regression Testing}を参照)がbacktrace表示にも使用するBacktraceモードから派生したモードです。
+
+@cindex stack frame
+backtraceバッファーは実行されている関数と、その関数の引数の値を示します。backtraceバッファー作成時には1つのスタックフレームにたいして1行(非常に長い可能性がある)を表示します(スタックフレームとはLispインタープリターが特定の関数呼び出しに関する情報を記録する場所のこと)。もっとも最近の呼び出しが最上行になります。
+
+@cindex current stack frame
+backtraceではフレームを記述する行にポイントを移動してフタックフレームを指定できます。ポイントのある行のフレームが@dfn{カレントフレーム(current
+frame)}とみなされます。
+
+If a function name is underlined, that means Emacs knows where its source
+code is located.  You can click with the mouse on that name, or move to it
+and type @key{RET}, to visit the source code.  You can also type @key{RET}
+while point is on any name of a function or variable which is not
+underlined, to see help information for that symbol in a help buffer, if any
+exists.  The @code{xref-find-definitions} command, bound to @kbd{M-.}, can
+also be used on any identifier in a backtrace (@pxref{Looking Up
+Identifiers,,,emacs, The GNU Emacs Manual}).
+
+backtraceでは長いリストの末尾およびベクターや構造、同じように深くネストされたオブジェクトの終端は下線つきの``...''でプリントされます。``...''上でマウスをクリックするか、その上にポイントがある状態で@key{RET}をタイプすることにより、オブジェクトの隠蔽されている部分を表示できます。省略を行う量の制御は@code{backtrace-line-length}をカスタマイズしてください。
+
+以下はbacktraceの操作と閲覧を行うコマンドのリストです:
+
+@table @kbd
+@item v
+カレントスタックフレームのローカル変数の表示を切り替える。
+
+@item p
+フレームまたは前のフレームの先頭に移動する。
+
+@item n
+次のフレームの先頭に移動する。
+
+@item +
+可読性向上のためにポイント位置に行ブレークを追加してトップレベルLispフォームにインデントする。
+
+@item -
+ポイント位置のトップレベルLispフォームを1行に折り畳む。
+
+@item #
+ポイント位置のフレームの@code{print-circle}を切り替える。
+
+@item :
+ポイント位置のフレームの@code{print-gensym}を切り替える。
+
+@item .
+ポイント位置のフレームの``...''で省略されたすべてのフォームを展開する。
+
+@end table
+
+@node Debugger Commands
+@subsection デバッガのコマンド
+@cindex debugger command list
+
+  (Debuggerモードの)debuggerバッファーでは通常のEmacsコマンドに加えて特別なコマンド、および前セクションで説明したBacktraceモードのコマンドが提供されます。デバッガでもっとも重要な使い方をするのは、制御フローを見ることができるコードをステップ実行するコマンドです。デバッガはインタープリターによって解釈された制御構造のステップ実行はできますが、バイトコンパイル済みの関数ではできません。バイトコンパイル済み関数をステップ実行したいなら、同じ関数の解釈された定義に置き換えてください(これを行なうにはその関数のソースをvisitして、関数の定義で@kbd{C-M-x}とタイプする)。プリミティブ関数のステップ実行にLispデバッガは使用できません。
+
+デバッガのコマンドのいくつかはカレントフレームを処理します。フレームが星印で開始される場合には、そのフレームをexitすることにより再びデバッガが呼び出されることを意味します。これは関数のリターン値の検証に有用です。
+
+@c FIXME: Add @findex for the following commands?  --xfq
+  以下はDebuggerモードのコマンドのリストです:
+
+@table @kbd
+@item c
+デバッガをexitして実行を継続する。これはあたかもデバッガにエンターしなかったかのようにプログラムの実行を再開する(デバッガ内で行った変数値やデータ構造の変更などの副作用は除外)。
+
+@item d
+実行を継続するが、次にLisp関数が何か呼び出されたときはデバッガにエンターする。これによりある式の下位の式をステップ実行して、下位の式が計算する値や行うことを確認できる。
+
+デバッガにエンターした関数呼び出しにたいして、この方法で作成されたスタックフレームには自動的にフラグがつくため、そのフレームをexitすると再びデバッガが呼び出される。このフラグは@kbd{u}コマンドを使用してキャンセルできる。
+
+@item b
+カレントフレームにフラグをつけるので、そのフレームをexitするときデバッガにエンターする。この方法でフラグがつけられたフレームは、backtraceバッファーでスターのマークがつく。
+
+@item u
+カレントフレームをexitしたときデバッガにエンターしない。これはそのフレームの@kbd{b}コマンドをキャンセルする。目に見える効果としてはbacktraceバッファーの行からスターが削除される。
+
+@item j
+@kbd{b}と同じようにカレントフレームにフラグをつける。その後に@kbd{c}のように実行を継続するが、@code{debug-on-entry}によりセットアップされたすべての関数にたいするbreak-on-entryを一時的に無効にする。
+
+@item e
+ミニバッファーのLisp式を読み取り、(関連するlexical環境が適切なら)それを評価してエコーエリアに値をプリントする。デバッガは特定の重要な変数とバッファーを処理の一部として変更する。@kbd{e}は一時的にデバッガの外部からそれらの値をリストアするので、それらを調べて変更できる。これによりデバッガはより透過的になる。対照的にデバッガ内で@kbd{M-:}は特別なことを行わず、デバッガ内での変数の値を表示する。
+
+@item R
+@kbd{e}と同様だがバッファー@file{*Debugger-record*}内の評価結果も保存する。
+
+@item q
+デバッグされているプログラムを終了して、Emacsコマンド実行のトップレベルにリターンする。
+
+@kbd{C-g}によりデバッガにエンターしたが、実際はデバッグではなくquitしたいときは@kbd{q}コマンドを使用する。
+
+@item r
+デバッガから値をリターンする。ミニバッファーで式を読み取ってそれを評価することにより値が計算される。
+
+@kbd{d}コマンドは、(@kbd{b}によるリクエストや@kbd{d}によるそのフレームへのエンターによる)Lisp呼び出しフレームからのexitでデバッガが呼び出されたときに有用である。@kbd{r}コマンドで指定された値は、そのフレームの値として使用される。これは@code{debug}を呼び出して、そのリターン値を使用するときにも有用。それ以外は@kbd{r}は@kbd{c}と同じ効果をもち、指定されたリターン値は問題とはならない。
+
+エラーによりデバッガにエンターしたときは@kbd{r}コマンドは使用できない。
+
+@item l
+呼び出されたときにデバッガを呼び出す関数をリストする。これは@code{debug-on-entry}によりエントリー時にbreakするようセットされた関数のリストである。
+
+@end table
+
+@node Invoking the Debugger
+@subsection デバッガの呼び出し
+@cindex invoking lisp debugger
+
+  以下ではデバッガを呼び出すために使用される関数@code{debug}の完全な詳細を説明します。
+
+@deffn Command debug &rest debugger-args
+この関数はデバッガにエンターする。この関数は@file{*Backtrace*}(デバッガへの2回目以降の再帰エントリーでは@file{*Backtrace*<2>、...})という名前のバッファーにバッファーを切り替えて、Lisp関数呼び出しについての情報を書き込む。それから再帰編集にエンターして、Debuggerモードでbacktraceバッファーを表示する。
+
+Debuggerモードのコマンド@kbd{c}、@kbd{d}、@kbd{j}、@kbd{r}は再帰編集をexitする。その後、@code{debug}は以前のバッファーに戻って、@code{debug}を呼び出したものが何であれそこにリターンする。これは関数@code{debug}が呼び出し元にリターンできる唯一の方法である。
+
+@var{debugger-args}を使用すると、@code{debug}は@file{*Backtrace*}の最上部に残りの引数を表示するしてユーザーがそれらを確認できる。以下で説明する場合を除いて、これはこれらの引数を使用する@emph{唯一}の方法である。
+
+しかし@code{debug}への1つ目の引数にたいする値は、特別な意味をもつ(これらの値は通常は@code{debug}を呼び出すプログラマーではなく、Emacs内部でのみ使用される)。以下はこれら特別な値のテーブルである:
+
+@table @code
+@item lambda
+@cindex @code{lambda} in debug
+1つ目の引数が@code{lambda}のなら、それは@code{debug-on-next-call}が非@code{nil}のときに関数にエントリーしたことによって@code{debug}が呼び出されたことを意味する。デバッガはバッファーのトップのテキスト行に@samp{Debugger
+entered--entering a function:}と表示する。
+
+@item debug
+1つ目の引数が@code{debug}なら、それはエントリー時にデバッグされるようにセットされた関数にエントリーしたことにって@code{debug}が呼び出されたことを意味する。デバッガは@code{lambda}のときと同様、@samp{Debugger
+entered--entering a
+function:}を表示する。これはその関数のスタックフレームもマークするので、exit時にデバッガが呼び出される。
+
+@item t
+1つ目の引数が@code{t}なら、それは@code{debug-on-next-call}が非@code{nil}のときに関数呼び出しの評価によって@code{debug}が呼び出されたことを示す。デバッガはバッファーのトップの行に@samp{Debugger
+entered--beginning evaluation of function call form:}と表示する。
+
+@item exit
+1つ目の引数が@code{exit}のときは、exit時にデバッガを呼び出すよう以前にマークされたスタックフレームをexitしたことを示す。この場合は@code{debug}に与えられた2つ目の引数がそのフレームからリターンされた値になる。デバッガはバッファーのトップの行に@samp{Debugger
+entered--returning value:}とリターンされた値を表示する。
+
+@item error
+@cindex @code{error} in debug
+1つ目の引数が@code{error}のときは、ハンドルされていないエラーまたは@code{quit}がシグナルされてデバッガにエンターした場合であり、デバッガは@samp{Debugger
+entered--Lisp error:}とその後にシグナルされたエラーと@code{signal}への引数を表示してそれを示す。たとえば、
+
+@example
+@group
+(let ((debug-on-error t))
+  (/ 1 0))
+@end group
+
+@group
+------ Buffer: *Backtrace* ------
+Debugger entered--Lisp error: (arith-error)
+  /(1 0)
+...
+------ Buffer: *Backtrace* ------
+@end group
+@end example
+
+エラーがシグナルされた場合はおそらく変数@code{debug-on-error}は非@code{nil}で、@code{quit}がシグナルされた場合はおそらく変数@code{debug-on-quit}は非@code{nil}である。
+
+@item nil
+明示的にデバッガにエンターしたいときは、@var{debugger-args}の1つ目の引数に@code{nil}を使用する。残りの@var{debugger-args}はバッファーのトップの行にプリントされる。メッセージ
+--- たとえば@code{debug}が呼び出された条件を思い出すためのリマインダーとして --- の表示にこの機能を使用できる。
+@end table
+@end deffn
+
+@node Internals of Debugger
+@subsection デバッガの内部
+
+  このセクションではデバッガ内部で使用される関数と変数について説明します。
+
+@defvar debugger
+この関数の値はデバッガを呼び出す関数呼び出しである。値には任意個数の引数をとる関数、より具体的には関数の名前でなければならない。この関数は何らかのデバッガを呼び出すこと。この変数のデフォルト値は@code{debug}。
+
+関数にたいしてLispが渡す1つ目の引数は、その関数がなぜ呼び出されたかを示す。引数の慣習については@code{debug}(@ref{Invoking
+the Debugger})に詳解がある。
+@end defvar
+
+@defun backtrace
+@cindex run time stack
+@cindex call stack
+この関数は現在アクティブなLisp関数呼び出しのトレースをプリントする。このトレースは@code{debug}が@file{*Backtrace*}バッファーで表示するものと等しい。リターン値は常に@code{nil}。
+
+以下の例ではLisp式で明示的に@code{backtrace}を呼び出している。これはストリーム@code{standard-output}(この場合はバッファー@samp{backtrace-output})にbacktraceをプリントする。
+
+backtraceの各行は1つの関数呼び出しを表す。関数の引数が既知なら行に関数とその後に値が表示される。まだ計算中なら関数と未評価の引数を含むリストから行が構成される。長いリストや深くネストされた構造は省略されるかもしれない。
+
+@smallexample
+@group
+(with-output-to-temp-buffer "backtrace-output"
+  (let ((var 1))
+    (save-excursion
+      (setq var (eval '(progn
+                         (1+ var)
+                         (list 'testing (backtrace))))))))
+
+     @result{} (testing nil)
+@end group
+
+@group
+----------- Buffer: backtrace-output ------------
+  backtrace()
+  (list 'testing (backtrace))
+@end group
+  (progn ...)
+  eval((progn (1+ var) (list 'testing (backtrace))))
+  (setq ...)
+  (save-excursion ...)
+  (let ...)
+  (with-output-to-temp-buffer ...)
+  eval((with-output-to-temp-buffer ...))
+  eval-last-sexp-1(nil)
+@group
+  eval-last-sexp(nil)
+  call-interactively(eval-last-sexp)
+----------- Buffer: backtrace-output ------------
+@end group
+@end smallexample
+@end defun
+
+@defopt debugger-stack-frame-as-list
+この変数が非@code{nil}ならバックトレースのすべてのスタックフレームはリストとして表示される。これは通常の関数呼び出しとバックトレースの特殊形式の視覚的な違いによるコストをなくして、バックトレースの可読性を向上することが目的。
+
+@code{debugger-stack-frame-as-list}が非@code{nil}なら上記の例は以下のようになる:
+
+@smallexample
+@group
+----------- Buffer: backtrace-output ------------
+  (backtrace)
+  (list 'testing (backtrace))
+@end group
+  (progn ...)
+  (eval (progn (1+ var) (list 'testing (backtrace))))
+  (setq ...)
+  (save-excursion ...)
+  (let ...)
+  (with-output-to-temp-buffer ...)
+  (eval (with-output-to-temp-buffer ...))
+  (eval-last-sexp-1 nil)
+@group
+  (eval-last-sexp nil)
+  (call-interactively eval-last-sexp)
+----------- Buffer: backtrace-output ------------
+@end group
+@end smallexample
+@end defopt
+
+@defvar debug-on-next-call
+@cindex @code{eval}, and debugging
+@cindex @code{apply}, and debugging
+@cindex @code{funcall}, and debugging
+この変数が非@code{nil}なら、それは次の@code{eval}、@code{apply}、@code{funcall}の前にデバッガを呼び出すよう指定する。デバッガへのエンターによって@code{debug-on-next-call}は@code{nil}にセットされる。
+
+デバッガの@kbd{d}コマンドは、この変数をセットすることにより機能します。
+@end defvar
+
+@defun backtrace-debug level flag
+この関数はそのスタックフレームの@var{level}下位のスタックフレームのdebug-on-exitフラグに@var{flag}に応じた値をセットする。@var{flag}が非@code{nil}なら、後でそのフレームをexitするときデバッガにエンターする。そのフレームを通じた非ローカルexitでも、デバッガにエンターする。
+
+この関数はデバッガだけに使用される。
+@end defun
+
+@defvar command-debug-status
+この変数はカレントのインタラクティブコマンドのデバッグ状態を記録する。コマンドがインタラクティブに呼び出されるたびに、この変数は@code{nil}にバインドされる。デバッガは同じコマンドが呼び出されたときのデバッガ呼び出しに情報を残すために、この変数をセットできる。
+
+普通のグローバル変数ではなくこの変数を使用する利点は、そのデータが後続のコマンド呼び出しに決して引き継がれないことである。
+
+この変数は時代遅れであり将来のバージョンで削除されるだろう。
+@end defvar
+
+@defun backtrace-frame frame-number &optional base
+関数@code{backtrace-frame}はLispデバッガ内での使用を意図している。これは@var{frame-number}レベル下位のスタックフレームで何の評価が行われているかに関する情報をリターンする。
+
+そのフレームがまだ引数を評価していない、またはそのフレームがスペシャルフォームなら値は@code{(nil @var{function}
+@var{arg-forms}@dots{})}。
+
+そのフレームが引数を評価して関数をすでに呼び出していたらリターン値は@code{(t @var{function}
+@var{arg-values}@dots{})}。
+
+リターン値の@var{function}は何であれ評価されたリストの@sc{car}として提供される。マクロ呼び出しなら@code{lambda}式。その関数に@code{&rest}引数があればリスト@var{arg-values}の末尾に示される。
+
+@var{base}を指定すると@var{frame-number}は@var{function}が@var{base}であるようなフレームの上端から相対的に数えられる。
+
+@var{frame-number}が範囲外なら@code{backtrace-frame}は@code{nil}をリターンする。
+@end defun
+
+@defun mapbacktrace function &optional base
+関数@code{mapbacktrace}はバックトレース上の関数が@var{base}であるようなフレーム(@var{base}が省略か@code{nil}なら先頭)から順に各フレームにたいして一度@var{function}を呼び出す。
+
+@var{function}は@var{evald}、@var{func}、@var{args}、@var{flags}という4つの引数で呼び出される。
+
+そのフレームがまだ引数を評価していない、またはそのフレームがスペシャルフォームなら@var{evald}は@code{nil}、@var{args}はフォームのリスト。
+
+フレームが引数を評価して関数を呼び出し済みなら@var{evald}は@code{t}、@var{args}は値リスト。@var{flags}はカレントフレームのプロパティのplist。サポートされるプロパティは現在のところ@code{:debug-on-exit}のみであり、そのスタックフレームの@code{debug-on-exit}フラグがセットされていれば@code{t}。
+@end defun
+
+@include edebug-ja.texi
+
+@node Syntax Errors
+@section 無効なLisp構文のデバッグ
+@cindex debugging invalid Lisp syntax
+
+  Lispリーダーは無効な構文(invalid
+syntax)について報告はしますが実際の問題箇所は報告しません。たとえばある式を評価中のエラー@samp{End of file during
+parsing}は、開カッコまたは開角カッコ(open parenthese or open square
+bracket)が多いことを示しています。Lispリーダーはこの不一致をファイル終端で検出しましたが、本来閉カッコがあるべき箇所を解決することはできません。同様に@samp{Invalid
+read syntax:
+\")\"}は開カッコの欠落を示していますが、欠落しているカッコが属すべき場所は告げません。ならばどうやって変更すべき箇所を探せばよいのでしょうか?
+
+  問題が単なるカッコの不一致でない場合の便利なテクニックは、各defunの先頭で@kbd{C-M-e} (
+@code{end-of-defun}。@ref{Moving by Defuns,,,emacs, The GNU Emacs
+Manual}を参照)とタイプして、そのdefunの最後と思われる箇所に移動するか確認する方法です。もし移動しなければ、問題はそのdefunの内部にあります。
+
+@cindex unbalanced parentheses
+@cindex parenthesis mismatch, debugging
+  マッチしないカッコがLispにおいてもっとも一般的な構文エラーなので、これらのケースにたいしてさらにアドバイスすることができます(Show
+Parenモードを有効にしてコードにポイントを移動するだけでカッコの不一致を探しやすくなるだろう)。
+
+@menu
+* Excess Open::              誤った開カッコと閉カッコの欠落を探す方法。
+* Excess Close::             誤った閉カッコと開カッコの欠落を探す方法。
+@end menu
+
+@node Excess Open
+@subsection 過剰な開カッコ
+@cindex excess open parentheses
+
+  カッコがマッチしないdefunを探すのが、最初のステップです。過剰な開カッコが存在する場合は、ファイルの終端に移動して@kbd{C-u C-M-u} (
+@code{backward-up-list}。@ref{Moving by Parens,,,emacs, The GNU Emacs
+Manual}を参照)とタイプします。これにより、カッコがマッチしない最初のdefunの先頭に移動するでしょう。
+
+  何が間違っているのか正確に判断するのが次のステップです。これを確実に行なうにはプログラムを詳しく調べる以外に方法はありませんが、カッコがあるべき箇所を探すのに既存のインデントが手掛かりになることが多々あります。@kbd{C-M-q}
+(@code{indent-pp-sexp}。@ref{Multi-line Indent,,,emacs, The GNU Emacs
+Manual}を参照)で再インデントして何が移動されるか確認するのが、この手掛かりを使用するもっとも簡単な方法です。@strong{しかし、行うのはちょっと待ってください!}
+まず続きを読んでからにしましょう。
+
+  これを行なう前にdefunに十分な閉カッコがあるか確認します。十分な閉カッコがなければ
+@kbd{C-M-q}がエラーとなるか、そのdefunからファイル終端までの残りすべてが再インデントされます。その場合にはdefunの最後に移動して、そこに閉カッコを挿入します。そのdefunのカッコの釣り合いがとれるまでは、defunの最後に移動するのに@kbd{C-M-e}
+(@code{end-of-defun})は使用できません(失敗する)。
+
+  これでdefunの先頭に移動して@kbd{C-M-q}とタイプすることができます。通常は一定のポイントからその関数の最後までのすべての行が、右へとシフトされるでしょう。これはおそらくそのポイント付近で閉カッコが欠落していたり不要な開カッコがあります(しかしこれを真実と仮定せずコードを詳しく調べること)。不一致箇所を見つけたら、元のインデントはおそらく意図されたカッコに適しているはずなので、@kbd{C-_}
+(@code{undo})で@kbd{C-M-q}をアンドゥしてください。
+
+  問題をfixできたと思った後に、再度@kbd{C-M-q}を使用します。実際に元のインデントが意図したカッコのネストに適合していて、足りないカッコを追加していたら、@kbd{C-M-q}は何も変更しないはずです。
+
+@node Excess Close
+@subsection 過剰な閉カッコ
+@cindex excess close parentheses
+
+  過剰な閉カッコへの対処は、まずファイルの先頭に移動してからカッコのマッチしないdefunを探すために@kbd{C-u -1 C-M-u}
+(引数@minus{}1で@code{backward-up-list})をタイプします。
+
+  それからdefunの先頭で@kbd{C-M-f} (@code{forward-sexp}。@ref{Expressions,,,emacs, The
+GNU Emacs
+Manual}を参照)をタイプして、実際にマッチする閉カッコを探します。これによりdefunの終端より幾分手前の箇所に移動するでしょう。その付近に間違った閉カッコが見つかるはずです。
+
+  そのポイントに問題が見つからない場合には、そのdefunの先頭で@kbd{C-M-q}
+(@code{indent-pp-sexp})をタイプするのが次のステップです。ある行範囲はおそらく左へシフトするでしょう。その場合には欠落している開カッコや間違った閉カッコは、おそらくそれらの行の1行目の近くにあるでしょう(しかしこれを真実と仮定せずコードを詳しく調べること)。不一致箇所が見つけたら、元のインデントはおそらく意図されたカッコに適しているはずなので@kbd{C-_}
+(@code{undo})で@kbd{C-M-q}をアンドゥしてください。
+
+  問題をfixできたと思った後に再度@kbd{C-M-q}を使用します。実際に元のインデントが意図したカッコのネストに適合していて、足りないカッコを追加していたら、@kbd{C-M-q}は何も変更しないはずです。
+
+@node Test Coverage
+@section カバレッジテスト
+@cindex coverage testing
+
+@findex testcover-start
+@findex testcover-mark-all
+@findex testcover-next-mark
+  @code{testcover}ライブラリーをロードしてコマンド@kbd{M-x testcover-start @key{RET}
+@var{file}
+@key{RET}}でコードをインストルメントすることにより、Lispコードのファイルにたいしてカバレッジテストを行なうことができます。コードを1回以上呼び出すことによってテストが行なわれます。コマンド@kbd{M-x
+testcover-mark-all}を使用すれば、カバレッジが不十分な箇所が色付きでハイライト表示されます。コマンド@kbd{M-x
+testcover-next-mark}は次のハイライトされた箇所へポイントを前方に移動します。
+
+  赤くハイライトされた箇所は通常はそのフォームが完全に評価されたことが一度もないことを示し、茶色でハイライトされた箇所は常に同じ値に評価された(その結果にたいして少ししかテストされていない)ことを意味します。しかし@code{error}のように完全に評価するのが不可能なフォームにたいしては、赤いハイライトはスキップされます。@code{(setq
+x 14)}のように常に同じ値に評価されることが期待されるフォームにたいしては、茶色のハイライトはスキップされます。
+
+  難しいケースではテストカバレッジツールにアドバイスを与えるために、コードにdo-nothingマクロを追加することができます。
+
+@defmac 1value form
+@var{form}を評価してその値をリターンするが、テストカバレッジにたいして@var{form}が常に同じ値だという情報を与える。
+@end defmac
+
+@defmac noreturn form
+@var{form}を評価して@var{form}が決してリターンしないという情報をカバレッジテストに与える。もしリターンしたらrun-timeエラーとなる。
+@end defmac
+
+  Edebugにもカバレッジテスト機能があります(@ref{Coverage
+Testing}を参照)。これらの機能は部分的に重複しており、組み合わせることで明確になるでしょう。
+
+
+@node Profiling
+@section プロファイリング
+@cindex profiling
+@cindex profile
+@cindex performance analysis
+@cindex measuring resource usage
+@cindex memory usage
+
+プログラムは正常に機能しているものの、十分に高速ではないのでより高速かつ効率的に実行させたい場合には、そのプログラムが実行時間の大半をどこで消費しているか知るために、コードを@dfn{プロファイル(profile)}することが最初に行うべきことです。ある特定の関数の実行が実行時間のうちの無視できない割り合いを占めるようなら、その部分を最適化する方法を探すことを開始できます。
+
+@findex profiler-start
+@findex profiler-report
+@findex profiler-stop
+Emacsにはこのためのビルトインサポートがあります。プロファイリングを開始するには@kbd{M-x
+profiler-start}をタイプします。プロファイルはプロセッサー使用(processor usage)かメモリー使用(memory
+usage)、またはその両方を選択できます。それから高速化したいコードを実行します。その後に@kbd{M-x
+profiler-report}とタイプするとプロファイルに選択した各リソース(CPUとメモリー)がsummaryバッファーに表示されます。reportバッファーの名前にはレポートが生成された時刻が含まれるので、前の結果を消去せずに後で他のレポートを生成できます。プロファイリングが終了したら@kbd{M-x
+profiler-stop}とタイプしてください(プロファイリングに関連したオーバーヘッドが若干あるので実際に調査したいコードの実行中以外にアクティブのままに放置することは推奨しない)。
+
+The profiler report buffer shows, on each line, a function that was called,
+preceded by how much resources (cpu or memory) it used in absolute and
+percentage terms since profiling started.  If a given line has a @samp{+}
+symbol to the left of the function name, you can expand that line by typing
+@kbd{@key{RET}}, in order to see the function(s) called by the higher-level
+function.  Use a prefix argument (@kbd{C-u @key{RET}}) to see the whole call
+tree below a function.  Pressing @kbd{@key{RET}} again will collapse back to
+the original state.
+
+@kbd{j}か@kbd{mouse-2}を押下するとポイント位置の関数の定義にジャンプします。@kbd{d}を押下すると関数のドキュメントを閲覧できます。@kbd{C-x
+C-w}を使用してプロファイルをファイルに保存できます。@kbd{=}を使用すれば2つのプロファイルを比較することができます。
+
+@c FIXME reversed calltree?
+
+@cindex @file{elp.el}
+@cindex timing programs
+@file{elp}ライブラリーはプロファイルしたいLisp関数が事前に解っているときに有用な別のアプローチを選択肢として提供します。このライブラリーの使用するには、まず@code{elp-function-list}に関数シンボルのリスト(プロファイルしたい関数)をセットします。それから関数をプロファイル用にアレンジするために@w{@kbd{M-x
+elp-instrument-list @key{RET} nil
+@key{RET}}}とタイプします。プロファイルしたいコードの実行後に@w{@kbd{M-x
+elp-results}}を呼び出してカレント結果を表示します。処理手順の詳細については@file{elp.el}ファイルを参照してください。このアプローチはLispで記述された関数のプロファイリングに限定されており、Emacsプリミティブのプロファイルはできません。 
+
+@cindex @file{benchmark.el}
+@cindex benchmarking
+You can measure the time it takes to evaluate individual Emacs Lisp forms
+using the @file{benchmark} library.  See the function @code{benchmark-call}
+as well as the macros @code{benchmark-run}, @code{benchmark-run-compiled}
+and @code{benchmark-progn} in @file{benchmark.el}.  You can also use the
+@code{benchmark} command for timing forms interactively.
+
+@c Not worth putting in the printed manual.
+@ifnottex
+@cindex --enable-profiling option of configure
+@command{configure}のオプションに@option{--enable-profiling}を使用してビルドすることにより、EmacsをCコードのレベルでプロファイルすることができます。こうしてビルドされたEmacsは、Emacsをexitするときに@command{gprof}ユーティリティを使用して検証できるファイル@file{gmon.out}を生成します。この機能は主にEmacsのデバッグに有用です。このEmacsは実行状態から上述の@kbd{M-x
+profiler-@dots{}}コマンドによりLispレベルで実際にストップします。
+@end ifnottex

@@ -1,0 +1,76 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 2017--2021 Free Software Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Records
+@chapter レコード
+@cindex records
+
+  レコードの目的はEmacsにビルトインされていない新たな型のオブジェクトをプログラマーが作成できるようにすることです。これらは@code{cl-defstruct}や@code{defclass}のインスタンスを表現する基礎として使用されています。
+
+  レコードオブジェクトは内部的にはベクターと似ています。レコードオブジェクトのスロットは@code{aref}を使用してアクセス可能であり、@code{copy-sequence}を使用してコピーできます。しかし最初のスロットは@code{type-of}がリターンする型を保持するために使用されます。更に現実装ではレコードは最大で4096スロットを所有できますが、ベクターはそれより多くのスロットを所有できます。レコードは配列と同じように0基準のインデックスを使用するので、最初のスロットはインデックスが0になります。
+
+  型スロット(type slot)はシンボルか型記述子であるべきです。型記述子なら型を命名するシンボルがリターンされます。@ref{Type
+Descriptors}を参照してください。その他の種類のオブジェクトはすべてそのままリターンされます。
+
+  レコードのプリント表現では@samp{#s}の後にコンテンツを指定するリストが続きます。リストの最初の要素はそのレコードの型である必要があります。後続の要素はレコードのスロットです。
+
+  レコードの型を新たに定義するLispプログラムは他の型名との衝突を避けるために、通常はレコード型を導入する部分では型名にパッケージの命名規約を使用するべきです。衝突する可能性がある型名は、パッケージが定義したレコード型のロード時には不明かもしれないことに注意してください。これらは将来のある時点でロードされる可能性があります。
+
+  レコードは評価にたいして定数とみなされます。評価すると結果は同じレコードになります。レコードは評価されずにスロットのチェックさえ行われません。@ref{Self-Evaluating
+Forms}を参照してください。
+
+@menu
+* Record Functions::         レコード用の関数。
+* Backward Compatibility::   cl-defstructにたいする後方互換について。
+@end menu
+
+@node Record Functions
+@section レコード関数
+
+@defun recordp object
+この関数は@var{object}がレコードなら@code{t}をリターンする。
+
+@example
+@group
+(recordp #s(a))
+     @result{} t
+@end group
+@end example
+@end defun
+
+@defun record type &rest objects
+この関数は型が@var{type}であり、残りのスロットが残りの引数@var{objects}であるようなレコードを作成してリターンする。
+
+@example
+@group
+(record 'foo 23 [bar baz] "rats")
+     @result{} #s(foo 23 [bar baz] "rats")
+@end group
+@end example
+@end defun
+
+@defun make-record type length object
+この関数は型が@var{type}、@var{object}で初期化されたスロット数が@var{length}の新たなレコードをリターンする。
+
+@example
+@group
+(setq sleepy (make-record 'foo 9 'Z))
+     @result{} #s(foo Z Z Z Z Z Z Z Z Z)
+@end group
+@end example
+@end defun
+
+@node Backward Compatibility
+@section 後方互換
+
+  レコードを使用しない古いバージョンの@code{cl-defstruct}でコンパイルされたコードを新しいEmacsで実行したときに問題が発生するかもしれません。この魔問題を軽減するために、Emacsは古い@code{cl-defstruct}の使用を検知した際に古い構造体オブジェクトがレコードであるかのように処理するモードを有効にします。
+
+@defun cl-old-struct-compat-mode arg
+@var{arg}が正なら旧スタイルの構造体にたいする後方互換を有効にする。
+@end defun

@@ -1,0 +1,4046 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2021 Free Software
+@c Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Windows
+@chapter ウィンドウ
+
+このチャプターではEmacsのウィンドウに関連する関数と変数について説明します。Emacsが利用可能なスクリーン領域にウィンドウが割り当てられる方法については@ref{Frames}を参照してください。ウィンドウ内にテキストが表示される方法についての情報は@ref{Display}を参照してください。
+
+@menu
+* Basic Windows::            ウィンドウ使用についての基本情報。
+* Windows and Frames::       ウィンドウとそれらが表示されるフレームとの関連。
+* Window Sizes::             ウィンドウのサイズへのアクセス。
+* Resizing Windows::         ウィンドウのサイズの変更。
+* Preserving Window Sizes::  ウィンドウのサイズ維持。
+* Splitting Windows::        新たなウィンドウの作成。
+* Deleting Windows::         フレームからのウィンドウの削除。
+* Recombining Windows::      ウィンドウの分割や削除時のフレームレイアウトの保存。
+* Selecting Windows::        選択されたウィンドウとは編集を行っているウィンドウである。
+* Cyclic Window Ordering::   既存のウィンドウ間の移動。
+* Buffers and Windows::      それぞれのウィンドウはバッファーのコンテンツを表示する。
+* Switching Buffers::        バッファー切り替えのためのより高レベルな関数。
+* Displaying Buffers::       適切なウィンドウでのバッファーの表示。
+* Window History::           それぞれのウィンドウは表示されていたバッファーを記憶する。
+* Dedicated Windows::        特定のウィンドウ内で他のバッファーの表示を無効にする。
+* Quitting Windows::         以前に表示していたバッファーの状態をリストアする方法。
+* Side Windows::             フレーム側端の特別なウィンドウ。
+* Atomic Windows::           ウィンドウレイアウトの一部を保存する。
+* Window Point::             それぞれのウィンドウは自身の位置とポイントをもつ。
+* Window Start and End::     ウィンドウ内でスクリーン表示されるテキストを表すバッファー位置。
+* Textual Scrolling::        ウィンドウを通じたテキストの上下移動。
+* Vertical Scrolling::       ウィンドウ上のコンテンツの上下移動。
+* Horizontal Scrolling::     ウィンドウ上のコンテンツの横移動。
+* Coordinates and Windows::  座標からウィンドウへの変換。
+* Mouse Window Auto-selection::  マウスによる自動的なウィンドウ選択。
+* Window Configurations::    スクリーンの情報の保存とリストア。
+* Window Parameters::        ウィンドウへの追加情報の割り当て。
+* Window Hooks::             スクロール、ウィンドウのサイズ変更、ある特定のしきい値を超えたときに行われる再表示、ウィンドウ設定の変更にたいするフック。
+@end menu
+
+
+@node Basic Windows
+@section Emacsウィンドウの基本概念
+@cindex window
+
+@dfn{ウィンドウ(window)}とは任意のバッファーを表示するために使用されるスクリーン領域です。Emacs
+LispではウィンドウはスペシャルLispオブジェクトとして表現されます。
+
+@cindex multiple windows
+  ウィンドウはフレームへとグループ化されます(@ref{Frames}を参照)。それぞれのフレームは最低でも1つのウィンドウを含みます。ユーザーは複数のバッファーを一度に閲覧するために、それを複数のオーバーラップしないウィンドウに分割することができます。Lispプログラムはさまざまな目的にたいして複数のウィンドウを使用できます。たとえばRmailでは1つのウィンドウでメッセージタイトル、もう一方のウィンドウで選択したメッセージのコンテンツを閲覧できます。
+
+@cindex terminal screen
+@cindex screen of terminal
+  Emacsはグラフィカルなデスクトップ環境やX Window
+Systemのようなウィンドウシステムとは異なる意味で``ウィンドウ(window)''という単語を使用します。EmacsがX上で実行されているときはXのグラフィカルなXウィンドウは、Emacsでの(1つ以上のEmacsウィンドウを含んだ)フレームになります。Emacsがテキスト端末上で実行されているときはフレームが端末スクリーン全体を占有します。
+
+@cindex tiled windows
+  Xのウィンドウとは異なり、Emacsのウィンドウは@dfn{タイル表示(tiled)}されるので、フレームの領域内でオーバーラップされることは決してありません。あるウィンドウが作成、リサイズ、削除されるとき変更されたウィンドウスペースの変更は各ウィンドウの調整により取得・譲与されるので、そのフレームの総領域に変化はありません。
+
+@defun windowp object
+この関数は@var{object}がウィンドウ(バッファーの表示有無に関わらず)なら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@cindex live windows
+@dfn{生きたウィンドウ(live window)}とは、あるフレーム内で実際にバッファーを表示しているウィンドウのことです。
+
+@defun window-live-p object
+この関数は@var{object}が生きたウィンドウなら@code{t}、それ以外は@code{nil}をリターンする。生きたウィンドウとはバッファーを表示するウィンドウのこと。
+@end defun
+
+@cindex internal windows
+各フレーム内のウィンドウは@dfn{ウィンドウツリー(window tree)}内へと組織化されます。@ref{Windows and
+Frames}を参照してください。それぞれのウィンドウツリーのリーフノード(leaf
+nodes)は、実際にバッファーを表示している生きたウィンドウです。ウィンドウツリーの内部ノード(internal
+node)は@dfn{内部ウィンドウ(internal windows)}と呼ばれ、これらは生きたウィンドウではありません。
+
+@cindex valid windows
+   @dfn{有効なウィンドウ(valid
+window)}とは、生きたウィンドウか内部ウィンドウのいずれかです。有効なウィンドウにたいしては、それを@dfn{削除(delete)}、すなわちそのウィンドウのフレームから削除することができます(@ref{Deleting
+Windows}を参照)。その場合、それは有効なウィンドウではなくなりますが、それを表すLispオブジェクトは依然として他のLispオブジェクトから参照されたままかもしれません。削除されたウィンドウは保存されたウィンドウ設定(window
+configuration)をリストアすることにより再び有効にすることができます(@ref{Window Configurations}を参照)。
+
+   @code{window-valid-p}により、削除されたウィンドウから有効なウィンドウを区別できます。
+
+@defun window-valid-p object
+この関数は@var{object}が生きたウィンドウかウィンドウツリー内の内部ウィンドウなら@code{t}をリターンする。それ以外(@var{object}が削除されたウィンドウの場合も含む)は@code{nil}をリターンする。
+@end defun
+
+@cindex selected window
+@cindex window selected within a frame
+  それぞれのフレーム内において、常にただ1つのEmacsウィンドウが@dfn{そのフレームで選択されている(selected within the
+frame)}として指定されます。選択されたフレームにたいしてそのウィンドウは@dfn{選択されたウィンドウ(selected
+window)}と呼ばれます。選択されたウィンドウは編集のほとんどが行われるウィンドウであり、選択されたウィンドウに表示されるカーソルがあるウィンドウです(@ref{Cursor
+Parameters}を参照)。テキストの挿入や削除を行うキーボード入力もそのウィンドウにたいして行われます。選択されたウィンドウのバッファーは、通常は@code{set-buffer}が使用された場合を除いてカレントバッファーでもあります(@ref{Current
+Buffer}を参照)。選択されていないフレームでは、そのフレームが選択されたときはフレームで選択されていたウィンドウが選択されたウィンドウになります。@ref{Selecting
+Windows}を参照してください。
+
+@defun selected-window
+この関数は選択されたウィンドウをリターンする(これは常に生きたウィンドウ)。
+@end defun
+
+@anchor{Window Group}たとえばFollowモード(@ref{Follow Mode,,,
+emacs}を参照)の管理下では、あるウィンドウが単独で表示可能な部分より大きい部分をそのウィンドウにまとめて表示するように、複数のウィンドウが集合かつ協調してバッファーを表示することがあります。そのような@dfn{ウィンドウグループ(window
+group)}を1つのエンティティーとしてとらえると便利なことがよくあります。@code{window-group-start}
+(@ref{Window Start and
+End}を参照)のようないくつかの関数では、グループ全体としてウィンドウの1つを引数に与えることにより、これを行うことができます。
+
+@defun selected-window-group
+@vindex selected-window-group-function
+選択されたウィンドウがウィンドウグループのメンバーなら、この関数はそのバッファーの最前箇所を表示するウィンドウが先頭になる順序で、グループ内のウィンドウのリストをリターンする。それ以外なら、この関数は選択されたウィンドウだけを含むリストをリターンする。
+
+バッファーローカル変数@code{selected-window-group-function}が関数にセットされているときは、選択されたウィンドウはグループの一部とみなされる。この場合には、@code{selected-window-group}はその関数を引数なしで呼び出し、その結果をリターンする(これはそのグループ内のウィンドウのリストであること)。
+@end defun
+
+@node Windows and Frames
+@section ウィンドウとフレーム
+
+ウィンドウはそれぞれ厳密に1つのフレームに属します(@ref{Frames}を参照)。
+
+@defun window-frame &optional window
+この関数はウィンドウ@var{window}が属するフレームをリターンする。@var{window}が@code{nil}の場合のデフォルトは選択されたウィンドウ。
+@end defun
+
+@defun window-list &optional frame minibuffer window
+この関数はフレーム@var{frame}に属する生きたウィンドウのリストをリターンする。@var{frame}が省略または@code{nil}の場合のデフォルトは選択されたフレーム。
+
+オプション引数@var{minibuffer}はリターンされるリストにミニバッファーウィンドウを含めるべきかどうかを指定する。@var{minibuffer}が@code{t}ならミニバッファーウィンドウが含まれ、@var{minibuffer}が@code{nil}または省略された場合にはミニバッファーウィンドウがアクティブのときだけ含まれる。@var{minibuffer}が@code{nil}と@code{t}以外ならミニバッファーウィンドウは含まれない。
+
+オプション引数@var{window}が非@code{nil}なら、それは指定されたフレーム上の生きたウィンドウであること。その場合には@var{window}がリターンされるリストの最初の要素になる。@var{window}が省略または@code{nil}なら、そのフレームの選択されたウィンドウが最初の要素になる。
+@end defun
+
+@cindex window tree
+@cindex root window
+  同一フレーム内のウィンドウは、リーフノード(leaf nodes)が生きたウィンドウであるような@dfn{ウィンドウツリー(window
+tree)}内に組織化されます。ウィンドウツリーの内部ノード(internal
+nodes)は生きたウィンドウではありません。これらのウィンドウは生きたウィンドウ間の関係を組織化するという目的のために存在します。ウィンドウツリーのルートノード(root
+node)は@dfn{ルートウィンドウ(root
+window)}と呼ばれます。ルートノードは生きたウィンドウ(そのフレームにウィンドウが1つだけの場合)、または内部ウィンドウのいずれかです。
+
+  フレーム内で唯一ではないミニバッファーウィンドウ(@ref{Minibuffer
+Windows}を参照)は親ウィンドウをもたないので、厳密に言えばフレームのウィンドウツリーの一部ではありません。それでもフレームのルートウィンドウの兄弟ウィンドウなので、@code{window-next-sibling}を通じて到達することができます。さらにこのセクションの最後に説明する関数@code{window-tree}は実際のウィンドウツリーと共にミニバッファーウィンドウをリスとします。
+
+@defun frame-root-window &optional frame-or-window
+この関数は@var{frame-or-window}にたいするルートウィンドウをリターンする。引数@var{frame-or-window}はウィンドウかフレームのいずれかであること。これが省略または@code{nil}の場合のデフォルトは選択されたフレーム。@var{frame-or-window}がウィンドウなら、リターン値はそのウィンドウのフレームのルートウィンドウ。
+@end defun
+
+@cindex parent window
+@cindex child window
+@cindex sibling window
+  ウィンドウが分割(split)されているときは、以前は1つだった2つの生きたウィンドウが存在します。これらのうちの一方は、元のウィンドウと同じLispウィンドウオブジェクトとして表され、もう一方は新たに作成されたLispウィンドウオブジェクトとして表されます。これらの生きたウィンドウはいずれも単一の内部ウィンドウの@dfn{子ウィンドウ(child
+windows)}として、ウィンドウツリーのリーフノードになります。もし必要ならEmacsはこの内部ウィンドウを自動的に作成します。この内部ウィンドウは@dfn{親ウィンドウ(parent
+window)}とも呼ばれ、ウィンドウツリー内の適切な位置に配置されます。同じ親を共有するウィンドウセットは@dfn{兄弟(sibling)}と呼ばれます。
+
+@cindex parent window
+@defun window-parent &optional window
+この関数は@var{window}の親ウィンドウ(parent
+window)をリターンする。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ。@var{window}が親をもたない場合(ミニバッファーウィンドウやそのフレームのルートウィンドウ)にはリターン値は@code{nil}。
+@end defun
+
+  内部ウィンドウはそれぞれ、常に最低でも2つの子ウィンドウをもちます。ウィンドウ削除によりこの数値が1になるとEmacsは自動的に内部ウィンドウを削除して、その残った単一の子ウィンドウがウィンドウツリー内のその位置に配置されます。
+
+  子ウィンドウはそれぞれ生きたウィンドウ、または(次に自身の子ウィンドウをもつであろう)内部ウィンドウのいずれかです。したがって各内部ウィンドウは、最終的にはその内部ウィンドウの子孫であるような生きたウィンドウにより占有される領域を結合した、特定の矩形@dfn{スクリーン領域(screen
+area)}を占有すると考えることができます。
+
+@cindex window combination
+@cindex vertical combination
+@cindex horizontal combination
+  内部ウィンドウそれぞれにたいして、近接する子たちのスクリーン領域は垂直(vertically)か水平(horizontally)のいずれかにより整列されます(両方で整列されることはない)。子ウィンドウが他の子ウィンドウと上下に整列される場合、それらは@dfn{垂直コンビネーション(vertical
+combination)}、左右に整列される場合は@dfn{水平コンビネーション(horizontal
+combination)}を形成すると表現されます。以下の例で考えてみましょう:
+
+@smallexample
+@group
+     ______________________________________
+    | ______  ____________________________ |
+    ||      || __________________________ ||
+    ||      |||                          |||
+    ||      |||                          |||
+    ||      |||                          |||
+    ||      |||____________W4____________|||
+    ||      || __________________________ ||
+    ||      |||                          |||
+    ||      |||                          |||
+    ||      |||____________W5____________|||
+    ||__W2__||_____________W3_____________ |
+    |__________________W1__________________|
+
+@end group
+@end smallexample
+
+@noindent
+このフレームのルートウィンドウは内部ウィンドウ@var{W1}です。これの子ウィンドウは、生きたウィンドウ@var{W2}と内部ウィンドウ@var{W3}からなる水平コンビネーションを形成します。@var{W3}の子ウィンドウは、生きたウィンドウ@var{W4}と@var{W5}からなる垂直コンビネーションを形成します。したがって、このウィンドウツリー内の生きたウィンドウは@var{W2}、@var{W4}、および@var{W5}です。
+
+  以下の関数は内部ウィンドウの子ウィンドウ、および子ウィンドウの兄弟を取得するために使用できます。
+
+@defun window-top-child &optional window
+この関数は内部ウィンドウ@var{window}の子ウィンドウが垂直コンビネーションを形成する場合には、@var{window}の一番上の子ウィンドウをリターンする。他のタイプのウィンドウにたいするリターン値は@code{nil}。
+@end defun
+
+@defun window-left-child &optional window
+この関数は内部ウィンドウ@var{window}の子ウィンドウが水平コンビネーションを形成する場合には、@var{window}の一番左の子ウィンドウをリターンする。他のタイプのウィンドウにたいするリターン値は@code{nil}。
+@end defun
+
+@defun window-child window
+この関数は内部ウィンドウ@var{window}の最初の子ウィンドウをリターンする。これは垂直コンビネーションにたいしては一番上、水平コンビネーションにたいしては一番左の子ウィンドウ。@var{window}が生きたウィンドウならリターン値は@code{nil}。
+@end defun
+
+@defun window-combined-p &optional window horizontal
+この関数は@var{window}が垂直コンビネーションの一部である場合のみ非@code{nil}をリターンする。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ。
+
+オプション引数@var{horizontal}が非@code{nil}なら、@var{window}が水平コンビネーションの一部である場合のみ非@code{nil}をリターンすることを意味する。
+@end defun
+
+@defun window-next-sibling &optional window
+この関数はウィンドウ@var{window}の次の兄弟をリターンする。省略または@code{nil}なら、@var{window}のデフォルトは選択されたウィンドウ。@var{window}がその親の最後の子ならリターン値は@code{nil}。
+@end defun
+
+@defun window-prev-sibling &optional window
+この関数はウィンドウ@var{window}の前の兄弟をリターンする。省略または@code{nil}なら、@var{window}のデフォルトは選択されたウィンドウ。@var{window}がその親の最初の子ならリターン値は@code{nil}。
+@end defun
+
+関数@code{window-next-sibling}と@code{window-prev-sibling}を、ウィンドウのサイクル順(@ref{Cyclic
+Window
+Ordering}を参照)で次や前のウィンドウをリターンする関数@code{next-window}と@code{previous-window}と混同しないでください。
+
+  以下の関数はフレーム内のウィンドウの配置に有用です。
+
+@defun frame-first-window &optional frame-or-window
+この関数は@var{frame-or-window}により指定されたフレームの左上隅の生きたウィンドウをリターンする。引数@var{frame-or-window}はウィンドウか生きたフレームを指定しなければならず、デフォルトは選択されたフレーム。@var{frame-or-window}がウィンドウを指定する場合には、この関数はそのウィンドウのフレームの最初のウィンドウをリターンする。前の例のフレームが@code{(frame-first-window)}で選択されたとすると@var{W2}がリターンされる。
+@end defun
+
+@defun window-at-side-p &optional window side
+この関数は@var{window}のフレーム内で@var{window}が@var{side}に配置されていれば@code{t}をリターンする。引数@var{window}は有効なウィンドウでなければならず、デフォルトは選択されたウィンドウ。引数@var{side}はシンボル@code{left}、@code{top}、@code{right}、@code{bottom}のいずれか。デフォルト値の@code{nil}は@code{bottom}として扱われる。
+
+この関数はミニバッファーウィンドウを無視することに注意(@ref{Minibuffer
+Windows}を参照)。したがって@var{side}が@code{bottom}なら、@var{window}の右下にミニバッファーウィンドウがある際にも@code{t}をリターンするかもしれない。
+@end defun
+
+@cindex window in direction
+@defun window-in-direction direction &optional window ignore sign wrap minibuf
+この関数はウィンドウ@var{window}内の位置@code{window-point}から、方向@var{direction}にあるもっとも近い生きたウィンドウをリターンする。引数@var{direction}は@code{above}、@code{below}、@code{left}、@code{right}のいずれかでなければならない。オプション引数@var{window}は生きたウィンドウでなければならず、デフォルトは選択されたウィンドウ。
+
+この関数はパラメーター@code{no-other-window}が非@code{nil}のウィンドウをリターンしない(@ref{Window
+Parameters}を参照)。もっとも近いウィンドウの@code{no-other-window}パラメーターが非@code{nil}なら、この関数は指定された方向で@code{no-other-window}パラメーターが@code{nil}であるような他のウィンドウを探す。オプション引数@var{ignore}が非@code{nil}なら、たとえ@code{no-other-window}パラメーターが非@code{nil}のウィンドウでもリターンされるだろう。
+
+オプション引数@var{sign}が負の数値なら、それは参照位置として@code{window-point}のかわりに@var{window}の右端、または下端を使用することを意味する。@var{sign}が正の数値なら、それは参照位置として@var{window}の左端か上端を使用することを意味する。
+
+オプション引数@var{wrap}が非@code{nil}なら、それはフレームのボーダー(borders:
+枠線)を@var{direction}がラップアラウンド(wrap around:
+最後に達したら最初に戻る)することを意味する。たとえば@var{window}はフレームの最上にあり@var{direction}が@code{above}なら、そのフレームのミニバッファーウィンドウがアクティブでそれがフレームの他のウィンドウの最下にある場合には、この関数は通常はミニバッファーウィンドウをリターンする。
+
+If the optional argument @var{minibuf} is @code{t}, this function may return
+the minibuffer window even when it's not active.  If the optional argument
+@var{minibuf} is @code{nil}, this means to return the minibuffer window if
+and only if it is currently active.  If @var{minibuf} is neither @code{nil}
+nor @code{t}, this function never returns the minibuffer window.  However,
+if @var{wrap} is non-@code{nil}, it always acts as if @var{minibuf} were
+@code{nil}.
+
+適切なウィンドウが見つからなければ、この関数は@code{nil}をリターンする。
+
+この関数を@var{direction}にウィンドウが@emph{存在しない}かどうかをチェックするために使用しないこと。それを行うには上述の@code{window-at-side-p}を呼び出すほうが効果的である。
+@end defun
+
+以下の関数によりフレームのウィンドウツリー全体を取得できます:
+
+@defun window-tree &optional frame
+この関数はフレーム@var{frame}にたいするウィンドウツリーを表すリストをリターンする。@var{frame}が省略@code{nil}の場合のデフォルトは選択されたフレーム。
+
+リターン値は@code{(@var{root}
+@var{mini})}という形式のリスト。ここで@var{root}はそのフレームのウィンドウツリーのルートウィンドウ、@var{mini}はそのフレームのミニバッファーウィンドウを表す。
+
+ルートウィンドウが生きていれば@var{root}はそのウィンドウ自身、それ以外なら@var{root}はリスト@code{(@var{dir}
+@var{edges} @var{w1} @var{w2}
+...)}。ここで@var{dir}は水平コンビネーションなら@code{nil}、垂直コンビネーションなら@code{t}となり、@var{edges}はそのコンビネーションのサイズと位置を与え、残りの要素は子ウィンドウである。子ウィンドウはそれぞれ、同じようにウィンドウオブジェクト(生きたウィンドウにたいして)、または上記フォーマットと同じ形式のリスト(内部ウィンドウにたいして)かもしれない。@var{edges}要素は@code{window-edges}がリターンする値のようなリスト@code{(@var{left}
+@var{top} @var{right} @var{bottom})} (@ref{Coordinates and Windows}を参照)。
+@end defun
+
+
+@node Window Sizes
+@section ウィンドウのサイズ
+@cindex window size
+@cindex size of window
+
+  以下の図は生きたウィンドウの構造を示しています:
+
+@smallexample
+@group
+        ____________________________________________
+       |______________ Header Line ______________|RD| ^
+     ^ |LS|LM|LF|                       |RF|RM|RS|  | |
+     | |  |  |  |                       |  |  |  |  | |
+Window |  |  |  |       Text Area       |  |  |  |  | Window
+Body | |  |  |  |     (Window Body)     |  |  |  |  | Total
+Height |  |  |  |                       |  |  |  |  | Height
+     | |  |  |  |<- Window Body Width ->|  |  |  |  | |
+     v |__|__|__|_______________________|__|__|__|  | |
+       |_________ Horizontal Scroll Bar _________|  | |
+       |_______________ Mode Line _______________|__| |
+       |_____________ Bottom Divider _______________| v
+        <---------- Window Total Width ------------>
+
+@end group
+@end smallexample
+
+@cindex window body
+@cindex text area of a window
+@cindex body of a window
+  ウィンドウの中央は@dfn{テキストエリア(text area: テキスト領域)}、または@dfn{ボディー(body:
+本体、本文)}と呼ばれるバッファーテキストが表示される場所です。テキストエリアは一連のオプションエリアで囲まれている可能性があります。左右には内側から外側に向かって図中にLFとRFで示される左右のフリンジ(@ref{Fringes}を参照)、LMとRMで示される左右のマージン(@ref{Display
+Margins}を参照)、そしてLSとRSはスクロールバー(@ref{Scroll
+Bars}を参照)で、これは常に表示されるのはいずれか一方だけです。さらにRDで示されるのが右ディバイダー(@ref{Window
+Dividers}を参照)です。ウィンドウ上端にはヘッダーライン(@ref{Header
+Lines}を参照)、ウィンドウ下端には水平スクロールバー(@ref{Scroll Bars}を参照)、モードライン(@ref{Mode Line
+Format}を参照)、下端ディバイダー(@ref{Window Dividers}を参照)があります。
+
+  Emacsはウィンドウの高さと幅を求めるためのさまざまな関数を提供します。これらの関数がリターンする値の多くはピクセル単位、または行単位と列単位のいずれかにより指定できます。グラフィカルなディスプレイでは後者は実際には@code{frame-char-height}と@code{frame-char-width}
+(@ref{Frame
+Font}を参照)によりリターンされる、そのフレームのデフォルトフォントが指定するデフォルト文字の高さと幅に対応します。したがってあるウィンドウが異なるフォントやサイズでテキストを表示していると、そのウィンドウにたいして報告される行高さと列幅は、実際にウィンドウ内で表示されるテキスト行数と列数とは異なるかもしれません。
+
+@cindex window height
+@cindex height of a window
+@cindex total height of a window
+  @dfn{トータル高さ(total
+height)}とは、そのウィンドウのボディーを構成する行数、ヘッダーライン、水平スクロールバー、モードライン、(もしあれば)下端ディバイダーです。
+
+@defun window-total-height &optional window round
+この関数はウィンドウ@var{window}のトータル高さを行数でリターンする。@var{window}が省略@code{nil}の場合のデフォルトは選択されたウィンドウ。@var{window}が内部ウィンドウなら、リターン値はそのウィンドウの子孫となるウィンドウにより占有されるトータル高さになる。
+
+  ウィンドウのピクセル高さがそのウィンドウがあるフレームのデフォルト文字高さの整数倍でなければ、そのウィンドウが占有する行数が内部で丸められる。これはそのウィンドウが親ウィンドウの場合には、すべての子ウィンドウのトータル高さの合計が、親ウィンドウのトータル高さと内部的に等しくなるような方法により行われる。これはたとえ2つのウィンドウのピクセル高さが等しくでも、内部的なトータル高さは1行分異なるかもしれないことを意味する。さらにこれはそのウィンドウが垂直コンビネーションされていて、かつ次の兄弟をもつ場合には、その兄弟の上端行は、このウィンドウの上端行とトータル高さから計算されるかもしれないことも意味する(@ref{Coordinates
+and Windows}を参照)。
+
+  オプション引数@var{round}が@code{ceiling}なら、この関数は@var{window}のピクセル高さをそのフレームの文字高さで除した数より大であるような最小の整数、@code{floor}なら除した数より小であるような最大の整数、それ以外の@var{round}にたいしては@var{windows}のトータル高さの内部値をリターンする。
+@end defun
+
+@cindex window width
+@cindex width of a window
+@cindex total width of a window
+@dfn{トータル幅(total
+width)}とはそのウィンドウのボディーを構成する列数、マージン、フリンジ、スクロールバー、(もしあれば)右ディバイダーです。
+
+@defun window-total-width &optional window round
+この関数はウィンドウ@var{window}のトータル幅を列でリターンする。@var{window}が省略@code{nil}の場合のデフォルトは選択されたウィンドウ。@var{window}が内部ウィンドウならリターン値はその子孫のウィンドウが占有するトータル幅になる。
+
+  ウィンドウのピクセル幅がそのウィンドウがあるフレームのデフォルト文字幅の整数倍でなければ、そのウィンドウが占有する列数が内部で丸められる。これはそのウィンドウが親ウィンドウの場合には、すべての子ウィンドウのトータル幅の合計が親ウィンドウのトータル幅と内部的に等しくなるような方法により行われる。これはたとえ2つのウィンドウのピクセル幅が等しくでも、内部的なトータル幅は1列分異なるかもしれないことを意味する。さらにこれはそのウィンドウが水平コンビネーションされていて、かつ次の兄弟をもつ場合、その兄弟の左端行はこのウィンドウの左端行とトータル幅から計算されるかもしれないことも意味する(@ref{Coordinates
+and Windows}を参照)。オプション引数@var{round}は@code{window-total-height}の場合と同様に振る舞う。
+@end defun
+
+@defun window-total-size &optional window horizontal round
+この関数はウィンドウ@var{window}のトータル高さを行数、またはトータル幅を列数でリターンする。@var{horizontal}が省略または@code{nil}なら@var{window}にたいして@code{window-total-height}を呼び出すのと等価、それ以外では@var{window}にたいして@code{window-total-width}を呼び出すのと等価である。オプション引数@var{round}は@code{window-total-height}の場合と同様に振る舞う。
+@end defun
+
+以下の2つの関数はウィンドウのトータルサイズをピクセル単位で取得するために使用できます。
+
+@cindex window pixel height
+@cindex pixel height of a window
+@cindex total pixel height of a window
+
+@defun window-pixel-height &optional window
+この関数はウィンドウ@var{window}のトータル高さをピクセル単位でリターンする。@var{window}は有効なウィンドウでなければならずデフォルトは選択されたウィンドウ。
+
+リターン値には、(もしあれば)モードライン、ヘッダーライン、水平スクロールバー、下端ディバイダーが含まれる。@var{window}が内部ウィンドウなら、そのピクセル高さは子ウィンドウたちによりスパンされるスクリーン領域のピクセル高さになる。
+@end defun
+
+@cindex window pixel width
+@cindex pixel width of a window
+@cindex total pixel width of a window
+
+@defun window-pixel-width &optional window
+この関数はウィンドウ@var{window}の幅をピクセル単位でリターンする。@var{window}は有効なウィンドウでなければならずデフォルトは選択されたウィンドウ。
+
+リターン値にはフリンジ、@var{window}のマージン、同様に@var{window}に属する垂直ディバイダーとスクロールバーが含まれる。@var{window}が内部ウィンドウなら、そのピクセル幅は子ウィンドウたちにより占有されるスクリーン領域の幅になる。
+@end defun
+
+@cindex full-width window
+@cindex full-height window
+  以下の関数は与えられたウィンドウに隣接するウィンドウがあるかどうかを判断するために使用できます。
+
+@defun window-full-height-p &optional window
+この関数はフレーム内で@var{window}の上下に他のウィンドウがなければ非@code{nil}をリターンする。より正確には、@var{window}のトータル高さがそのフレームのルートウィンドウの高さに等しいことを意味する。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ。
+@end defun
+
+@defun window-full-width-p &optional window
+この関数はフレーム内で@var{window}の左右に他のウィンドウがなければ非@code{nil}をリターンする(トータル幅がそのフレーム上のルートウィンドウと等しい)。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ。
+@end defun
+
+@cindex window body height
+@cindex body height of a window
+ウィンドウの@dfn{ボディー高さ(body
+height)}とはモードライン、ヘッダーライン、水平スクロールバー、下端ディバイダーを含まないテキスト領域の高さです。
+
+@defun window-body-height &optional window pixelwise
+この関数はウィンドウ@var{window}のボディーの高さを行数でリターンする。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ、それ以外なら生きたウィンドウでなければならない。
+
+オプション引数@var{pixelwise}が非@code{nil}なら、この関数はピクセルで計算@var{window}のボディー高さをリターンする。
+
+@var{pixelwise}が@code{nil}の場合には、必要ならリターン値はもっとも近い整数に切り下げられる。これはテキスト領域の下端行が部分的に可視の場合にその行は計数されないこと、さらに任意のウィンドウのボディー高さは@code{window-total-height}によりリターンされるそのウィンドウのトータル高さ決して超過し得ないことも意味する。
+@end defun
+
+@cindex window body width
+@cindex body width of a window
+ウィンドウの@dfn{ボディー幅(body
+width)}とはスクロールバー、フリンジ、マージン、右ディバイダーを含まないテキスト領域の幅です。(幅を0にセットすることにより)一方または両方のフリンジが削除されたときには、継続と切り詰めのグリフを表示するためにディスプレーエンジンが文字セル2つを予約するので、テキスト表示にたいして2列少なくなることに注意してください(以下で説明する@code{window-max-chars-per-line}はこの特性を考慮する)。
+
+@defun window-body-width &optional window pixelwise
+この関数はウィンドウ@var{window}のボディーの幅を列数でリターンする。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ、それ以外なら生きたウィンドウでなければならない。
+
+オプション引数@var{pixelwise}が非@code{nil}なら、この関数は@var{window}のボディーの幅をピクセル単位でリターンする。
+
+@var{pixelwise}が@code{nil}なら、リターン値は必要に応じてもっとも近い整数に切り下げられる。これはテキスト領域の右端の列が部分的に可視な場合にその列が計数されないことを意味する。さらにこれはウィンドウのボディーの幅が@code{window-total-width}によりリターンされるウィンドウのトータル幅を決して超過し得ないことをも意味する。
+@end defun
+
+@cindex window body size
+@cindex body size of a window
+@defun window-body-size &optional window horizontal pixelwise
+この関数は@var{window}のボディーの高さか幅をリターンする。@var{horizontal}が省略または@code{nil}なら@var{window}にたいして@code{window-body-height}、それ以外なら@code{window-body-width}を呼び出すのと同じ。いずれの場合もオプション引数@var{pixelwise}は呼び出された関数に渡される。
+@end defun
+
+以前のバージョンのEmacsとの互換性のために@code{window-height}は@code{window-total-height}、@code{window-width}は@code{window-body-width}にたいするエイリアスです。これらのエイリアス時代遅れと考えられていて将来は削除されるでしょう。
+
+   ウィンドウのモードラインとヘッダーラインのピクセル高さは以下の関数により取得できます。それらのリターン値は、そのウィンドウが以前に表示されていない場合を除いて通常は加算されます。その場合のリターン値はそのウィンドウのフレームにたいして使用を予想されるフォントが元になります。
+
+@defun window-mode-line-height &optional window
+この関数は@var{window}モードラインの高さをピクセルでリターンする。@var{window}は生きたウィンドウでなければならずデフォルトは選択されたウィンドウ。@var{window}にモードラインがなければリターン値は0。
+@end defun
+
+@defun window-header-line-height &optional window
+この関数は@var{window}のヘッダーラインの高さをピクセル単位でリターンする。@var{window}は生きたウィンドウでなければならずデフォルトは選択されたウィンドウ。@var{window}にヘッダーラインがない場合のリターン値は0。
+@end defun
+
+ウィンドウディバイダー(@ref{Window
+Dividers}を参照)、フリンジ(@ref{Fringes}を参照)、スクロールバー(@ref{Scroll
+Bars}を参照)、ディスプレイマージン(@ref{Display
+Margins}を参照)を取得する関数については、それぞれ対応するセクションで説明されています。
+
+Lispプログラムでレイアウト上の判断を要する場合には、以下の関数を有用と思うでしょう:
+
+@defun window-max-chars-per-line &optional window face
+この関数は指定されたウィンドウ@var{window}
+(生きたウィンドウであること)内で、指定されたフェイス@var{face}で表示される文字数をリターンする。@var{face}がリマップ(@ref{Face
+Remapping}を参照)されていたらリマップされたフェイスの情報がリターンされる。省略または@code{nil}の場合、@var{face}のデフォルトはデフォルトフェイス、@var{window}のデフォルトは選択されたウィンドウ。
+
+この関数は@code{window-body-width}と異なり、@var{window}のフレームの正準文字幅(canonical
+character
+width)の単位ではなく、@var{face}のフォントの実サイズを考慮する。また@var{window}の一方または両方のフリンジがなければ、継続グリフに使用されるスペースも考慮する。
+@end defun
+
+@cindex fixed-size window
+@vindex window-min-height
+@vindex window-min-width
+  ウィンドウのサイズを変更(@ref{Resizing
+Windows}を参照)したりウィンドウを分割(split)するコマンド(@ref{Splitting
+Windows}を参照)は、指定できるウィンドウの最小の高さと幅を指定する変数@code{window-min-height}と@code{window-min-width}にしたがう。これらのコマンドはウィンドウのサイズが@dfn{fixed(固定)}になる変数@code{window-size-fixed}にもしたがう(@ref{Preserving
+Window Sizes}を参照)。
+
+@defopt window-min-height
+このオプションは任意のウィンドウの最小のトータル高さを行で指定する。この値は最低でも1つのテキスト行、同様に(もしあれば)モードライン、ヘッダーライン、水平スクロールバー、下端ディバイダーに対応する必要がある。
+@end defopt
+
+@defopt window-min-width
+このオプションはすべてのウィンドウの最小のトータル幅を列で指定する。この値は2つのテキスト列、同様に(もしあれば)マージン、フリンジ、スクロールバー、右ディバイダーに対応する必要がある。
+@end defopt
+
+以下の関数は、ある特定の大きさのウィンドウにたいして、それの@code{window-min-height}と@code{window-min-width}、および@code{window-size-fixed}
+(@ref{Preserving Window Sizes}を参照)の値と領域のサイズを示す。
+
+@defun window-min-size &optional window horizontal ignore pixelwise
+この関数は@var{window}の最小のサイズをリターンする。@var{window}は有効なウィンドウでなければならず、デフォルトは選択されたウィンドウ。オプション引数@var{horizontal}が非@code{nil}なら@var{window}の最小の列数、それ以外は@var{window}の最小の行数をリターンすることを意味する。
+
+このリターン値によって@var{window}のサイズが実際にその値にセットされた場合に@var{window}のすべてのコンポーネントが完全に可視にとどまることが保証される。@var{horizontal}が@code{nil}なら、(もしあれば)モードライン、ヘッダーライン、水平スクロールバー、下端ディバイダーが含まれる。@var{horizontal}が非@code{nil}なら、(もしあれば)マージン、フリンジ、垂直スクロールバー、右ディバイダーが含まれる。
+
+オプション引数@var{ignore}が非@code{nil}なら、@code{window-min-height}や@code{window-min-width}によりセットされる固定サイズのウィンドウに強いられる制限を無視することを意味する。@var{ignore}が@code{safe}なら、生きたウィンドウは可能な限り小さな@code{window-safe-min-height}の行、および@code{window-safe-min-width}の列を得る。@var{ignore}にウィンドウが指定されると、そのウィンドウにたいする制限だけを無視する。その他の非@code{nil}値では、すべてのウィンドウにたいする上記制限のすべてが無視されることを意味する。
+
+オプション引数@var{pixelwise}が非@code{nil}なら、@var{window}の最小サイズがピクセルで計数されてリターンされることを意味する。
+@end defun
+
+
+@node Resizing Windows
+@section ウィンドウのリサイズ
+@cindex window resizing
+@cindex resize window
+@cindex changing window size
+@cindex window size, changing
+
+  このセクションではフレームのサイズを変更せずにウィンドウのサイズを変更する関数について説明します。生きたウィンドウはオーバーラップしないので、これらの関数は2つ以上のウィンドウを含む関数上でのみ意味があります(ウィンドウのリサイズにより隣接するウィンドウのサイズも変更される)。フレーム上に単一のウィンドウしか存在しない場合には、フレームの変更以外でウィンドウのサイズ変更はできません(@ref{Frame
+Size}を参照)。
+
+  注記した場合を除き、これらの関数は引数として内部ウィンドウも許容します。内部ウィンドウのリサイズにより、同じスペースにフィットするように子ウィンドウもリサイズされます。
+
+@defun window-resizable window delta &optional horizontal ignore pixelwise
+この関数は@var{window}のサイズが@var{delta}行により垂直に変更され得る場合には@var{delta}をリターンする。オプション引数@var{horizontal}が非@code{nil}の場合には、@var{window}が@var{delta}列単位に水平方向にリサイズ可能ならかわりに@var{delta}をリターンする。これは実際にはウィンドウのサイズを変更しない。
+
+@var{window}が@code{nil}の場合のデフォルトは選択されたウィンドウ。
+
+@var{delta}が正の値ならそのウィンドウが行または列の単位で拡張可能かどうかをチェックすることを意味し、@var{delta}が負の値ならそのウィンドウが行または列の単位で縮小可能かどうかをチェックすることを意味する。@var{delta}が非0の場合のリターン値0は、そのウィンドウがリサイズ可能であることを意味する。
+
+変数@code{window-min-height}と@code{window-min-width}には通常は許容される最小のウィンドウサイズを指定する(@ref{Window
+Sizes}を参照)。しかしオプション引数@var{ignore}が非@code{nil}なら、この関数は@code{window-size-fixed}と同様に@code{window-min-height}と@code{window-min-width}を無視する。そのかわりに(もしあれば)ヘッダーライン、モードライン、水平スクロールバー、下端ディバイダーに加えて1行分の高さのテキストエリアから構成されるウィンドウを最小高さのウィンドウとし、(もしあれば)フリンジ、マージン、スクロールバー、右ディバイダーに加えて1列分の幅のテキストエリアから構成されるウィンドウを最小幅のウィンドウと判断する。
+
+オプション引数@var{pixelwise}が非@code{nil}なら@var{delta}はピクセル単位として解釈される。
+@end defun
+
+@defun window-resize window delta &optional horizontal ignore pixelwise
+この関数は@var{window}を@var{delta}増加することによりリサイズを行う。@var{horizontal}が@code{nil}なら高さを@var{delta}行、それ以外は幅を@var{delta}行変更する。正の@var{delta}はウィンドウの拡大、負の@var{delta}は縮小を意味する。
+
+@var{window}が@code{nil}の場合のデフォルトは選択されたウィンドウ。要求されたようにウィンドウをリサイズできなければエラーをシグナルする。
+
+オプション引数@var{ignore}は上述の関数@code{window-resizable}の場合と同じ意味をもつ。
+
+オプション引数@var{pixelwise}が非@code{nil}なら@var{delta}はピクセル単位として解釈される。 
+
+この関数がどのウィンドウのエッジを変更するかの選択はオプション@code{window-combination-resize}の値、および関連するウィンドウのコンビネーションリミット(combination
+limits: 組み合わせ制限)に依存し、両方のエッジを変更するような場合もいくつかある。@ref{Recombining
+Windows}を参照のこと。ウィンドウの下端か右端のエッジを移動することだけでリサイズするには関数@code{adjust-window-trailing-edge}を使用すること。
+@end defun
+
+@c The commands enlarge-window, enlarge-window-horizontally,
+@c shrink-window, and shrink-window-horizontally are documented in the
+@c Emacs manual.  They are not preferred for calling from Lisp.
+
+@defun adjust-window-trailing-edge window delta &optional horizontal pixelwise
+この関数は@var{window}の下端エッジを@var{delta}行分移動する。オプション引数@var{horizontal}が非@code{nil}なら、かわりに右端エッジを@var{delta}列分移動する。@var{window}が@code{nil}の場合のデフォルトは選択されたウィンドウ。
+
+オプション引数@var{pixelwise}が非@code{nil}なら@var{delta}はピクセル単位として解釈される。
+
+正の@var{delta}はエッジを下方か右方、負の@var{delta}はエッジを上方か左方へ移動する。@var{delta}で指定された範囲までエッジを移動できなければ、この関数はエラーをシグナルせずに可能な限りエッジを移動する。
+
+この関数は移動されたエッジに隣接するウィンドウのリサイズを試みる。何らかの理由(隣接するウィンドウが固定サイズの場合等)によりそれが不可能なら、他のウィンドウをリサイズするかもしれない。
+@end defun
+
+@cindex pixelwise, resizing windows
+@defopt window-resize-pixelwise
+このオプションの値が非@code{nil}ならEmacsはウィンドウをピクセル単位でリサイズする。これは現在のところ@code{split-window}
+(@ref{Splitting
+Windows}を参照)、@code{maximize-window}、@code{minimize-window}、@code{fit-window-to-buffer}、@code{fit-frame-to-buffer}、@code{shrink-window-if-larger-than-buffer}
+(すべて以下に記述)のような関数に影響を与える。
+
+あるフレームのピクセルサイズがそのフレームの文字サイズの整数倍でないときは、たとえこのオプションが@code{nil}であっても少なくとも1つのウィンドウがピクセル単位でリサイズされるであろうことに注意。デフォルト値は@code{nil}。
+@end defopt
+
+  以下のコマンドは、より具体的な方法でウィンドウをリサイズします。これらがインタラクティブに呼び出されたときは選択されたウィンドウにたいして作用します。
+
+@deffn Command fit-window-to-buffer &optional window max-height min-height max-width min-width preserve-size
+このコマンドは@var{window}の高さか幅をウィンドウ内のテキストにフィットするように調整する。@var{window}がリサイズできたら非@code{nil}、それ以外は@code{nil}をリターンする。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ、それ以外の場合には生きたウィンドウであること。
+
+@var{window}が垂直コンビネーションの一部なら、この関数は@var{window}の高さを調整する。新たな高さはそのウィンドウのバッファーのアクセス可能な範囲の実際の高さから計算される。オプション引数@var{max-height}が非@code{nil}なら、それはこの関数が@var{window}に与えることができる最大のトータル高さを指定する。オプション引数@var{min-height}が非@code{nil}なら、それは与えることができる最小のトータル高さを指定して、それは変数@code{window-min-height}をオーバーライドする。@var{max-height}と@var{min-height}はいずれも、(もしあれば)モードライン、ヘッダーライン、下端ディバイダーを含む行数で指定する。
+
+@var{window}が水平コンビネーションの一部で、かつオプション@code{fit-window-to-buffer-horizontally}
+(以下参照)の値が非@code{nil}なら、この関数は@var{window}の幅を調整する。新たな幅は@var{window}のカレントのスタート位置以降のバッファーの最長の行から計算される。オプション引数@var{max-width}は最大幅を指定して、デフォルトは@var{window}のフレーム幅。オプション引数@var{min-width}は最小幅を指定して、デフォルトは@code{window-min-width}。@var{max-width}と@var{min-width}はどちらも、(もしあれば)フリンジ、マージン、スクロールバーを含む列数で指定する。
+
+オプション引数@var{preserve-size}が非@code{nil}なら、将来のリサイズ操作の間の@var{window}のサイズを予約するパラメーターをインストールする(@ref{Preserving
+Window Sizes}を参照)。
+
+オプション@code{fit-frame-to-buffer}
+(以下参照)が非@code{nil}なら、この関数は@code{fit-frame-to-buffer}
+(以下参照)を呼び出すことにより、@var{window}のコンテンツにフィットするように@var{window}のフレームのリサイズを試みるだろう。
+@end deffn
+
+@defopt fit-window-to-buffer-horizontally
+これが非@code{nil}なら、@code{fit-window-to-buffer}はウィンドウを水平方向にリサイズできる。これが@code{nil}
+(デフォルト)なら@code{fit-window-to-buffer}はウィンドウ決して水平方向にリサイズしない。これが@code{only}ならウィンドウを水平方向だけにリサイズできる。その他の値では@code{fit-window-to-buffer}がウィンドウをどちらの方向にもリサイズできることを意味する。
+@end defopt
+
+@defopt fit-frame-to-buffer
+このオプションが非@code{nil}なら、@code{fit-window-to-buffer}はフレームをフレームのコンテンツにフィットさせることができる。フレームは、フレームのルートウィンドウが生きたウィンドウで、かつこのオプションが非@code{nil}の場合のみフィットされる。@code{horizontally}ならフレームは水平方向にのみフィットされる。@code{vertically}ならフレームは垂直方向にのみフィットされる。その他の非@code{nil}値はフレームがどちらの方向にもフィットできることを意味する。
+@end defopt
+
+単一のウィンドウだけを表示するフレームではコマンド@code{fit-frame-to-buffer}を使用してそのバッファーにフレームをフィットできます。
+
+@deffn Command fit-frame-to-buffer &optional frame max-height min-height max-width min-width only
+このコマンドは@var{frame}のサイズを、表示しているバッファーのコテンツに正確に調整する。@var{frame}には任意の生きたフレームを指定できデフォルトは選択されたフレーム。@var{frame}のルートウィンドウが生きている場合のみフィットが行われる。引数@var{max-height}、@var{min-height}、@var{max-width}、@var{min-width}は@var{frame}のルートウィンドウの新たなトータルサイズの境界を指定する。@var{min-height}と@var{min-width}のデフォルトはそれぞれ@code{window-min-height}と@code{window-min-width}。
+
+この関数はオプション引数@var{only}が@code{vertically}なら垂直方向のみ、@var{only}が@code{horizontally}なら水平方向のみフレームをリサイズする。
+@end deffn
+
+@code{fit-frame-to-buffer}の振る舞いは次にリストする2つのオプションで制御可能です。
+
+@defopt fit-frame-to-buffer-margins
+このオプションはフレーム周辺のマージンを指定して@code{fit-frame-to-buffer}でフィットさせるために使用できる。このようなマージンはたとえばタスクバーや親フレームの一部とオーバーラップするフレームのリサイズを防ぐために有用かもしれない。
+
+これはフィットされるフレームの左右上下にフリーとして残されるピクセル数を指定する。デフォルトの@code{nil}はそれぞれにたいしてマージンを使用しないことを指定する。ここで指定した値は、特定のフレームにたいしてもしそのフレームの@code{fit-frame-to-buffer-margins}が与えられればオーバーライドされ得る。
+@end defopt
+
+@defopt fit-frame-to-buffer-sizes
+このオプションは@code{fit-frame-to-buffer}にたいしてサイズ境界を指定する。これは自身のバッファーにフィットされる任意のフレームのルートウィンドウの最大行と最小行、最大列と最小列のトータルを指定する。これらの値のいずれかが非@code{nil}なら、@code{fit-frame-to-buffer}の対応する引数をオーバーライドする。
+@end defopt
+
+@deffn Command shrink-window-if-larger-than-buffer &optional window
+このコマンドは@var{window}にたいしてそのバッファーを完全に表示できるが、@code{window-min-height}以上の行を表示できるまで可能な限り@var{window}の高さを縮小する。リターン値はそのウィンドウがリサイズされれば非@code{nil}、それ以外なら非@code{nil}。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ。それ以外では生きたウィンドウであること。
+
+このコマンドはそのウィンドウがバッファーのすべてを表示するにはすでに高さが低すぎる場合、バッファーのどこかがスクリーンからスクロールオフされている場合、またはそのウィンドウがフレーム内で唯一の生きたウィンドウの場合は何も行わない。
+
+このコマンドは自身の処理を行うために@code{fit-window-to-buffer} (上記参照)を呼び出す。
+@end deffn
+
+
+@cindex balancing window sizes
+@deffn Command balance-windows &optional window-or-frame
+この関数は各ウィンドウにたいして完全な幅、および/または完全な高さを与えるような方法によって各ウィンドウのバランスをとる。@var{window-or-frame}にフレームを指定すると、そのフレーム上のすべてのウィンドウのバランスをとる。@var{window-or-frame}にウィンドウを指定すると、そのウィンドウとウィンドウのsiblings(兄弟)にたいしてのみのバランスをとる(@ref{Windows
+and Frames}を参照)。
+@end deffn
+
+@deffn Command balance-windows-area
+この関数は選択されたフレーム上のすべてのウィンドウにたいして、おおよそ同じスクリーンエリアを与えようと試みる。完全な幅か高さをもつウィンドウにたいしては、他のウィンドウと比較してより多くのスペースは与えられない。
+@end deffn
+
+@cindex maximizing windows
+@deffn Command maximize-window &optional window
+この関数は、@var{window}にたいして、そのフレームをリサイズしたり他のウィンドウを削除することなく、水平垂直の両方向で可能な限り大きくなるように試みる。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ。
+@end deffn
+
+@cindex minimizing windows
+@deffn Command minimize-window &optional window
+この関数は@var{window}にたいして、そのフレームをリサイズしたりそのウィンドウを削除することなく、水平垂直の両方向で可能な限り小さくなるように試みる。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ。
+@end deffn
+
+
+@node Preserving Window Sizes
+@section ウィンドウサイズの保持
+@cindex preserving window sizes
+
+前セクションのいずれかの関数を使用してウィンドウを明示的にリサイズしたり、たとえば隣接するウィンドウのリサイズ時、ウィンドウの分割や削除(@ref{Splitting
+Windows}と@pxref{Deleting Windows}を参照)、あるいはそのウィンドウのフレームをリサイズ(@ref{Frame
+Size}を参照)する際に暗黙的にリサイズできます。
+
+  同一フレーム上に1つ以上のリサイズ可能なウィンドウが他に存在する際には、特定のウィンドウにたいして暗黙のリサイズを避けることが可能です。この目的にたいして、Emacsにそのウィンドウのサイズの@dfn{予約(preserve)}をアドバイスしなければなりません。これを行うための基本的な方法が2つあります。
+
+@defvar window-size-fixed
+このバッファーローカル変数が非@code{nil}なら、通常はそのバッファーを表示するすべてのウィンドウのサイズが変更できなくなる。ウィンドウ削除やそのフレームのサイズ変更により、それ以外に方法がなければ依然としてウィンドウのサイズは変更され得る。
+
+値が@code{height}ならそのウィンドウの高さのみ、値が@code{width}ならそのウィンドウの幅のみが固定される。その他の非@code{nil}値では幅と高さの両方が固定される。
+
+この変数が@code{nil}でも、そのバッファーを表示している任意のウィンドウを任意の方向にリサイズできるとはいえない。これを判断するには関数@code{window-resizable}を使用する。@ref{Resizing
+Windows}を参照のこと。
+@end defvar
+
+影響を受けるウィンドウにたいする明示的なリサイズや分割の試みも同様に抑制するので、@code{window-size-fixed}の積極性が過度な場合が多々あります。これはたとえそのウィンドウが暗黙にリサイズされた後にも、たとえば隣接するウィンドウの削除やウィンドウのフレームのリサイズの際に発生するかもしれません。以下の関数では、そのようなウィンドウのリサイズを絶対禁止としないよう試みます:
+
+@defun window-preserve-size &optional window horizontal preserve
+この関数は将来のリサイズ操作用にウィンドウ@var{window}の高さを予約済み(preserved)としてマーク(または非マーク)する。@var{window}は生きたウィンドウでなければならずデフォルトは選択されたウィンドウ。オプション引数@var{horizontal}が非@code{nil}なら@var{window}の幅を予約済みとしてマーク(または非マーク)する。
+
+オプション引数@var{preserve}が@code{t}なら@var{window}ボディーのカレントの高さまたは幅を予約することを意味する。@var{window}の高さまたは幅はEmacsが他によい選択をもたないときのみ変更される。この関数により予約されたウィンドウにたいする高さや幅のリサイズは決してエラーをthrowしない。
+
+@var{preserve}が@code{nil}なら、この関数の以前の呼び出しにより誘発された@var{window}にたいする任意の拘束を解除して、@var{window}の高さまたは幅の予約を停止することを意味する。引数に@var{window}を与えて@code{enlarge-window}、@code{shrink-window}、@code{fit-window-to-buffer}を呼び出すことによっても対応する高速を削除できる。
+@end defun
+
+現在のことろ@code{window-preserve-size}は以下の関数から呼び出されています:
+
+@table @code
+@item fit-window-to-buffer
+この関数のオプション引数@var{preserve-size}が非@code{nil}なら、この関数により確保されたサイズは予約される(@ref{Resizing
+Windows}を参照)。
+
+@item display-buffer
+この関数の@var{alist}引数に@code{preserve-size}エントリーがあれば、この関数により生成されるウィンドウサイズは予約される(@ref{Choosing
+Window}を参照)。
+@end table
+
+  @code{window-preserve-size}はウィンドウリサイズ関数から参照される@code{window-preserved-size}と呼ばれるウィンドウパラメーターをインストールします(@ref{Window
+Parameters}を参照)。このパラメーターはウィンドウが@code{window-preserve-size}が呼び出されたときと異なるバッファーを表示していたり、呼び出し以降にウィンドウのサイズが変化していたらウィンドウのリサイズを妨げません。
+
+以下の関数は特定のウィンドウの高さが予約済みかどうかチェックするために使用できます:
+
+@defun window-preserved-size &optional window horizontal
+この関数はウィンドウ@var{window}の予約済み高さをピクセル単位でリターンする。@var{window}は生きたウィンドウでなければならずデフォルトは選択されたウィンドウ。オプション引数@var{horizontal}が非@code{nil}なら@var{window}の予約済み幅をリターンする。@var{window}のサイズが予約されていなければ@code{nil}をリターンする。
+@end defun
+
+
+@node Splitting Windows
+@section ウィンドウの分割
+@cindex splitting windows
+@cindex window splitting
+
+このセクションでは既存のウィンドウを@dfn{分割(splitting)}することによりウィンドウを新たに作成する関数を説明します。ここで説明する理由により関数が失敗するという意味において、特別なウィンドウがいくつかあることに注意してください。このようなウィンドウの例としてサイドウィンドウ(@ref{Side
+Windows}を参照)やアトミックウィンドウ(@ref{Atomic Windows}を参照)があります。
+
+@defun split-window &optional window size side pixelwise
+この関数はウィンドウ@var{window}の隣に生きたウィンドウを新たに作成する。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ。そのウィンドウは分割(split)されてサイズは縮小される。そのスペースはリターンされる新たなウィンドウによって吸収される。
+
+オプションの第2引数@var{size}は、@var{window}および/または新たなウィンドウのサイズを決定する。これが省略または@code{nil}なら、両方のウィンドウに同じサイズが割り当てられる。行数が奇数なら、余りの1行は新たなウィンドウに割り当てられる。@var{size}が正の数値なら、@var{window}に@var{size}の行数(@var{side}の値によっては列数)が与えられる。@var{size}が負の数値なら、新たなウィンドウに@minus{}@var{size}の行数(または列数)が与えられる。
+
+@var{size}が@code{nil}なら、この関数は変数@code{window-min-height}と@code{window-min-width}にしたがう(@ref{Window
+Sizes}を参照)。つまり分割によりこれらの変数の指定より小さいウィンドウが作成されるようならエラーをシグナルする。しかし@var{size}にたいして非@code{nil}値を指定すると、これらの変数は無視される。その場合には許容される最小のウィンドウはテキストエリアの高さが1行、および/または幅が2列のウィンドウとみなされる。
+
+したがって@var{size}が指定された場合には、生成されるウィンドウがモードラインやスクロールバー等すべてのエリアを含むのに十分な大きさがあるかどうかチェックするのは呼び出し側の責任である。これに関して必要最小限の@var{window}を決定するために関数@code{window-min-size}
+(@ref{Window
+Sizes}を参照)を使用できる。新たなウィンドウは通常はモードラインやスクロールバー等のエリアを@var{window}から継承するので、この関数は新たなウィンドウの最小サイズも良好に推定する。呼び出し側は、次回の再表示前にこれに応じて継承されたエリアを削除する場合のみ、より小さなサイズを指定すること。
+
+オプションの第3引数@var{side}は新たなウィンドウの位置を@var{window}から相対的に指定する。@code{nil}または@code{below}なら新たなウィンドウは@var{window}の下、@code{above}なら@var{window}の上に配置される。どちらの場合でも@var{size}はウィンドウのトータル高さを行数で指定する。
+
+@var{side}が@code{t}か@code{right}なら新たなウィンドウは@var{window}の右、@var{side}が@code{left}なら@var{window}の左に配置される。どちらの場合でも@var{size}はウィンドウのトータル幅を列数で指定する。
+
+オプションの第4引数@var{pixelwise}が非@code{nil}なら、@var{size}を行や列ではなくピクセル単位で解釈することを意味する。
+
+@var{window}が生きたウィンドウの場合には、新たなウィンドウはマージンやスクロールバーを含むさまざまなプロパティを継承する。@var{window}が内部ウィンドウ(internal
+window)の場合には、新たなウィンドウは@var{window}のフレームのプロパティを継承する。
+
+変数@code{ignore-window-parameters}が@code{nil}の場合に限り、この関数の挙動は@var{window}なパラメーターにより変更されるかもしれない。ウィンドウパラメーター@code{split-window}の値が@code{t}なら、この関数はその他すべてのウィンドウパラメーターを無視する。それ以外ではウィンドウパラメーター@code{split-window}の値が関数の場合には、@code{split-window}の通常アクションのかわりに引数@var{window}、@var{size}、@var{side}でその関数が呼び出される。値が関数以外なら、この関数は(もしあれば)ウィンドウパラメーター@code{window-atom}または@code{window-side}にしたがう。@ref{Window
+Parameters}を参照のこと。
+@end defun
+
+  例として@ref{Windows and Frames}で議論したウィンドウ構成(window
+configuration)を得るための、一連の@code{split-window}呼び出しを以下に示します。この例では生きたウィンドウの分割と、内部ウィンドウの分割も示しています。最初は@var{W4}で表される単一のウィンドウ(生きたルートウィンドウ)を含むフレームから開始します。@code{(split-window
+W4)}を呼び出すことにより以下のウィンドウ構成が得られます。
+
+@smallexample
+@group
+     ______________________________________
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||_________________W4_________________||
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||_________________W5_________________||
+    |__________________W3__________________|
+
+@end group
+@end smallexample
+
+@noindent
+@code{split-window}呼び出しにより@var{W5}で示す生きたウィンドウが新たに作成されました。@var{W3}で示される内部ウィンドウも新たに作成され、これはルートウィンドウかつ@var{W4}と@var{W5}の親ウィンドウになります。
+
+  次は引数として内部ウィンドウ@var{W3}を渡して@code{(split-window W3 nil 'left)}を呼び出します。
+
+@smallexample
+@group
+     ______________________________________
+    | ______  ____________________________ |
+    ||      || __________________________ ||
+    ||      |||                          |||
+    ||      |||                          |||
+    ||      |||                          |||
+    ||      |||____________W4____________|||
+    ||      || __________________________ ||
+    ||      |||                          |||
+    ||      |||                          |||
+    ||      |||____________W5____________|||
+    ||__W2__||_____________W3_____________ |
+    |__________________W1__________________|
+@end group
+@end smallexample
+
+@noindent
+内部ウィンドウ@var{W3}の左に生きたウィンドウ@var{W2}が新たに作成されました。そして内部ウィンドウ@var{W1}が新たに作成され、これが新たにルートウィンドウになります。
+
+   インタラクティブな使用にたいして、Emacsは選択されたウィンドウを常に分割するコマンドを2つ提供します。これらは内部で@code{split-window}を呼び出しています。
+
+@deffn Command split-window-right &optional size
+この関数は選択されたウィンドウが左となるように、横並びの2つのウィンドウに分割する。@var{size}が正ならば左のウィンドウが@var{size}列、負ならば右のウィンドウが@minus{}@var{size}列を与えられる。
+@end deffn
+
+@deffn Command split-window-below &optional size
+この関数は選択されたウィンドウが上となるような、縦並びの2つのウィンドウに分割する。@var{size}が正ならば上のウィンドウが@var{size}行、負ならば下のウィンドウが@minus{}@var{size}行を与えられる。
+@end deffn
+
+@defopt split-window-keep-point
+この変数の値が非@code{nil} (デフォルト)なら@code{split-window-below}は上述のように振る舞う。
+
+@code{nil}なら@code{split-window-below}は再表示が最小となるように、2つのウィンドウの各ポイントを調節する(これは低速な端末で有用)。これは何であれ、以前ポイントがあったスクリーン行(screen
+line)を含むウィンドウを選択する。これは低レベル@code{split-window}関数ではなく@code{split-window-below}だけに影響することに注意。
+@end defopt
+
+
+@node Deleting Windows
+@section ウィンドウの削除
+@cindex deleting windows
+
+  ウィンドウを@dfn{削除(delete)}することにより、フレームのウィンドウツリーからウィンドウが取り除かれます。それが生きたウィンドウならスクリーンに表示されなくなります。内部ウィンドウならその子ウィンドウも削除されます。
+
+  ウィンドウを削除した後であっても、それへの参照が残っている限りはLispオブジェクトとして存在し続けます。ウィンドウ構成(window
+configuration)をリストアすることにより、ウィンドウの削除は取り消すことができます(@ref{Window
+Configurations}を参照)。
+
+@deffn Command delete-window &optional window
+この関数は表示から@var{window}を削除して@code{nil}をリターンする。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ。
+
+ウィンドウ削除によりウィンドウツリーにウィンドウが何も残らなくなるか(それがフレーム内で唯一の生きたウィンドウの場合)、あるいは@var{window}のフレーム上の残りすべてのウィンドウがサイドウィンドウ(@ref{Side
+Windows}を参照)ならエラーがシグナルされる。@var{window}がアトミックウィンドウ(@ref{Atomic
+Windows}を参照)の一部なら、この関数はかわりにアトミックウィンドウのルートウィンドウの削除を試みる。
+
+デフォルトでは@var{window}が占めていたスペースは、(もしあれば)隣接する兄弟ウィンドウのうちの1つに与えられる。しかし変数@code{window-combination-resize}が非@code{nil}なら、そのスペースは同一ウィンドウコンビネーション内の残りのすべてのウィンドウに比例的に分配される。@xref{Recombining
+Windows}を参照のこと。
+
+変数@code{ignore-window-parameters}が@code{nil}の場合に限り、この関数の振る舞いは@var{window}のウィンドウパラメーターにより変更される可能性がある。ウィンドウパラメーター@code{delete-window}の値が@code{t}なら、この関数はその他すべてのウィンドウパラメーターを無視する。ウィンドウパラメーター@code{delete-window}が関数なら、通常の@code{delete-window}のかわりに引数@var{window}でその関数が呼び出される。@ref{Window
+Parameters}を参照のこと。
+@end deffn
+
+@deffn Command delete-other-windows &optional window
+この関数は必要に応じて他のウィンドウを削除することにより、@var{window}でフレームを充填する。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ。@var{window}がサイドウィンドウならエラーをシグナルする(@ref{Side
+Windows}を参照)。@var{window}がアトミックウィンドウの一部なら、この関数はアトミックウィンドウのルートウィンドウによるフレームの重点を試みる(@ref{Atomic
+Windows}を参照)。リターン値は@code{nil}。
+
+変数@code{ignore-window-parameters}が@code{nil}の場合に限り、この関数の振る舞いは変更される可能性がある。ウィンドウパラメーター@code{delete-other-windows}の値が@code{t}なら、この関数は他のすべてのウィンドウパラメーターを無視する。ウィンドウパラメーター@code{delete-other-windows}の値が関数なら、@code{delete-other-windows}の通常の動作のかわりに引数@var{window}でその関数が呼び出される。@ref{Window
+Parameters}を参照のこと。
+
+さらに@code{ignore-window-parameters}が@code{nil}なら、この関数は@code{no-delete-other-windows}パラメーターが非@code{nil}のウィンドウを削除しない。
+@end deffn
+
+@deffn Command delete-windows-on &optional buffer-or-name frame
+この関数は@var{buffer-or-name}を表示しているすべてのウィンドウにたいして@code{delete-window}を呼び出すことによってそれらを削除する。@var{buffer-or-name}はバッファー、またはバッファー名であること。省略または@code{nil}の場合のデフォルトはカレントバッファー。指定されたバッファーを表示するウィンドウが存在しなければ、この関数は何も行わない。ミニバッファーが指定されるとエラーをシグナルする。
+
+そのバッファーの表示に専用(dedicated)のウィンドウがあり、フレーム上でそれが唯一のウィンドウの場合には、それが端末上で唯一のフレームでなければこの関数はそのフレームも削除する。
+
+オプション引数@var{frame}は操作を行うフレームがどれかを指定する:
+
+@itemize @bullet
+@item @code{nil}
+すべてのフレームを処理することを意味する。
+@item @code{t}
+選択されたフレームを処理することを意味する。
+@item @code{visible}
+可視なすべてのフレームを処理することを意味する。
+@item @code{0}
+可視またはアイコン化されたすべてのフレームを処理することを意味する。
+@item フレーム
+そのフレームを処理することを意味する。
+@end itemize
+
+この引数の意味は、すべての生きたウィンドウを走査する他の関数(@ref{Cyclic Window
+Ordering}を参照)の場合とは異なることに注意。特にここでの@code{t}と@code{nil}のもつ意味は、これら他の関数の場合とは逆になる。
+@end deffn
+
+
+@node Recombining Windows
+@section ウィンドウの再結合
+@cindex recombining windows
+@cindex windows, recombining
+
+ウィンドウ@var{W}の最後の兄弟を削除したときは、ウィンドウツリー内の親ウィンドウを@var{W}を置き換えることにより、その親ウィンドウも削除されます。これは新たなウィンドウコンビネーションを形成するために、@var{W}がその親の兄弟たちと再結合されなければならないことを意味します。生きたウィンドウを削除することにより、必然的に2つの内部ウィンドウが削除されるかもしれない場合もあります。
+
+@smallexample
+@group
+     ______________________________________
+    | ______  ____________________________ |
+    ||      || __________________________ ||
+    ||      ||| ___________  ___________ |||
+    ||      ||||           ||           ||||
+    ||      ||||____W6_____||_____W7____||||
+    ||      |||____________W4____________|||
+    ||      || __________________________ ||
+    ||      |||                          |||
+    ||      |||                          |||
+    ||      |||____________W5____________|||
+    ||__W2__||_____________W3_____________ |
+    |__________________W1__________________|
+
+@end group
+@end smallexample
+
+@noindent
+この構成における@var{W5}の削除は、通常は@var{W3}と@var{W4}の削除を誘発します。残りの生きたウィンドウ@var{W2}、@var{W6}、@var{W7}は親を@var{W7}とする水平コンビネーションを形成するために再結合されます。
+
+   しかし、ときには@var{W4}のような親ウィンドウを削除しないほうが合理的な場合もあります。特に親ウィンドウが同じタイプのコンビネーション内に埋め込まれるコンビネーションを保護するために使用されるときは、それを削除するべきではありません。そのような埋め込みは、あるウィンドウを分割した後に続けて新たなウィンドウを削除する際、Emacsが関連するフレームで分割前にあったレイアウトを確実に再構築するために意味があります。
+
+   親が@var{W1}であるような2つの生きたウィンドウ@var{W2}と@var{W3}を出発点とするシナリオを考えてみましょう。
+
+@smallexample
+@group
+     ______________________________________
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||_________________W2_________________||
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||_________________W3_________________||
+    |__________________W1__________________|
+
+@end group
+@end smallexample
+
+@noindent
+@var{W2}を分割すると以下のようにウィンドウ@var{W4}が新たに作成されます。
+
+@smallexample
+@group
+     ______________________________________
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||_________________W2_________________||
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||_________________W4_________________||
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||_________________W3_________________||
+    |__________________W1__________________|
+
+@end group
+@end smallexample
+
+@noindent
+ここでウィンドウを垂直方向に拡大すると、Emacsはもしそのようなウィンドウがあれば下位の兄弟ウィンドウから対応するスペースを得ようと試みます。このシナリオでは@var{W4}の拡大により、@var{W3}からスペースが奪われます。
+
+@smallexample
+@group
+     ______________________________________
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||_________________W2_________________||
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||_________________W4_________________||
+    | ____________________________________ |
+    ||_________________W3_________________||
+    |__________________W1__________________|
+
+@end group
+@end smallexample
+
+@noindent
+@var{W4}を削除すると、前に@var{W3}から奪ったスペースを含むスペース全体が@var{W2}に与えられるでしょう。
+
+@smallexample
+@group
+     ______________________________________
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||_________________W2_________________||
+    | ____________________________________ |
+    ||_________________W3_________________||
+    |__________________W1__________________|
+
+@end group
+@end smallexample
+
+@noindent
+これは特に@var{W4}が一時的にバッファーを表示するために使用されていて(@ref{Temporary
+Displays}を参照)、かつ初期のレイアウトで作業を継続したい場合には直感に反するかもしれません。
+
+この振る舞いは@var{W2}を分割する際に新たな親ウィンドウを作成することにより解決できます。
+
+@defopt window-combination-limit
+この変数はウィンドウ分割により新たに親ウィンドウを作成させるかどうかを制御する。以下の値が認識される:
+
+@table @code
+@item nil
+これは既存のウィンドウコンビネーションと同じ方向で分割が発生した場合(これ以外の場合には、いずれにせよ内部ウィンドウが新たに作成される)は、既存の親ウィンドウが存在するなら新たな生きたウィンドウがそれを共有できることを意味する。
+
+@item window-size
+これは@code{display-buffer}がウィンドウを分割する際に新たな親ウィンドウを作成して@var{alist}引数の@code{window-height}エントリーや@code{window-width}エントリーに渡すことを意味する(@ref{Buffer
+Display Action Functions}を参照)。それ以外の場合にはウィンドウの分割は値が@code{nil}のときのように振る舞う。
+
+@item temp-buffer-resize
+この場合には@code{with-temp-buffer-window}がウィンドウを分割して、かつ@code{temp-buffer-resize-mode}が有効なら新たに親ウィンドウを作成する(@ref{Temporary
+Displays}を参照)。それ以外ならウィンドウ分割は@code{nil}の場合のように振る舞う。
+
+@item temp-buffer
+この場合には@code{with-temp-buffer-window}は既存のウィンドウの分割時に常に新たな親ウィンドウを作成する(@ref{Temporary
+Displays}を参照)。それ以外ならウィンドウ分割は@code{nil}の場合のように振る舞う。
+
+@item display-buffer
+これは@code{display-buffer} (@ref{Choosing
+Window}を参照)がウィンドウを分割する際に、常に親ウィンドウを新たに作成することを意味する。それ以外ならウィンドウ分割は@code{nil}の場合のように振る舞う。
+
+@item t
+これはウィンドウを分割することによって常に親ウィンドウが新たに作成されることを意味する。したがってこの変数の値が常に@code{t}なら、すべてのウィンドウツリーは常に2分木(ルートウィンドウ以外のすべてのウィンドウが正確に1つの兄弟をもつようなツリー)になる。
+@end table
+
+デフォルトは@code{window-size}であり、それ以外の値は将来のために予約済み。
+
+この変数のセッティングの結果として@code{split-window}が新たに親ウィンドウを作成したら、新たに作成された内部ウィンドウにたいして@code{set-window-combination-limit}
+(以下参照)も呼び出す。これは子ウィンドウが削除された際のウィンドウツリーの再配置に影響する(以下参照)。
+@end defopt
+
+  @code{window-combination-limit}が@code{t}なら、このシナリオの初期構成では以下のようになるでしょう:
+
+@smallexample
+@group
+     ______________________________________
+    | ____________________________________ |
+    || __________________________________ ||
+    |||                                  |||
+    |||________________W2________________|||
+    || __________________________________ ||
+    |||                                  |||
+    |||________________W4________________|||
+    ||_________________W5_________________||
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||_________________W3_________________||
+    |__________________W1__________________|
+
+@end group
+@end smallexample
+
+@noindent
+子として@var{W2}と新たな生きたウィンドウをもつ内部ウィンドウ@var{W5}が新たに作成されます。ここで@var{W2}は@var{W4}の唯一の兄弟なので、@var{W4}を拡大すると@var{W3}は変更せずに@var{W2}の縮小を試みるでしょう。@var{W5}は垂直コンビネーション@var{W1}に埋め込まれた2つのウィンドウからなる垂直コンビネーションを表すことに注意してください。
+
+@cindex window combination limit
+@defun set-window-combination-limit window limit
+この関数はウィンドウ@var{window}の@dfn{コンビネーションリミット(combination limit:
+結合限界)}を@var{limit}にセットする。この値は関数@code{window-combination-limit}を通じて取得できる。効果については以下を参照のこと。これは内部ウィンドウにたいしてのみ意味をもつことに注意。@code{split-window}は呼び出された際に変数@code{window-combination-limit}が@code{t}なら、@code{t}を@var{limit}としてこの関数を呼び出す。
+@end defun
+
+@defun window-combination-limit window
+この関数は@var{window}にたいするコンビネーションリミットをリターンする。
+
+コンビネーションリミットは内部ウィンドウにたいしてのみ意味をもつ。これが@code{nil}ならEmacsはウィンドウ削除に応じて、兄弟同士で新たなウィンドウコンビネーションを形成することにより@var{window}の子ウィンドウをグループ化するために、@var{window}の自動的な削除を許す。コンビネーションリミットが@code{t}なら@var{window}の子ウィンドウがその兄弟と自動的に再結合されることは決してない。
+
+このセクションの冒頭で示した構成の場合は、@var{W4}
+(@var{W6}と@var{W7}の親ウィンドウ)のコンビネーションリミットは@code{t}なので@code{t}を削除しても暗黙で@var{W4}も削除されることはない。
+@end defun
+
+かわりに同じ構成内の中の1つのウィンドウが分割や削除されたときは、常に構成内のすべてのウィンドウをリサイズすることにより上記で示した問題を避けることができます。これはそのような操作にたいして、この方法以外では小さすぎるようなウィンドウの分割も可能にします。
+
+@defopt window-combination-resize
+この変数が@code{nil}なら、@code{split-window}はウィンドウ(以下@var{window})自身と新たなウィンドウの両方にたいして、@var{window}のスクリーンエリアが十分大きい場合のみ@var{window}を分割できる。
+
+この変数が@code{t}なら、@code{split-window}は新たなウィンドウに対応するために@var{window}と同一コンビネーション内のすべてのウィンドウのリサイズを試みる。これは特に@var{window}が固定サイズウィンドウのときや、通常の分割には小さすぎるときも@code{split-window}をが成功することを許す。さらに続けて@var{window}のリサイズや削除を行うと、そのコンビネーション内のその他すべてのウィンドウをリサイズする。
+
+デフォルトは@code{nil}であり、それ以外の値は将来の使用のため予約済みである。@code{window-combination-limit}の非@code{nil}値の影響を受ける場合には、この変数の値は特定の分割操作にたいして無視される。
+@end defopt
+
+  @code{window-combination-resize}の効果を説明するために以下のフレームレイアウトを考えてください。
+
+@smallexample
+@group
+     ______________________________________
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||_________________W2_________________||
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||_________________W3_________________||
+    |__________________W1__________________|
+
+@end group
+@end smallexample
+
+@noindent
+@code{window-combination-resize}が@code{nil}なら、ウィンドウ@var{W3}を分割しても@var{W2}のサイズは変更されません:
+
+@smallexample
+@group
+     ______________________________________
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||                                    ||
+    ||_________________W2_________________||
+    | ____________________________________ |
+    ||                                    ||
+    ||_________________W3_________________||
+    | ____________________________________ |
+    ||                                    ||
+    ||_________________W4_________________||
+    |__________________W1__________________|
+
+@end group
+@end smallexample
+
+@noindent
+@code{window-combination-resize}が@code{t}なら、@var{W3}を分割すると3つの生きたウィンドウすべてをおおよそ同じ高さにします:
+
+@smallexample
+@group
+     ______________________________________
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||_________________W2_________________||
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||_________________W3_________________||
+    | ____________________________________ |
+    ||                                    ||
+    ||                                    ||
+    ||_________________W4_________________||
+    |__________________W1__________________|
+
+@end group
+@end smallexample
+
+@noindent
+生きたウィンドウ@var{W2}、@var{W3}、@var{W4}のいずれを削除しても、削除されたウィンドウのスペースは残りの2つの生きたウィンドウに相対的に分配されます。
+
+
+@node Selecting Windows
+@section ウィンドウの選択
+@cindex selecting a window
+
+@defun select-window window &optional norecord
+この関数は@var{window}を選択されたウィンドウにすることによりそのフレーム内で選択されたウィンドウ(@ref{Basic
+Windows}を参照)として、そのフレームを選択する。また@var{window}のバッファー(@ref{Buffers and
+Windows}を参照)をカレントにして、そのバッファーの@code{point}の値(@ref{Window
+Point}を参照)を@var{window}の@code{window-point}の値にセットする。@var{window}は生きたウィンドウでなければならない。リターン値は@var{window}。
+
+デフォルトではこの関数は@var{window}のバッファーをバッファーリストの先頭(@ref{Buffer
+List}を参照)に移動して、@var{window}をもっとも最近選択されたウィンドウにする。オプション引数@var{norecord}が非@code{nil}なら、これらの追加処理は省略される。
+
+加えてこの関数はデフォルトでは@var{window}のフレームの次回再表示の際に@var{window}を更新するようにディスプレイエンジンに指示する。@var{norecord}が非@code{nil}なら、そのような更新は通常は行わない。しかし@var{norecord}が特別なシンボル@code{mark-for-redisplay}と等しければ上述の追加アクションは省略されるが、それにも関わらず@var{window}は更新される。
+
+ウィンドウを選択することではウィンドウの表示やそのフレームをディスプレイ上の最上フレームにすることを満足しない場合があることに注意。さらにそのフレームのレイズやフレームにフォーカスが当たることを確実にする必要もあるだろう。@ref{Input
+Focus}を参照のこと。
+@end defun
+
+@cindex select window hooks
+@cindex running a hook when a window gets selected
+歴史的な理由によりウィンドウ選択時にEmacsが個別にフックを実行することはありません。アプリケーションや内部ルーチンがあるウィンドウ上でいくつかの処理を行うために一時的にウィンドウを選択することはよくあります。これらは@var{window}引数が何も指定されていなければデフォルトでは選択されたウィンドウを処理する関数が多数存在するのでコーディングを単純化するために、あるいは引数としてウィンドウを受け取らないために常に選択されたウィンドウを処理する関数がいくつか存在した(そして今も存在する)ためにこれを行います。あるウィンドウが短時間選択されたときと、以前に選択されていたウィンドウがリストアされるたびに毎回フックを実行するのは有用ではありません。
+
+  しかし@var{norecord}引数が@code{nil}の際には@code{select-window}がバッファーリストを更新するので、間接的にノーマルフック@code{buffer-list-update-hook}が実行されます(@ref{Buffer
+List}を参照)。結果としてこのフックは、あるウィンドウがより``永続的''に選択された際に関数を実行する1つの手段を提供します。
+
+  @code{buffer-list-update-hook}はウィンドウ管理とは無関係な関数によっても実行されるので、選択されたウィンドウの値を何かに保存しておいて、このフックの実行中に@code{selected-window}の値と比較することには意味があります。@code{buffer-list-update-hook}を使用する際の誤検出を防ぐためにも、一時的にのみウィンドウの選択を意図する@code{select-window}の呼び出しごとに@var{norecord}引数に非@code{nil}を渡すことはよい習慣です。そのような場合にはマクロ@code{with-selected-window}
+(以下参照)を使用するべきです。
+
+  最後の再表示以降に別ウィンドウが選択されたことを再表示ルーチンが検知した際には、常にEmacsはフック@code{window-selection-change-functions}も実行します。詳細な説明は@ref{Window
+Hooks}を参照してください。(同じセクションに記載されている)
+@code{window-state-change-functions}は別ウィンドウ選択後に実行される別のアブノーマルフックですが、これは他のウィンドウの変更時にも同様にトリガーされます。
+
+@cindex most recently selected windows
+  引数@var{norecord}に非@code{nil}を指定した@code{select-window}の連続呼び出しは、ウィンドウの並び順を選択時刻により決定します。関数@code{get-lru-window}は、もっとも昔に選択された生きたウィンドウ(@ref{Cyclic
+Window Ordering}を参照)を取得するために使用できます。
+
+@defmac save-selected-window forms@dots{}
+このマクロは選択されたフレーム、同様に各フレームの選択されたウィンドウを記録して、@var{forms}を順に実行してから以前に選択されていたフレームとウィンドウをリストアする。これはカレントバッファーの保存とリストアも行う。リターン値は@var{forms}内の最後のフォームの値。
+
+このマクロはウィンドウのサイズ、コンテンツ、配置についての保存やリストアは何も行わない。したがって@var{forms}がそれらを変更すると、その変更は永続化される。あるフレームにおいて以前に選択されていたウィンドウが@var{forms}のexit時にすでに生きていなければ、そのフレームの選択されたウィンドウはそのまま放置される。以前に選択されていたウィンドウがすでに生きていなければ@var{forms}の最後に選択されていたウィンドウが何であれ、それが選択されたままになる。カレントバッファー@var{forms}のexit時にそれが生きている場合のみリストアされる。
+
+このマクロは、もっとも最近に選択されたウィンドウとバッファーリストの順番をいずれも変更しない。
+@end defmac
+
+@defmac with-selected-window window forms@dots{}
+このマクロは@var{window}を選択して@var{forms}を順に実行してから、以前に選択されていたウィンドウとカレントバッファーをリストアする。たとえば引数@var{norecord}を@code{nil}で@code{select-window}を呼び出す等、@var{forms}内で故意に変更しない限り、もっとも最近に選択されたウィンドウとバッファーリストの順番は変更されない。したがってこのマクロは不要な@code{buffer-list-update-hook}の実行なしに、@var{window}を選択されたウィンドウとして一時的に作業するために好ましい手段である。
+@end defmac
+
+@defmac with-selected-frame frame forms@dots{}
+This macro executes @var{forms} with @var{frame} as the selected frame.  The
+value returned is the value of the last form in @var{forms}.  This macro
+saves and restores the selected frame, and changes the order of neither the
+recently selected windows nor the buffers in the buffer list.
+@end defmac
+
+@defun frame-selected-window &optional frame
+この関数はフレーム@var{frame}内で選択されているウィンドウをリターンする。@var{frame}は生きたフレームであること。省略または@code{nil}の場合のデフォルトは選択されたフレーム。
+@end defun
+
+@defun set-frame-selected-window frame window &optional norecord
+この関数は@var{window}をフレーム@var{frame}内で選択されたウィンドウにする。@var{frame}は生きたフレームであること。省略または@code{nil}の場合のデフォルトは選択されたフレーム。@var{window}は生きたウィンドウであること。省略または@code{nil}の場合のデフォルトは選択されたウィンドウ。
+
+@var{frame}が選択されたフレームなら、@var{window}を選択されたウィンドウにする。
+
+オプション引数@var{norecord}が非@code{nil}なら、この関数はもっとも最近に選択されたウィンドウのリストとバッファーリストをいずれも変更しない。
+@end defun
+
+@cindex window use time
+@cindex use time of window
+@cindex window order by time of last use
+@defun window-use-time &optional window
+この関数はウィンドウ@var{window}の使用回数をリターンする。@var{window}は生きたウィンドウでなければならずデフォルトは選択されたウィンドウ。
+
+ウィンドウの@dfn{使用回数(use
+time)}は実際にはtime値ではなく、@code{nil}の@var{norecord}引数による@code{select-window}の呼び出しごとに毎回単調に増加する整数。通常は最小の使用回数をもつウィンドウはもっとも最近使用されていないウィンドウ(the
+least recently used window)、最大の使用回数をもつウィンドウはもっとも最近使用されたウィンドウ(the most
+recently used window)と呼ばれる(@ref{Cyclic Window Ordering}を参照)。
+@end defun
+
+
+@node Cyclic Window Ordering
+@section ウィンドウのサイクル順
+@cindex cyclic ordering of windows
+@cindex ordering of windows, cyclic
+@cindex window ordering, cyclic
+
+  他のウィンドウを選択するためにコマンド@w{@kbd{C-x o}}
+(@code{other-window})を使う際には、生きたウィンドウを特定の順番で巡回します。与えられた任意のウィンドウ構成にたいして、この順序は決して変更されません。これは@dfn{ウィンドウのサイクル順序(cyclic
+ordering of windows)}と呼ばれます。
+
+  この順序は各フレームのリーフノードである生きたウィンドウを取得するために、ツリーを深さ優先で走査することにより決定されます(@ref{Windows
+and
+Frames}を参照)。ミニバッファーがアクティブならミニバッファーウィンドウも含まれます。この順序は巡回的(cyclic)なので、この順序の最後のウィンドウの次には最初のウィンドウが配置されます。
+
+@defun next-window &optional window minibuf all-frames
+@cindex minibuffer window, and @code{next-window}
+この関数はウィンドウのサイクル順で@var{window}の次の生きたウィンドウをリターンする。@var{window}は生きたウィンドウであること。省略または@code{nil}の場合のデフォルトは選択されたウィンドウ。
+
+オプション引数@var{minibuf}はサイクル順にミニバッファーウィンドウを含めるべきかどうかを指定する。通常は@var{minibuf}が@code{nil}のときは、ミニバッファーウィンドウがカレントでアクティブな場合のみミニバッファーウィンドウが含まれる。これは@w{@kbd{C-x
+o}}の振る舞いと合致する(ミニバッファーが使用されている限りミニバッファーウィンドウはアクティブであることに注意。@ref{Minibuffers}を参照のこと)。
+
+@var{minibuf}が@code{t}なら、サイクル順にはすべてのミニバッファーウィンドウが含まれる。@var{minibuf}が@code{t}と@code{nil}のいずれとも異なる場合には、たとえアクティブであってもミニバッファーウィンドウは含まれない。
+
+オプション引数@var{all-frames}は考慮にするフレームを指定する:
+
+@itemize @bullet
+@item @code{nil}
+は@var{window}のフレーム上にあるウィンドウを考慮することを意味する。(@var{minibuf}引数で指定されたことにより)ミニバッファーウィンドウが考慮される場合には、ミニバッファーウィンドウを共有するフレームも考慮される。
+
+@item @code{t}
+はすべての既存フレーム上のウィンドウを考慮することを意味する。
+
+@item @code{visible}
+はすべての可視フレーム上のウィンドウを考慮することを意味する。
+
+@item 0
+は可視またはアイコン化されたすべてのフレーム上のウィンドウを考慮することを意味する。
+
+@item フレーム
+は指定されたフレーム上のウィンドウを考慮することを意味する。
+
+@item その他
+は@var{window}のあるフレーム上のウィンドウを考慮して、それ以外は考慮しないことを意味する。
+@end itemize
+
+複数のフレームが考慮される場合は、すべての生きたフレームのリストの順にしたがってそれらのフレームを順に追加することによりサイクル順を取得する(@ref{Finding
+All Frames}を参照)。
+@end defun
+
+@defun previous-window &optional window minibuf all-frames
+この関数はウィンドウのサイクル順において@var{window}の前に位置する生きたウィンドウをリターンする。その他の引数は@code{next-window}の場合と同様に処理される。
+@end defun
+
+@deffn Command other-window count &optional all-frames
+この関数はウィンドウのサイクル順において、選択されたウィンドウから@var{count}番目に位置する生きたウィンドウをリターンする。@var{count}が正の数なら@var{count}個のウィンドウを前方にスキップし、負の数なら@minus{}@var{count}個のウィンドウを後方にスキップする。@var{count}が0なら選択されたウィンドウを単に再選択する．インタラクティブに呼び出された場合には、@var{count}はプレフィックス数引数。
+
+オプション引数@var{all-frames}は、@code{nil}の@var{minibuf}引数を指定したときの@code{next-window}の場合と同じ意味をもつ。
+
+この関数は@code{ignore-window-parameters}が@code{nil}なら非@code{nil}のウィンドウパラメーター@code{no-other-window}をもつウィンドウを選択しない。
+
+選択されたウィンドウの@code{other-window}パラメーターが関数で@code{ignore-window-parameters}が@code{nil}なら、この関数の通常の処理のかわりに、@code{other-window}パラメーターの関数が引数@var{count}と@var{all-frames}で呼び出される。
+@end deffn
+
+@defun walk-windows fun &optional minibuf all-frames
+この関数は生きたウィンドウそれぞれにたいしてウィンドウを引数に関数@var{fun}を呼び出す。
+
+これはウィンドウのサイクル順にしたがう。オプション引数@var{minibuf}と@var{all-frames}には、含まれるウィンドウセットを指定する。これらは@code{next-window}の引数の場合と同じ意味をもつ。@var{all-frames}がフレームを指定する場合には、最初に処理されるのはそのフレームの最初のウィンドウ(@code{frame-first-window}がリターンするウィンドウ)であり、選択されたウィンドウである必要はない。
+
+@var{fun}がウィンドウの分割や削除によりウィンドウ構成を変更する場合でも、処理するウィンドウセットは初回の@var{fun}呼び出しに先立ち決定されるため変更されない。
+@end defun
+
+@defun one-window-p &optional no-mini all-frames
+この関数は選択されたウィンドウが唯一の生きたウィンドウなら@code{t}、それ以外は@code{nil}をリターンする。
+
+ミニバッファーウィンドウがアクティブなら、ミニバッファーウィンドウは通常は考慮される(そのためこの関数は@code{nil}をリターンする)。しかしオプション引数@var{no-mini}が非@code{nil}なら、たとえアクティブであってもミニバッファーウィンドウは無視される。オプション引数@var{all-frames}は@code{next-window}の場合と同じ意味をもつ。
+@end defun
+
+@cindex finding windows
+  以下は何らかの条件を満足するウィンドウを、それらを選択することなくリターンする関数です:
+
+@cindex least recently used window
+@defun get-lru-window &optional all-frames dedicated not-selected
+この関数は発見的に最近もっとも使用されていない生きたウィンドウをリターンする。オプション引数@var{all-frames}は@code{next-window}の場合と同じ意味をもつ。
+
+フル幅のウィンドウが存在する場合にはは、それらのウィンドウだけが考慮される。ミニバッファーが候補になることは決してない。オプション引数@var{dedicated}が@code{nil}なら、専用バッファー(@ref{Dedicated
+Windows}を参照)が候補になることは決してない。唯一の候補が選択されたウィンドウである場合以外は選択されたウィンドウを決してリターンしない。しかしオプション引数@var{not-selected}が非@code{nil}なら、そのような場合でもこの関数は@code{nil}をリターンする。
+@end defun
+
+@cindex most recently used window
+@defun get-mru-window &optional all-frames dedicated not-selected
+この関数は@code{get-lru-window}と同様だが、かわりにもっとも最近使用されたウィンドウをリターンする。引数の意味は@code{get-lru-window}で説明と同様。
+@end defun
+
+@cindex largest window
+@defun get-largest-window &optional all-frames dedicated not-selected
+この関数は、もっとも大きいエリア(高さと幅の乗)をもつウィンドウをリターンする。オプション引数@var{all-frames}は検索するウィンドウを指定する。意味は@code{next-window}の場合と同様。
+
+ミニバッファーウィンドウは決して候補とならない。オプション引数@var{dedicated}が@code{nil}なら、専用ウィンドウ(@ref{Dedicated
+Windows}ウィンドウを参照)は決して候補とならない。オプション引数@var{not-selected}が非@code{nil}なら、選択されたウィンドウは決して候補にならない。オプション引数@var{not-selected}が非@code{nil}、かつ唯一の候補が選択されたウィンドウなら、この関数は@code{nil}をリターンする。
+
+同サイズの候補ウィンドウが2つある場合には、この関数はウィンドウのサイクル順で選択されたウィンドウから数えて最初にあるウィンドウを優先する。
+@end defun
+
+@cindex window that satisfies a predicate
+@cindex conditional selection of windows
+@defun get-window-with-predicate predicate &optional minibuf all-frames default
+この関数はウィンドウのサイクル順内の各ウィンドウにたいして、そのウィンドウを引数として関数@var{predicate}を順に呼び出す。いずれかのウィンドウにたいして@var{predicate}が非@code{nil}をリターンすると、この関数は処理を停止してそのウィンドウをリターンする。そのようなウィンドウが見つからなければリターン値は@var{default}
+(これのデフォルトは@code{nil})。
+
+オプション引数
+@var{minibuf}と@var{all-frames}は検索するウィンドウを指定する。意味は@code{next-window}の場合と同様。
+@end defun
+
+
+@node Buffers and Windows
+@section バッファーとウィンドウ
+@cindex examining windows
+@cindex windows, controlling precisely
+@cindex buffers, controlled in windows
+
+  このセクションではウィンドウのコンテンツを調べたりセットするための低レベルな関数を説明します。ウィンドウ内に特定のバッファーを表示するための高レベルな関数については@ref{Switching
+Buffers}を参照してください。
+
+@defun window-buffer &optional window
+この関数は@var{window}が表示しているバッファーをリターンする。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ。@var{window}が内部ウィンドウならこの関数は@code{nil}をリターンする。
+@end defun
+
+@defun set-window-buffer window buffer-or-name &optional keep-margins
+この関数は@var{window}に@var{buffer-or-name}を表示させる。@var{window}は生きたウィンドウであること。@code{nil}の場合のデフォルトは選択されたウィンドウ。@var{buffer-or-name}はバッファー、あるいは既存のバッファー名であること。この関数は選択されていたウィンドウを変更せず、カレントバッファーも直接変更しない(@ref{Current
+Buffer}を参照)。リターン値は@code{nil}。
+
+@var{window}があるバッファーにたいして@dfn{特に専用(strongly
+dedicated)}であり、かつ@var{buffer-or-name}がそのバッファーを指定しなければ、この関数はエラーをシグナルする。@ref{Dedicated
+Windows}を参照のこと。
+
+デフォルトではこの関数は指定されたバッファーのローカル変数にもとづいて@var{window}の位置、ディスプレイマージン、フリンジ幅、スクロールバーのセッティングをリセットする。しかしオプション引数@var{keep-margins}が非@code{nil}なら、@var{window}のディスプレイマージンおよびフリンジとスクロールバーのセッティングは未変更のままにする。
+
+アプリケーションを記述する際には直接@code{set-window-buffer}を呼び出すのではなく、通常は@code{display-buffer}
+(@ref{Choosing Window}を参照)や@ref{Switching Buffers}で説明する高レベルの関数を使用すること。
+
+これは@code{window-scroll-functions}の後に@code{window-configuration-change-hook}を実行する。@ref{Window
+Hooks}を参照のこと。
+@end defun
+
+@defvar buffer-display-count
+このバッファーローカル変数はウィンドウ内にバッファーが表示された回数を記録する。。これはそのバッファーにたいして@code{set-window-buffer}が呼び出されるたびに増分される
+@end defvar
+
+@defvar buffer-display-time
+このバッファーローカル変数はバッファーがウィンドウに最後に表示された時刻を記録する。バッファーが表示されたことがなければ@code{nil}をリターンする。これはそのバッファーにたいして@code{set-window-buffer}が呼び出されるたびに@code{current-time}がリターンする値により更新される(@ref{Time
+of Day}を参照)。
+@end defvar
+
+@defun get-buffer-window &optional buffer-or-name all-frames
+この関数はウィンドウのサイクル順内で選択されたウィンドウを起点に、@var{buffer-or-name}を表示する最初のウィンドウをリターンする(@ref{Cyclic
+Window Ordering}を参照)。そのようなウィンドウが存在しなければリターン値は@code{nil}。
+
+@var{buffer-or-name}はバッファーかバッファーの名前であること。省略または@code{nil}の場合のデフォルトはカレントバッファー。オプション引数@var{all-frames}には考慮するウィンドウを指定する。
+
+@itemize @bullet
+@item
+@code{t}はすべての既存フレーム上のウィンドウを考慮することを意味する。
+@item
+@code{visible}はすべての可視フレーム上のウィンドウを考慮することを意味する。
+@item
+0はすべての可視またはアイコン化されたフレーム上のウィンドウを考慮することを意味する。
+@item
+フレームを指定すると、そのフレーム上のウィンドウだけを考慮することを意味する。
+@item
+その他の値は選択されたフレーム上のウィンドウを考慮することを意味する。
+@end itemize
+
+これらの意味は@code{next-window}の@var{all-frames}引数の場合とは若干異なることに注意(@ref{Cyclic
+Window Ordering}を参照)。この不一致の解消のためにEmacsの将来のバージョンにおいて、この関数は変更されるかもしれない。
+@end defun
+
+@defun get-buffer-window-list &optional buffer-or-name minibuf all-frames
+この関数はその時点で@var{buffer-or-name}を表示している、すべてのウィンドウのリストをリターンする。@var{buffer-or-name}はバッファーまたは既存バッファーの名前であること。省略または@code{nil}の場合のデフォルトはカレントバッファー。カレントで選択されたウィンドウが@var{buffer-or-name}を表示していれば、それはこの関数がリターンするリストの先頭となる。
+
+引数@var{minibuf}と@var{all-frames}は、関数@code{next-window}の場合と同じ意味をもつ(@ref{Cyclic
+Window
+Ordering}を参照)。@var{all-frames}引数は、@code{get-buffer-window}の場合と正確に同じようには@emph{振る舞わない}ことに注意。
+@end defun
+
+@deffn Command replace-buffer-in-windows &optional buffer-or-name
+このコマンドは@var{buffer-or-name}を表示しているすべてのウィンドウで、それを他の何らかのバッファーに置き換える。@var{buffer-or-name}はバッファーまたは既存のバッファーの名前であること。省略または@code{nil}の場合のデフォルトはカレントバッファー。
+
+各ウィンドウで置き換えられるバッファーは@code{switch-to-prev-buffer}を通じて選択される(@ref{Window
+History}を参照)。@var{buffer-or-name}を表示している専用ウィンドウは可能ならすべて削除される(@ref{Dedicated
+Windows}を参照)。そのようなウィンドウがそのフレームで唯一のウィンドウで、かつ同一端末上に他のフレームが存在する場合には、そのフレームも同様に削除される。その端末上の唯一のフレームの唯一のウィンドウの場合は、いずれにせよそのバッファーは置き換えられる。
+@end deffn
+
+
+@node Switching Buffers
+@section ウィンドウ内のバッファーへの切り替え
+@cindex switching to a buffer
+
+このセクションでは、あるウィンドウ内で特定のバッファーにスイッチするための高レベルな関数について説明します。``バッファーをスイッチする''とは一般的に、(1)そのバッファーをあるウィンドウに表示して、(2)そのウィンドウを選択されたウィンドウとし(かつそのフレームを選択されたフレームとし)、(3)そのバッファーウィンドウカレントバッファーにすることを意味します。
+
+  Lispプログラムがアクセスや変更できるように、バッファーを一時的にカレントにするためにこれらの関数を@emph{使用しないでください}。これらはウィンドウヒストリー(@ref{Window
+History}を参照)の変更のような副作用をもつので、そのような方法での使用はユーザーを驚かせることになるでしょう。バッファーをLispで変更するためにカレントにしたければ@code{with-current-buffer}、@code{save-current-buffer}、@code{set-buffer}を使用してください。@ref{Current
+Buffer}を参照してください。
+
+@deffn Command switch-to-buffer buffer-or-name &optional norecord force-same-window
+このコマンドは選択されたウィンドウ内で@var{buffer-or-name}を表示して、それをカレントバッファーにしようと試みる。これはよくインタラクティブ(@kbd{C-x
+b}のバインディングで)に使用され、同様にLispプログラムでも使用される。リターン値はスイッチしたバッファー。
+
+@var{buffer-or-name}が@code{nil}の場合のデフォルトは@code{other-buffer}によりリターンされるバッファー(@ref{Buffer
+List}を参照)。@var{buffer-or-name}が既存のバッファーの名前でない文字列なら、この関数はその名前で新たにバッファーを作成する。新たなバッファーのメジャーモードは変数@code{major-mode}により決定される(@ref{Major
+Modes}を参照)。
+
+通常は指定されたバッファーはバッファーリスト ---
+グローバルバッファーリストと選択されたフレームのバッファーリストの両方の先頭に置かれる(@ref{Buffer
+List}を参照)。しかしオプション引数@var{norecord}が非@code{nil}なら、これは行われない。
+
+選択されたウィンドウにそのバッファーを表示することが不適切なこともあるだろう。これは選択されたウィンドウがミニバッファーウィンドウの場合、および選択されたウィンドウがそのバッファーに特に専用(@ref{Dedicated
+Windows}を参照)な場合に発生する。そのようなケースでは、このコマンドは@code{pop-to-buffer}
+(以下参照)を呼び出すことにより、通常は別のウィンドウにバッファーの表示を試みる。
+
+オプション引数@var{force-same-window}が非@code{nil}、かつ選択されたウィンドウがそのバッファーの表示に不適切なら、非インタラクティブに呼び出された際にはこの関数は常にエラーをシグナルする。インタクラクティブな使用においては、もし選択されたウィンドウがミニバッファーウィンドウなら、この関数はかわりに別のウィンドウの使用を試みる。選択されたウィンドウがそのバッファーにたいして特に専用なら、次に説明するオプション@code{switch-to-buffer-in-dedicated-window}が使用される。
+@end deffn
+
+@defopt switch-to-buffer-in-dedicated-window
+このオプションが非@code{nil}なら、@code{switch-to-buffer}がインタラクティブに呼び出されて、かつ選択されたウィンドウがそのバッファーに特に専用な際に、処理を先に進めることが許される、
+
+以下の値が許される:
+
+@table @code
+@item nil
+切り替えを許さず非インタラクティブな使用ではエラーをシグナルする。
+
+@item prompt
+切り替えを許すかどうかユーザーに確認を求める。
+
+@item pop
+処理を行うために@code{pop-to-buffer}を呼び出す。
+
+@item t
+選択されたウィンドウを非専用としてマークして処理を進める。
+@end table
+
+このオプションは非インタラクティブな@code{switch-to-buffer}の呼び出しには影響しない。
+@end defopt
+
+デフォルトでは@code{switch-to-buffer}はバッファーの@code{point}位置の維持を試みます。この振る舞いは以下のオプションを使用して調整できます。
+
+@defopt switch-to-buffer-preserve-window-point
+この変数が@code{nil}なら、@code{switch-to-buffer}は@var{buffer-or-name}により指定されたバッファーを、そのバッファーの@code{point}位置で表示する。この変数が@code{already-displayed}なら、そのバッファーが任意の可視またはアイコン化されたフレーム上の他のウィンドウで表示されていれば、選択されたウィンドウ内の以前の位置でバッファーの表示を試みる。この変数が@code{t}なら、@code{switch-to-buffer}は選択されたウィンドウ内の以前の位置でそのバッファーを表示しようと試みる。
+
+この変数はバッファーがすでに選択されたウィンドウに表示されている、これまで表示されたことがない、またはバッファーを表示するために@code{switch-to-buffer}が@code{pop-to-buffer}を呼び出した場合には無視される。
+@end defopt
+
+@defopt switch-to-buffer-obey-display-actions
+この変数が非@code{nil}なら@code{switch-to-buffer}は@code{display-buffer-overriding-action}や@code{display-buffer-alist}、およびその他の表示に関係する変数で指定されるディスプレイアクションにしたがいます。
+@end defopt
+
+以下の2つのコマンドは、説明している機能以外は@code{switch-to-buffer}と類似しています。
+
+@deffn Command switch-to-buffer-other-window buffer-or-name &optional norecord
+この関数は@var{buffer-or-name}で指定されたバッファーを、選択されたウィンドウ以外の別のウィンドウに表示する。これは関数@code{pop-to-buffer}(以下参照)を内部で使用する。
+
+選択されたウィンドウが指定されたバッファーをすでに表示していれば表示を続けるが、見つかった他のウィンドウも同様にそのバッファーを表示する。
+
+引数@var{buffer-or-name}と@var{norecord}は@code{switch-to-buffer}の場合と同じ意味をもつ。
+@end deffn
+
+@deffn Command switch-to-buffer-other-frame buffer-or-name &optional norecord
+この関数は@var{buffer-or-name}で指定されたバッファーを新たなフレームに表示する。これは関数@code{pop-to-buffer}
+(以下参照)を内部で使用する。
+
+指定されたバッファーがすでにカレント端末上の任意のフレームの他のウィンドウに表示されている場合には、フレームを新たに作成せずにそのウィンドウに切り替える。しかしこれを行うために選択されたウィンドウを使用することは決してない。
+
+引数@var{buffer-or-name}と@var{norecord}は@code{switch-to-buffer}の場合と同じ意味をもつ。
+@end deffn
+
+上述したコマンドは任意のウィンドウにバッファーを柔軟に表示して、編集用にそのウィンドウを選択する関数@code{pop-to-buffer}を使用しています。次に@code{pop-to-buffer}はバッファーの表示に@code{display-buffer}を使用します。したがって@code{display-buffer}に影響する変数も同様に影響します。@code{display-buffer}のドキュメントについては@ref{Choosing
+Window}を参照してください。
+
+@deffn Command pop-to-buffer buffer-or-name &optional action norecord
+この関数は@var{buffer-or-name}をカレントバッファーにして、なるべく選択されたウィンドウではないウィンドウにそれを表示する。そしてその後に表示しているウィンドウを選択する。そのウィンドウが別のグラフィカルなフレーム上にある場合には、可能ならそのフレームが入力フォーカスを与えられる(@ref{Input
+Focus}を参照)。
+
+@var{buffer-or-name}が@code{nil}の場合のデフォルトは@code{other-buffer}によりリターンされるバッファー(@ref{Buffer
+List}を参照)。@var{buffer-or-name}が既存のバッファーの名前でない文字列なら、この関数はその名前で新たにバッファーを作成する。新たなバッファーのメジャーモードは変数@code{major-mode}により決定される(@ref{Major
+Modes}を参照)。バッファーの表示に適したウィンドウが存在しなくても、すべてのケースにおいてそのバッファーがカレントになりリターンされる。
+
+@var{action}が非@code{nil}なら、それは@code{display-buffer}に渡すディスプレイアクション(display
+action)であること(@ref{Choosing
+Window}を参照)。非@code{nil}か非リスト値なら、たとえそのバッファーがすでに選択されたウィンドウに表示されていたとしても、選択されたウィンドウではなく別のウィンドウをポップ(pop)することを意味する。
+
+この関数は@code{switch-to-buffer}と同じように、@var{norecord}が@code{nil}ならバッファーリストを更新する。
+@end deffn
+
+
+@node Displaying Buffers
+@section 適切なウィンドウへのバッファーの表示
+@cindex buffer display
+@cindex displaying a buffer
+
+このセクションでは特定のバッファーの表示にたいしてEmacsが検索や作成に使用する低レベルの関数を説明します。これらの関数の共通点は、受け取ったすべてのバッファー表示要求を最終的に処理する@code{display-buffer}
+(@ref{Choosing Window}を参照)を主に用いるという点です。
+
+   @code{display-buffer}は適切なウィンドウを見つけるタスクを、いわゆるアクション関数に委譲します(@ref{Buffer
+Display Action Functions}を参照)。まず@code{display-buffer}は、いわゆるアクションalist
+(アクション関数が振る舞いを微調整するために使用可能な連想リスト)をコンパイルします。それから呼び出す関数それぞれにたいして、そのalistを渡します(@ref{Buffer
+Display Action Alists}を参照)。
+
+   @code{display-buffer}の動作は高度にカスタマイズ可能です。実際にカスタマイゼーションが使用される方法を理解するためには、@code{display-buffer}がアクション関数を呼び出す際に使用する優先順を示す例を学びたいと思うかもしれません(@ref{Precedence
+of Action
+Functions}を参照)。@code{display-buffer}を呼び出すLispプログラムや、@code{display-buffer}の動作にたいするユーザーのカスタマイズとの間の競合を避けるためには、このセクションの最後に示すいくつかのガイドラインにしたがうのが合理的かもしれません(@ref{The
+Zen of Buffer Display}を参照)。
+
+@menu
+* Choosing Window::          バッファーを表示するウィンドウの選択方法。
+* Buffer Display Action Functions::  バッファー表示用のサポート関数。
+* Buffer Display Action Alists::  バッファー表示微調整用のalist。
+* Choosing Window Options::  バッファー表示方法に影響する拡張オプション。
+* Precedence of Action Functions::  アクション関数の優先順の例。
+* The Zen of Buffer Display::  ウィンドウ間でバッファーが失われることを避けるには。
+@end menu
+
+
+@node Choosing Window
+@subsection バッファーを表示するウィンドウの選択
+
+コマンド@code{display-buffer}は表示のために柔軟にウィンドウを選択して、そのウィンドウ内に指定されたバッファーを表示します。これはキーバインディング@kbd{C-x
+4
+C-o}を通じてインタラクティブに呼び出すことができます。また@code{switch-to-buffer}や@code{pop-to-buffer}を含む多くの関数やコマンドにからサブルーチンとしても使用されます(@ref{Switching
+Buffers}を参照)。
+
+@cindex buffer display display action
+@cindex display action
+  このコマンドはウィンドウ内に表示するウィンドウを探すために、いくつかの複雑なステップを実行します。これらのステップは@dfn{ディスプレイアクション(display
+actions)}を用いて記述されます。ディスプレイアクションは@code{(@var{functions}
+.
+@var{alist})}という形式をもちます。ここで@var{functions}は``アクション関数''と呼ばれる単一の関数か関数のリスト(@ref{Buffer
+Display Action
+Functions}を参照)、@var{alist}は``アクションalist''と呼ばれる連想リストです(@ref{Buffer Display
+Action Alists}を参照)。ディスプレイ表示の例については@ref{The Zen of Buffer Display}を参照してください。
+
+  アクション関数は、表示するバッファーと、アクションalistという、2つの引数を受け取ります。これは、自身の条件にしたがってウィンドウウィンドウ選択、または作成して、バッファーをウィンドウ内に表示します。成功した場合はそのウィンドウ、それ以外は@code{nil}をリターンします。
+
+  @code{display-buffer}は複数ソースからのディスプレイアクションを組み合わせて、アクション関数のいずれか1つがバッファーの表示を管理して非@code{nil}値をリターンするまでアクション関数を順に呼び出します。
+
+@deffn Command display-buffer buffer-or-name &optional action frame
+このコマンドは、ウィンドウウィンドウ選択したり、そのバッファーをカレントにすることなく、@var{buffer-or-name}をウィンドウに表示させる。引数@var{buffer-or-name}はバッファー、または既存のバッファーの名前でなければならない。リターン値はバッファーを表示するために選ばれたウィンドウ、適切なウィンドウが見つからなければ@code{nil}。
+
+オプション引数@var{action}が非@code{nil}なら、それは通常はディスプレイアクション(上述)であること。@code{display-buffer}は以下のソース(優先度の高位順)からディスプレイアクションを集約してアクション関数リストとアクションalistを構築する:
+
+@itemize
+@item
+変数@code{display-buffer-overriding-action}。
+
+@item
+ユーザーオプション@code{display-buffer-alist}。
+
+@item
+@var{action}引数。
+
+@item
+ユーザーオプション@code{display-buffer-base-action}。
+
+@item
+定数@code{display-buffer-fallback-action}。
+@end itemize
+
+@noindent
+実際のところは、これらのディプレイアクションにより指定されるアクション関数すべてのリストを@code{display-buffer}が構築することを意味する。このリストの最初の要素は(もしあれば)
+@code{display-buffer-overriding-action}が指定する最初のアクション関数。@code{display-buffer-pop-up-frame}の最後の要素は@code{display-buffer-fallback-action}が指定する最後のアクション関数。このリストから重複要素は削除されないので、1回の@code{display-buffer}呼び出しの間に同一のアクション関数が複数回呼び出されるかもしれない。
+
+@code{display-buffer}はバッファーを1つ目の引数、組み合わされたalistを2つ目の引数として、いずれかの関数が非@code{nil}をリターンするまで、このリスト内で指定されたアクション関数を順に呼び出す。異なるソースから指定されたディスプレイアクションを@code{display-buffer}がどのように処理するかの例は@ref{Precedence
+of Action Functions}を参照のこと。
+
+2つ目の引数は常に、上記に挙げたソースが指定する@emph{すべて}のアクションalistエントリーのリストであることに注意。したがってこのリストの最初の要素は(もしあれば)
+@code{display-buffer-overriding-action}が指定する最初のアクションalistエントリー、最後の要素はもしあれば(@code{display-buffer-fallback-action}のアクションalistが空)
+@code{display-buffer-base-action}の最後のalistエントリーとなる。
+
+組み合わされたアクションalistは重複したエントリーを含むかもしれず、同じキーにたするエントリーが異なる値をもつかもしれないことにも注意。アクション関数はルールとして見つかった最初のキーの連想値を常に使用する。したがってアクション関数の連想値が、そのアクション関数が指定するディスプレイアクションにより提供される連想値を使用する必要はない。
+
+引数@var{action}には非@code{nil}の非list値も指定できる。これはたとえ選択されたウィンドウがすでにそのバッファーを表示していても、選択されたウィンドウではない別のウィンドウにバッファーが表示されるべきという特別な意味をもつ。プレフィックス引数とともにインタラクティブに呼び出された場合には、@var{action}は@code{t}である。Lispプログラムは常にリス値を提供すること。
+
+オプション引数@var{frame}が非@code{nil}の場合は、そのバッファーがすでに表示されているか判断する際、どのフレームをチェックするかを指定する。これは@var{action}のアクションalistに要素@w{@code{(reusable-frames
+. @var{frame})}}を追加するのと等価(@ref{Buffer Display Action
+Alists}を参照)。@var{frame}は互換性のために提供される引数であり、Lispプログラムが使用するべきではない。
+@end deffn
+
+@defvar display-buffer-overriding-action
+この変数の値は@code{display-buffer}により最高の優先順で扱われるディスプレイアクションであること。デフォルト値は空のディスプレイアクション(つまり@w{@code{(nil
+. nil)}})。
+@end defvar
+
+@defopt display-buffer-alist
+このオプションの値はディスプレイアクションにコンディション(condition:
+状態)をマップするalist。コンディションはそれぞれバッファー名にマッチする正規表現、または2つの引数をとる関数であり、引数はバッファー名と@code{display-buffer}に渡す@var{action}引数。@code{display-buffer}に渡されたバッファー名がこのalist内の正規表現にマッチするか、あるいはコンディションで指定された関数が非@code{nil}をリターンした場合には、@code{display-buffer}はバッファーを表示すために対応するディスプレイアクションを使用する。
+@end defopt
+
+@defopt display-buffer-base-action
+このオプションの値はディスプレイアクションであること。このオプションは@code{display-buffer}呼び出しにたいする標準のディスプレイアクションを定義するために使用できる。
+@end defopt
+
+@defvr Constant display-buffer-fallback-action
+このディスプレイアクションは@code{display-buffer}にたいして、他のディスプレイアクションが与えられなかった場合の代替え処理を指定する。
+@end defvr
+
+
+@node Buffer Display Action Functions
+@subsection バッファー表示用のアクション関数
+@cindex buffer display action function
+@cindex action function, for buffer display
+
+@dfn{アクション関数(action
+function)}とはバッファーを表示するウィンドウを選択するために@code{display-buffer}が呼び出す関数です。アクション関数は@var{buffer}
+(表示するバッファー)、および@var{alist} (アクションalist、@ref{Buffer Display Action
+Alists}を参照)という2つの引数を受け取ります。これらの関数は成功時には@var{buffer}を表示するウィンドウ、失敗時には@code{nil}をリターンします。
+
+   以下の基本的なアクション関数がEmacsで定義されています。
+
+@defun display-buffer-same-window buffer alist
+この関数は選択されたウィンドウ内に@var{buffer}の表示を試みる。選択されたウィンドウがミニバッファーウィンドウや他のバッファー専用(@ref{Dedicated
+Windows}を参照)の場合には失敗する。@var{alist}に非@code{nil}の@code{inhibit-same-window}エントリーがある場合にも失敗する。
+@end defun
+
+@defun display-buffer-reuse-window buffer alist
+この関数はすでに@var{buffer}を表示しているウィンドウを探すことによりバッファーの表示を試みる。選択されたフレーム上のウィンドウは別フレーム上のウィンドウより優先される。
+
+@var{alist}に非@code{nil}の@code{inhibit-same-window}エントリーがある場合には、選択されたウィンドウは再利用に適さない。@var{buffer}をすでに表示しているウィンドウを検索するフレームセットは、アクションalistの@code{reusable-frames}エントリーで指定できる。@var{alist}に@code{reusable-frames}エントリーが含まれる場合には、この関数は選択されたフレームだけを検索する。
+
+この関数が他のフレーム上のウィンドウを選択した場合には、そのフレームを可視にするとともに、@var{alist}が@code{inhibit-switch-frame}エントリーを含んでいなければ、必要ならそのフレームを最前面に移動(raise)する。
+@end defun
+
+@defun display-buffer-reuse-mode-window buffer alist
+この関数は与えられたモードですでに@var{buffer}を表示しているウィンドウを探すことによりバッファーの表示を試みる。
+
+If @var{alist} contains a @code{mode} entry, its value specifies a major
+mode (a symbol) or a list of major modes.  If @var{alist} contains no
+@code{mode} entry, the current major mode of @var{buffer} is used instead.
+A window is a candidate if it displays a buffer whose mode derives from one
+of the modes specified thusly.
+
+@code{display-buffer-reuse-window}のように関数の挙動は@code{inhibit-same-window}、@code{reusable-frames}、@code{inhibit-switch-frame}にたいする@var{alist}エントリーによっても制御される。
+@end defun
+
+@defun display-buffer-pop-up-window buffer alist
+この関数は、最大もしくはもっとも長い間参照されていないウィンドウ(通常は選択されたフレームに配置されている)を分割することにより@var{buffer}の表示を試みる。これは実際には、@code{split-window-preferred-function}
+(@ref{Choosing Window Options}を参照)内で指定された関数を呼び出すことにより分割を行う。
+
+新たなウィンドウのサイズは@var{alist}にエントリー@code{window-height}と@code{window-width}を与えることにより調整できる。@var{alist}に@code{preserve-size}エントリーが含まれていれば、Emacsは将来のリサイズ操作の間に新たなウィンドウのサイズの維持も試みる(@ref{Preserving
+Window Sizes}を参照)。
+
+この関数は分割可能なウィンドウがなければ失敗する。これの多くは、分割を許容するのに十分大きいウィンドウがない場合に発生する。この問題にたいしては@code{split-height-threshold}や@code{split-width-threshold}に小さい値をセットすることが助けになるかもしれない。選択されたフレームがフレームパラメーター@code{unsplittable}をもつ場合にも分割は失敗する。@ref{Buffer
+Parameters}を参照のこと。
+@end defun
+
+@defun display-buffer-in-previous-window buffer alist
+この関数は@var{buffer}を以前に表示したウィンドウに@var{buffer}の表示を試みる。
+
+@var{alist}に非@code{nil}の@code{inhibit-same-window}エントリーが含まれる場合には、選択されたウィンドウは使用に適さない。専用ウィンドウ()dedicated
+windowは、すでに@var{buffer}を表示済みの場合のみ使用可能。@var{alist}に@code{previous-window}エントリーが含まれる場合には、そのエントリーで指定されるウィンドウが以前に@var{buffer}を表示したことがなくても、そのウィンドウが使用される。
+
+@var{alist}に@code{reusable-frames}エントリー(@ref{Buffer Display Action
+Alists}を参照)が含まれる場合には、その値が適切なウィンドウを検索するフレームを決定する。この関数は@var{alist}に@code{reusable-frames}エントリーが含まれず、@code{display-buffer-reuse-frames}と@code{pop-up-frames}がいずれも@code{nil}なら選択されたフレームのみ、いずれかが非@code{nil}ならカレント端末上のすべてのフレームを検索する。
+
+これらのルールに照らして1つ以上のウィンドウが使用に適している場合には、この関数は以下の優先順にしたがって選択を行う:
+
+@itemize @bullet
+@item
+@var{alist}の@code{previous-window}エントリーで指定されるウィンドウが選択されたウィンドウでなければそのウィンドウ。
+
+@item
+以前に@var{buffer}を表示していたウィンドウが選択されたウィンドウでなければそのウィンドウ。
+
+@item
+@var{alist}の@code{previous-window}エントリーで指定されているか、あるいは以前に@var{buffer}を表示していれば選択されたウィンドウ。
+@end itemize
+@end defun
+
+@defun display-buffer-use-some-window buffer alist
+この関数は既存のウィンドウを選択して、そのウィンドウ内に@var{buffer}を表示することによりバッファーの表示を試みる。すべてのウィンドウが他のバッファー専用の場合には、この関数は失敗する可能性がある(@ref{Dedicated
+Windows}を参照)。
+@end defun
+
+@defun display-buffer-use-least-recent-window buffer alist
+この関数は@code{display-buffer-use-some-window}と同様だが、カレントウィンドウを再利用せず、もっとも長い間切り替えられていないウィンドウを使用する。
+@end defun
+
+@defun display-buffer-in-direction buffer alist
+この関数は@var{alist}で指定した位置で@var{buffer}の表示を試みる。この目的のために、@var{alist}には値が@code{left}、@code{above}
+(か@code{up})、@code{right}、@code{below}
+(か@code{down})のいずれかであるような@code{direction}エントリーを含めること。それ以外の値は通常は@code{below}と解釈される。
+
+@var{alist}に@code{window}エントリーも含まれている場合には、その値は参照ウィンドウを指定する。値には選択されたフレームのメインウィンドウ(@ref{Side
+Window Options and
+Functions}を参照)を意味する@code{main}、選択されたフレームのルートウィンドウ(@ref{Windows and
+Frames}を参照)を意味する@code{root}のような特別なシンボルを指定できる。任意の有効なウィンドウの指定も可能。それ以外の値(または@code{window}エントリーを完全に省略)は参照ウィンドウとして選択されたウィンドウを使用することを意味する。
+
+この関数は、指定方向でずすでに@var{buffer}を表示しているウィンドウの再利用を試みる。そのようなウィンドウが存在しなければ、指定方向に新たなウィンドウを生成するために参照ウィンドウの分割を試みる。これも同様に失敗したら指定方向にある既存ウィンドウに@var{buffer}の表示を試みる。いずれの場合でも@code{direction}エントリーで指定された参照ウィンドウ側に、少なくとも1辺を参照ウィンドウと共有したウィンドウが選ばれることになる。
+
+参照ウィンドウが生きたウィンドウなら、選択されるウィンドウのエッジは@code{direction}エントリーで指定された方向と反対側が共有される。たとえば@code{direction}エントリーの値が@code{left}なら、選択されるウィンドウの右エッジ座標は、参照ウィンドウの左エッジ座標と等しくなる(@ref{Coordinates
+and Windows}を参照)。
+
+参照ウィンドウが内部ウィンドウなら、再利用されるウィンドウは@code{direction}エントリーで指定されるエッジが共有されなければならない。したがって、たとえば参照ウィンドウがフレームのルートウィンフォウ、@code{direction}エントリーの値が@code{left}なら、再利用されるウィンドウはフレムの左側でなければならない。これは選択されるウィンドウと参照ウィンドウの左エッジ座標が等しいことを意味する。
+
+しかし新たなウィンドウは選択したウィンドウが参照ウィンドウの反対側エッジを共有するように参照ウィンドウを分割して作成される。上記の例では参照ウィンドウを子ウィンドウとして、新たな生きたウィンドウと共にルートウィンドウが新たに作成される。選択されたウィンドウの右エッジ座標は、参照ウィンドウの左エッジ座標、左エッジ座標はフレームのルートウィンドウの左エッジ座標と等しくなる。
+
+@code{direction}エントリーにたいする特別な4つの値@code{leftmost}、@code{top}、@code{rightmost}、@code{bottom}では参照ウィンドウとして選択されたフレームのメインウィンドウを暗黙に指定できる。これはたとえば@w{@code{(direction
+. left)  (window . main)}}のかわりに、単に@w{@code{(direction
+.
+leftmost)}}と指定することができることを意味する。このような場合では@var{alist}の既存の@code{window}エントリーは無視される。
+@end defun
+
+@defun display-buffer-below-selected buffer alist
+この関数は選択されたウィンドウの下のウィンドウ内に@var{buffer}の表示を試みる。選択されたウィンドウの下にすでにそのバッファーを表示するウィンドウがあれば、そのウィンドウを再利用する。
+
+そのようなウィンドウが存在しなければ、この関数は選択されたウィンドウを分割することにより新たなウィンドウを作成して@var{buffer}の表示を試みる。@var{alist}に適切な@code{window-height}か@code{window-width}のエントリーが含まれていれば、ウィンドウのサイズ調整も試みる(上記参照)。
+
+選択されたウィンドウの分割に失敗、かつ選択されたウィンドウの下に別のバッファーを表示中の非専用ウィンドウがある場合には、この関数は@var{buffer}の表示にそのウィンドウの使用を試みる。
+
+@var{alist}に@code{window-min-height}エントリーが含まれていると、この関数は少なくとも使用するウィンドウの高さがこのエントリーで指定された値になることを保証する。これは単なる保証であることに注意。使用するウィンドウを実際にリサイズするためには、@var{alist}で適切な@code{window-height}エントリーも提供しなければならない。
+@end defun
+
+@defun display-buffer-at-bottom buffer alist
+この関数は選択されたフレームの最下にあるウィンドウ内に@var{buffer}の表示を試みる。
+
+これはフレーム最下のウィンドウまたはフレームのルートウィンドウを分割、または選択されたフレーム最下の既存ウィンドウを試みる。
+@end defun
+
+@defun display-buffer-pop-up-frame buffer alist
+この関数は新たにフレームを作成して、そのフレームのウィンドウ内にバッファーを表示する。これは実際には@code{pop-up-frame-function}
+(@ref{Choosing Window
+Options}を参照)内で指定された関数を呼び出すことによりフレーム作成の処理を行う。@var{alist}が@code{pop-up-frame-parameters}エントリーを含む場合には、その連想値(associated
+value)が新たに作成されたフレームのパラメーターに追加される。
+@end defun
+
+@defun display-buffer-in-child-frame buffer alist
+この関数は選択されたフレームの既存の子フレーム、または子フレームを新たに作成して@var{buffer}の表示を試みる(@ref{Child
+Frames}を参照)。@var{alist}に非@code{nil}の@code{child-frame-parameters}エントリーがあれば、対応する値が新たなフレームのフレームパラメーターのalistとして与えられる。デフォルトとして選択されたフレームを指定する@code{parent-frame}パラメーターが提供される。その子フレームが別のフレームの子になる場合には、対応するエントリーを@var{alist}に追加しなければならない。
+
+子フレームの外観は@var{alist}を通じて提供されるパラメーターに大きく依存する。子フレームが可視のままでいることを保証するために、少なくとも子フレームのサイズ(@ref{Size
+Parameters}を参照)と位置(@ref{Position
+Parameters}を参照)を指定して比率(ratio)を使用すること、および@code{keep-ratio}パラメーター(@ref{Frame
+Interaction Parameters}を参照)の追加を推奨する。他に考慮すべきパラメーターについては@ref{Child
+Frames}を参照のこと。
+@end defun
+
+@defun display-buffer-use-some-frame buffer alist
+この関数は述語を満足するフレーム(デフォルトは選択されたフレーム以外のフレーム)を探して@var{buffer}の表示を試みる。
+
+この関数が他のフレーム上のウィンドウを選択した場合には、そのフレームを可視にするとともに、@var{alist}が@code{inhibit-switch-frame}エントリーを含んでいなければ、必要ならそのフレームを最前面に移動(raise)する。
+
+@var{alist}に非@code{nil}の@code{frame-predicate}エントリーがあれば、その値は1つの引数(フレーム)を受け取ってそのフレームが候補なら非@code{nil}をリターンする、デフォルトの述語を置き換える関数。
+
+@var{alist}に非@code{nil}の@code{inhibit-same-window}エントリーがある場合には選択されたウィンドウは使用しない。したがって選択されたフレームに単一のウィンドウしかなければ使用しない。
+@end defun
+
+@defun display-buffer-no-window buffer alist
+この関数は@var{alist}に非@code{nil}の@code{allow-no-window}エントリーがあれば@var{buffer}を表示せずにシンボル@code{fail}をリターンする。この構成はアクション関数が@code{nil}か@var{buffer}を表示するウィンドウをリターンするという慣習の唯一の例外である。@var{alist}にそのような@code{allow-no-window}エントリーがなければ、この関数は@code{nil}をリターンする。
+
+この関数が@code{fail}をリターンした場合には、@code{display-buffer}はそれ委譲のディスプレイアクションをスキップして即座に@code{nil}をリターンする。この関数が@code{nil}をリターンした場合には、@code{display-buffer}はもしあれば次のディスプレイアクションを継続する。
+
+@code{display-buffer}の呼び出し側が非@code{nil}の@code{allow-no-window}エントリーを指定した場合には、@code{nil}のリターン値の処理も可能とみなされる。
+@end defun
+
+他の2つのアクション関数@code{display-buffer-in-side-window}と@code{display-buffer-in-atom-window}については、それぞれ適正なセクションで説明します(@ref{Displaying
+Buffers in Side Windows}と@ref{Atomic Windows}を参照)。
+
+
+@node Buffer Display Action Alists
+@subsection バッファー表示用のアクションalist
+@cindex buffer display action alist
+@cindex action alist for buffer display
+
+@dfn{アクションalist(action
+alist)}とはアクション関数が認識可能な事前定義されたシンボルと、それに応じてそれらの関数が解釈することを意図した値をマップする連想リストです。各呼び出しにおいて@code{display-buffer}は新たなアクションalist(空の場合もある)を作成して、呼び出すすべてのアクション関数にそのリスト全体を渡します。
+
+   仕様によりアクション関数はアクションalist全体を自由に解釈できます。実際のところ@code{allow-no-window}や@code{previous-window}のようないくつかのエントリーはいくつかのアクション関数によってのみ意味があり、他のアクション関数では無視されます。それ以外の@code{inhibit-same-window}や@code{window-parameters}のようなエントリーは、アプシケーションプログラムや外部パッケージから提供されるものも含めて、ほとんどのアクション関数がしたがいます。
+
+   前のサブセクションでは、個別のアクション関数がアクションエントリーを処理する方法の詳細を説明しました。ここでは既知のアクションalistエントリーに対応するすべてのシンボル、およびそれらの値とそれらを認識するアクション関数(@ref{Buffer
+Display Action
+Functions}を参照)とともに示すリファレンスリストを提供します。このリストにおいて用語``バッファー''は@code{display-buffer}が表示しようとするバッファー、``値''はそのエントリーの値を意味しています。
+
+@table @code
+@vindex inhibit-same-window@r{, a buffer display action alist entry}
+@item inhibit-same-window
+値が非@code{nil}なら、バッファーの表示に選択されたウィンドウを使用してはならないことを告げる。既存のウィンドウを(再)使用するすべてのアクション関数は、このエントリーにしたがう必要がある。
+
+@vindex previous-window@r{, a buffer display action alist entry}
+@item previous-window
+値には以前にバッファーを表示した可能性のあるウィンドウを指定しなければならない。そのようなウィンドウがまだ生きていて他のバッファー専用でなれば、@code{display-buffer-in-previous-window}はそのウィンドウを優先する。
+
+@vindex mode@r{, a buffer display action alist entry}
+@item mode
+値はメジャーモードかメジャーモードのリスト。このエントリーが指定する値がウィンドウのバッファーのメジャーモードにマッチすれば、@code{display-buffer-reuse-mode-window}は常にそのウィンドウを再利用する。これ以外のアクション関数はこのエントリーを無視する。
+
+@vindex frame-predicate@r{, a buffer display action alist entry}
+@item frame-predicate
+値はのそのフレームがバッファーを表示する候補なら非@code{nil}をリターンする単一の引数(フレーム)を受け取る関数でなければならない。このエントリーは@code{display-buffer-use-some-frame}が使用する。
+
+@vindex reusable-frames@r{, a buffer display action alist entry}
+@item reusable-frames
+値はバッファーをすでに表示していたことにより再利用可能なウィンドウを検索するためのフレームセットを指定する。以下をセット可能:
+
+@itemize @bullet
+@item
+@code{nil}は選択されたフレーム(実際にはミニバッファーフレーム以外の最後に使用されたフレーム)上のウィンドウだけを考慮することを意味する。
+@item
+@code{t}はすべてのフレーム上のウィンドウを考慮することを意味する。
+@item
+@code{visible}はすべての可視フレーム上のウィンドウを考慮することを意味する。
+@item
+0はすべての可視またはアイコン化されたフレーム上のウィンドウを考慮することを意味する。
+@item
+フレームを指定すると、そのフレーム上のウィンドウだけを考慮することを意味する。
+@end itemize
+
+@code{nil}の意味は@code{next-window}にたいする@var{all-frames}引数の場合の意味とは若干異なることに注意(@ref{Cyclic
+Window Ordering}を参照)。
+
+これの主要クライアントは@code{display-buffer-reuse-window}だが、ウィンドウの再利用を試みる他のすべてのアクション関数も同様に影響を受ける。@code{display-buffer-in-previous-window}はバッファーを以前に表示していたウィンドウを別フレーム上で検索する際にこれを参照する。
+
+@vindex inhibit-switch-frame@r{, a buffer display action alist entry}
+@item inhibit-switch-frame
+非@code{nil}値の場合には、@code{display-buffer}により選択されたウィンドウがすでに表示されていれば別のフレームのraiseや選択を抑制する。これにより主に影響を受けるのは@code{display-buffer-use-some-frame}と@code{display-buffer-reuse-window}。同様に@code{display-buffer-pop-up-frame}も影響を受けるべきだが、ウィンドウマネージャーがこれに準拠する保証はない。
+
+@vindex window-parameters@r{, a buffer display action alist entry}
+@item window-parameters
+値は選択したウィンドウに与えるウィンドウパラメーターのalist。ウィンドウを選択するすべてのアクション関数は、このエントリーを処理する必要がある。
+
+@vindex window-min-height@r{, a buffer display action alist entry}
+@item window-min-height
+値は使用するウィンドウの最小高さを行数で指定する。ウィンドウの高さがこのエントリーで指定した高さではない、あるいはできなければウィンドウの使用を考慮しない。このエントリーのクライアントは現在のところ@code{display-buffer-below-selected}のみ。
+
+このようなエントリーを単独で提供しても、ウィンドウがその値で指定した高さになるとは限らないことに注意。既存ウィンドウを実際にリサイズしたり新たなウィンドウの高さを指定した値にするためには、同様にこの値を指定する@code{window-height}エントリーを提供する必要がある。しかしこのような@code{window-height}エントリーでまったく異なる値を指定したり、ウィンドウ高さをバッファーにフィットするように要請することができる。そのような場合には@code{window-min-height}使用するウィンドウの最小高さにたいする保証を与える。
+
+@vindex window-height@r{, a buffer display action alist entry}
+@item window-height
+値は選択したウィンドウの高さを調節するかとその方法を指定する。以下のいずれか:
+
+@itemize @bullet
+@item
+@code{nil}は選択したウィンドウの高さを変更しないことを意味する。
+
+@item
+整数値は選択したウィンドウの望ましい高さを行数で指定する。
+
+@item
+浮動小数点値は選択したウィンドウの望ましい高さをフレームのルートウィンドウのトータル高さにたいする比率で指定する。
+
+@item
+値が関数を指定する場合には、その関数は選択したウィンドウを引数として呼び出される関数。この関数はそのウィンドウの高さを調整することを期待されておりリターン値は無視される。これに適した関数は@code{shrink-window-if-larger-than-buffer}と@code{fit-window-to-buffer}。@ref{Resizing
+Windows}を参照のこと。
+@end itemize
+
+慣例により選択したウィンドウの高さは、そのウィンドウが垂直コンビネーション(@ref{Windows and
+Frames}を参照)の一部であり、他の無関係のウィンドウの高さの変更を避ける場合のみ調整される。さらにこのエントリーはこのリストの後に指定する特定の条件下でのみ処理される必要がある。
+
+@vindex window-width@r{, a buffer display action alist entry}
+@item window-width
+これは上述の@code{window-height}と同様だが、かわりに選択したウィンドウの幅の調節に使用される。値は以下のいずれか:
+
+@itemize @bullet
+@item
+@code{nil}は選択したウィンドウの幅を変更しないことを意味する。
+
+@item
+整数値は選択したウィンドウの望ましい幅を列数で指定する。
+
+@item
+浮動小数点値は選択したウィンドウの望ましい幅をフレームのルートウィンドウのトータル幅にたいする比率で指定する。
+
+@item
+値が関数を指定する場合には、その関数は選択したウィンドウを引数として呼び出される関数。この関数はそのウィンドウの高さを調整することを期待されておりリターン値は無視される。
+@end itemize
+
+慣例により選択したウィンドウの幅は、そのウィンドウが水平コンビネーション(@ref{Windows and
+Frames}を参照)の一部であり、他の無関係のウィンドウの幅の変更を避ける場合のみ調整される。さらにこのエントリーはこのリストの後に指定する特定の条件下でのみ処理される必要がある。
+
+@vindex dedicated@r{, a buffer display action alist entry}
+@item dedicated
+このようなエントリーが非@code{nil}なら、@code{display-buffer}は作成するすべてのウィンドウをそのバッファー専用であるとマークする(@ref{Dedicated
+Windows}を参照)。これは最初の引数に選択したウィンドウ、2つ目の引数にエントリーの値を指定して@code{set-window-dedicated-p}を呼び出すことにより行われる。
+
+@vindex preserve-size@r{, a buffer display action alist entry}
+@item preserve-size
+このようなエントリーが非@code{nil}なら、選択したウィンドウのサイズを維持するようにEmacsに指示する(@ref{Preserving
+Window Sizes}を参照)。値は@w{@code{(t . nil)}} (ウィンドウの幅を維持)、@w{@code{(nil . t)}}
+(高さを維持)、または@w{@code{(t . t)}}
+(幅と高さの両方を維持)のいずれか。このエントリーはこのリストの後に指定する特定の条件下でのみ処理される必要がある。
+
+@vindex pop-up-frame-parameters@r{, a buffer display action alist entry}
+@item pop-up-frame-parameters
+この値は新たにフレームが作成された場合に与えるフレームパラメーターのalist。@code{display-buffer-pop-up-frame}がけが参照する。
+
+@vindex parent-frame@r{, a buffer display action alist entry}
+@item parent-frame
+値は子フレームにバッファーを表示時に使用する親フレームを指定する。このエントリーを使用するのは@code{display-buffer-in-child-frame}のみ。
+
+@vindex child-frame-parameters@r{, a buffer display action alist entry}
+@item child-frame-parameters
+値は子フレームにバッファー表示時に使用するフレームパラメーターのalistを指定する。このエントリーを使用するのは@code{display-buffer-in-child-frame}のみ。
+
+@vindex side@r{, a buffer display action alist entry}
+@item side
+値はバッファーを表示する新たなウィンドウを、フレームやバッファーのどのサイドに作成するかを示す。このエントリーは新たなサイドウィンドウをフレームのどのサイドに配置するかを示すために@code{display-buffer-in-side-window}が使用する(@ref{Displaying
+Buffers in Side
+Windows}を参照)。さらに新たなサイドウィンドウを既存ウィンドウのどのサイドに配置するかを示すために@code{display-buffer-in-atom-window}にも使用される(@ref{Atomic
+Windows}を参照)。
+
+@vindex slot@r{, a buffer display action alist entry}
+@item slot
+値が非@code{nil}ならバッファーを表示するサイドウィンドウのスロットを指定する。このエントリーを使用するのは@code{display-buffer-in-side-window}のみ。
+
+@vindex direction@r{, a buffer display action alist entry}
+@item direction
+この値は@code{window}エントリーとともに、@code{display-buffer-in-direction}がバッファーを表示するウィンドウ位置を決定するための方向を指定する。
+
+@vindex window@r{, a buffer display action alist entry}
+@item window
+値は@code{display-buffer}で選択されたウィンドウと何らかの関連があるウィンドウを指定する。このエントリーは現在のところ新たなウィンドウが作成されるサイドのウィンドウを示すために@code{display-buffer-in-atom-window}が使用する。これは結果のウィンドウが出現する側の参照ウィンドウを指定するために@code{display-buffer-in-direction}も使用する。
+
+@vindex allow-no-window@r{, a buffer display action alist entry}
+@item allow-no-window
+値が非@code{nil}なら@code{display-buffer}は必ずしもバッファーを表示する必要はなく、呼び出し側はそれを受け入れる準備がある。@code{display-buffer}の任意の呼び出し手がバッファーを表示するウィンドウが存在しないケースを処理できる保証がないので、、このエントリーはユーザーのカスタマイゼーションを意図したものではない。このエントリーを考慮するアクション関数は@code{display-buffer-no-window}のみ。
+
+@vindex body-function@r{, a buffer display action alist entry}
+@item body-function
+値は1つの引数(表示されるウィンドウ)を受け取る関数でなければならない。この関数は表示されるウィンドウのサイズに応じて、表示されるウィンドウのbodyを何らかのコンテンツで充填するために使用できるかもしれない。これはバッファー表示の@emph{後}、かつ挿入したコンテンツに適合するようにリサイズを適用できる@code{window-height}、@code{window-width}、@code{preserve-size}の開始の@emph{前}に呼び出される。
+@end table
+
+慣例によりエントリー@code{window-height}、@code{window-width}、@code{preserve-size}は選択したウィンドウのバッファーのセットアップ後、かつそのウィンドウが以前に他のバッファーを表示していない場合のみ適用されます。後者はより正確にはカレントの@code{display-buffer}呼び出しによりウィンドウが作成されたか、以前にそのバッファーを表示するために@code{display-buffer}によりウィンドウが作成されて、カレントの@code{display-buffer}呼び出しによる再利用まで他のバッファーの表示に使用されたことがないことを意味します。
+
+
+@node Choosing Window Options
+@subsection バッファー表示の追加オプション
+
+以下のユーザーオプションでバッファーのディスプレイアクション(@ref{Choosing
+Window}を参照)の振る舞いをさらに変更することができます。
+
+@defopt pop-up-windows
+この変数の値が非@code{nil}なら、@code{display-buffer}は表示のために既存のバッファーを分割して新たなウィンドウを作成できる。
+
+この変数は後方互換のためだけに提供される。このオプションの値が非@code{nil}のときはアクション関数@code{display-buffer-pop-up-window}
+(@ref{Buffer Display Action
+Functions}を参照)を呼び出すだけの@code{display-buffer-fallback-action}内の特別なメカニズムを経由して@code{display-buffer}にしたがう。この変数は@code{display-buffer-alist}等により直接指定できる@code{display-buffer-pop-up-window}自体からは参照されない。
+@end defopt
+
+@defopt split-window-preferred-function
+この変数は、バッファーを表示する新たなウィンドウを作成するための、ウィンドウを分割する関数を指定する。これは、実際にウィンドウを分割するために、アクション関数@code{display-buffer-pop-up-window}により使用される。
+
+値はウィンドウを単一の引数とする関数でなければならず、(要求されたバッファーを表示するために使用される)新たなウィンドウ、または@code{nil}
+(分割の失敗を意味する)をリターンしなければならない。デフォルト値は@code{split-window-sensibly} (次に説明)。
+@end defopt
+
+@defun split-window-sensibly &optional window
+この関数は@var{window}を分割して新たに作成したウィンドウをリターンする。@var{window}を分割できなければ@code{nil}をリターンする。@var{window}が省略か@code{nil}の場合のデフォルトは選択されたウィンドウ。
+
+この関数はウィンドウが分割できるかどうか判断する際の通常のルールにしたがう(@ref{Splitting
+Windows}を参照)。最初にまず@code{split-height-threshold}(以下参照)、およびその他が課す制約の元で新たなウィンドウが下になるように分割を試みる。これが失敗したら@code{split-width-threshold}(以下参照)が課す制約の元で新たなウィンドウが右になるように分割を試みる。これも失敗して、かつそのウィンドウがそのフレームの唯一のウィンドウなら、この関数は@code{split-height-threshold}を無視して新たなウィンドウが下になるように再度分割を試みる。これも同様に失敗したら、この関数は諦めて@code{nil}をリターンする。
+@end defun
+
+@defopt split-height-threshold
+この変数は@code{split-window-sensibly}がウィンドウを分割して新たなウィンドウを下に配置できるかどうかを指定する。整数なら元のウィンドウが最低でもその行数なければ分割しないことを意味する。@code{nil}なら、この方法では分割しないことを意味する。
+@end defopt
+
+@defopt split-width-threshold
+この変数は@code{split-window-sensibly}がウィンドウを分割して新たなウィンドウを右に配置できるかどうかを指定する。整数なら元のウィンドウが最低でもその列数なければ分割しないことを意味する。@code{nil}なら、この方法では分割しないことを意味する。
+@end defopt
+
+@defopt even-window-sizes
+この変数が非@code{nil}なら@code{display-buffer}が既存のウィンドウを再利用する際は常にウィンドウのサイズを均等にして、そのウィンドウを選択されたウィンドウに隣接させる。
+
+値が@code{width-only}なら再利用されるウィンドウが選択されたウィンドウの左か右にあり、かつ選択されたウィンドウが再利用されるウィンドウより広い場合のみサイズは均等になる。値が@code{height-only}なら再利用されるウィンドウが選択されたウィンドウの上か下にあり、かつ選択されたウィンドウが再利用されるウィンドウより高い場合のみサイズは均等になる。その他の非@code{nil}値は、選択されたウィンドウと再利用されるウィンドウをコンビネーション的に比較して選択されたウィンドウの方が大ならサイズを均等にすることを意味する。
+@end defopt
+
+@defopt pop-up-frames
+この変数の値が非@code{nil}なら、新たにフレームを作成することにより@code{display-buffer}がバッファーを表示できることを意味する。デフォルトは@code{nil}。
+
+非@code{nil}値は@code{display-buffer}がすでに@var{buffer-or-name}を表示しているウィンドウを探す際に、選択されたフレームだけでなく可視およびアイコン化されたフレームを検索できることも意味する。
+
+この変数は主に後方互換のために提供されている。値が非@code{nil}のときは、アクション関数@code{display-buffer-pop-up-frame}
+(@ref{Buffer Display Action
+Functions}を参照)を呼び出すだけの@code{display-buffer-fallback-action}内の特別なメカニズムを経由して@code{display-buffer}にしたがう。この変数は@code{display-buffer-alist}等により直接指定できる、@code{display-buffer-pop-up-window}自体からは参照されない(これはウィンドウの分割前に行われる)。この変数は@code{display-buffer-alist}等により直接指定できる@code{display-buffer-pop-up-frame}自体からは参照されない。
+@end defopt
+
+@defopt pop-up-frame-function
+この変数はバッファーを表示する新たなウィンドウを作成するためのフレームを作成する関数を指定する。これはアクション関数@code{display-buffer-pop-up-frame}により使用される。
+
+値はフレーム、またはフレームを作成できなかったら@code{nil}をリターンする引数をとらない関数であること。デフォルト値は@code{pop-up-frame-alist}
+(以下参照)により指定されるパラメーターを使用してフレームを作成する関数。
+@end defopt
+
+@defopt pop-up-frame-alist
+この変数はフレームを新たに作成するための@code{pop-up-frame-function}で指定される関数が使用するフレームパラメーター(@ref{Frame
+Parameters}を参照)のalistを保持する。デフォルトは@code{nil}。
+
+このオプションは後方互換のためだけに提供される。これは@code{display-buffer-pop-up-frame}が@code{pop-up-frame-function}の指定する関数を呼び出す際に、すべてのアクションalistの@code{pop-up-frame-parameters}エントリーの値に前置されるので、アクションalistのエントリーが指定する値が@code{pop-up-frame-alist}の対応する値を効果的にオーバーライドすることに注意。
+
+したがってユーザーは@code{pop-up-frame-alist}をカスタマイズするのではなく、@code{display-buffer-alist}noアクションalistの@code{pop-up-frame-parameters}エントリーをセットアップするべきである。ユーザーが指定したパラメーターの値だけが、@code{display-buffer}の呼び出し手が指定したパラメーターの値をオーバーライドするこが保証されている。
+@end defopt
+
+   @code{display-buffer}のデザインでは@code{pop-up-windows}、@code{pop-up-frames}、@code{pop-up-frame-alist}、@code{same-window-buffer-names}、@code{same-window-regexps}のような古いオプションを使用するコードにたいする保守に互換性を与えるために多くの努力が払われています。Lispプログラムやユーザーはこれらのオプションの使用は控えるべきです。上述のように@code{pop-up-frame-alist}のカスタマイズにたいしては警告済みです。ここでは残りのオプションではなくディスプレイアクションを使用するように変換する方法を説明します。
+
+@table @code
+@item pop-up-windows
+@vindex pop-up-windows@r{, replacement for}
+この変数のデフォルトは@code{t}。これを@code{nil}にカスタマイズして@code{display-buffer}に何を行うべきではないかを指示するよりも、かわりに試みるべきアクション関数を@code{display-buffer-base-action}内にリストするほうがよい。たとえば:
+
+@example
+@group
+(customize-set-variable
+ 'display-buffer-base-action
+ '((display-buffer-reuse-window display-buffer-same-window
+    display-buffer-in-previous-window
+    display-buffer-use-some-window)))
+@end group
+@end example
+
+@item pop-up-frames
+@vindex pop-up-frames@r{, replacement for}
+この変数を@code{t}にカスタマイズするのではなく、たとえば以下のように@code{display-buffer-base-action}をカスタマイズすること:
+
+@example
+@group
+(customize-set-variable
+ 'display-buffer-base-action
+ '((display-buffer-reuse-window display-buffer-pop-up-frame)
+   (reusable-frames . 0)))
+@end group
+@end example
+
+@item same-window-buffer-names
+@itemx same-window-regexps
+@vindex same-window-buffer-names@r{, replacement for}
+@vindex same-window-regexps@r{, replacement for}
+これらのオプションのいずれかにたいしてバッファー名や正規表現を追加するかわりに、そのバッファーにたいしてアクション関数@code{display-buffer-same-window}を指定する@code{display-buffer-alist}エントリーを使用すること。
+
+@example
+@group
+(customize-set-variable
+ 'display-buffer-alist
+ (cons '("\\*foo\\*" (display-buffer-same-window))
+        display-buffer-alist))
+@end group
+@end example
+@end table
+
+
+@node Precedence of Action Functions
+@subsection アクション関数の優先順
+@cindex precedence of buffer display action functions
+@cindex execution order of buffer display action functions
+@cindex buffer display action functions, precedence
+
+これまでのサブセクションによってバッファーを表示するためには、@code{display-buffer}にいくつかのディスプレイアクションを提供しなければならないことがわかりました(@ref{Choosing
+Window}を参照)。まったくカスタマイズしていないEmacsでは、これらのアクションは@code{display-buffer-fallback-action}によってウィンドウの再利用、同一フレーム上での新たなウィンドウのポップアップ、そのバッファーを以前に表示したウィンドウの使用、新たなフレームをポップアップして何らかのウィンドウを使用するという優先順で指定されます(@code{display-buffer-fallback-action}いより命名される残りのアクションは未カスタマイズのEmacsではvoidであることに注意)。
+
+以下のフォームを考えてください:
+
+@example
+(display-buffer (get-buffer-create "*foo*"))
+@end example
+
+@noindent
+このフォームをカスタマイズされていないEmacsの@file{*scratch*}バッファーで評価すると、通常はすでに@file{*foo*}を表示しているウィンドウの再利用は失敗しますが、新たなウィンドウのポップアップは成功するでしょう。そこで同じフォームを再度評価すると、今度は@code{display-buffer}はすでに@file{*foo*}を表示しているウィンドウを再利用して視覚的な変化は生じません。なぜならそれは許容され得るアクションであるとともに、すべての許容され得るアクションの中でもっとも高い優先度をもつからです。
+
+   選択されたフレームに十分なスペースがなければ、新たなウィンドウのポップアップは失敗します。カスタマイズされていないEmacsでは、通常はフレームに2つのウィンドウがすでに存在すれば失敗します。たとえば今度は@w{@kbd{C-x
+1}}の後に@w{@kbd{C-x 2}}をタイプしてからもう一度フォームを評価すると、@file{*foo*}は下側のウィンドウに表示されるはずです(
+@code{display-buffer}は単に``何らか''のウィンドウを使用した)。@w{@kbd{C-x
+2}}をタイプする前に@w{@kbd{C-x
+o}}をタイプしていれば、@file{*foo*}は上側のウィンドウに表示されるでしょう。なぜなら``何らか''のウィンドウとは``最近もっとも使用されていない''ウィンドウという意味であり、選択されたウィンドウが最近もっとも使用されていないウィンドウになるのは、それがフレームで唯一のウィンドウの場合だけだからです。
+
+   @w{@kbd{C-x
+o}}をタイプせずに@file{*foo*}が下側のウィンドウに表示されているとしましょう。下側のウィンドウに移動するために@w{@kbd{C-x
+o}}の後に@w{@kbd{C-x
+left}}をタイプして、再びフォームを評価してみます。すると@file{*foo*}は同じ下側のウィンドウに表示されるはずです。なぜなら@file{*foo*}は以前にそのウィンドウで表示されているので何らかのウィンドウのかわりにそのウィンドウが選択されるからです。
+
+  ここまではカスタマイズしていないEmacsのデフォルトの動作を観察してきました。この動作のカスタマイズの仕方を確認するために、オプション@code{display-buffer-base-action}について考えてみましょう。これは概念的に@emph{任意}のバッファーの表示に影響を与える、非常に大まかなカスタマイズを提供します。これは@code{display-buffer-fallback-action}により提供されるアクションの並び替えや、提供されていないもののユーザーの編集方法により密接に適合するアクションを追加することにより、@code{display-buffer-fallback-action}の補強に使用することができます。しかしデフォルトの動作をより深く変更するためにも使用できます。
+
+   ルールとして別フレームにバッファーを表示することを好むユーザーを考えてみましょう。そのようなユーザーなら以下のようなカスタマイズを行うかもしれません:
+
+@example
+@group
+(customize-set-variable
+ 'display-buffer-base-action
+ '((display-buffer-reuse-window display-buffer-pop-up-frame)
+   (reusable-frames . 0)))
+@end group
+@end example
+
+@noindent
+このセッティングにより@code{display-buffer}はバッファーを表示するウィンドウを探すために、まず可視のフレームとアイコン化されたフレームを探して、そのようなフレームが存在しなければ新たなフレームをポップアップします。グラフィカルなシステム上で@file{*scratch*}を表示しているウィンドウで@w{@kbd{C-x
+1}}をタイプして例の@code{display-buffer}フォームを評価して動作を観察できます。これは通常はルートウィンドウに@file{*foo*}を表示するフレームを新たに作成(およびフォーカスを付与)します。このフレームをアイコン化して例のフォームを再度評価すると、@code{display-buffer}は新たなフレーム(通常はフレームをraiseしてフォーカスを付与)のウィンドウを再利用するでしょう。
+
+   @code{display-buffer}は新たなフレームの作成に失敗した場合のみ@code{display-buffer-fallback-action}が提供するアクション(ウィンドウ再利用の再試行、新たなウィンドウのポップアップ等)を適用します。以下のフォームでフレーム作成を簡単に失敗させることができます:
+
+@example
+@group
+(let ((pop-up-frame-function 'ignore))
+  (display-buffer (get-buffer-create "*foo*")))
+@end group
+@end example
+
+@noindent
+新たなフレーム作成に失敗してかわりにフォールバックアクションの使用を観察した直後にこのフォームを忘れてしまうでしょう。
+
+   @code{display-buffer-base-action}のカスタマイズにおいて@code{display-buffer-reuse-window}は冗長に思えることに注意してください。なぜならすでに@code{display-buffer-reuse-window}は@code{display-buffer-fallback-action}の一部であり、いずれにせよフォールバックアクションで試みられるはずだからです。しかしこれは@code{display-buffer-pop-up-frame}が優先順ですでに優っていた時点で、@code{display-buffer-base-action}が@code{display-buffer-fallback-action}より優先されることにより失敗するでしょう。実際のところ:
+
+@example
+@group
+(customize-set-variable
+ 'display-buffer-base-action
+ '(display-buffer-pop-up-frame (reusable-frames . 0)))
+@end group
+@end example
+
+@noindent
+は@code{display-buffer}が@emph{常}に新たなフレームをポップアップして、これはおそらくユーザーが望んでいない動作です。
+
+   ここまでは@emph{ユーザー}が@code{display-buffer}のデフォルト動作をカスタマイズする方法だけを示しました。今度は@emph{アプリケーション}が@code{display-buffer}の動作を変更する方法について見てみましょう。これを行う正規の手順は@code{display-buffer}や@code{pop-to-buffer}のような@code{display-buffer}を呼び出す関数の@var{action}引数を使用する方法です(@ref{Switching
+Buffers}を参照)。
+
+   あるアプリケーションが(新たなウィンドウにユーザーを即座に注目させるために)可能なら選択されたウィンドウの下、それが失敗したらフレームの最下ウィンドウにに@file{*foo*}を表示したいと仮定してみましょう。これは以下のような呼び出しで行うことができます:
+
+@example
+@group
+(display-buffer
+ (get-buffer-create "*foo*")
+ '((display-buffer-below-selected display-buffer-at-bottom)))
+@end group
+@end example
+
+@noindent
+この新しい変更されたフォームがどのように機能するか確認するために@file{*foo*}を表示しているすべてのフレームを削除してから、@file{*scratch*}を表示中のウィンドウで@w{@kbd{C-x
+1}}の後に@w{@kbd{C-x
+2}}をタイプしてから、続けてそのフォームを評価してみてください。@code{display-buffer}は上側のウィンドウを分割して、新たなウィンドウに@file{*foo*}を表示するはずです。@w{@kbd{C-x
+2}}の後に@w{@kbd{C-x
+o}}をタイプした場合には、@code{display-buffer}はかわりに最下にあるウィンドウを分割するでしょう。
+
+   今度は新たなフォームを評価する前に、(たとえば選択されたウィンドウで@code{(fit-window-to-buffer)}を評価して)選択されたウィンドウを可能なかぎり小さくしたとします。この場合には@code{display-buffer}は選択されたウィンドウの分割に失敗して、フレームの最下に効果的に@file{*foo*}を表示するために、かわりにフレームのルートウィンドウを分割するでしょう。
+
+   いずれの場合においても新たなフォームの2回目の評価では、すでに@file{*foo*}を表示しているウィンドウの再利用を試みるはずです。これは@var{action}引数が提供するどちらの関数も、そのようなウィンドウの使用を最初に試みるからです。
+
+   @var{action}引数をセットすることにより、アプリケーションは@code{display-buffer-base-action}のすべてのカスタマイゼーションを効果的に無効にします。今度はユーザーはアプリケーションの選択を受け入れるか、以下のようにオプション@code{display-buffer-alist}をさらにカスタマイズすることができます:
+
+@example
+@group
+(customize-set-variable
+ 'display-buffer-alist
+ '(("\\*foo\\*"
+    (display-buffer-reuse-window display-buffer-pop-up-frame))))
+@end group
+@end example
+
+@noindent
+@file{*foo*}がどこにも表示されていない設定で新たな変更版のフォームを試みると、@code{display-buffer}の@var{action}を完全に無視して別フレームに@file{*foo*}が表示されます。
+
+   @code{display-buffer-alist}の仕様において,@code{reusable-frames}アクションalistの指定を気にしていない点に注意してください。@code{display-buffer}は常に最初に見つかったウィンドウ、この場合では@code{display-buffer-base-action}で指定されたウィンドウを採用します。しかし異なる仕様を使用したいとき、たとえば再利用可能なウィンドウから@file{*foo*}を表示中のアイコン化されたフレームを除外したければ個別にそれを指定する必要があります:
+
+@example
+@group
+(customize-set-variable
+ 'display-buffer-alist
+ '(("\\*foo\\*"
+    (display-buffer-reuse-window display-buffer-pop-up-frame)
+    (reusable-frames . visible))))
+@end group
+@end example
+
+@noindent
+これを試せば繰り返し@file{*foo*}の表示を試みた場合に、フレームが可視のときだけフレームの再利用に成功することに気がつくでしょう。
+
+   上記の例によりアプリケーションが選択した@var{action}引数を無視するという単一の目的にたいしてユーザーが@code{display-buffer-alist}をカスタマイズできるという結論が導かれるかもしれません。そのような結論は正しくありません。@code{display-buffer-alist}は表示が@var{action}引数によってもガイドされるかどうかに関わらず、ユーザーが好む方法で特定のバッファーの表示方法を指示するための標準オプションです。
+
+   しかし2つの主要な観点から、@code{display-buffer-alist}のカスタマイズは@code{display-buffer-base-action}のカスタマイズとは異なると合理的に結論づけることができます。@code{display-buffer-alist}のカスタマイズは@code{display-buffer}の@var{action}引数をオーバーライドして、影響を受けるバッファーを明示的に指定できることからより強力です。実際のところ@file{*foo*}のカスタマイズによって他のバッファーの表示には何も影響がありません。たとえば、
+
+@example
+(display-buffer (get-buffer-create "*bar*"))
+@end example
+
+@noindent
+は@code{display-buffer-base-action}と@code{display-buffer-fallback-action}のセッティングだけに管理されます。
+
+   ここで例を止めることもできますが、Lispプログラムには@code{display-buffer-alist}にたいする任意のカスタマイズの無効化に使用できる取って置きの切り札があります。その切り札@code{display-buffer-overriding-action}は以下のように@code{display-buffer}呼び出しの前後でバインドすることができます:
+
+@example
+@group
+(let ((display-buffer-overriding-action
+       '((display-buffer-same-window))))
+  (display-buffer
+   (get-buffer-create "*foo*")
+   '((display-buffer-below-selected display-buffer-at-bottom))))
+@end group
+@end example
+
+@noindent
+このフォームの評価により通常は@var{action}引数や任意のユーザーカスタマイゼーションとは無関係に、選択されたウィンドウに@file{*foo*}が表示されます(通常はアプリケーションが@var{action}を提供する必要もないが、ここではオーバーライドされる事実を示すために提供されている)。
+
+ここで提供したカスタマイゼーションで@file{*foo*}の表示を試みたアクション関数のリストを調べれば、それが実例になるかもしれません。そのリスト(何がそれを追加したかと後続の要素を含む)は:
+
+@example
+@group
+(display-buffer-same-window  ;; `display-buffer-overriding-action'
+ display-buffer-reuse-window ;; `display-buffer-alist'
+ display-buffer-pop-up-frame
+ display-buffer-below-selected ;; ACTION argument
+ display-buffer-at-bottom
+ display-buffer-reuse-window ;; `display-buffer-base-action'
+ display-buffer-pop-up-frame
+ display-buffer--maybe-same-window ;; `display-buffer-fallback-action'
+ display-buffer-reuse-window
+ display-buffer--maybe-pop-up-frame-or-window
+ display-buffer-in-previous-window
+ display-buffer-use-some-window
+ display-buffer-pop-up-frame)
+@end group
+@end example
+
+@noindent
+ここで列挙した内部関数の中で@code{display-buffer--maybe-pop-up-frame-or-window}が実際に@code{display-buffer-pop-up-window}を実行しているにも関わらず、@code{display-buffer--maybe-same-window}が効果的に無視されていることに注意してください。
+
+アクション関数の各呼び出しにおいて渡されるアクションalistは:
+
+@example
+@group
+((reusable-frames . visible)
+ (reusable-frames . 0))
+@end group
+@end example
+
+@noindent
+これは上述の@code{display-buffer-alist}の2つ目の仕様を使用して、@code{display-buffer-base-action}が提供する仕様をオーバーライドすることを示しています。これをユーザーが以下のように記述したと考えてみましょう
+
+@example
+@group
+(customize-set-variable
+ 'display-buffer-alist
+ '(("\\*foo\\*"
+    (display-buffer-reuse-window display-buffer-pop-up-frame)
+    (inhibit-same-window . t)
+    (reusable-frames . visible))))
+@end group
+@end example
+
+@noindent
+この場合にはalistの@code{inhibit-same-window}エントリーは@code{display-buffer-overriding-action}から@code{display-buffer-same-window}仕様を成功裏に無効化して、@code{display-buffer}は別フレームに@file{*foo*}を表示するでしょう。この点において@code{display-buffer-overriding-action}をより堅牢にするためには、アプリケーションはたとえば以下のように適切な@code{inhibit-same-window}エントリーも指定する必要があるでしょう:
+
+@example
+@group
+(let ((display-buffer-overriding-action
+       '(display-buffer-same-window (inhibit-same-window . nil))))
+  (display-buffer (get-buffer-create "*foo*")))
+@end group
+@end example
+
+@noindent
+最後の例では@ref{Choosing
+Window}で説明したようにアクション関数の優先順は固定ではあるものの、優先順で低位のディスプレイアクションが指定したアクションalistのエントリーが、より高位のディスプレイアクションの実行に影響を与えれれることを示しています。
+
+
+@node The Zen of Buffer Display
+@subsection バッファー表示の思想
+@cindex guidelines for buffer display
+@cindex writing buffer display actions
+@cindex buffer display conventions
+
+フレームのもっとも単純な形式では常にバッファー表示に使用可能な単一のウィンドウが収容されています。結果として@code{display-buffer}のもっとも最近の呼び出しは、常にそのウィンドウへのバッファーの配置に成功した呼び出しとなります。
+
+   そのようなフレームを処理することは実際的ではないので、デフォルトではEmacsはフレームサイズのデフォルト値、@code{split-height-threshold}や@code{split-width-threshold}のオプションにより制御される、より複雑なレイアウトを許容しています。そのフレームでまだ表示されていないバッファーを表示すると、フレーム上の単一ウィンドウを分割するか、2つのウィンドウのいずれかを(再)利用します。
+
+   これらのしきい値のいずれかをカスタマイズしたり手動でフレームのレイアウトを変更するとデフォルトの動作は棄却されます。非@code{nil}の@var{action}引数で@code{display-buffer}を呼び出したろ、前のサブセクションに示したオプションのいずれかをユーザーがカスタマイズした際にもデフォルト動作は棄却されます。@code{display-buffer}を習得次第、表示可能なディスプレイアクションとフレイムレイアウト結果の膨大さにフラストレーションを覚えるかもしれません。
+
+   しかしバッファー表示関の使用を控えてウィンドウのウィンドウの分割と削除のメタファーに逆行するのは良い考えではありません。Lispプログラムやユーザーにたいしてバッファー表示関数は、異なるニーズを調整するフレームワークを提供します。ウィンドウの分割と削除にたいする同等なフレームワークは存在しません。バッファー表示関数ではフレームからバッファーを削除する際に、少なくともフレームレイアウトを部分的に後からリストアすることが可能です(@ref{Quitting
+Windows}を参照)。
+
+   上述したフラストレーションを埋め合わせるとともに、文字通りフレームのウィンドウ間でバッファーが失われることを避けるためるために、以下にいくつのガイダンスを示します。
+
+@table @asis
+@item Write display actions without stress
+ディスプレイアクションの記述はアクション関数とアクションalistを1つの巨大なリストにまとめる必要があるので多きな苦痛をともなうかもしれません(歴史的な理由によって@code{display-buffer}の引数として個別にサポートすることができなかった)。以下のリストのような基本形式を覚えておくと便利かもしれません:
+
+@example
+'(nil (inhibit-same-window . t))
+@end example
+
+@noindent
+アクション関数なしのアクションalistエントリーだけを指定する。これの唯一の目的は、どこかで指定された@code{display-buffer-same-window}関数が同一ウィンドウ内でのバッファー表示を抑制すること。前のサブセクションの最後の例も参照のこと。
+
+@example
+'(display-buffer-below-selected)
+@end example
+
+@noindent
+一方こちらは1つのアクション関数と空のアクションalistを指定する。上記2つの指定の効果を1つ組み合わせるためには以下のようなフォームを記述
+
+@example
+'(display-buffer-below-selected (inhibit-same-window . t))
+@end example
+
+@noindent
+別のアクション関数の追加は以下のように記述
+
+@example
+@group
+'((display-buffer-below-selected display-buffer-at-bottom)
+  (inhibit-same-window . t))
+@end group
+@end example
+
+@noindent
+別のアクションalistを追加するには以下のように記述
+
+@example
+@group
+'((display-buffer-below-selected display-buffer-at-bottom)
+  (inhibit-same-window . t)
+  (window-height . fit-window-to-buffer))
+@end group
+@end example
+
+@noindent
+最後のフォームは以下の方法により@code{display-buffer}の@var{action}関数に使用できる:
+
+@example
+@group
+(display-buffer
+ (get-buffer-create "*foo*")
+ '((display-buffer-below-selected display-buffer-at-bottom)
+   (inhibit-same-window . t)
+   (window-height . fit-window-to-buffer)))
+@end group
+@end example
+
+@noindent
+@code{display-buffer-alist}のアスタマイズでは以下のように使用できる:
+
+@example
+@group
+(customize-set-variable
+ 'display-buffer-alist
+ '(("\\*foo\\*"
+    (display-buffer-below-selected display-buffer-at-bottom)
+    (inhibit-same-window . t)
+    (window-height . fit-window-to-buffer))))
+@end group
+@end example
+
+@noindent
+2つ目のバッファーへのカスタマイズを追加するには以下のように記述:
+
+@example
+@group
+(customize-set-variable
+ 'display-buffer-alist
+ '(("\\*foo\\*"
+    (display-buffer-below-selected display-buffer-at-bottom)
+    (inhibit-same-window . t)
+    (window-height . fit-window-to-buffer))
+   ("\\*bar\\*"
+    (display-buffer-reuse-window display-buffer-pop-up-frame)
+    (reusable-frames . visible))))
+@end group
+@end example
+
+@item 互いを尊重して扱う
+@code{display-buffer-alist}と@code{display-buffer-base-action}はユーザーオプションであって、Lispプログラムはそれらのセットやリバインドを行ってはならない。一方で@code{display-buffer-overriding-action}はアプリケーション用に予約されていて滅多に使用されず、使用する場合には細心の注意を払うこと。
+
+   @code{display-buffer}の旧実装では、@code{pop-up-frames}や@code{pop-up-windows}のようなユーザーオプションのセッティングをめぐってユーザーとアプリケーションの競合が頻生した(@ref{Choosing
+Window
+Options}を参照)。これが@code{display-buffer}を再デザイン(ユーザーおよびアプリケーションにたいして何を行うことが許容されているかを指定する明快なフレームワークを提供する)した主な理由である。
+
+   Lispプログラムは表示しようとしているバッファーにたいして予期せず方法ユーザーのカスタマイゼーションが影響を与えることに備えなければならない。@code{display-buffer}の後続の振る舞いにおいて@var{action}引数で要求した方法でバッファーが正確に表示されていると仮定しないこと。
+
+   ユーザーは任意のバッファーが表示される方法ひついて厳しすぎる制限を過度に多く設けるべきではない。さもないと特定の目的でバッファーを表示する際の特性を失うリスクがある。横並びの2つのウィンドウでバッファーの異なるバージョンを比較するLispプログラムを記述するとしよう。@code{display-buffer-alist}のカスタマイズによりそのようなすべてのバッファーは常に選択されたウィンドウの下に表示されるように定められていたら、@code{display-buffer}を通じて望ましいウィンドウ設定を設定するのはプログラムにとって困難だろう。
+
+   任意のバッファーを表示するための設定を指定するためには、ユーザーは@code{display-buffer-base-action}をカスタマイズする必要がある。複数のフレームで作業を行うことを好むユーザーについての例は前のサブセクションを参照のこと。@code{display-buffer-alist}は特定のバッファーを特定の方法で表示するために予約済みである。
+
+@item すでにバッファーを表示しているウィンドウの再利用の考慮
+一般的にユーザーとLispプログラムにとって、ウィンドウがすでに対象となるバッファーを表示していて、それを再利用するのは常に良いアイデアである。前のサブセクションではバッファーを表示しているフレームがすでに存在していても、正しく行うことに失敗すると@code{display-buffer}が継続的に新たなフレームをポップアップすることを示した。たとえばバッファーの異なる部分をそのウィンドウで表示する必要がある際のように、少数のケースにおいてはウィンドウの再利用は望ましくないかもしれない。
+
+   したがって@code{display-buffer-reuse-window}は@var{action}引数とカスタマイゼーションの両方で可能なかぎり使用するべきアクション関数の1つである。@var{action}引数の@code{inhibit-same-window}エントリーは、通常はバッファーをを表示中のウィンドウ、つまり対象となるウィンドウが選択されたウィンドウならそのウィンドウの再利用を避けるような、一般的なケースのほとんどを考慮する。
+
+@item 選択したウィンドウにフォーカスを当てる
+これは複数フレームで作業を行う人にとっては思考を要しない。バッファーを表示中のフレームは自動的にraiseされて@code{inhibit-switch-frame}が禁じていなければフォーカスを取得する。単一フレームのユーザーにとっては、このタスクは顕著に困難になり得る。この点において特に@code{display-buffer-pop-up-window}と@code{display-buffer-use-some-window}が厄介になる可能性がある。これらは表面上は任意に見えるウィンドウ(最大のウィンドウか最近もっとも使用されていないウィンドウ)を分割または使用してユーザーの注意を逸らす。
+
+したがってLispプログラムのいくつかは、たとえば新たなウィンドウに関して問いに答える場所として期待されるミニバッファーウィンドウの近傍にバッファーを表示するためにフレーム最下のウィンドウの選択を試みる。選択されたウィンドウは通常はすでにユーーザーの注意を喚起済みなので、入力とは無関係なアクション@code{display-buffer-below-selected}が好ましいかもしれない。
+
+@item @code{display-buffer}に後続する呼び出しの処理
+@code{display-buffer}は複数のバッファーを順番に表示するのに最適ではないので、結果となるウィンドウ構成でこれらのバッファーのすべてが順に表示されているか確認すること。繰り返しになるが標準のアクション関数@code{display-buffer-pop-up-window}と@code{display-buffer-use-some-window}は、より複雑な構成における幾分混沌とした性質のために、この用途に最適とは言えない。
+
+   同一の表示サイクル1つで複数バッファーを表示するウィンドウ構成を生成するためには、Lispプログラマーは自身でアクション関数を記述する必要を避けることはできないだろう。この問題において以下にリストしたいくつかのトリックが助けになるかもしれない。
+
+@itemize @bullet
+@item
+新たなウィンドウのポップアップ時に既存のウィンドウ構成の破壊を回避するためにウィンドウをアトミックにする(@ref{Atomic
+Windows}を参照)。そうすれば新たなウィンドウは構成の外部にポップアップされる。
+
+@item
+別のバッファーを表示中のウィンドウの使用を回避するために、一時的にウィンドウをバッファー専用にする(@ref{Dedicated
+Windows}を参照)。そうすれば非専用のウィンドウが使用される。
+
+@item
+@code{window-preserve-size}を呼び出すことにより新たなウィンドウのポップアップ時に引数のウィンドウのサイズの維持が試みられる(@ref{Preserving
+Window Sizes}を参照)。ただし同一構成内の別ウィンドウのサイズが縮小されるかもしれないことに留意する必要がある。
+
+@item
+特定のバッファーをフレーム上の同一位置のウィンドウに常に表示するにはサイドウィンドウを使用できる(@ref{Side
+Windows}を参照)。これによりフレーム上で同時に表示する際に競合しないバッファーをグループ化して、他のバッファーの表示を妨害せずに同一ウィンドウでグループ化したバッファーを表示することが可能になる。
+
+@item
+フレームのウィンドウ構成の破壊や@code{display-buffer-pop-up-frame}により課せられる完全なフレームに付加されるオーバーヘッドなしで、選択されたフレームのスクリーン領域内にバッファー表示するために子フレームを使用できる(@ref{Child
+Frames}を参照)。
+@end itemize
+@end table
+
+
+@node Window History
+@section ウィンドウのヒストリー
+@cindex window history
+
+ウィンドウはそれぞれ、リスト内に以前表示されていたバッファーと、それらのバッファーがウィンドウから削除された順序を記憶しています。このヒストリーが、たとえば@code{replace-buffer-in-windows}
+(@ref{Buffers and Windows}を参照)やウィンドウのquit (@ref{Quitting
+Windows}を参照)の際に使用されます。このリストはEmacsにより自動的に保守されますが、これを明示的に調べたり変更するために、以下の関数を使用できます:
+
+@defun window-prev-buffers &optional window
+この関数は@var{window}の前のコンテンツを指定するリストをリターンする。オプション引数@var{window}には生きたウィンドウを指定すること。デフォルトは選択されたウィンドウ。
+
+リスト要素はそれぞれ@code{(@var{buffer} @var{window-start}
+@var{window-pos})}という形式をもつ。ここで@var{buffer}はそのウィンドウで前に表示されていたウィンドウ、@var{window-start}はそのバッファーが最後に表示されていたときのウィンドウのスタート位置(@ref{Window
+Start and
+End}を参照)、@var{window-pos}は@var{window}内にそのバッファーが最後に表示されていたときのポイント位置(@ref{Window
+Point}を参照)。
+
+このリストは順序付きであり、より前の要素がより最近に表示されたバッファーに対応してして、通常は最初の要素がそのウィンドウからもっとも最近削除されたバッファーに対応する。
+@end defun
+
+@defun set-window-prev-buffers window prev-buffers
+この関数は@var{window}の前のバッファーを@var{prev-buffers}の値にセットする。引数@var{window}は生きたウィンドウでなければならず、デフォルトは選択されたウィンドウ。引数@var{prev-buffers}は@code{window-prev-buffers}によりリターンされるリストと同じ形式であること。
+@end defun
+
+これらに加えて各ウィンドウは@dfn{次バッファー(next
+buffers)}のリストを保守します。これは@code{switch-to-prev-buffer}
+(以下参照)により再表示されたバッファーのリストです。このリストは主に切り替えるバッファーを選択するために、@code{switch-to-prev-buffer}と@code{switch-to-next-buffer}により使用されます。
+
+@defun window-next-buffers &optional window
+この関数は@code{switch-to-prev-buffer}を通じて@var{window}内に最近表示されたバッファーのリストをリターンする。@var{window}引数は生きたウィンドウか@code{nil}
+(選択されたウィンドウの意)でなければならない。
+@end defun
+
+@defun set-window-next-buffers window next-buffers
+この関数は@var{window}の次バッファーリストを@var{next-buffers}にセットする。@var{window}引数は生きたウィンドウか@code{nil}
+(選択されたウィンドウの意)、引数@var{next-buffers}はバッファーのリストであること。
+@end defun
+
+以下のコマンドは@code{bury-buffer}や@code{unbury-buffer}のように、グローバルバッファーリストを巡回するために使用できます。ただしこれらはグローバルバッファーリストではなく、指定されたウィンドウのヒストリーリストのしたがって巡回します。それに加えてこれらはウィンドウ固有なウィンドウのスタート位置とポイント位置をリストアして、すでに他のウィンドウに表示されているバッファーをも表示できます。特に@code{switch-to-prev-buffer}コマンドは、ウィンドウにたいする置き換えバッファーを探すために@code{replace-buffer-in-windows}、@code{bury-buffer}、@code{quit-window}により使用されます。
+
+@deffn Command switch-to-prev-buffer &optional window bury-or-kill
+このコマンドは@var{window}内に前のバッファーを表示する。引数@var{window}は生きたウィンドウか@code{nil}
+(選択されたウィンドウの意)であること。オプション引数@var{bury-or-kill}が非@code{nil}なら、それは@var{window}内にカレントで表示されているバッファーは今まさにバリーもしくはkillされるバッファーであり、したがって将来におけるこのコマンドの呼び出しでこのバッファーに切り替えるべきではないことを意味する。
+
+前のバッファーとは、通常は@var{window}内にカレントで表示されているバッファーの前に表示されていたバッファーである。しかしバリーやkillされたバッファー、または直近の@code{switch-to-prev-buffer}呼び出しですでに表示されたバッファーは前のバッファーとしては不適格となる。
+
+このコマンドを繰り返して呼び出すことにより@var{window}内で前に表示されたすべてのバッファーが表示されてしまったら、将来の呼び出しでは@var{window}が表示されているフレームのバッファーリスト(@ref{Buffer
+List}を参照)からバッファーを表示する。
+
+特定のバッファー、たとえば別ウィンドウに表示済みのバッファーへの切り替えを抑制するために、以下で説明するオプション@code{switch-to-prev-buffer-skip}を使用できる。同様に@var{window}のフレームが@code{buffer-predicate}パラメーター(@ref{Buffer
+Parameters}を参照)をもつ場合には、この述語は特定のバッファーへの切り替えを抑制する。
+@end deffn
+
+@deffn Command switch-to-next-buffer &optional window
+このコマンドは@var{window}内の次バッファーに切り替える。つまり@var{window}内での最後の@code{switch-to-prev-buffer}コマンドの効果をアンドゥする。引数@var{window}は生きたウィンドウであること。デフォルトは選択されたウィンドウ。
+
+アンドゥ可能な@code{switch-to-prev-buffer}の直近の呼び出しが存在しなければ、この関数は@var{window}が表示されているフレームのバッファーリスト(@ref{Buffer
+List}を参照)からバッファーの表示を試みる。
+
+@var{window}のフレームのオプション@code{switch-to-prev-buffer-skip}と@code{buffer-predicate}
+(@ref{Buffer
+Parameters}を参照)は@code{switch-to-prev-buffer}の場合のように、このコマンドに影響を与える。
+@end deffn
+
+デフォルトでは、@code{switch-to-prev-buffer}と@code{switch-to-next-buffer}は他のウィンドウで表示済みのバッファーに切り替えることができます。この挙動をオーバーライドするために以下のオプションを使用できます。
+
+@defopt switch-to-prev-buffer-skip
+この変数が@code{nil}なら、@code{switch-to-prev-buffer}は別のウィンドウに表示済みのバッファーを含むすべてのバッファーに切り替えることができる。
+
+この変数が非@code{nil}なら、@code{switch-to-prev-buffer}は特定のバッファーへの切り替えを抑制する。以下の値を使用できる:
+
+@itemize @bullet
+@item
+@code{this}は@code{switch-to-prev-buffer}が動作するウィンドウをホストするフレームで表示中のバッファーに切り替えないことを意味する。
+
+@item
+@code{visible}は可視フレームで表示中のバッファーに切り替えないことを意味する。
+
+@item
+0(数値の0)は可視やアイコン化されたフレームで表示中のバッファーに切り替えないことを意味する。
+
+@item
+@code{t}は生きたフレームで表示中のバッファーに切り替えないことを意味する。
+
+@item
+@code{switch-to-prev-buffer}の@var{window}引数、@code{switch-to-prev-buffer}が切り替えようとするバッファー、@code{switch-to-prev-buffer}の@var{bury-or-kill}引数という3つの引数を受け取る関数。この関数が非@code{nil}をリターンすると、@code{switch-to-prev-buffer}は2つ目の引数で指定されたバッファーからの切り替えを抑制する。
+@end itemize
+
+コマンド@code{switch-to-next-buffer}は同様の方法でこのオプションにしたがう。このオプションに関数が指定されると、@code{switch-to-next-buffer}は3つ目の引数を常に@code{nil}にしてその関数を呼び出す。
+
+@code{switch-to-prev-buffer}は@code{bury-buffer}、同じく@code{replace-buffer-in-windows}や@code{quit-restore-window}が呼び出すので、このオプションをカスタマイズすることによりウィンドウのquitやバッファーがバリーやkillされる際のEmacsの挙動にも影響することに注意。
+
+更に@code{switch-to-prev-buffer}や@code{switch-to-next-buffer}は特定の状況下、たとえばこれらの関数が切り替え可能なバッファーが1つしか残っていないときには、このオプションが無視されるかもしれないことにも注意。
+@end defopt
+
+
+@node Dedicated Windows
+@section 専用のウィンドウ
+@cindex dedicated window
+
+特定のウィンドウがそのウィンドウのバッファーにたいして@dfn{専用(dedicated)}であるとマークすることにより、バッファーを表示する関数にそのウィンドウを使用しないように告げることができます。@code{display-buffer}
+(@ref{Choosing Window}を参照)は、他のバッファーの表示に専用バッファーを決して使用しません。
+@code{get-lru-window}と@code{get-largest-window} (@ref{Cyclic Window
+Ordering}を参照)は、@var{dedicated}引数が非@code{nil}のときは専用ウィンドウを候補とはみなしません。専用ウィンドウにたいする配慮に関して@code{set-window-buffer}
+(@ref{Buffers and Windows}を参照)の挙動は若干異なります。以下を参照してください。
+
+   ウィンドウからのバッファー削除、およびフレームからのウィンドウ削除を意図した関数は、処理するウィンドウが専用ウィンドウのときは特別な挙動を示す可能性があります。ここでは3つの基本ケース、すなわち(1)そのウィンドウがフレーム上で唯一のウィンドウの場合、(2)ウィンドウはフレーム上で唯一のウィンドウだが同一端末上に別のフレームがある場合、(3)そのウィンドウが同一端末上で唯一のフレームの唯一のウィンドウの場合、を明確に区別することにします。
+
+@c FIXME: Does replace-buffer-in-windows _delete_ a window in case (1)?
+   特に@code{delete-windows-on} (@ref{Deleting
+Windows}を参照)は関連するフレームを削除する際にケース(2)を、フレーム上で唯一のウィンドウに他のバッファーを表示する際にケース(3)を処理します。バッファーがkillされる際に呼び出される関数@code{replace-buffer-in-windows}(@ref{Buffers
+and
+Windows}を参照)は、ケース(1)ではウィンドウを削除して、それ以外では@code{delete-windows-on}のように振る舞います。
+
+   @code{bury-buffer} (@ref{Buffer
+List}を参照)が選択されたウィンドウを操作する際は、選択されたフレームを処理するために@code{frame-auto-hide-function}
+(@ref{Quitting
+Windows}を参照)を呼び出すことによってケース(2)を取り扱います。他の2つのケースは@code{replace-buffer-in-windows}と同様に処理されます。
+
+@defun window-dedicated-p &optional window
+この関数は@var{window}がそのバッファーにたいして専用なら非@code{nil}、それ以外は@code{nil}をリターンする。より正確には最後の@code{set-window-dedicated-p}呼び出しで割り当てられた値、@code{set-window-dedicated-p}が@var{window}を引数として呼び出されたことがなければ@code{nil}がリターン値となる。@var{window}のデフォルトは選択されたウィンドウ。
+@end defun
+
+@defun set-window-dedicated-p window flag
+この関数は@var{flag}が非@code{nil}なら@var{window}がそのバッファーに専用、それ以外は非専用とマークする。
+
+特別なケースとして@var{flag}が@code{t}の場合には、@var{window}はそのバッファーにたいして@dfn{特に専用(strongly
+dedicated)}になる。@code{set-window-buffer}は処理対象のウィンドウが特に専用のウィンドウで、かつ表示を要求されたバッファーが表示済みでなければエラーをシグナルする。その他の関数は@code{t}を他の非@code{nil}値と区別して扱わない。
+@end defun
+
+適切な@code{dedicated}アクションalistエントリー(@ref{Buffer Display Action
+Alists}を参照)を与えることにより、@code{display-buffer}が作成するウィンドウにたいしてそのバッファー専用であるとマークするよう指示することもできます。
+
+@node Quitting Windows
+@section ウィンドウのquit
+
+バッファーを表示するために使用しているウィンドウを削除したいときには、フレームからそのウィンドウを削除するために@code{delete-window}や@code{delete-windows-on}を呼び出すことができます(@ref{Deleting
+Windows}を参照)。そのバッファーが別フレームで表示されているときには、かわりに@code{delete-frame}を呼び出したいと思うかもしれません(@ref{Deleting
+Frames}を参照)。その一方でバッファーを表示するためにウィンドウが再利用されている場合には、関数@code{switch-to-prev-buffer}を呼び出して前に表示されていたバッファーを表示したいと思うかもしれません(@ref{Window
+History}を参照)。最終的にはそのウィンドウのバッファーをバリー(@ref{Buffer List}を参照)やkill(@ref{Killing
+Buffers}を参照)したいと思うかもしれません。
+
+   以下のコマンドは、最初にどのようにバッファーを表示するウィンドウを取得するかという情報を使用して、上述で説明した処理の自動化を試みます。
+
+@deffn Command quit-window &optional kill window
+このコマンドは@var{window}をquitしてそのバッファーをバリーする。引数@var{window}は生きたウィンドウでなければならずデフォルトは選択されたウィンドウ。プレフィックス引数@var{kill}が非@code{nil}ならバッファーをバリーするかわりにkillする。これはウィンドウとそのバッファーを処理するために、次に説明する関数@code{quit-restore-window}を呼び出す。
+
+@vindex quit-window-hook
+@code{quit-window-hook}の関数は何か他のことを行う前に実行される。
+@end deffn
+
+@defun quit-restore-window &optional window bury-or-kill
+この関数は@var{window}のquit後にウィンドウとウィンドウのバッファーを処理する。オプション引数@var{window}は生きたウィンドウでなければならず、デフォルトは選択されたウィンドウ。この関数の挙動は@var{window}の@code{quit-restore}パラメーターにより指定される4要素のリストにより決定される(@ref{Window
+Parameters}を参照)。
+
+@code{quit-restore}パラメーターの1つ目の要素は@code{window}
+(ウィンドウは@code{display-buffer}により特別に作られた)、@code{frame}
+(別のフレームが作られた)、@code{same} (ウィンドウは前と同じバッファーを表示する)、@code{other}
+(ウィンドウは前と異なるバッファーを表示する)のシンボルのいずれか。@code{frame}と@code{window}はウィンドウがquitされる方法、@code{same}と@code{other}は@var{window}に以前に表示されていたバッファーの再表示に影響する。
+
+パラメーターの2つ目の要素はシンボル@code{window}、@code{frame}、またはそのウィンドウに前に表示されていたバッファー、そのときのウィンドウstart位置、ウィンドウポイント位置、ウィンドウの高さを要素にもつリストのいずれか。@var{window}のquit時にバッファーがまだ生きていれば、この関数はバッファーの表示に@var{window}を再利用するかもしれない。
+
+3つ目の要素はパラメーター作成時に選択されていたウィンドウ。この関数が@var{window}を削除すると、それに続いてこの要素が指名するウィンドウを再選択する。
+
+4つ目の要素は、その表示がこのパラメーターの生成を引き起こしたバッファー。この関数は指定された@var{window}がまだそのバッファーを表示している場合のみそれを削除する。
+
+この関数は、(1)
+@var{window}の@code{quit-restore}パラメーターの1つ目の要素が@code{window}か@code{frame}、(2)
+@code{window}が以前に表示したバッファーの履歴をもたない、(3)
+@code{quit-restore}の4つ目の要素が@var{window}にカレントで表示中のバッファーを指定している場合のみ@var{window}を削除する。@var{window}がアトミックウィンドウ(@ref{Atomic
+Windows}を参照)の一部なら、かわりにアトミックウィンドウのルートウィンドウの削除を試みる。いずれの場合でも@var{window}が削除できない場合にはエラーのシグナルを回避しようと試みる。
+
+@var{window}がそのフレームで唯一のウィンドウであり、かつそのフレームの端末上に他のフレームが存在する場合には、オプション引数@var{bury-or-kill}がそのウィンドウの処置を決定する。@var{bury-or-kill}が@code{kill}なら無条件でフレームは削除される。それ以外ではフレームの処遇はそのフレームを単一の引数とする@code{frame-auto-hide-function}
+(以下参照)の呼び出しにより決定される。
+
+@code{quit-restore}パラメーターの3つ目の要素がバッファーのリストならウィンドウの開始 (@ref{Window Start and
+End}を参照)、ポイント(@ref{Window
+Point}を参照)、およびそのバッファーは死なずにバッファーは表示されてそれに応じてウィンドウの開始とポイントがセットされる。加えて@var{window}のバッファーが過去に一時的にリサイズされていた場合には、この関数は@var{window}の元の高さのリストアも試みる。
+
+それ以外の場合には、以前に別のバッファーの表示に@var{window}が使用されていれば(@ref{Window
+History}を参照)、その履歴中でもっとも最近のバッファーが表示される。いずれの場合でも@var{window}が削除されなければ、@code{quit-restore}パラメーターは@code{nil}にリセットされる。
+
+オプション引数@var{bury-or-kill}には@var{window}を処理する方法を指定し、以下の値が処理される。
+
+@table @code
+@item nil
+これはバッファーを特別な方法で処理しないことを意味する。その結果として@var{window}が削除されない場合には、@code{switch-to-prev-buffer}の呼び出しにより通常はそのバッファーが再び表示されるだろう。
+
+@item append
+これは@var{window}が削除されない場合には、そのバッファーを@var{window}の前のバッファーリストの最後に移動するので、将来の@code{switch-to-prev-buffer}呼び出しでこのバッファーには切り替わることは少なくなる。これはそのバッファーをフレームのバッファーリストの最後への移動も行う。
+
+@item bury
+これは@var{window}が削除されない場合には、そのバッファーを@var{window}の前のバッファーリストから削除する。これはそのバッファーをフレームのバッファーリストの最後への移動も行う。この値はバッファーをkillすることなく@code{switch-to-prev-buffer}がこのバッファーに再び切り替えさせないようにする、もっとも信頼できる解決手段を提供する。
+
+@item kill
+これは@var{window}のバッファーをkillすることを意味する。
+@end table
+
+(interactive)
+
+@example
+@group
+(display-buffer-record-window type window buffer)
+
+(set-window-buffer window buffer)
+
+(set-window-prev-buffers window nil)
+@end group
+@end example
+
+ウィンドウのヒストリーを@code{nil}にセットすることにより？、将来の@code{quit-window}呼び出しが一緒にウィンドウを削除することが保証される。
+
+@end defun
+
+以下のオプションはquitすべきウィンドウ、あるいはバリーすべきバッファーをもつウィンドウを1つだけ含むフレームを処理する方法を指定します。
+
+@defopt frame-auto-hide-function
+このオプションで指定された関数は自動的にフレームを隠すために呼び出される。この関数はフレームを唯一の引数として呼び出される。
+
+ここで指定される関数は選択されたウィンドウが専用(dedicated)であり、かつバリーされるバッファーを表示しているときに@code{bury-buffer}
+(@ref{Buffer
+List}を参照)から呼び出される。またquitされるウィンドウのフレームがそのウィンドウのバッファーを表示するために特別に作成されたフレームで、かつそのバッファーがkillされないときにも@code{quit-restore-window}
+(上記)から呼び出される。
+
+デフォルトでは@code{iconify-frame} (@ref{Visibility of
+Frames}を参照)を呼び出す。かわりにフレームをディスプレイから削除する@code{delete-frame} (@ref{Deleting
+Frames}を参照)、フレームを不可視にする@code{make-frame-invisible}、フレームを変更せずに残す@code{ignore}、またはフレームを唯一の引数とする任意の関数のいずれかを指定できる。
+
+このオプションで指定された関数は指定されたフレームが生きたウィンドウただ1つを含み、かつ同一端末上に少なくとも1つ他のフレームが存在する場合のみ呼び出されることに注意。
+
+特定のフレームにたいしてここで指定した値は、そのフレームのフレームパラメーター@code{auto-hide-function}でオーバーライドされるかもしれない(@ref{Frame
+Interaction Parameters}を参照)。
+@end defopt
+
+
+@node Side Windows
+@section サイドウィンドウ
+@cindex side windows
+@cindex main window
+@cindex main window of a frame
+
+サイドウィンドウ(side window)とは、フレームのルートウィンドウ(@ref{Windows and
+Frames}を参照)の4辺のいずれかに位置する特別なウィンドウです。これは実際にはフレームのルートウィンドウ領域は、メインウィンドウとメインウィンドウ周囲のいくつかのサイドウィンドウに分割されることを意味します。メインウィンドウは``通常''の生きたウィンドウ、またはすべての通常ウィンドウを含んだ領域を指定します。
+
+   この形式のもっともシンプルな使用では、サイドウィンドウによって特定のバッファーを常にフレームの同一領域に表示することが可能です。したがってこれは@code{display-buffer-at-bottom}
+(@ref{Buffer Display Action Functions}を参照)によって提供される概念を残りのサイド(訳注:
+下辺以外)に一般化したものとみなすことができます。しかし適切にカスタマイズすることにより、いわゆる統合開発環境(IDE)で見い出されるようなフレームレイアウトを提供するためにも、サイドウィンドウを使用できます。
+
+@menu
+* Displaying Buffers in Side Windows::  サイドウィンドウへのバッファー表示のためのアクション関数。
+* Side Window Options and Functions::  サイドウィンドウの更なる調整。
+* Frame Layouts with Side Windows::  サイドウィンドウによるフレームレイアウトのセットアップ。
+@end menu
+
+
+@node Displaying Buffers in Side Windows
+@subsection サイドウィンドウへのバッファーの表示
+
+以下の@code{display-buffer} (@ref{Buffer Display Action
+Functions}を参照)用のアクション関数は特定のバッファーを表示するためにサイドウィンドウの作成や再利用を行います。
+
+@defun display-buffer-in-side-window buffer alist
+この関数は選択されたフレームのサイドウィンドウに@var{buffer}を表示する。@var{buffer}の表示に使用したウィンドウをリターンする。そのようなウィンドウが見つからない、または作成できなければ@code{nil}をリターンする。
+
+@var{alist}は@code{display-buffer}の場合と同様のシンボルと値からなる連想リスト。@var{alist}内で以下のシンボルはこの関数では特別な意味をもつ:
+
+@table @code
+@item side
+ウィンドウを配置するフレームのサイド(側面)を表す。有効な値は@code{left}、@code{top}、@code{right}、@code{bottom}。未指定ならウィンドウはフレームの底部(bottom)に配置される。
+
+@item slot
+指定したウィンドウを配置するサイドのスロットを表す。値0は指定したサイドのおおよそ中央にウィンドウを配置する。負の値は中央スロットの前(上方か左方)、正の値は中央スロットの後(下方か右方)を意味する。つまり特定のサイド上にあるすべてのウィンドウは@code{slot}の値の順になる。未指定ならウィンドウは指定したサイドの中央に配置される。
+@end table
+
+同一サイドの同一スロットに2つ以上の異なるバッファーすると、最後に表示されたバッファーが対応するウィンドウに表示される。したがってバッファー間で同じサイドウィンドウを共有するためにスロットを使用できる。
+
+この関数はパラメーター@code{window-side}と@code{window-slot}をインストールして永続化する(@ref{Window
+Parameters}を参照)。@var{alist}内の@code{window-parameters}エントリーを通じて明示的に提供されない限り、他のウィンドウパラメーターは何もインストールしない。
+@end defun
+
+デフォルトではサイドウィンドウは@code{split-window} (@ref{Splitting
+Windows}を参照)で分割できません。さらにサイドウィンドウはアクションのターゲットとして明示的に指定されていなければ、バッファーディスプレイアクション(@ref{Buffer
+Display Action
+Functions}を参照)によって再利用や分割されることはありません。@code{delete-other-windows}はサイドウィンドウをフレーム上で唯一ののウィンドウにできないことにも注意してください(@ref{Deleting
+Windows}を参照)。
+
+   一度セットアップされれば、サイドウィンドウにたいする@code{switch-to-prev-buffer}と@code{switch-to-next-buffer}
+(@ref{Window
+History}を参照)の挙動も変更されます。特にサイドウィンドウでは、これらのコマンドは以前にそのウィンドウに表示されたことのないバッファーの表示を抑制します。さらにすでにサイドウィンドウに表示されているバッファーの、通常の非サイドウィンドウでの表示も抑制します。後者ルールの明記するべき例外は、アプリケーションがバッファー表示後にバッファーのローカル変数をリセットしたときに発生します。
+
+
+@node Side Window Options and Functions
+@subsection サイドウィンドウのオプションと関数
+
+以下のオプションはサイドウィンドウ配置において更なる制御を提供します。
+
+@defopt window-sides-vertical
+非@code{nil}ならフレームの左右のサイドウィンドウはフレームの全高さを占有する。それ以外ならフレームの上下のサイドウィンドウはフレームの全幅を占有する。
+@end defopt
+
+@defopt window-sides-slots
+このオプションはフレーム各サイドのサイドウィンドウの最大数を指定する。値は各フレームのサイドウィンドウのスロット数を左辺、上辺、右辺、下辺の順で指定する4要素のリスト。要素が数値なら対応するサイドで表示できる最大のウィンドウ数を意味する。要素が@code{nil}ならそのサイドのスロット数に制限がないことを意味する。
+
+指定された値のいずれかが0なら、対応するサイドへのウィンドウは作成できない。この場合には@code{display-buffer-in-side-window}はエラーをシグナルしないが@code{nil}をリターンする。指定した値が単にサイドウィンドウの追加作成を禁止する場合には、そのサイド上にあるもっとも適したウィンドウが再利用されて、それに応じてウィンドウの@code{window-slot}も変更される。
+@end defopt
+
+@defopt window-sides-reversed
+このオプションは上や下のサイドウィンドウが逆順で表示されるかどうかを指定する。@code{nil}ならフレームの上や下にあるサイドウィンドウはスロット値の増加にともない常に左から右に描画される。@code{t}なら描画順は反転してフレームの上や下にあるサイドウィンドウはスロット値の増加にともない右から左に描画される。
+
+これが@code{bidi}なら描画順はフレームのメインウィンドウ内でもっとも最近選択されたウィンドウに表示されるバッファーの@code{bidi-paragraph-direction}
+(@ref{Bidirectional
+Display}を参照)の値が@code{right-to-left}の場合のみ逆順になる。このウィンドウを見つけるのが困難なときがあるかもしれないので、別のウィンドウ選択時に意図せず描画順が変更されることを避けるために経験則が使用される。
+
+フレームの左右にあるサイドウィンドウのレイアウトは、この変数の値から影響を受けない。
+@end defopt
+
+以下の関数はサイドウィンドウをもつフレームのメインウィンドウをリターンします。
+
+@defun window-main-window &optional frame
+この関数は指定した@var{frame}のメインウィンドウをリターンする。オプション引数@var{frame}は生きたフレームでなければならず、デフォルトは選択されたフレーム。
+
+@var{frame}にサイドウィンドウがなければ@var{frame}のルートウィンドウをリターンする。それ以外なら@var{frame}上にある他のすべての非サイドウィンドウの系統元であるようなサイドウィンドウではない内部ウィンドウ、または@var{frame}の単一の生きた非サイドウィンドウのいずれか。フレームのメインウィンドウは@code{delete-window}で削除できないことに注意。
+@end defun
+
+以下のコマンドは指定したフレーム上にあるすべてのサイドウィンドウの外観を手軽にトグル(toggle: オンとオフを切り替える)できます。
+
+@deffn Command window-toggle-side-windows &optional frame
+この関数は指定された@var{frame}のサイドウィンドウをトグルする。オプション引数@var{frame}は生きたフレームでなければならずデフォルトは選択された@var{frame}。
+
+@var{frame}に少なくとも1つのサイドウィンドウがあれば、このコマンドは@var{frame}のルートウィンドウの状態を@var{frame}の@code{window-state}パラメーターに保存して、その後に@var{frame}のサイドウィンドウをすべて削除する。
+
+@var{frame}にサイドウィンドウがなく、しかし@code{window-state}パラメーターがあれば、このコマンドはパラメーターの値を使用して@var{frame}のメインウィンドウを残しつつ@var{frame}のサイドウィンドウをリストアする。
+
+@var{frame}にサイドウィンドウがなく保存した状態も見つからなければエラーをシグナルする。
+@end deffn
+
+
+@node Frame Layouts with Side Windows
+@subsection サイドウィンドウによるフレームのレイアウト
+
+サイドウィンドウは統合開発環境(IDE)が提供するような、より複雑なフレームレイアウトの作成に使用できます。そのようなレイアウトでは通常の編集アクティビティが行われるのはメインウィンドウ領域になります。サイドウィンドウは通常の意味においての編集は意図していません。それよりはカレント編集アクティビティを補足するためのファイルやタグやバッファーのリスト、ヘルプ情報、検索やgrepの結果、シェル出力などの情報の表示を意図しています。
+
+   そのようなフレームのレイアウトは以下のような外観になるでしょう:
+
+@smallexample
+@group
+     ___________________________________
+    |          *Buffer List*            |
+    |___________________________________|
+    |     |                       |     |
+    |  *  |                       |  *  |
+    |  d  |                       |  T  |
+    |  i  |                       |  a  |
+    |  r  |   Main Window Area    |  g  |
+    |  e  |                       |  s  |
+    |  d  |                       |  *  |
+    |  *  |                       |     |
+    |_____|_______________________|_____|
+    | *help*/*grep*/  |  *shell*/       |
+    | *Completions*   |  *compilation*  |
+    |_________________|_________________|
+    |             Echo Area             |
+    |___________________________________|
+
+
+@end group
+@end smallexample
+
+以下は上図フレームレイアウトを作成するコードをセットアップするために@code{display-buffer-in-side-window}とともにウィンドウパラメーター(@pxref{Window
+Parameters}) を使用する方法を説明するための例です。
+
+@example
+@group
+(defvar parameters
+  '(window-parameters . ((no-other-window . t)
+                         (no-delete-other-windows . t))))
+
+(setq fit-window-to-buffer-horizontally t)
+(setq window-resize-pixelwise t)
+
+(setq
+ display-buffer-alist
+ `(("\\*Buffer List\\*" display-buffer-in-side-window
+    (side . top) (slot . 0) (window-height . fit-window-to-buffer)
+    (preserve-size . (nil . t)) ,parameters)
+   ("\\*Tags List\\*" display-buffer-in-side-window
+    (side . right) (slot . 0) (window-width . fit-window-to-buffer)
+    (preserve-size . (t . nil)) ,parameters)
+   ("\\*\\(?:help\\|grep\\|Completions\\)\\*"
+    display-buffer-in-side-window
+    (side . bottom) (slot . -1) (preserve-size . (nil . t))
+    ,parameters)
+   ("\\*\\(?:shell\\|compilation\\)\\*" display-buffer-in-side-window
+    (side . bottom) (slot . 1) (preserve-size . (nil . t))
+    ,parameters)))
+@end group
+@end example
+
+これは固定化された名前をもつバッファーにたいして@code{display-buffer-alist}エントリー(@ref{Choosing
+Window}を参照)を指定します。特にフレーム上辺に高さ調節可能な@file{*Buffer
+List*}と、フレーム右辺に幅調節可能な@file{*Tags
+List*}の表示を要求します。さらにフレーム下辺左側のウィンドウでバッファー@file{*help*}と@file{*grep*}と@file{*Completions*}の共有、フレーム下辺右側のウィンドウではバッファー@file{*shell*}と@file{*compilation*}の表示を要求します。
+
+   ウィンドウの水平調節を可能にするためにオプション@code{fit-window-to-buffer-horizontally}が非@code{nil}値をもたなければならないことに注意してください。フレームの上下にあるサイドウィンドウの高さとフレームの左右にあるサイドウィンドウの幅を保持するためのエントリーも追加しています。フレーム最大化時にサイドウィンドウがそれに応じたサイズを維持することを保証するために、変数@code{window-resize-pixelwise}に非@code{nil}値をセットしています。@ref{Resizing
+Windows}を参照してください。
+
+   最後のフォームではこれらの各ウィンドウに@code{no-other-window}パラメーターをインストールすることによって、作成したサイドウィンドウにたいする@w{@kbd{C-x
+o}}を介してアクセスできないことも保証しています。さらにこれらの各ウィンドウに@code{no-delete-other-windows}パラメーターをインストールして、@w{@kbd{C-x
+1}}によるサイドウィンドウの削除ができないことを保証しています。
+
+   @code{dired}バッファーは固定化された名前をもたないので、フレーム左辺の細いディレクトリーバッファーを表示するためにスペシャル関数@code{dired-default-directory-on-left}を使用しています。
+
+@example
+@group
+(defun dired-default-directory-on-left ()
+  "左側サイドウィンドウに詳細を隠して`default-directory'を表示する。"
+  (interactive)
+  (let ((buffer (dired-noselect default-directory)))
+    (with-current-buffer buffer (dired-hide-details-mode t))
+    (display-buffer-in-side-window
+     buffer `((side . left) (slot . 0)
+              (window-width . fit-window-to-buffer)
+              (preserve-size . (t . nil)) ,parameters))))
+@end group
+@end example
+
+これまでのフォームを評価して任意の順序で@w{@kbd{M-x list-buffers}}、@kbd{C-h f}、@kbd{M-x
+shell}、@w{@kbd{M-x list-tags}}、@kbd{M-x
+dired-default-directory-on-left}を評価すれば上図のフレームレイアウトが再作成されるはずです。
+
+
+@node Atomic Windows
+@section アトミックウィンドウ
+@cindex atomic windows
+
+アトミックウィンドウ(atomic window)とは少なくとも2つ以上の生きたウィンドウから組成された矩形領域であり以下のような特性をもちます:
+
+@itemize @bullet
+@item
+アトミックウィンドウの構成にたいして関数@code{split-window} (@ref{Splitting
+Windows}を参照)を適用するとアトミックウィンドウ外部に新たなウィンドウの作成を試みる。
+
+@item
+アトミックウィンドウの構成にたいして関数@code{delete-window} (@ref{Deleting
+Windows}を参照)を適用するとアトミックウィンドウ全体の削除を試みる。
+
+@item
+アトミックウィンドウの構成にたいして関数@code{delete-other-windows} (@ref{Deleting
+Windows}を参照)を適用するとアトミックウィンドウによるフレームの充填、またはメインウィンドウ化を試みる(@ref{Side
+Windows}を参照)。
+@end itemize
+
+これはウィンドウ構造を変更する基本的な関数グループはアトミックウィンドウを生きたウィンドウのように扱い、それゆえアトミックウィンドウ内部の構造を保持することを意味しています。
+
+   アトミックウィンドウはファイルのリビジョン間の差異、異なる言語やマークアップでの同一テキストの表示のように、関連するバッファーを特定のマナーにしたがって同時に表示する際にのみ有意義なウィンドウレイアウトの構築と保持に有用です。特定のウィンドウの側面上のバーでウィンドウの情報を永続的に表示するためにも使用できます。
+
+@cindex root window of atomic window
+   アトミックウィンドウは予約済みのウィンドウパラメーター@code{window-atom} (@ref{Window
+Parameters}を参照)の助けを借りて実装されていて、内部ウィンドウ(@ref{Basic
+Windows}を参照)はアトミックウィンドウのルートウィンドウと呼ばれます。同じアトミックウィンドウの一部であるようなすべてのウィンドウは共通の祖先としてこのルートウィンドウをもち、@code{window-atom}パラメーターに非@code{nil}が割り当てられます。
+
+  以下の関数は指定したウィンドウを一部とするアトミックウィンドウのルートをリターンします:
+
+@defun window-atom-root &optional window
+この関数は@var{window}を一部とするようなアトミックウィンドウのルートウィンドウをリターンする。@var{window}には有効なウィンドウを指定しなければならず、デフォルトは選択されたウィンドウ。@var{window}がアトミックウィンドウの一部でなければ@code{nil}をリターンする。
+@end defun
+
+アトミックウィンドウを新たに作成するには既存の内部ウィンドウを選んで以下の関数を適用するのがもっともシンプルなアプローチです:
+
+@defun window-make-atom window
+この関数は@var{window}をアトミックウィンドウに変換する。@var{window}には内部ウィンドウを指定しなければならない。この関数が行うのは@var{window}の子孫それぞれの@code{window-atom}パラメーターに@code{t}をセットすることだけである。
+@end defun
+
+既存の生きたウィンドウから新たにアトミックウィンドウを作成したり、既存のアトミックウィンドウに新たにウィンドウを追加するには、以下のバッファーディスプレイアクション関数を使用できます(@ref{Buffer
+Display Action Functions}を参照):
+
+@defun display-buffer-in-atom-window buffer alist
+この関数は既存のウィンドウと組み合わせてアトミックウィンドウを形成することになる新たなウィンドウ内で@var{buffer}を表示する。既存のウィンドウがすでにアトミックウィンドウの一部なら、そのアトミックウィンドウに新たなウィンドウを追加する。
+
+@var{alist}にはシンボルと値からなる連想リストを指定する。以下は特別な意味をもつシンボル:
+
+@table @code
+@item window
+このような要素は新たなウィンドウを組み合わせる既存のウィンドウを指定する。内部ウィンドウを指定すると、そのウィンドウのすべての子ウィンドウもアトミックウィンドウの一部になる。ウィンドウを何も指定しなければ新たなウィンドウは選択されたウィンドウの兄弟ウィンドウになる。既存ウィンドウの@code{window-atom}パラメーターはそれが生きたウィンドウであり、かつ@code{window-atom}がすでにセット済みでなければ@code{main}にセットされる。
+
+@item side
+このような要素は既存ウィンドウで新たなウィンドウが配置されるサイドを表す。有効な値は@code{below}、@code{right}、@code{above}、@code{left}。デフォルトは@code{below}。この値は新たなウィンドウの@code{window-atom}パラメーターにセットされる。
+@end table
+
+リターン値は新たなウィンドウ、ウィンドウ作成に失敗すると@code{nil}。
+@end defun
+
+非@code{nil}である限り@code{window-atom}パラメーターの値は問題ではないことに注意してください。@code{display-buffer-in-atom-window}が割り当てる値は、関数の適用後に元のウィンドウと新たなウィンドウを簡単に取得することだけが目的です。@code{display-buffer-in-atom-window}が割り当てるウィンドウパラメーターは@code{window-atom}パラメーターだけであることにも注意してください。それ以外のパラメーターは@var{alist}内の@code{window-parameters}エントリーを介してアプリケーションがセットする必要があります。
+
+   アトミックウィンドウはそれを構成するウィンドウのいずれかが削除された際には存在を終えます。アトミックウィンドウを手動で分解するためには、それを構成するウィンドウ(アトミックウィンドウのルートウィンドウと子孫)の@code{window-atom}パラメーターをリセットしてください。
+
+   以下のスニペットコードを単一ウィンドウのフレームに適用すると、最初に選択されたウィンドウを分割して選択されたウィンドウと新たなウィンドウの親をルートとしてアトミックウィンドウを構成します。それからフレーム下辺にある新たなウィンドウでバッファー@file{*Messages*}を表示して、新たなウィンドウを作成したアトミックウィンドウの一部にします。
+
+@example
+@group
+(let ((window (split-window-right)))
+  (window-make-atom (window-parent window))
+  (display-buffer-in-atom-window
+   (get-buffer-create "*Messages*")
+   `((window . ,(window-parent window)) (window-height . 5))))
+@end group
+@end example
+
+この時点においてフレーム内の任意のウィンドウで@w{@kbd{C-x
+2}}をタイプすると、フレーム下辺に新たなウィンドウが作成されます。かわりに@w{@kbd{C-x
+3}}をタイプすれば新たなウィンドウはフレーム右辺に配置されるでしょう。いずれのケースでもここでアトミックウィンドウ内の任意のウィンドウで@w{@kbd{C-x
+1}}をタイプすると、新たなウィンドウだけが削除されます。アトミックウィンドウ内の任意のウィンドウで@w{@kbd{C-x
+0}}をタイプすればフレームは新たなウィンドウで充填されるでしょう。
+
+
+@node Window Point
+@section ウィンドウとポイント
+@cindex window position
+@cindex window point
+@cindex position in window
+@cindex point in window
+
+  それぞれのウィンドウは独自のポイント値(@ref{Point}を参照)をもち、同じバッファーを表示する他のウィンドウの間でも、ポイント値はそれぞれ独立しています。これは1つのバッファーを複数ウィンドウで表示するのに有用です。
+
+@itemize @bullet
+@item
+ウィンドウポイント(window
+point)は、ウィンドウが最初に作成されたときに設定される。ウィンドウポイントはバッファーのポイント、またはそのバッファーからオープンされたウィンドウがあればそのウィンドウのウィンドウポイントにより初期化される。
+
+@item
+ウィンドウの選択により、ウィンドウのポイント値からそのバッファーのポイント値がセットされる。反対にウィンドウの非選択により、ウィンドウのポイント値にバッファーのポイント値がセットされる。つまり与えられたバッファーを表示するウィンドウ間で切り替えを行ったときには、そのバッファーでは選択されたウィンドウのポイント値が効力をもつが、他のウィンドウのポイント値はそのウィンドウに格納される。
+
+@item
+選択されたウィンドウがカレントバッファーの表示を続ける限り、そのウィンドウのポイントとバッファーのポイントは常に連動して移動して等しく保たれる。
+@end itemize
+
+@cindex cursor
+   デフォルトではEmacsは塗りつぶした矩形ブロックで各ウィンドウのポイント位置にカーソルを表示します。あるウィンドウでユーザーが別のバッファーに切り替えた際には、そのウィンドウのカーソルはそのバッファーのポイント位置に移動します。display文字列やイメージ等の何らかのディスプレイ要素により正確な位置が隠れている場合には、Emacsはそのdisplay要素の直前か直後にカーソルを表示する。
+
+@defun window-point &optional window
+この関数は@var{window}内のカレントのポイント位置をリターンする。選択されていないウィンドウでは、そのウィンドウが選択された場合の、(そのウィンドウのバッファーの)ポイント値である。@var{window}にたいするデフォルトは選択されたウィンドウ。
+
+@var{window}が選択されたウィンドウのときのリターン値は、そのウィンドウのバッファーのポイント値。厳密にはすべての@code{save-excursion}フォームの外側のトップレベルのポイント値のほうがより正確であろう。しかしこの値は見つけるのが困難である。
+@end defun
+
+@defun set-window-point window position
+この関数は@var{window}内のポイントを@var{window}のバッファー内の位置@var{position}に配置する。リターン値は@var{position}。
+
+@var{window}が選択されていれば単に@var{window}内で@code{goto-char}を行う。
+@end defun
+
+@defvar window-point-insertion-type
+この変数は@code{window-point}のマーカー挿入型(@ref{Marker Insertion
+Types}を参照)を指定する。デフォルトは@code{nil}で、@code{window-point}は挿入されたテキストの後に留まるだろう。
+@end defvar
+
+@node Window Start and End
+@section ウィンドウの開始位置と終了位置
+@cindex window start position
+@cindex display-start position
+
+  ウィンドウはそれぞれバッファー位置を追跡するために、バッファー内で表示を開始すべき位置を指定するマーカーを保守しています。この位置はそのウィンドウの@dfn{display-start(表示開始)}、または単に@dfn{start(開始)}と呼ばれます。この位置の後の文字がウィンドウの左上隅に表示される文字となります。これは通常はテキスト行の先頭になりますが必須ではありません。
+
+  ウィンドウやバッファーの切り替え後やいくつかのケースにおいては、ウィンドウが行の途中で開始される場合にEmacsがィンドウの開始を行の開始に調整します。これは行中で無意味な位置のウィンドウ開始のまま特定の操作が行われるのを防ぐためです。この機能はLispモードのコマンドを使用して実行することによりある種のLispコードをテストする場合には、それらのコマンドがこの再調整を誘発してしまうので邪魔かもしれません。そのようなコードをテストするためには、それをコマンド内に記述して何らかのキーにバインドしてください。
+
+@defun window-start &optional window
+@cindex window top line
+この関数はウィンドウ@var{window}の表示開始位置をリターンする。@var{window}が@code{nil}なら選択されたウィンドウが使用される。
+
+ウィンドウを作成したり他のバッファーをウィンドウ内に表示する際、display-start位置は同じバッファーにたいしてもっとも最近に使用されたdisplay-start位置、そのバッファーがそれをもたなければ@code{point-min}にセットされる。
+
+ポイントがスクリーン上に確実に現れるように、再表示はwindow-start位置を更新する(前の再表示以降にwindow-start位置を明示的に指定していない場合)。再表示以外にwindow-start位置を自動的に変更するものはない。ポイントを移動した場合には、次の再表示後までポイントの移動に応じてwindow-startが変更されることを期待してはならない。
+@end defun
+
+@defun window-group-start &optional window
+@vindex window-group-start-function
+この関数は@code{window-start}と同様だが、@var{window}がウィンドウグループ(@ref{Window
+Group}を参照)の一部なら、@code{window-group-start}はグループ全体の開始位置をリターンする点が異なる。この条件はバッファーローカル変数@code{window-group-start-function}に関数がセットされている際に保持される。この場合には、@code{window-group-start}はその関数を単一の引数@var{window}で呼び出して結果をリターンする。
+@end defun
+
+@cindex window end position
+@cindex last visible position in a window
+@defun window-end &optional window update
+この関数は@var{window}のバッファーの最後を表示する位置をリターンする。@var{window}にたいするデフォルトは選択されたウィンドウ。
+
+バッファーテキストの単なる変更やポイントの移動では@code{window-end}がリターンする値は更新されない。この値はEmacsが再表示を行って、妨害されることなく再表示が完了したときのみ更新される。
+
+@var{window}の最後の再表示が妨害されて完了しなかったら、Emacsはそのウィンドウ内の表示のend位置を知らない。関数はこの場合は@code{nil}をリターンする。
+
+@var{update}が非@code{nil}なら、@code{window-end}は@code{window-start}のカレント値にもとづき、どこが表示のendなのか最新の値をリターンする。以前に保存された位置の値がまだ有効なら、@code{window-end}はその値をリターンする。それ以外はバッファーのテキストをスキャンして正しい値を計算する。
+
+たとえ@var{update}が非@code{nil}であっても、@code{window-end}はポイントが画面外に移動した場合に実際の再表示が行うような表示のスクロールを試みない。これは@code{window-start}の値を変更しない。これは実際にはスクロールが要求されない場合の表示されたテキストのendがどこかを報告する。リターンされる位置は部分的に可視なだけかもしれないことに注意。
+@end defun
+
+@vindex window-group-end-function
+@defun window-group-end &optional window update
+この関数は@code{window-end}と同様だが、@var{window}がウィンドウグループ(@ref{Window
+Group}を参照)の一部なら、@code{window-group-end}はグループ全体の終了位置をリターンする点が異なる。この条件はバッファーローカル変数@code{window-group-end-function}に関数がセットされている際に保持される。この場合には、@code{window-group-end}はその関数を2つの引数@var{window}と@var{update}で呼び出して結果をリターンする。引数@var{update}は@code{window-end}の場合と同じ意味をもつ。
+@end defun
+
+@defun set-window-start window position &optional noforce
+この関数は@var{window}のdisplay-start位置を@var{window}のバッファーの@var{position}にセットする。リターン値は@var{position}。
+
+表示ルーチンはバッファーが表示されたときにポイント位置が可視になることを強要する。通常これらは内部ロジックに応じてポイントを可視にするためにdisplay-start位置を選択(および必要ならつまりウィンドウをスクロール)する。しかしこの関数で@var{noforce}に@code{nil}を使用してstart位置を指定した場合は、たとえポイントを画面外になるような場所に配置したとしても、@var{position}での表示開始を望んでいることを意味する。これによりポイントが画面外に配置されると、表示ルーチンはポイントをウィンドウ内の中央行の左マージンに移動しようと試みる。
+
+たとえばポイントが@w{1}のときにウィンドウのstartを次行の開始@w{37}にセットすると、ポイントはウィンドウの最上端より上になるだろう。表示ルーチンは再表示が発生したときにポイントが1のままならポイントを動かすことになる。以下は例:
+
+@example
+@group
+;; @r{以下は式@code{set-window-start}実行前}
+;;   @r{@samp{foo}}の様子
+@end group
+
+@group
+---------- Buffer: foo ----------
+@point{}This is the contents of buffer foo.
+2
+3
+4
+5
+6
+---------- Buffer: foo ----------
+@end group
+
+@group
+(set-window-start
+ (selected-window)
+ (save-excursion
+   (goto-char 1)
+   (forward-line 1)
+   (point)))
+@result{} 37
+@end group
+
+@group
+;; @r{以下は式@code{set-window-start}実行後の}
+;;   @r{@samp{foo}の様子}
+---------- Buffer: foo ----------
+2
+3
+@point{}4
+5
+6
+---------- Buffer: foo ----------
+@end group
+@end example
+
+ポイントを可視(つまり完全に可視なスクリーン行内にポイントを配置)にする試みが失敗すると、表示ルーチンは要求されたwindow-start位置を無視して、とにかく新しい位置を計算する。したがってこの関数を呼び出すLispプログラムが信頼できる結果を得るためには、表示が@var{position}で始まるウィンドウ内部に常にポイントを移動すること。
+
+@var{noforce}が非@code{nil}で、かつ次回の再表示でポイントが画面外に配される場合、再表示はポイントと協調して機能する位置となるような新たなwindow-startを計算するので、@var{position}は使用されない。
+@end defun
+
+@vindex set-window-group-start-function
+@defun set-window-group-start window position &optional noforce
+この関数は@code{set-window-start}と同様だが、@var{window}がウィンドウグループ(@ref{Window
+Group}を参照)の一部なら、@code{set-window-group-start}はグループ全体の開始位置をリターンする点が異なる。この条件はバッファーローカル変数@code{set-window-group-start-function}に関数がセットされている際に保持される。この場合には、@code{set-window-group-start}はその関数を3つの引数@var{window}、@var{position}、@var{noforce}で呼び出して結果をリターンする。この関数の引数@var{position}と@var{noforce}は@code{set-window-start}の場合と同じ意味をもつ。
+@end defun
+
+@defun pos-visible-in-window-p &optional position window partially
+この関数は@var{window}内の@var{position}が画面上カレントで可視のテキスト範囲内にあれば非@code{nil}、@var{position}が表示範囲のスクロール外にあれば@code{nil}をリターンする。@var{partially}が@code{nil}なら部分的に不明瞭な位置は可視とは判断されない。引数@var{position}のデフォルトは@var{window}内のポイントのカレント位置、@var{window}のデフォルトは選択されたウィンドウ。@var{position}が@code{t}なら、それは@var{window}の最後に可視だった行の位置、またはEOB(end-of-buffer:
+バッファー終端位置のいずれか前方になる位置をチェックすることを意味する。
+
+この関数は垂直スクロールだけを考慮する。@var{position}が表示範囲外にある理由が、@var{window}が水平にスクロールされただけなら、いずれにせよ@code{pos-visible-in-window-p}は非@code{nil}をリターンする。@ref{Horizontal
+Scrolling}を参照のこと。
+
+@var{position}が可視で@var{partially}が@code{nil}なら、@code{pos-visible-in-window-p}は@code{t}をリターンする。@var{partially}が非@code{nil}で@var{position}以降の文字が完全に可視なら、@code{(@var{x}
+@var{y})}という形式のリストをリターンする。ここで@var{x}と@var{y}はウィンドウの左上隅からの相対的なピクセル座標。@var{position}以降の文字が完全に可視ではなければ、拡張された形式のリスト@code{(@var{x}
+@var{y} @var{rtop} @var{rbot} @var{rowh}
+@var{vpos})}をリターンする。ここで@var{rtop}と@var{rbot}は@var{position}でウィンドウ外となった上端と下端のピクセル数、@var{rowh}はその行の可視な部分の高さ、@var{vpos}はその行の垂直位置(0基準の行番号)を示す。
+
+以下は例:
+
+@example
+@group
+;; @r{ポイントが画面外ならrecenterする}
+(or (pos-visible-in-window-p
+     (point) (selected-window))
+    (recenter 0))
+@end group
+@end example
+@end defun
+
+@vindex pos-visible-in-window-group-p-function
+@defun pos-visible-in-window-group-p &optional position window partially
+この関数は@code{pos-visible-in-window-p}と同様だが、@var{window}がウィンドウグループ(@ref{Window
+Group}を参照)の一部なら、@code{pos-visible-in-window-group-p}は@var{window}単独ではなく、グループ全体で@var{pos}の可視性をテストする点が異なる。この条件はバッファーローカル変数@code{pos-visible-in-window-group-p-function}に関数がセットされている際に保持される。この場合には、@code{pos-visible-in-window-group-p}はその関数を3つの引数@var{position}、@var{window}、@var{partially}で呼び出して結果をリターンする。この関数の引数@var{position}と@var{partially}は@code{pos-visible-in-window-p}の場合と同じ意味をもつ。
+@end defun
+
+@defun window-line-height &optional line window
+この関数は@var{window}内のテキスト行@var{line}の高さをリターンする。@var{line}が@code{header-line}、@code{mode-line}、@code{window-line-height}のいずれかなら、そのウィンドウの対応する行についての情報をリターンする。それ以外では、@var{line}は0から始まるテキスト行番号。負数ならそのウィンドウのendから数える。@var{line}にたいするデフォルトは@var{window}内のカレント行、@var{window}にたいするデフォルトは選択されたウィンドウ。
+
+表示が最新でなければ@code{window-line-height}は@code{nil}をリターンする。その場合には関連する情報を入手するために@code{pos-visible-in-window-p}を使用できる。
+
+指定された@var{line}に対応する行がなければ、@code{window-line-height}は@code{nil}をリターンする。それ以外では、リスト@code{(@var{height}
+@var{vpos} @var{ypos}
+@var{offbot})}をリターンする。ここで@var{height}はその行の可視部分のピクセル高さ、@var{vpos}と@var{ypos}は最初のテキスト行上端からのその行への相対的な垂直位置の行数とピクセル数、@var{offbot}はそのテキスト行下端のウィンドウ外のピクセル数。(最初の)テキスト行上端にウィンドウ外のピクセルがある場合には@var{ypos}は負となる。
+@end defun
+
+@node Textual Scrolling
+@section テキスト的なスクロール
+@cindex textual scrolling
+@cindex scrolling textually
+
+  @dfn{テキスト的なスクロール(textual
+scrolling)}とは、ウィンドウ内のテキストを上や下に移動することを意味します。これはそのウィンドウのdisplay-startを変更することにより機能します。これはポイントを画面上に維持するために@code{window-point}の値も変更するかもしれません(@ref{Window
+Point}を参照)。
+
+  テキスト的なスクロールの基本的な関数は、(前方にスクロールする) @code{scroll-up}、および(後方にスクロールする)
+@code{scroll-down}です。これらの関数の名前の``up''と``down''は、バッファーテキストのそのウィンドウにたいする相対的な移動方向を示しています。そのテキストが長いロール紙に記述されていて、スクロールコマンドはその上を上下に移動すると想像してみてください。つまりバッファーの中央に注目している場合には、繰り返して@code{scroll-down}を呼び出すと最終的にはバッファーの先頭を目にすることになるでしょう。
+
+  これは残念なことに時折混乱を招きます。なぜならある人はこれを逆の慣習にもとづいて考える傾向があるからです。彼らはテキストがその場所に留まりウィンドウが移動して、``down''コマンドによりバッファー終端に移動するだろうと想像します。この慣習はそのようなコマンドが現代風のキーボード上の@key{PageDown}という名前のキーにバインドされているという事実と一致しています。
+@ignore
+We have not switched to this convention as that is likely to break
+existing Emacs Lisp code.
+@end ignore
+
+  選択されたウィンドウ内で表示されているバッファーがカレントバッファーでなければ、(@code{scroll-other-window}以外の)テキスト的スクロール関数の結果は予測できません。@ref{Current
+Buffer}を参照してください。
+
+  (たとえば大きなイメージがある等で)ウィンドウにウィンドウの高さより高い行が含まれる場合には、スクロール関数は部分的に可視な行をスクロールするためにそのウィンドウの垂直スクロール位置を調整します。Lisp呼び出し側は変数@code{auto-window-vscroll}を@code{nil}にバインドすることにより、この機能を無効にできます(@ref{Vertical
+Scrolling}を参照)。
+
+@deffn Command scroll-up &optional count
+この関数は選択されたウィンドウ内で@var{count}行前方にスクロールする。
+
+@var{count}が負ならかわりに後方へスクロールする。@var{count}が@code{nil}
+(または省略)ならスクロールされる距離は、そのウィンドウのテキストエリアの高さより小さい@code{next-screen-context-lines}となる。
+
+この関数は選択されたウィンドウがそれ以上スクロールできなければエラーをシグナルして、それ以外は@code{nil}をリターンする。
+@end deffn
+
+@deffn Command scroll-down &optional count
+この関数は選択されたウィンドウ内で@var{count}行後方にスクロールする。
+
+@var{count}が負ならかわりに前方へスクロールする。それ以外の点ではこれは@code{scroll-up}と同様に振る舞う。
+@end deffn
+
+@deffn Command scroll-up-command &optional count
+これは@code{scroll-up}と同様に振る舞うが選択されたウィンドウがそれ以上スクロールできず、かつ変数@code{scroll-error-top-bottom}の値が@code{t}なら、かわりにそのバッファーの終端への移動を試みる。ポイントがすでに終端にあればエラーをシグナルする。
+@end deffn
+
+@deffn Command scroll-down-command &optional count
+これは@code{scroll-down}と同様に振る舞うが選択されたウィンドウがそれ以上スクロールできず、かつ変数@code{scroll-error-top-bottom}の値が@code{t}なら、かわりにそのバッファーの先頭への移動を試みる。ポイントがすでに先頭にあればエラーをシグナルする。
+@end deffn
+
+@deffn Command scroll-other-window &optional count
+この関数は他のウィンドウ内のテキストを上方に@var{count}行スクロールする。@var{count}が負か@code{nil}なら@code{scroll-up}のように処理される。
+
+変数@code{other-window-scroll-buffer}にバッファーをセットすることにより、どのバッファーをスクロールするかを指定できる。そのバッファーが表示されていなければ、@code{scroll-other-window}はそれを何らかのウィンドウにそれを表示する。
+
+選択されたウィンドウがミニバッファーのとき、次ウィンドウは通常はそのウィンドウの直上最左のウィンドウである。変数@code{minibuffer-scroll-window}をセットすることにより、スクロールする別のウィンドウを指定できる。この変数はミニバッファー以外のウィンドウが選択されているときは効果がない。これが非@code{nil}、かつミニバッファーが選択されているときには@code{other-window-scroll-buffer}より優先される。@ref{Definition
+of minibuffer-scroll-window}を参照のこと。
+
+ミニバッファーがアクティブのとき選択されたウィンドウが下端右角のウィンドウなら、ミニバッファーが次ウィンドウになる。この場合には@code{scroll-other-window}はミニバッファーのスクロールを試みる。ミニバッファーに含まれるのが1行だけならどこにもスクロールできないので、エコーエリアにメッセージ@samp{End
+of buffer}を瞬時表示した後にその行を再表示する。
+@end deffn
+
+@deffn Command scroll-other-window-down &optional count
+この関数は他のウィンドウ内のテキストを下方に@var{count}行スクロールする。@var{count}が負か@code{nil}なら@code{scroll-down}のように処理される。それ以外の点においては@code{scroll-other-window}と同様の方法で振る舞う。
+@end deffn
+
+@defvar other-window-scroll-buffer
+この変数が非@code{nil}なら、それは@code{scroll-other-window}がどのバッファーのウィンドウをスクロールするかを指定する。
+@end defvar
+
+@defopt scroll-margin
+このオプションはスクロールマージン(ポイントとウィンドウの上端/下端との最小行数)のサイズを指定する。ポイントがウィンドウの上端/下端からその行数になったとき、(可能なら)再表示はポイントをそのマージン外のウィンドウ中央付近に移動するためにテキストを自動的にスクロールする。
+@end defopt
+
+@defopt maximum-scroll-margin
+この変数は@code{scroll-margin}の実効値をカレントウィンドウの行高さの割合に制限する。たとえばカレントウィンドウが20行で@code{maximum-scroll-margin}が0.1なら、@code{scroll-margin}がどれほど大きくてもスクロールマージンが2より大きくなることはない。
+
+@code{maximum-scroll-margin}自体は最大値として0.5という値をもち、これはウィンドウの中央行(ウィンドウが偶数行なら中央の2行)までカーソルを維持するためにマージンを大きくセットすることを可能にする。大きな値(または0.0から0.5までの浮動小数点数以外の値)をセットするとデフォルト値0.25がかわりに使用される。
+@end defopt
+
+@defopt scroll-conservatively
+この変数はポイントがスクリーン外(またはスクロールマージン内)に移動したときに自動的にスクロールを行う方法を指定する。値が正の整数@var{n}なら再表示はそれが正しい表示範囲内にポイントを戻すなら、いずれかの方向に@var{n}行以下のテキストをスクロールする。この振る舞いは@dfn{保守的なスクロール(conservative
+scrolling)}と呼ばれる。それ以外ならスクロールは@code{scroll-up-aggressively}や@code{scroll-down-aggressively}のような他の変数の制御の下に通常の方法で発生する。
+
+デフォルトの値は0でこれは保守的スクロールが発生し得ないことを意味する。
+@end defopt
+
+@defopt scroll-down-aggressively
+この変数の値は@code{nil}、または0から1までの小数点数@var{f}であること。小数点数ならスクリーン上でポイントが置かれたとき下にスクロールする場所を指定する。より正確にはポイントがウィンドウstartより上という理由でウィンドウが下にスクロールされるときには、新たなstart位置がウィンドウ上端からウィンドウ高さの@var{f}の箇所にポイントが置かれるように選択される。より大きな@var{f}なら、よりaggressive(積極的)にスクロールする。
+
+その効果はポイントを中央に配置することであり、値@code{nil}は.5と等価である。どのような方法によりセットされたときでも、この変数は自動的にバッファーローカルになる。
+@end defopt
+
+@defopt scroll-up-aggressively
+@code{scroll-up-aggressively}の場合と同様。値@var{f}はポイントがウィンドウ下端からどれほどの位置に置かれるべきかを指定する。つまり、@code{scroll-up-aggressively}と同様に大きな値ではよりaggressive(積極的)になる。
+@end defopt
+
+@defopt scroll-step
+この変数は@code{scroll-conservatively}の古い変種である。違いは値が@var{n}なら@var{n}以下の値ではなく、正確に@var{n}だけのスクロールを許容することである。この機能は@code{scroll-margin}とは共に機能しない。デフォルトは0。
+@end defopt
+
+@cindex @code{scroll-command} property
+@defopt scroll-preserve-screen-position
+このオプションが@code{t}なら、スクロールによりポイントがウィンドウ外に移動したとき、Emacsは常にポイントがポイントの上下端ではなくカーソルがそのウィンドウ内の元の垂直位置に保たれるようポイントの調整を試みる。
+
+値が非@code{nil}かつ非@code{t}なら、たとえスクロールコマンドによりポイントがウィンドウ外に移動していなくとも、Emacsはカーソルが同じ垂直位置に保たれるようにポイントを調整する。
+
+このオプションはシンボルプロパティ@code{scroll-command}が非@code{nil}であるような、すべてのスクロールコマンドに影響する。
+@end defopt
+
+@defopt next-screen-context-lines
+この変数の値は全画面スクロールされたときに継続して残される行数を指定する。たとえば引数が@code{nil}の@code{scroll-up}はウィンドウ上端ではなく下端に残される行数でスクロールする。デフォルト値は@code{2}。
+@end defopt
+
+@defopt scroll-error-top-bottom
+このオプションが@code{nil}(デフォルト)なら、それ以上のスクロールが不可能な際に@code{scroll-up-command}と@code{scroll-down-command}は単にエラーをシグナルする。
+
+値が@code{t}なら、これらのコマンドはかわりにポイントをバッファーの先頭か終端(スクロール方向に依存する)に移動する。ポイントがすでにその位置にある場合のみエラーをシグナルする。
+@end defopt
+
+@deffn Command recenter &optional count redisplay
+@cindex centering point
+この関数は選択されたウィンドウ内の指定された垂直位置にポイントを表示するようにウィンドウ内のテキストをスクロールする。これはテキストに応じたポイント移動を行わない。
+
+@var{count}が非負の数なら、そのウィンドウ上端から@var{count}行下にポイントを含む行を配置する。@var{count}が負ならウィンドウ下端から上に数えるので、@minus{}1はそのウィンドウ内で最後の利用可能な行となる。
+
+@var{count}が@code{nil}
+(または非@code{nil}のリスト)なら、@code{recenter}はポイントを含む行をウィンドウの中央に配置する。@var{count}と@var{redisplay}が非@code{nil}なら、この関数は@code{recenter-redisplay}の値に応じてフレームを再描画するかもしれない。@code{recenter-redisplay}が非@code{nil}の場合の効果を打ち消すために、したがって2つ目の引数の省略を使用できる。インタラクティブな呼び出しでは@var{redisplay}に非‘nil’が渡される。
+
+@code{recenter}がインタラクティブに呼び出されたときはrawプレフィックス引数が@var{count}となる。したがってプレフィックスとして@kbd{C-u}をタイプすると@var{count}に非@code{nil}、@kbd{C-u
+4}では@var{count}に4がセットされte、後者ではカレント行を上端から4行目にセットする。
+
+引数0では@code{recenter}はカレント行をウィンドウ上端に配置する。コマンド@code{recenter-top-bottom}はこれを達成するためにより簡便な方法を提供する。
+@end deffn
+
+@vindex recenter-window-group-function
+@defun recenter-window-group &optional count
+この関数は@code{recenter}と同様だが、選択されたウィンドウがウィンドウグループ(@ref{Window
+Group}を参照)の一部の際には、@code{recenter-window-group}がグループ全体をスクロールする点が異なる。この条件はバッファーローカル変数@code{recenter-window-group-function}が関数にセットされている際に保持される。この場合には@code{recenter-window-group}はその関数を引数@var{count}で呼び出して結果をリターンする。引数@var{count}は@code{recenter}の場合と同様の意味をもつが、ウィンドウグループ全体に作用する。
+@end defun
+
+@defopt recenter-redisplay
+この変数が非@code{nil}なら引数@var{redisplay}を@code{nil}、引数@var{count}を非@code{nil}で@code{recenter}を呼び出すことによりフレームを再描画する。デフォルト値は@code{tty}で、これはフレームがttyフレームのときだけフレームを再描画することを意味する。
+@end defopt
+
+@deffn Command recenter-top-bottom &optional count
+デフォルトでは@kbd{C-l}にバインドされているこのコマンドは、@code{recenter}と同様に動作するが引数なしで呼び出されたときの動作が異なる。この場合には連続して呼び出すことにより変数@code{recenter-positions}で定義されるサイクル順に応じてポイントを配置する。
+@end deffn
+
+@defopt recenter-positions
+これは@code{recenter-top-bottom}を引数なしで呼び出したときの挙動を制御する。デフォルト値は@code{(middle top
+bottom)}で、これは引数なしで@code{recenter-top-bottom}を連続して呼び出すとポイントをウィンドウの中央、上端、下端と巡回して配置することを意味する。
+@end defopt
+
+
+@node Vertical Scrolling
+@section 割り合いによる垂直スクロール
+@cindex vertical fractional scrolling
+@cindex vertical scroll position
+
+   @dfn{垂直フラクショナルスクロール(vertical fractional
+scrolling)}とは、指定された値を行に乗ずるることによりウィンドウ内のテキストを上下にシフトすることを意味します。たとえばEmacsはウィンドウより高さが大きいイメージやスクリーン行でこれを使用します。ウィンドウはそれぞれ決して0より小さくなることはない、@dfn{垂直スクロール位置(vertical
+scroll
+position)}という数値をもっています。これはコンテンツを表示しているウィンドウにたいして、コンテンツをどこから表示開始(raise)するかを指定します。ウィンドウのコンテンツの表示開始により一般的には上端の何行かのすべて、または一部が表示されなくなり他の何行かのすべて、または一部が下端に表示されるようになります。通常の値は0です。
+
+   垂直スクロール位置は行の通常高さ(デフォルトフォントの高さ)の単位で数えられます。したがって値が.5なら、それはウィンドウのコンテンツが通常行の半分の高さで上にスクロール、3.3なら通常行の3倍を若干超える高さで上にスクロールされていることを意味します。
+
+   垂直スクロールが覆い隠す(cover)のがどれほどの行断片(fraction of a
+line)なのか、あるいは行数かはそれらの行に何が含まれるかに依存します。3.3という値により高い行やイメージの一部だけを画面外にスクロールできることもあれば、.5という値が非常に小さい高さの行を画面外にスクロールできることもあります。
+
+@defun window-vscroll &optional window pixels-p
+この関数は@var{window}のカレントの垂直スクロール位置をリターンする。@var{window}のデフォルトは選択されたウィンドウ。@var{pixels-p}が非@code{nil}ならリターン値は通常行高さ単位ではなくピクセル単位で測定される。
+
+@example
+@group
+(window-vscroll)
+     @result{} 0
+@end group
+@end example
+@end defun
+
+@defun set-window-vscroll window lines &optional pixels-p
+この関数は@var{window}の垂直スクロール位置を@var{lines}にセットする。@var{window}が@code{nil}なら選択されたウィンドウが使用される。引数@var{lines}は0または正であること。それ以外は0として扱われる。
+
+
+実際の垂直スクロール位置は常にピクセルの整数に対応しなければならないため、指定した値はそれに応じて丸められる。
+
+この丸め結果がリターン値となる。
+
+@example
+@group
+(set-window-vscroll (selected-window) 1.2)
+     @result{} 1.13
+@end group
+@end example
+
+@var{pixels-p}が非@code{nil}なら@var{lines}はピクセル数を指定する。この場合にはリターン値は@var{lines}。
+@end defun
+
+@defvar auto-window-vscroll
+この変数が非@code{nil}なら関数@code{line-move}、@code{scroll-up}、@code{scroll-down}は、たとえば大きなイメージが存在する等でウィンドウ高さより高いディスプレイ行をスクロールするために垂直スクロール位置を自動的に変更するだろう。
+@end defvar
+
+@node Horizontal Scrolling
+@section 水平スクロール
+@cindex horizontal scrolling
+
+  @dfn{水平スクロール(horizontal
+scrolling)}とは指定された通常文字幅の倍数でウィンドウ内のイメージを左右にシフトすることを意味します。ウィンドウはそれぞれ、決して0より小さくなることはない@dfn{水平スクロール位置(horizontal
+scroll
+position)}という数値をもっています。これはコンテンツをどれほど左にシフトするかを指定します。ウィンドウのコンテンツを左にシフトすることにより一般的には左にある文字のすべて、または一部が表示されなくなり右にある文字のすべて、または一部が表示されることを意味します。通常の値は0です。
+
+  水平スクロール位置は通常の文字幅を単位として数えられます。したがって値が5なら、それはウィンドウのコンテンツは通常文字幅の5倍左にスクロールされることを意味します。左の何文字が表示されなくなるかは、それらの文字の文字幅とに依存していて、それは行ごとに異なります。
+
+  読み取りを行う際には内側のループ(inner loop)で横方向、外側のループ(outer
+loop)で上から下に読み取るため、水平スクロールの効果はテキスト的スクロールや垂直スクロールとは異なります。テキスト的スクロールは表示するためのテキスト範囲の選択を引き起こし、垂直スクロールはウィンドウコンテンツを連続して移動します。しかし水平スクロールは@emph{すべての行}の一部をスクリーン外へスクロールします。
+
+  通常は水平スクロールは行われないので、ウィンドウ左端には最左列があります。この状態では右スクロールにより左端に新たに表示されるデータは存在しないので、右へのスクロールはできません。左スクロールによってテキストの1列目がウィンドウ端からウィンドウ外にスクロールされ、右端にはその前は切り詰められていた(truncated)列が新たに表示されるので左へのスクロールはできます。ウィンドウが左へ非0の値で水平スクロールされていれば右スクロールしてそれを戻すことができますが、正味の水平スクロールが0に減少するまでの間のみ右スクロールができます。左へどれほどスクロールできるかに制限はありませんが、最終的にはすべてのテキストが左端の外に消えるでしょう。
+
+@vindex auto-hscroll-mode
+  @code{auto-hscroll-mode}がセットされている場合には、再表示はポイントが常に可視となることを保証するために必要に応じて水平スクロールを自動的に変更する。とはいえ依然として水平スクロール位置を明示的に指定するのは可能である。指定した値は自動スクロールの下限値としての役目を果たす(自動スクロールは指定された値より小さい列にウィンドウをスクロールしない)。
+
+  @code{auto-hscroll-mode}のデフォルト値は@code{t}です。これを@code{current-line}にセットするとカーソルのある行だけがポイントが可視になるように水平スクロールされて、ウィンドウの残りはスクロールされないか@code{scroll-left}と@code{scroll-right}
+(以下参照)にセットされた最小量だけスクロールされる自動水平スクロールの変種がアクティブになります。
+
+@deffn Command scroll-left &optional count set-minimum
+この関数は選択されたウィンドウを左(
+@var{count}が負なら右)に@var{count}列スクロールする。@var{count}のデフォルトはウィンドウ幅から2を減じた値。
+
+リターン値は@code{window-hscroll}(以下参照)がリターンする値と同じように、変更後に実際に左に水平スクロールされたトータル量。
+
+基本方向がR2L(@ref{Bidirectional
+Display}を参照)のパラグラフ内のテキストは、正の@var{count}値で@code{scroll-left}が呼び出された際には右へと移動するように、反対方向に移動することに注意。
+
+ウィンドウを可能な限り右にスクロールした後は、左スクロールの合計が0であるような通常の位置に戻り、右へのそれ以上のスクロールの試みは効果をもたない。
+
+@var{set-minimum}が非@code{nil}なら新たなスクロール量は自動スクロールの下限値となる。つまり自動スクロールはこの関数がリターンする値より小さい列にウィンドウをスクロールしないだろう。インタラクティブに呼び出すと@var{set-minimum}に非@code{nil}を渡す。
+@end deffn
+
+@deffn Command scroll-right &optional count set-minimum
+この関数は選択されたウィンドウを右(
+@var{count}が負なら左)に@var{count}列スクロールする。@var{count}のデフォルトはウィンドウ幅から2を減じた値。スクロール方向を除けばこれは@code{scroll-left}と同様に機能する。
+@end deffn
+
+@defun window-hscroll &optional window
+この関数は@var{window}の左への水平スクロールのトータル(左マージンを超えて左にスクロールされた@var{window}内のテキスト列数)をリターンする(R2Lパラグラフでの値はかわりに右方向への総スクロール量となる)。@var{window}のデフォルトは選択されたウィンドウ。
+
+リターン値が負になることは決してない。@var{window}で水平スクロールが行われていない場合(これが通常)にはリターン値は0。
+
+
+@example
+@group
+(window-hscroll)
+     @result{} 0
+@end group
+@group
+(scroll-left 5)
+     @result{} 5
+@end group
+@group
+(window-hscroll)
+     @result{} 5
+@end group
+@end example
+@end defun
+
+@defun set-window-hscroll window columns
+この関数は@var{window}の水平スクロールをセットする。@var{columns}の値はスクロール量を左マージン(R2Lパラグラフでは右マージン)からの列数で指定する。引数@var{columns}は0または正の数であること。そうでない場合ニは0とみなされる。小数点数の@var{columns}値は現在のところサポートされない。
+
+シンプルに@kbd{M-:}を呼び出して評価する方法でテストすると、@code{set-window-hscroll}が機能していないように見えるかもしれないことに注意。ここで何が発生しているかというと、この関数は水平スクロール値をセットしてリターンするが、その後にポイントを可視にするために水平スクロールを調整するよう再表示が行なわれて、これが関数の行った処理をオーバーライドしている。この関数の効果は左マージンからポイントまでのスクロール量が、ポイントが可視のまま留まるように関数を呼び出すことにより観察できる。
+
+リターン値は@var{columns}。
+
+@example
+@group
+(set-window-hscroll (selected-window) 10)
+     @result{} 10
+@end group
+@end example
+@end defun
+
+   以下は与えられた位置@var{position}が水平スクロールによりスクリーン外にあるかどうかを判断する例です:
+
+@c FIXME: Maybe hscroll-on-screen-p is a better name?
+@example
+@group
+(defun hscroll-on-screen (window position)
+  (save-excursion
+    (goto-char position)
+    (and
+     (>= (- (current-column) (window-hscroll window)) 0)
+     (< (- (current-column) (window-hscroll window))
+        (window-width window)))))
+@end group
+@end example
+
+
+@node Coordinates and Windows
+@section 座標とウィンドウ
+@cindex frame-relative coordinate
+@cindex coordinate, relative to frame
+@cindex window position
+
+このセクションでは位置とそのウィンドウを報告する関数を説明します。これらの関数のほとんどはウィンドウのフレームのネイティブ位置の原点から相対的な位置を報告します(@ref{Frame
+Geometry}を参照)。いくつかの関数はウィンドウのフレームのディスプレイの原点から相対的な位置を報告します。いずれのケースにおいても原点は座標
+(0, 0)をもち、X座標とY座標はそれぞれ右方向と下方向で増加します。
+
+  以下の関数ではX座標とY座標は整数の文字単位(行数と列数)で報告されます。グラフィカルなディスプレイ上での``行''と``列''はそれぞれ、そのフレームのデフォルトフォントにより指定されるデフォルト文字の高さと幅に対応します(@ref{Frame
+Font}を参照)。
+
+@defun window-edges &optional window body absolute pixelwise
+この関数は@var{window}端の座標のリストをリターンする。@var{window}が省略または@code{nil}の場合のデフォルトは選択されたウィンドウ。
+
+リターン値は@code{(@var{left} @var{top} @var{right}
+@var{bottom})}という形式をもつ。リストの要素は順にそのウィンドウにより占有される最左列のX座標、最上行のY座標、最右列より1列右のX座標、最下行より1行下のY座標。
+
+これらはヘッダーライン、モードライン、スクロールバー、ウィンドウディバイダー、ディスプレイマージンを含むウィンドウの実際の端であることに注意。テキスト端末ではそのウィンドウの右に隣接するウィンドウがあれば、ウィンドウの右端にはそのウィンドウと隣接するウィンドウの間のセパレーターラインが含まれる。
+
+オプション引数@var{body}が@code{nil}なら、それは@var{window}の総サイズに対応する端をリターンすることを意味する。@var{body}が非@code{nil}なら@var{window}のボディー(テキスト領域)の端をリターンすることを意味する。@var{body}が非@code{nil}なら@var{window}には生きたウィンドウを指定しなければならない。
+
+オプション引数@var{absolute}が@code{nil}なら、それは@var{window}のフレームのネイティブ位置に相対的な端のリターンを意味する。@var{absolute}が非@code{nil}なら@var{window}のディスプレーの原点(0,
+0)からの相対座標のリターンを意味する。非グラフィカルなシステムではこの引数に効果はない。
+
+オプション引数@var{pixelwise}が@code{nil}なら、それは@var{window}のフレームのデフォルト文字の幅と高さの単位で座標をリターンすることを意味する。@var{pixelwise}が非@code{nil}ならピクセル単位で座標をリターンすることを意味する。@var{right}と@var{bottom}で指定されるピクセルはこれらの端の外側であることに注意。@var{absolute}が非@code{nil}なら、@var{pixelwise}も暗黙に非@code{nil}となる。
+@end defun
+
+@defun window-body-edges &optional window
+この関数は@var{window}のボディーの端をリターンする(@ref{Window
+Sizes}を参照)。@code{(window-body-edges window)}の呼び出しは@code{(window-edges window
+t)} (上記参照)の呼び出しと等価。
+@end defun
+
+@comment The following two functions are confusing and hardly used.
+@ignore
+@defun window-left-column &optional window
+This function returns the leftmost column of @var{window}.  This value
+equals the @var{left} entry in the list returned by @code{(window-edges
+window)} minus the number of columns occupied by the internal border of
+@var{window}'s frame.
+@end defun
+
+@defun window-top-line &optional window
+This function returns the topmost row of @var{window}.  This value is
+equal to the @var{top} entry in the list returned by @code{(window-edges
+window)} minus the number of lines occupied by the internal border of
+@var{window}'s frame.
+@end defun
+@end ignore
+
+  以下の関数は一連のフレーム相対座標(frame-relative coordinates)からウィンドウへの関連付けに使用できます:
+
+@defun window-at x y &optional frame
+この関数は@var{frame}のネイティブ位置(@ref{Frame Geometry}を参照)から相対的に、デフォルト文字単位(@ref{Frame
+Font}を参照)で与えられる座標@var{x}と@var{y}にある生きたウィンドウをリターンする。
+
+その位置にウィンドウがなければリターン値は@code{nil}。@var{frame}が省略または@code{nil}の場合のデフォルトは選択されたフレーム。
+@end defun
+
+@defun coordinates-in-window-p coordinates window
+この関数はウィンドウ@var{window}がフレーム相対座標@var{coordinates}を占有するかどうかをチェックして、もしそうならウィンドウのどの部分かをチェックする。@var{window}は生きたウィンドウであること。
+
+@var{coordinates}は@code{(@var{x}
+.
+@var{y})}という形式のコンスセルであること。ここで@var{x}と@var{y}は@var{window}のフレームのネイティブ位置(@ref{Frame
+Geometry}を参照)から相対的に、デフォルト文字サイズ(@ref{Frame Font}を参照)の単位で与えられる。
+
+指定された位置にウィンドウが存在しなければリターン値は@code{nil}。それ以外ではリターン値は以下のいずれか:
+
+@table @code
+@item (@var{relx} . @var{rely})
+その座標は@var{window}内にある。数値@var{relx}と@var{rely}は指定された位置にたいする、ウィンドウ左上隅を原点に0から数えたウィンドウ相対座標と等価。
+
+@item mode-line
+その座標は@var{window}のモードライン内にある。
+
+@item header-line
+その座標は@var{window}のヘッダーライン内にある。
+
+@item tab-line
+その座標は@var{window}のタブライン内にある。
+
+@item right-divider
+その座標は@var{window}と右に隣接するウィンドウを分けるディバイダー内にある。
+
+@item bottom-divider
+その座標は@var{window}と下にあるウィンドウを分けるディバイダー内にある。
+
+@item vertical-line
+その座標は@var{window}と右に隣接するウィンドウを分ける垂直ライン内にある。この値はウィンドウにスクロールバーがないときのみ発生し得る。スクロールバー内の位置はこれらの目的にたいしてはウィンドウ外側と判断される。
+
+@item left-fringe
+@itemx right-fringe
+その座標はウィンドウの左か右のフリンジ内にある。
+
+@item left-margin
+@itemx right-margin
+その座標はウィンドウの左か右のマージン内にある。
+
+@item nil
+その座標は@var{window}のいずれの部分でもない。
+@end table
+
+関数@code{coordinates-in-window-p}は@var{window}のあるフレームを使用するので引数としてフレームを要求しない。
+@end defun
+
+  以下の関数は文字単位ではなくピクセル単位でウィンドウ位置をリターンします。主にグラフィカルなディスプレイで有用ですがテキスト端末上でも呼び出すことができ、その場合は各文字の占めるスクリーン領域が1ピクセルとなります。
+
+@defun window-pixel-edges &optional window
+この関数は@var{window}端にたいするピクセル座標のリストをリターンする。@code{(window-pixel-edges
+window)}の呼び出しは、@code{(window-edges window nil nil t)} (上記参照)の呼び出しと等価。
+@end defun
+
+@comment The following two functions are confusing and hardly used.
+@ignore
+@defun window-pixel-left &optional window
+This function returns the left pixel edge of window @var{window}.  This
+value equals the @var{left} entry in the list returned by
+@code{(window-pixel-edges window)} minus the number of pixels occupied
+by the internal border of @var{window}'s frame.  @var{window} must be a
+valid window and defaults to the selected one.
+@end defun
+
+@defun window-pixel-top &optional window
+This function returns the top pixel edge of window @var{window}.  This
+value is equal to the @var{top} entry in the list returned by
+@code{(window-pixel-edges window)} minus the number of pixels occupied
+by the internal border of @var{window}'s frame.  @var{window} must be a
+valid window and defaults to the selected one.
+@end defun
+@end ignore
+
+@defun window-body-pixel-edges &optional window
+この関数は@var{window}のボディー端をピクセルでリターンする。@code{(window-body-pixel-edges
+window)}の呼び出しは、@code{(window-edges window t nil t)} (上記参照)の呼び出しと等価。
+@end defun
+
+  以下の関数はフレーム原点ではなく、ディスプレイ画面(display screen)の原点に相対的なウィンドウ位置をピクセルでリターンします。
+
+@defun window-absolute-pixel-edges &optional window
+この関数は@var{window}のフレームのディスプレイの(0,
+0)にある原点から相対的な@var{window}のピクセル座標をリターンする。@code{(window-absolute-pixel-edges)}の呼び出しは@code{(window-edges
+window nil t t)}の呼び出しと等価。上記を参照のこと。
+@end defun
+
+@defun window-absolute-body-pixel-edges &optional window
+この関数は@var{window}のフレームのディスプレイの(0,
+0)にある原点から相対的な@var{window}のbodyのピクセル座標のリストをリターンする。@code{(window-absolute-body-pixel-edges
+window)}の呼び出しは@code{(window-edges window t t t)}の呼び出しと等価。上記を参照のこと。
+
+@code{set-mouse-absolute-pixel-position}と組み合わせることにより、あるウィンドウ内で可視な任意のバッファー位置にマウスポインターを移動するためにこの関数を使用できる。
+
+@example
+@group
+(let ((edges (window-absolute-body-pixel-edges))
+      (position (pos-visible-in-window-p nil nil t)))
+  (set-mouse-absolute-pixel-position
+   (+ (nth 0 edges) (nth 0 position))
+   (+ (nth 1 edges) (nth 1 position))))
+@end group
+@end example
+
+グラフィカルな端末では上記フォームは選択されたウィンドウのポイントにあるグリフ左上隅にマウスカーソルを``ワープ''させる。この方法で計算される位置は、そこにツールチップウィンドウを表示するためにも使用できる。
+@end defun
+
+以下の関数はウィンドウ内で可視なバッファー位置のスクリーン座標をリターンします。
+
+@defun window-absolute-pixel-position &optional position window
+バッファー位置@var{position}がウィンドウ@var{window}内で可視なら、この関数は@var{position}にあるグリフの左上隅のディスプレー座標をリターンする。リターン値は@var{window}のディスプレー原点(0,
+0)から相対的な、X座標とY座標からなるコンスセル。@var{window}内で@var{position}が不可視なら@code{nil}をリターンする。
+
+@var{window}は生きたウィンドウでなければならずデフォルトは選択されたウィンドウ。@var{position}のデフォルトは@var{window}の@code{window-point}の値。
+
+これは選択されたウィンドウ内のポイント位置へのマウスポインターの移動は、以下のような記述で足りることを意味する:
+
+@example
+@group
+(let ((position (window-absolute-pixel-position)))
+  (set-mouse-absolute-pixel-position
+   (car position) (cdr position)))
+@end group
+@end example
+@end defun
+
+以下の関数はそのウィンドウに表示するテキストを変換することなくウィンドウに内接する最大の矩形をリターンします。
+
+@defun window-largest-empty-rectangle &optional window count min-width min-height positions left
+この関数は指定死@var{window}に内接する空の最大の矩形のディメンションをリターンする。@var{window}は生きたウィンドウでなければならずデフォルトは選択されたウィンドウ。
+
+リターン値は@var{window}のテキスト領域の空スペース(テキストを何も表示していないスペース)に内接可能な最大矩形の幅、Y座標の開始と終了からなる3要素のリスト。このような矩形は@var{window}のテキスト領域の右エッジで終端されるとみなされるので、この関数はX座標をリターンしない。空のスペースが見つからなければリターン値は@code{nil}。
+
+オプション引数@var{count}が非@code{nil}なら、それはリターンする矩形の最大数を指定する。これはリターン値が最大の矩形が1つ目になるような矩形(3要素のリスト)のリストであることを意味する。@var{count}はコンスセルでもよく、この場合には@sc{car}がリターンする矩形数、@sc{cdr}が非@code{nil}ならリターンされるすべての矩形が互いに素でなければならないことを示す。
+
+オプション引数@var{min-width}と@var{min-height}が非@code{nil}なら、リターンされる矩形の最小の幅と高さを指定する。
+
+オプション引数@var{positions}非@code{nil}なら、それはリターンされる矩形がカバーしなければならない最上のピクセル位置が@sc{car}、最下のピクセル位置が@sc{cdr}であるようなコンスセル。これらの位置は@var{window}のテキスト領域の開始から計測される。
+
+オプション引数@var{left}が非@code{nil}なら、それはリターン値がテキストを右から左に表示するバッファーに適していることを意味する。この場合にはリターンされる矩形はすべて@var{window}のテキスト領域の左端から開始するとみなされる。
+
+この関数は@code{window-lines-pixel-dimensions} (@ref{Size of Displayed
+Text}を参照)を通じて@var{window}のグリフマトリクスの各行のディメンションを取得する必要があることに注意。したがってこの関数は@var{window}のグリフマトリクスが最新でなければ@code{nil}をリターンするかもしれない。
+@end defun
+
+
+@node Mouse Window Auto-selection
+@section マウスによるウィンドウの自動選択
+@cindex window auto-selection
+@cindex auto-selection of window
+以下のオプションによりマウスポインターの下のウィンドウを自動的に選択することができます。これはウィンドウシステムのウィンドウにマウスポインターがエンターした際は常にフレームにフォーカスを与える(それゆえ以降の選択をトリガーする)ウィンドウマネージャーと同様なポリシーを実現します(@ref{Input
+Focus}を参照)。
+
+@defopt mouse-autoselect-window
+この変数が非@code{nil}なら、Emacsはマウスポインターの下のウィンドウの自動的な選択を試みる。有意な値は以下のとおり:
+
+@table @asis
+@item 正の数値
+これは自動選択トリガー後の遅延秒数を指定する。マウスポインター下のウィンドウはこの遅延秒数の間マウスが留まった後に選択される。
+
+@item 負の数値
+負の数値は正の数値と同様の効果をもつが、数値の絶対数の遅延秒数の間マウスポインターがウィンドウ内に留まり加えて移動を停止した後にウィンドウを選択する点が異なる。
+
+@item その他の値
+その他の非@code{nil}値はマウスポインターがウィンドウ上にエンターすると即座にウィンドウを選択することを意味する。
+@end table
+
+いずれのケースでもウィンドウの選択をトリガーするために、マウスポインターはウィンドウのテキスト領域にエンターしなければならない。スクロールバーのスライダーのドラッグやウィンドウのモードラインではコンセプト的には自動選択を発生させるべきではない。
+
+マウスによる自動選択はミニバッファーウィンドウがアクティブなときのみ選択を行い、アクティブなミニバッファーウィンドウの選択解除は決して行わない。
+@end defopt
+
+マウスによる自動選択はウィンドウマネージャーが追跡しない子フレーム(@ref{Child
+Frames}を参照)にたいしてマウスフォーカス追従ポリシーをエミュレートするために使用できます。これを行うためには@code{focus-follows-mouse}
+(@ref{Input
+Focus}を参照)に非@code{nil}値をセットすることが必要です。@code{focus-follows-mouse}の値が@code{auto-raise}なら、マウスで子フレームにエンターすることにより親フレームの他のすべての子フレームの前面にその子フレームが自動的にレイズされます。
+
+
+@node Window Configurations
+@section ウィンドウの構成
+@cindex window configurations
+@cindex saving window information
+
+@dfn{ウィンドウ構成(window configuration)}とは1つのフレーム上全体のレイアウト ---
+すべてのウィンドウとサイズ、どんなバッファーを含んでいるか、それらのバッファーがスクロールされる方法、およびポイント値を記録して、更にフリンジ、マージン、スクロールバーのセッティングも記録します。これには@code{minibuffer-scroll-window}の値も含まれます。特別な例外としてウィンドウ構成には選択されたウィンドウのカレントバッファーのポイント値は記録されません。
+
+  以前に保存されたウィンドウ構成をリストアすることにより、フレーム全体のレイアウトをリストアすることができます。1つだけではなくすべてのフレームのレイアウトを記録したければ、ウィンドウ構成のかわりにフレーム構成(frame
+configuration)を使用します。@ref{Frame Configurations}を参照してください。
+
+@defun current-window-configuration &optional frame
+この関数は@var{frame}のカレントのウィンドウ構成を表す新たなオブジェクトをリターンする。@var{frame}のデフォルトは選択されたフレーム。変数@code{window-persistent-parameters}はこの関数により保存されるウィンドウパラメーター(もしあれば)を指定する。@ref{Window
+Parameters}を参照のこと。
+@end defun
+
+@defun set-window-configuration configuration &optional dont-set-frame dont-set-miniwindow
+This function restores the configuration of windows and buffers as specified
+by @var{configuration}, for the frame that @var{configuration} was created
+for, regardless of whether that frame is selected or not.  The argument
+@var{configuration} must be a value that was previously returned by
+@code{current-window-configuration} for that frame.  Normally the function
+also selects the frame which is recorded in the configuration, but if
+@var{dont-set-frame} is non-@code{nil}, it leaves selected the frame which
+was already selected at the start of the function.
+
+Normally the function restores the saved minibuffer (if any), but if
+@var{dont-set-miniwindow} is non-@code{nil}, the minibuffer current at the
+start of the function (if any) remains in the mini-window.
+
+@var{configuration}が保存されたフレームが死んでいる(生きていない)場合には、この関数が行うのは変数@code{minibuffer-scroll-window}の値のリストア、@code{minibuffer-selected-window}がリターンした値の調整のみ。この場合には関数は@code{nil}、それ以外は@code{t}をリターンする。
+
+@var{configuration}のウィンドウのバッファーが@var{configuration}作成後にkillされていたら、そのウィンドウは規則としてリストアされる構成から削除される。しかしリストアされる構成内でそのウィンドウが最後に残ったウィンドウなら、そのウィンドウに別の生きたバッファーが表示される。
+
+以下は@code{save-window-excursion}と同様な効果を得るためにこの関数を使用する例:
+
+@example
+@group
+(let ((config (current-window-configuration)))
+  (unwind-protect
+      (progn (split-window-below nil)
+             @dots{})
+    (set-window-configuration config)))
+@end group
+@end example
+@end defun
+
+@defmac save-window-excursion forms@dots{}
+このマクロは選択されたフレームのウィンドウ構成を記録して、@var{forms}を順に実行してから以前のウィンドウ構成をリストアする。リターン値は@var{forms}内の最後のフォームの値。
+
+Lispコードのほとんどはこのマクロを使用するべきではない。大抵は@code{save-selected-window}で十分であろう。特にこのマクロは@var{forms}内で新たなウィンドウをオープンするコードを確実に防ぐことができず、新たなウィンドウは別のフレーム内でオープンされるかもしれないが(@ref{Choosing
+Window}を参照)、@code{save-window-excursion}が保存とリストアするのはカレントフレーム上のウィンドウ構成だけだからである。
+@end defmac
+
+@defun window-configuration-p object
+この関数は@var{object}がウィンドウ構成なら@code{t}をリターンする。
+@end defun
+
+@defun compare-window-configurations config1 config2
+この関数はポイント値、保存されたスクロール位置を無視して(つまりこれらの観点が異なっても@code{t}をリターンし得る)、ウィンドウ構造の観点から2つのウィンドウ構成を比較する。
+@end defun
+
+@defun window-configuration-frame config
+この関数はウィンドウ構成@var{config}が作成されたフレームをリターンする。
+@end defun
+
+  ウィンドウ構成の内部を調べる他のプリミティブも有用かもしれませんが、わたしたちはこれらを必要としないので実装されていません。ウィンドウ構成にたいしてより多くの操作を知りたければ、ファイル@file{winner.el}を参照してください。
+
+  @code{current-window-configuration}がリターンするオブジェクトはEmacsプロセスとともに死滅します。ウィンドウ構成をディスク上に格納してそれを別のEmacsセッションに読み戻すために、次に説明する関数を使用できます。これらの関数はフレームの状態を任意の生きたウィンドウにクローンする場合にも有用です(@code{set-window-configuration}はフレームのウィンドウをそのフレームのルートウィンドウだけに効果的にクローンする)。
+
+@cindex window state
+@defun window-state-get &optional window writable
+この関数は@var{window}の状態をLispオブジェクトとしてリターンする。引数@var{window}は有効なウィンドウでなければならずデフォルトは選択されたフレームのルートウィンドウ。
+
+オプション引数@var{writable}が非@code{nil}なら、それは@code{window-point}や@code{window-start}のようなサンプリング位置にたいするマーカーを使用しないことを意味する。この状態をディスクに書き込んで別のセッションに読み戻すなら、この引数は非@code{nil}であること。
+
+この関数によりどのウィンドウパラメーターが保存されるかは、引数@var{writable}と変数@code{window-persistent-parameters}の両方で指定する。@ref{Window
+Parameters}を参照のこと。
+@end defun
+
+@code{window-state-get}によりリターンされる値は、同一セッション内の他のウィンドウ内にあるウィンドウのクローンを作成するために使用できます。これはディスクに書き込んで別のセッションに読み戻すこともできます。いずれの場合にもウィンドウの状態をリストアするためには以下の関数を使用します。
+
+@defun window-state-put state &optional window ignore
+この関数はウィンドウ状態@var{state}を@var{window}内にputする。引数@var{state}は以前に呼び出した@code{window-state-get}がリターンしたウィンドウ状態であること。オプション引数@var{window}には生きたウィンドウか内部ウィンドウ(@ref{Windows
+and
+Frames}を参照)のいずれかを指定できる。@var{window}が生きていなければ、@var{state}をputする前に生きたウィンドウに置き換える。@var{window}が生きたウィンドウでなければ、それに@var{state}をputする前に同一フレーム上に作成された新たな生きたウィンドウに置き換えられる。@var{window}が@code{nil}ならウィンドウの状態を新たなウィンドウにputする。
+
+オプション引数@var{ignore}が非@code{nil}なら、それは最小ウィンドウサイズと固定サイズの制限を無視することを意味する。@var{ignore}が@code{safe}なら、それは1行および/または2列までできる限り小さくできることを意味する。
+@end defun
+
+関数@code{window-state-get}と@code{window-state-put}では2つの生きたウィンドウ間でのコンテンツの交換も可能です。以下の関数はこれを正確に行います:
+
+@deffn Command window-swap-states &optional window-1 window-2 size
+このコマンドは2つの生きたウィンドウ@var{window-1}と@var{window-2}の状態を交換する。@var{window-1}には生きたウィンドウを指定しなければならずデフォルトは選択されたウィンドウ。@var{window-2}には生きたウィンドウを指定しなければならず、デフォルトはミニバッファーウィンドウを除き、すべての可視なフレーム上の生きたウィンドウを含むウィンドウサイクル順において@var{window-1}の次のウィンドウ。
+
+オプション引数@var{size}が非@code{nil}なら、それは@var{window-1}と@var{window-2}のサイズも同様に交換を試みることを意味する。値@code{height}は高さのみ、値@code{width}は幅のみ、@code{t}は幅と高さの両方を可能なら交換することを意味する。この関数はフレームをリサイズしない。
+@end deffn
+
+
+@node Window Parameters
+@section ウィンドウのパラメーター
+@cindex window parameters
+
+このセクションではウィンドウに追加の情報を関連付けるために使用できるウィンドウパラメーターを説明します。
+
+@defun window-parameter window parameter
+この関数は@var{window}の@var{parameter}の値をリターンする。@var{window}のデフォルトは選択されたウィンドウ。@var{window}に@var{parameter}にたいするセッティングがなければ、この関数は@code{nil}をリターンする。
+@end defun
+
+@defun window-parameters &optional window
+この関数は@var{window}のすべてのパラメーターと値をリターンする。@var{window}のデフォルトは選択されたウィンドウ。リターン値は@code{nil}、または@code{(@var{parameter}
+. @var{value})}という形式をもつ要素からなる連想リスト。
+@end defun
+
+@defun set-window-parameter window parameter value
+この関数は@var{window}の@var{parameter}の値に@var{value}をセットして@var{value}をリターンする。@var{window}のデフォルトは選択されたウィンドウ。
+@end defun
+
+デフォルトではウィンドウ構成(window configuration)やウィンドウ状態(states of
+windows)の保存とリストアを行う関数は、ウィンドウパラメーターについては関知しません(@ref{Window
+Configurations}を参照)。これは@code{save-window-excursion}のbody内でパラメーターの値を変更したときは、そのマクロのexit時に以前の値がリストアされないことを意味します。これはまた以前に@code{window-state-get}で保存されたウィンドウ状態を@code{window-state-put}でリストアしたときは、クローンされたすべてのウィンドウのパラメーターが@code{nil}にリセットされることも意味します。以下の変数によってこの標準の挙動をオーバーライドできます:
+
+@cindex persistent window parameters
+@defvar window-persistent-parameters
+この変数は@code{current-window-configuration}と@code{window-state-get}により保存、@code{set-window-configuration}と@code{window-state-put}によりリストアされるパラメーターを指定するalistである。@ref{Window
+Configurations}を参照のこと。
+
+このalistの各エントリーの@sc{car}はパラメーターを指定するシンボル。@sc{cdr}は以下のいずれかであること:
+
+@table @asis
+@item @code{nil}
+この値はそのパラメーターが@code{window-state-get}と@code{current-window-configuration}のいずれによっても保存されていないことを意味する。
+
+@item @code{t}
+この値はそのパラメーターが@code{current-window-configuration}、および(@var{writable}引数が@code{nil}なら)@code{window-state-get}により保存されたことを意味する。
+
+@item @code{writable}
+これはそのパラメーターが無条件で@code{current-window-configuration}と@code{window-state-get}の両方により保存されたことを意味する。この値は入力構文(read
+syntax)をもたないパラメーターに使用するべきではない。使用した場合には、別のセッションで@code{window-state-put}を呼び出すと@code{invalid-read-syntax}エラーで失敗するだろう。
+@end table
+@end defvar
+
+いくつかの関数(特に@code{delete-window}、@code{delete-other-windows}、@code{split-window})は、@var{window}引数で指定されたウィンドウがその関数の名前と同じ名前のパラメーターセをもつ場合には特別な挙動を示すかもしれません。以下の変数を非@code{nil}値にバインドすることにより、そのような特別な挙動をオーバーライドできます:
+
+@defvar ignore-window-parameters
+この変数が非@code{nil}なら、いくつかの標準関数はウィンドウパラメーターを処理しない。現在のところ影響を受ける関数は@code{split-window}、@code{delete-window}、@code{delete-other-windows}、@code{other-window}。
+
+これらの関数の呼び出し周辺でアプリケーションはこの変数を非@code{nil}にバインドできる。これを行うと、そのアプリケーションはその関数のexit時に関連するすべてのウィンドウのパラメーターを正しく割り当てる責任をもつ。
+@end defvar
+
+以下のパラメーターは現在のところウィンドウ管理コードにより使用されています:
+
+@table @code
+@item delete-window
+@vindex delete-window@r{, a window parameter}
+このパラメーターは@code{delete-window}の実行に影響する(@ref{Deleting Windows}を参照)。
+
+@item delete-other-windows
+@vindex delete-other-windows@r{, a window parameter}
+このパラメーターは@code{delete-other-windows}の実行に影響する(@ref{Deleting Windows}を参照)。
+
+@item no-delete-other-windows
+@vindex no-delete-other-windows@r{, a window parameter}
+このパラメーターはそのウィンドウを@code{delete-other-windows}により削除できないことをマークする(@ref{Deleting
+Windows}を参照)。
+
+@item split-window
+@vindex split-window@r{, a window parameter}
+このパラメーターは@code{split-window}の実行に影響する(@ref{Splitting Windows}を参照)。
+
+@item other-window
+@vindex other-window@r{, a window parameter}
+このパラメーターは@code{other-window}の実行に影響する(@ref{Cyclic Window Ordering}を参照)。
+
+@item no-other-window
+@vindex no-other-window@r{, a window parameter}
+このパラメーターはそのウィンドウを@code{other-window}による選択が不可だとマークする(@ref{Cyclic Window
+Ordering}を参照)。
+
+@item clone-of
+@vindex clone-of@r{, a window parameter}
+このパラメーターはそのウィンドウがクローンされたことを指定する。これは@code{window-state-get}によりインストールされる(@ref{Window
+Configurations}を参照)。
+
+@item window-preserved-size
+@vindex window-preserved-size@r{, a window parameter}
+このパラメーターはバッファー、方向(@code{nil}は垂直で@code{t}は水平)、ピクセル単位のサイズを指定する。そのウィンドウが指定されたバッファーを表示していて、かつ指示された方向のサイズがこのパラメーターで指定されたサイズと等しければ、Emacsはそのウィンドウの指示された方向のサイズを予約する。関数@code{window-preserve-size}によりこのパラメーターのインストールと更新が行われる(@ref{Preserving
+Window Sizes}を参照)。
+
+@item quit-restore
+@vindex quit-restore@r{, a window parameter}
+このパラメーターはバッファー表示関数によりインストールされて、@code{quit-restore-window}により参照される(@ref{Quitting
+Windows}を参照)。これは4つの要素をもつリストであり、詳細は@ref{Quitting
+Windows}の@code{quit-restore-window}の説明を参照のこと。
+
+@item window-side
+@itemx window-slot
+@vindex window-side@r{, a window parameter}
+@vindex window-slot@r{, a window parameter}
+これらはサイドウィンドウを実装するために内部的に使用される(@ref{Side Windows}を参照)。
+
+@item window-atom
+@vindex window-atom@r{, a window parameter}
+このパラメーターはアトミックウィンドウを実装するために内部的に使用される(@ref{Atomic Windows}を参照)。
+
+@item mode-line-format
+@vindex mode-line-format@r{, a window parameter}
+このパラメーターはウィンドウが表示されるたびにそのウィンドウのバッファーのバッファーローカル変数@code{mode-line-format}
+(@ref{Mode Line
+Basics}を参照)の値を置き換える。シンボル@code{none}はそのウィンドウのモードライン表示の抑制を意味する。そのバッファーを表示する他のウィンドウのモードラインの表示とコンテンツは影響を受けない。
+
+@item header-line-format
+@vindex header-line-format@r{, a window parameter}
+このパラメーターはウィンドウが表示されるたびにそのウィンドウのバッファーのバッファーローカル変数@code{header-line-format}
+(@ref{Mode Line
+Basics}を参照)の値を置き換える。シンボル@code{none}はそのウィンドウのヘッダーライン表示の抑制を意味する。そのバッファーを表示する他のウィンドウのヘッダーラインの表示とコンテンツは影響を受けない。
+
+@item tab-line-format
+@vindex tab-line-format@r{, a window parameter}
+このパラメーターはウィンドウが表示されるたびにそのウィンドウのバッファーのバッファーローカル変数@code{tab-line-format}
+(@ref{Mode Line
+Basics}を参照)の値を置き換える。シンボル@code{none}はそのウィンドウのタブライン表示の抑制を意味する。そのバッファーを表示する他のウィンドウのタブラインの表示とコンテンツは影響を受けない。
+
+@item min-margins
+@vindex min-margins@r{, a window parameter}
+このパラメーターの値は@sc{car}と@sc{cdr}が非@code{nil}のコンスセルなら、そのウィンドウの左ージンと右マージンの最小値を列数で指定する(@ref{Display
+Margins}を参照)。与えられた場合には、Emacsはウィンドウを分割するか水平方向に縮小するかの判断にたいして、実際のマージン幅のかわりにこれらの値を使用する。
+
+すべてのウィンドウにたいして、分割やリサイズ後にEmacsがマージンの自動調整をすることは決してない。これはそのウィンドウト分割のためにこのウィンドウのマージンを継承する新たなウィンドウニタイシテ、マージンを調整するためにこのパラメーターをセットするすべてのアプリケーション単独の責任である。@code{window-configuration-change-hook}と@code{window-size-change-functions}はいずれもこの用途に使用すること(@ref{Window
+Hooks}を参照)。
+
+これはウィンドウ内でバッファーをセンタリングするために大きなマージンを使用するアプリケーションのサポート用にEmacsのバージョン25.1から導入されたパラメーターであり、それらのアプリケーションと排他となるよう留意して使用すること。Emacsの将来のバージョンで改善策により置換され得る。
+@end table
+
+
+@node Window Hooks
+@section ウィンドウのスクロールと変更のためのフック
+@cindex hooks for window operations
+
+このセクションではLispプログラムがウィンドウのスクロール後や、その他のウィンドウ変更が発生した際にどのようにしてアクションを起こすことができるかを説明します。最初はウィンドウがバッファーの異なる部分を表示するケースについて考えてみます。
+
+@defvar window-scroll-functions
+この変数はウィンドウのスクロールによりEmacsが再表示前に呼び出すべき関数のリストを保持する。そのウィンドウ内への異なるバッファーの表示や新たなウィンドウの作成でもこれらの関数が実行される。
+
+この変数はそれぞれの関数がウィンドウとウィンドウのdisplay-start位置という2つの引数を受け取るのでノーマルフックではない。呼び出し時にはwindow引数のdisplay-start位置は新たな値、そのウィンドウに表示されるバッファーがカレントバッファーとしてセットされる。
+
+これらの関数は@code{window-end} (@ref{Window Start and
+End}を参照)を使用する際には気をつけなければならない。最新の値が必要なら、それを確実に入力するために@var{update}引数を使用しなければならない。
+
+@strong{警告:}
+ウィンドウのスクロール方法を変更するためにこの機能を使用してはならない。これはそのような用途のためにデザインされておらず、そのような使用では機能しないだろう。
+@end defvar
+
+加えてFont Lockフォント表示関数(Font Lock fontification
+function)を登録するために@code{jit-lock-register}を使用できる。バッファーの一部が(再)フォント表示されたときは、ウィンドウがスクロールまたはサイズ変更されたという理由で、これが常に呼び出されるだろう。@ref{Other
+Font Lock Variables}を参照のこと。
+
+@cindex window change functions
+   このセクションの残りの部分ではウィンドウのスクロールをともなわないウィンドウの有意な変更を検知した際の再表示の間に呼び出される6つのフックについて補足します。単純化するために、これらのフックおよびそれらが呼び出す関数をまとめて@dfn{ウィンドウ変更関数(window
+change functions)}と呼ぶことにします。
+
+@cindex window buffer change
+これらのフックのうち最初のフックは@dfn{ウィンドウバッファー変更(window buffer
+change)}を検知した後に実行されます。ウィンドウバッファー変更とはウィンドウの作成や削除、他のバッファーの割り当てを意味します。
+
+@defvar window-buffer-change-functions
+この変数はウィンドウバッファー変更時の再表示の間に呼び出す関数を指定する。値は1つの引数を受け取る関数のリストであること。
+
+バッファーローカルに指定された関数は、対応するバッファーを表示するすべてのウィンドウにたいして、最後にウィンドウ変更関数が実行されて以降にウィンドウが作成されたり、そのバッファーが割り当てられた場合に呼び出される。この場合にはそのウィンドウが引数として渡される。
+
+デフォルト値として指定された関数はフレームにたいして、最後にウィンドウ変更関数が実行されて以降にそのフレームに少なくとも1つのウィンドウの追加か削除が行われるか、別のバッファーが割り当てられた場合に呼び出される。この場合にはフレームが引数として渡される。
+@end defvar
+
+@cindex window size change
+2つ目のフックは@dfn{ウィンドウサイズ変更(window size
+change)}の検出時に実行されます。ウィンドウサイズ変更とはウィンドウ作成、別バッファーの割り当て、合計サイズやテキストエリアの合計サイズの変更を意味します。
+
+@defvar window-size-change-functions
+この変数はウィンドウサイズ変更発生時の再表示の間に呼び出される関数を指定する。値は1つの引数を受け取る関数のリストであること。
+
+バッファーローカルに指定された関数は、対応するバッファーを表示するすべてのウィンドウにたいして、最後にウィンドウ変更関数が実行されて以降にウィンドウの追加や別バッファーの割り当て、合計サイズやボディーサイズが変更された場合に呼び出される。この場合にはそのウィンドウが引数として渡される。
+
+デフォルト値として指定された関数は、最後にフレームにたいしてウィンドウ変更関数が実行されて以降に、そのフレーム上の少なくとも1つのウィンドウ追加や別バッファーの割り当て、または合計サイズやボディーサイズが変更された場合に呼び出される。この場合にはフレームが引数として渡される。
+@end defvar
+
+@cindex window selection change
+3つ目のフックは前回の再表示以降に@dfn{ウィンドウ選択変更(window selection
+change)}により別のウィンドウが選択された際に実行されます。
+
+@defvar window-selection-change-functions
+この変数は選択されたウィンドウやフレームの選択されたウィンドウの変更時の再表示の間に実行される関数を指定する。値は1つの引数を受け取る関数のリストであること。
+
+バッファーローカルに指定された関数は、対応するバッファーを表示するすべてのウィンドウにたいして、最後にウィンドウ変更関数が実行されて以降に(すべてのウィンドウあるいはウィンドウのフレーム上のすべてのウィンドウの中から)ウィンドウが選択されたり選択解除された場合に呼び出される。この場合にはそのウィンドウが引数として渡される。
+
+デフォルト値として指定された関数はフレームにたいして、最後にウィンドウ変更関数が実行されて以降のそのフレームの選択や非選択、あるいはフレームの選択されたウィンドウが変更された場合に呼び出される。この場合にはフレームが引数として渡される。
+@end defvar
+
+@cindex window state change
+4つ目のフックは@dfn{ウィンドウ状態変更(window state
+change)}の検出時に実行されます。ウィンドウ状態変更とは上述の3つのウィンドウ変更のうち少なくとも1つが発生したことを意味します。
+
+@defvar window-state-change-functions
+この変数はウィンドウのバッファーかサイズの変更発生時、または選択されたウィンドウやフレームの選択されたウィンドウの変更時の再表示の間に呼び出される関数を指定する。値は1つの引数を受け取る関数のリストであること。
+
+バッファーローカルに指定された関数は、対応するバッファーを表示するすべてのウィンドウにたいして、最後にウィンドウ変更関数が実行されて以降にそのウィンドウの追加や別バッファーの割り当て、合計サイズやボディーサイズが変更されたり、(すべてのウィンドウあるいはウィンドウのフレーム上のすべてのウィンドウの中から)ウィンドウが選択されたり選択解除された場合に呼び出される。この場合にはそのウィンドウが引数として渡される。
+
+デフォルト値として指定された関数はフレームにたいして、最後にウィンドウ変更関数が実行されて以降にそのフレームの少なくとも1つのウィンドウが追加や削除、別バッファーを割り当てられるか、合計サイズやボディーサイズの変更、またはフレームの選択または選択されていないウィンドウが変更された場合に呼び出される。この場合にはフレームが引数として渡される。
+
+デフォルト値として指定された関数は、最後の再表示以降にそのフレームのウィンドウ状態変更フラグ(以下参照)がセットされた場合にもフレームにたいして実行される。
+@end defvar
+
+@cindex window configuration change
+5つ目のフックは@dfn{ウィンドウ構成変更(window configuration
+change)}の検出時に実行されます。ウィンドウ構成変更とはバッファーやウィンドウサイズの変更を意味します。このフックは実行方向において前記4つのフックとは異なります。
+
+@defvar window-configuration-change-hook
+この変数はウィンドウのバッファーかサイズの変更時の再表示の間に呼び出される関数を指定する。値は引数を受け取らない関数のリストであること。
+
+バッファーローカルに指定された関数は、対応するバッファーを表示するすべてのウィンドウにたいして、最後にウィンドウ変更関数が実行されて以降に、そのフレームの少なくとも1つのウィンドウの追加や削除、別バッファーの割り当て、あるいは合計サイズやボディーサイズが変更された場合に呼び出される。各呼び出しは一時的にそのバッファーを表示するウィンドウを選択して、そのバッファーをカレントにして行われる。
+
+デフォルト値として指定された関数は各フレームにたいして、最後にウィンドウ変更関数が実行されて以降に、そのフレームに少なくとも1つのウィンドウの追加や削除、別バッファーの割り当て、あるいは合計サイズやボディーサイズが変更された場合に呼び出される。各呼び出しは一時的にそのフレームを選択して、その選択されたウィンドウのバッファーをカレントにして行われる。
+@end defvar
+
+最後にEmacsは@code{window-state-change-functions}の振る舞いを一般化したノーマルフックを実行します。
+
+@defvar window-state-change-hook
+この変数のデフォルト値はウィンドウ状態変更、または少なくとも1つのフレームでウィンドウ状態変更フラグのセットを検出した際の再表示の間に呼び出される関数を指定する。値は引数を受け取らない関数のリストであること。
+
+アプリケーションは最後の再表示以降に複数のフレームで発生した(またはシグナルされた)変更に対処したい場合のみ、このフックに関数を配置すること。他のすべてのケースにたいしては@code{window-state-change-functions}に関数を配置するほうが好ましい。
+@end defvar
+
+ウィンドウ変更関数は各フレームにたいする再表示の間に次のように呼び出されます。まずすべてのバッファーローカルなウィンドウバッファー変更関数、ウィンドウサイズ変更関数、ウィンドウ選択変更関数、ウィンドウ状態変更関数を順番に呼び出します。次にこれらの関数のデフォルト値を同じ順番で呼び出します。これらの関数のデフォルト値で指定された関数の呼び出した後に、すべてのバッファーローカルなウィンドウ構成変更関数を呼び出します。そして最後に@code{window-state-change-hook}の関数が実行されます。
+
+   ウィンドウ変更関数は対応する変更が前に登録されている特定のフレームにたいしてのみ実行されます。そのような変更にはウィンドウの作成や削除、ウィンドウへの別バッファーやサイズの割り当てが含まれます。そのような変更が登録されていたとしても、それは上述したフックのいずれかが実行されることを意味しないことに注意してください。たとえばある変更がウィンドウエクスカーション(@ref{Window
+Configurations}を参照)のスコープ内で登録されると、ウィンドウ変更関数呼び出しはウィンドウ変更関数実行時にそのエクスカーションがまだ持続している場合のみトリガーされるでしょう。それ以前にエクスカーションがexitされていれば、そのエクスカーションのスコープ外で登録された変更の場合のみフックが実行されます。
+
+@cindex window state change flag
+   フレームの@dfn{ウィンドウ状態変更フラグ(window state change
+flag)}をセットすることにより、そのフレームにたいしてウィンドウ状態変更が実際に発生したかどうかに関わらず、次回の再表示の間に(そのフレームにたいする)
+@code{window-state-change-functions}と@code{window-state-change-hook}のデフォルト値が実行されます。これらのフックのすべての関数を実行した後に、各フレームにたいしてフラグをリセットを行います。アプリケーションは以下の関数を使用してこのフラグのセットや検査を行うことができます。
+
+@defun set-frame-window-state-change &optional frame arg
+この関数は@var{arg}が非@code{nil}なら@var{frame}のウィンドウ状態変更フラグをセット、それ以外はリセットする。@var{frame}は生きたフレームでなければならず、デフォルトは選択されたフレーム。
+@end defun
+
+@defun frame-window-state-change &optional frame
+この関数は@var{frame}のウィンドウ状態変更フラグがセットされていれば@code{t}、それ以外は@code{nil}をリターンする。@var{frame}は生きたフレームでなければならず、デフォルトは選択されたフレーム。
+@end defun
+
+   ウィンドウ変更関数の実行中に下記の関数を呼び出すことにより、最後の再表示以降に特定のウィンドウやフレームにたいして何が変更されたかについてより詳細な知見を得ることができます。これらの関数はすべて生きたウィンドウを単一かつオプションの引数として受け取ります(デフォルトは選択されたウィンドウ)。
+
+@defun window-old-buffer &optional window
+この関数は@var{window}のフレームにたいして最後にウィンドウ変更関数が実行された時点において、@var{window}に表示されていたバッファーをリターンする。その時点より後に@var{window}が作成された場合には@code{nil}をリターンする。その時点では@var{window}は表示されていなかったが、後から以前に保存されたウィンドウ構成がリストアされた場合には@code{t}をリターンする。それ以外ならリターン値はその時点で@code{window}が表示していたバッファー。
+@end defun
+
+@defun window-old-pixel-width &optional window
+この関数はウィンドウ変更関数がフレーム上で@code{window}が生きていることを確認した最終時点における@code{window}のトータルピクセル幅をリターンする。その後に@code{window}が作成された場合は0。
+@end defun
+
+@defun window-old-pixel-height &optional window
+この関数はウィンドウ変更関数がフレーム上で@code{window}が生きていることを確認した最終時点における@code{window}のトータルピクセル高さをリターンする。その後に@code{window}が作成された場合は0。
+@end defun
+
+@defun window-old-body-pixel-width &optional window
+この関数はウィンドウ変更関数がフレーム上で@code{window}が生きていることを確認した最終時点における@code{window}のテキストエリアのピクセル幅をリターンする。その後に@code{window}が作成された場合は0。
+@end defun
+
+@defun window-old-body-pixel-height &optional window
+この関数はウィンドウ変更関数がフレーム上で@code{window}が生きていることを確認した最終時点における@code{window}のテキストエリアのピクセル高さをリターンする。その後に@code{window}が作成された場合は0。
+@end defun
+
+ウィンドウ変更関数が最後に実行された時点でどのウィンドウまたはフレームが選択されていたかを調べるために以下の関数を使用できます:
+
+@defun frame-old-selected-window &optional frame
+この関数はウィンドウ変更関数が最後に実行された時点における@var{frame}の選択されていたウィンドウをリターンする。@var{frame}が省略または@code{nil}の場合のデフォルトは選択されたフレーム。
+@end defun
+
+@defun old-selected-window
+この関数はウィンドウ変更関数が最後に実行された時点において選択されていたウィンドウをリターンする。
+@end defun
+
+@defun old-selected-frame
+この関数はウィンドウ変更関数が最後に実行された時点において選択されていたフレームをリターンする。
+@end defun
+
+ウィンドウ変更関数は最後に実行されて以降に削除されたウィンドウに関する情報は提供しないことに注意してください。アプリケーションがそれを必要とする場合には、特定のバッファーを表示するすべてのウィンドウをバッファーのローカル変数に記憶するとともに、それをウィンドウバッファー変更の検出時に実行されるすべてのフックのデフォルト値の関数で更新する必要があります。
+
+   ウィンドウ変更関数に関数を追加する際には、以下の点を考慮する必要があります:
+
+@itemize @bullet
+@item
+ウィンドウ変更関数の呼び出しをトリガーしない操作がある。これにはミニバッファーウィンドウでの別バッファー表示やツールチップウィンドウのすべての変更が含まれる。
+
+@item
+ウィンドウ変更関数はウィンドウの作成や削除、バッファー変更、ウィンドウのサイズや選択状態を何も変更するべきではない。なぜならそのような変更に関する情報が他のウィンドウ変更関数に伝播される保証は何もないから。もしそのような変更行うなら@code{window-state-change-hook}のデフォルト値の最後にリストされる関数で行うこと。
+
+@item
+ウィンドウ変更関数の実行時には@code{save-window-excursion}、@code{with-selected-window}、@code{with-current-buffer}のようなマクロを使用できる。
+
+@item
+マッチデータはウィンドウ変更関数の実行により保存やリストアされない。@code{window-configuration-change-hook}の実行以外では選択されたウィンドウやフレーム、カレントバッファーの保存やリストアは行われない。
+
+@item
+ウィンドウ変更関数の実行をトリガーするすべての再表示はabort(異常終了)する可能性がある。ウィンドウ変更関数が完了する前にabortが発生すると、ウィンドウ変更関数は以前の値、すなわち再表示が行われなかったかのような値で再実行される。その後にabortした場合には新たな値、すなわち再表示が実際に処理されたかのような値で実行される
+@end itemize

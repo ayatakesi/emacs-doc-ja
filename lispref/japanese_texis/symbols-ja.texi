@@ -1,0 +1,443 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2021 Free Software
+@c Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Symbols
+@chapter シンボル
+@cindex symbol
+
+  @dfn{シンボル(symbol)}は一意な名前をもつオブジェクトです。このチャプターではシンボル、シンボルの構成要素とプロパティーリスト、およびシンボルの作成とインターンする方法を説明します。別のチャプターではシンボルを変数として使用したり、関数名として使用する方法が説明されています。@ref{Variables}と@ref{Functions}を参照してください。シンボルの正確な入力構文については、@ref{Symbol
+Type}を参照してください。
+
+  @code{symbolp}を使用して、任意のLispオブジェクトがシンボルかどうかをテストできます:
+
+@defun symbolp object
+この関数は@var{object}がシンボルなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@menu
+* Symbol Components::        シンボルは名前、値、関数定義、プロパティーリストをもつ。
+* Definitions::              定義はシンボルが使用される方法を示す。
+* Creating Symbols::         シンボルが一意に保たれる方法。
+* Symbol Properties::        さまざまな情報を記録するために各シンボルはプロパティーリストをもつ。
+@end menu
+
+@node Symbol Components
+@section シンボルの構成要素
+@cindex symbol components
+
+  各シンボルは4つの構成要素(もしくは``セル'')をもち、構成要素はそれぞれ別のオブジェクトを参照します:
+
+@table @asis
+@item プリント名(print name)
+@cindex print name cell
+そのシンボルの名前。
+
+@item 値(value)
+@cindex value cell
+変数としてのそのシンボルの現在値。
+
+@item 関数(function)
+@cindex function cell
+そのシンボルの関数定義。シンボル、キーマップ、キーボードマクロも保持できる。
+
+@item プロパティーリスト(property list)
+@cindex property list cell
+そのシンボルのプロパティーリスト。
+@end table
+
+@noindent
+プリント名のセルは常に文字列を保持し、それを変更することはできません。他の3つのセルには、任意のLispオブジェクトをセットすることができます。
+
+  プリント名のセルはシンボルの名前となる文字列を保持します。シンボルはシンボル名によりテキストとして表されるので、2つのシンボルが同じ名前をもたないことが重要です。Lispリーダーはシンボルを読み取るごとに、それを新規作成する前に、指定されたシンボルがすでに存在するかを調べます。シンボルの名前を得るには関数@code{symbol-name}(@ref{Creating
+Symbols}を参照)を使用します。
+
+  値セルは変数としてのシンボルの値(そのシンボル自身がLisp式として評価されたときに得る値)を保持します。@dfn{ローカルバインディング(local
+binding)}や@dfn{スコーピングルール(scoping
+rules)}等のような複雑なものを含めて、変数のセットや取得方法については@ref{Variables}を参照してください。ほとんどのシンボルは値として任意のLispオブジェクトをもつことができますが、一部の特別なシンボルは変更できない値をもちます。これらには@code{nil}、@code{t}、および名前が@samp{:}で始まるすべてのシンボル(@dfn{キーワード(keyword)}と呼ばれる)が含まれます。@ref{Constant
+Variables}を参照してください。
+
+  関数セルはシンボルの関数定義を保持します。実際はには@code{foo}の関数セルの中に保管されている関数を意味するときに、``関数@code{foo}''といってそれを参照することがよくあります。わたしたちは必要なときだけ、これを明確に区別することにします。関数セルは通常は関数(@ref{Functions}を参照)か、マクロ(@ref{Macros}を参照)を保持するために使用されます。しかし関数セルはシンボル(@ref{Function
+Indirection}を参照)、キーボードマクロ(@ref{Keyboard
+Macros}を参照)、キーマップ(@ref{Keymaps}を参照)、またはオートロードオブジェクト(@ref{Autoloading}を参照)を保持するためにも使用できます。シンボルの関数セルの内容を得るには、関数@code{symbol-function}
+(@ref{Function Cells}を参照)を使用します。
+
+  プロパティーリストのセルは、通常は正しくフォーマットされたプロパティーリストを保持するべきです。シンボルのプロパティーリストを得るには関数@code{symbol-plist}を使用します。@ref{Symbol
+Properties}を参照してください。
+
+  マクロセルと値セルが@dfn{void(空)}のときもあります。voidとはそのセルがどのオブジェクトも参照していないことを意味します(これはシンボル@code{void}を保持するのともシンボル@code{nil}を保持するのとも異なる)。voidの関数セルまたは値セルを調べようとすると結果は@samp{Symbol's
+value as variable is void}のようなエラーとなります。
+
+  各シンボルは値セルと関数セルを別個にもつので、変数名と関数名が衝突することはありません。たとえばシンボル@code{buffer-file-name}が値(カレントバッファーでvisitされているファイルの名前)をもつと同様に、関数定義(ファイルの名前をリターンするプリミティブ関数)をもつことができます:
+
+@example
+buffer-file-name
+     @result{} "/gnu/elisp/symbols-ja.texi"
+(symbol-function 'buffer-file-name)
+     @result{} #<subr buffer-file-name>
+@end example
+
+@node Definitions
+@section シンボルの定義
+@cindex definitions of symbols
+
+  @dfn{定義(definition)}とは、特別な方法での使用の意図を宣言する特別な種類のLisp式です。定義とは通常はシンボルにたいする値を指定するか、シンボルにたいする1つの種類の使用についての意味とその方法で使用する際のシンボルの意味のドキュメントを指定します。したがってシンボルを変数として定義すると、その変数の初期値に加えてその変数のドキュメントを提供できます。
+
+  @code{defvar}と@code{defconst}は@dfn{グローバル変数(global variable)} ---
+Lispプログラムの任意の箇所からアクセスできる変数 ---
+として定義するためのスペシャルフォームです。変数についての詳細は@ref{Variables}を参照してください。カスタマイズ可能な変数を定義するには@code{defcustom}
+(サブルーチンとして@code{defvar}も呼び出す)を使用します(@ref{Customization}を参照)。
+
+  最初にシンボルが変数として定義されているかどうかに関わらず、原則として@code{setq}で任意のシンボルに値を割り当てることができます。しかし使用したいグローバル変数それぞれにたいして変数定義を記述するべきです。さもないとレキシカルスコープ(@ref{Variable
+Scoping}を参照)が有効なときに変数が評価されると、Lispプログラムが正しく動作しないかもしれません。
+
+  @code{defun}はラムダ式(lambda
+expression)を生成して、そのシンボルの関数セルに格納することにより、そのシンボルを関数として定義します。したがってこのシンボルの関数定義は、そのラムダ式になります(関数セルの内容を意味する用語``関数定義(function
+definition)''は、@code{defun}がシンボルに関数としての定義を与えるというアイデアに由来する)。@ref{Functions}を参照してください。
+
+  @code{defmacro}はシンボルをマクロとして定義します。これはマクロオブジェクトを作成してシンボルの関数セルにそれを格納します。シンボルにはマクロと関数を与えることができますが、マクロと関数定義はどちらも関数セルに保持されるのにたいし、関数セルに保持できるのは常にただ1つのLispオブジェクトなので、一度に両方を行なうことはできないことに注意してください。@ref{Macros}を参照してください。
+
+  前に注記したようにEmacs
+Lispではシンボルを(たとえば@code{defvar}で)変数として定義して、同じシンボルを(たとえば@code{defun}で)関数やマクロとして両方定義することができます。このような定義は衝突しません。
+
+  これらの定義は、プログラミングツールのガイドを果たすこともできます。たとえば、@kbd{C-h f}および@kbd{C-h
+v}コマンドは、関係ある変数、関数、マクロ定義へのリンクを含むヘルプバッファーを作成します。@ref{Name Help,,, emacs, The
+GNU Emacs Manual}を参照してください。
+
+@node Creating Symbols
+@section シンボルの作成とintern
+@cindex reading symbols
+
+  GNU Emacs
+Lispでシンボルが作成される方法を理解するには、Lispがシンボルを読み取る方法を理解しなければなりません。Lispは、同じ文字綴りを読み取ったら、毎回同じシンボルを見つけることを保証しなければなりません。これに失敗すると、完全な混乱を招くでしょう。
+
+@cindex symbol name hashing
+@cindex hashing
+@cindex obarray
+@cindex bucket (in obarray)
+  Lispリーダーがシンボルに出会うと、Lispリーダーは名前のすべての文字を読み取ります。その後Lispリーダーは@dfn{obarray(オブジェクト配列)}と呼ばれるテーブル内のインデックスを決めるために、これらの文字をハッシュ(hash)します。ハッシュ化(hashing)は何かを照合するのに効果的な方法です。たとえばJan
+Jonesを見つけるときは、電話帳を表紙から1頁ずつ探すのではなくJの頁から探し始めます。これはハッシュ化の簡単なバージョンです。obarrayの各要素は与えられたハッシュコードとともに、すべてのシンボルを保持する@dfn{バケット(bucket)}です。与えられた名前を探すためには、バケットの中からハッシュコードがその名前であるような、すべてのシンボルを探すのが効果的です(同じアイデアは一般的なEmacsのハッシュテーブルでも使用されていがこれらはデータ型が異なる。@ref{Hash
+Tables}を参照されたい)。
+
+@cindex interning
+  探している名前のシンボルが見つかったら、リーダーはそのシンボルを使用します。obarrayにその名前のシンボルが含まれなければ、リーダーは新しいシンボルを作成してそれをobarrayに追加します。特定の名前のシンボルを探して追加することを@dfn{インターン(intern)}と言い、これが行なわれた後はそのシンボルは@dfn{インターンされたシンボル(interned
+symbol)}と呼ばれます。
+
+  インターンすることによりある特定の名前のシンボルは、各obarrayに1つだけであることが保証されます。同じ名前のシンボルが他に存在するかもしれませんが、同じobarrayには存在しません。したがってリーダーは、(同じobarrayを読みつづける限り)同じ名前にたいして同じシンボルを取得します。
+
+  インターンは通常はリーダー内で自動的に発生しますが、他のプログラムがこれを行なう必要がある場合もあります。たとえば@kbd{M-x}コマンドはその後にミニバッファーを使用してコマンド名を文字列として取得して、その文字列をインターンしてからインターンされたその名前のシンボルを得ます。
+
+@cindex symbol equality
+@cindex uninterned symbol
+  すべてのシンボルを含むobarrayはありません。実際にどのobarrayにも含まれないシンボルがいくつかあります。これらは@dfn{インターンされていないシンボル(uninterned
+symbols)}と呼ばれます。インターンされていないシンボルも、他のシンボルと同じく4つのセルをもちます。しかしインターンされていないシンボルへのアクセスを得る唯一の方法は、他の何らかのオブジェクトとして探すか、変数の値として探す方法だけです。
+
+  インターンされていないシンボルの作成は、Lispコードを生成するとき有用です。なぜなら作成されたコード内で変数として使用されているインターンされていないシンボルは、他のLispプログラムで使用されている任意の変数と競合することはありえないからです。
+
+  Emacs
+Lispではobarrayはベクターです。ベクター内の各要素がバケットになります。要素の値は、名前がそのバケットにハッシュされるようなインターンされたシンボル、またはバケットが空のときは0です。インターンされたシンボルは、そのバケット内の次のシンボルへの内部リンク(ユーザーからは見えない)をもちます。これらのリンクは不可視なので、@code{mapatoms}
+(以下参照)を使用する方法をのぞき、obarray内のすべてのシンボルを探す方法はありません。バケット内のシンボルの順番に意味はありません。
+
+  空のobarrayではすべての要素が0なので、@code{(make-vector @var{length}
+0)}でobarrayを作成することができます。@strong{obarrayを作成する有効な方法はこれだけです。}長さに素数を指定するとよいハッシュ化がされる傾向があります。2の累乗から1減じた長さもよい結果を生む傾向があります。
+
+  @strong{自分でobarrayにシンボルを置かないでください。}これはうまくいきません ---
+obarrayに正しくシンボルを入力できるのは@code{intern}だけです。
+
+@cindex CL note---symbol in obarrays
+@quotation
+@b{Common Lispに関する注意: }Common Lispとは異なりEmacs
+Lispは1つのシンボルを複数のobarrayにインターンする方法を提供しない。
+@end quotation
+
+  以下の関数のほとんどは、引数に名前とobarrayをとります。名前が文字列以外、またはobarrayがベクター以外なら@code{wrong-type-argument}エラーがシグナルされます。
+
+@defun symbol-name symbol
+この関数は@var{symbol}の名前を文字列としてリターンする。たとえば:
+
+@example
+@group
+(symbol-name 'foo)
+     @result{} "foo"
+@end group
+@end example
+
+@strong{警告:
+}文字の置き換えにより文字列を変更すると、それはシンボルの名前を変更しますが、obarrayの更新には失敗するので行なわないこと!
+@end defun
+
+@defun make-symbol name
+この関数は新たに割り当てられた、名前が@var{name}(文字列でなかればならない)であるような、インターンされていないシンボルをリターンする。このシンボルの値と関数はvoidで、プロパティーリストは@code{nil}。以下の例では@code{sym}の値は@code{foo}と@code{eq}ではない。なぜならこれは名前が@samp{foo}という、インターンされていないシンボルだからである。
+
+@example
+(setq sym (make-symbol "foo"))
+     @result{} foo
+(eq sym 'foo)
+     @result{} nil
+@end example
+@end defun
+
+@defun gensym &optional prefix
+この関数は@code{make-symbol}を使用して@var{prefix}に@code{gensym-counter}を付加した名前のシンボルをリターンする。プレフィックスのデフォルトは@code{"g"}。
+@end defun
+
+@defun intern name &optional obarray
+この関数は名前が@var{name}であるような、インターンされたシンボルをリターンする。オブジェクト配列@var{obarray}の中にそのようなシンボルが存在しなければ、@code{intern}は新たにシンボルを作成してobarrayに追加してそれをリターンする。@var{obarray}が省略されると、グローバル変数@code{obarray}の値が使用される。
+
+@example
+(setq sym (intern "foo"))
+     @result{} foo
+(eq sym 'foo)
+     @result{} t
+
+(setq sym1 (intern "foo" other-obarray))
+     @result{} foo
+(eq sym1 'foo)
+     @result{} nil
+@end example
+@end defun
+
+@cindex CL note---interning existing symbol
+@quotation
+@b{Common Lispに関する注意: }Common Lispでは既存のシンボルをobarrayにインターンできる。Emacs
+Lispでは@code{intern}の引数はシンボルではなく文字列なのでこれを行なうことはできない。
+@end quotation
+
+@defun intern-soft name &optional obarray
+この関数は@var{obarray}内の名前が@var{name}のシンボル、@var{obarray}にその名前のシンボルが存在しなければ@code{nil}をリターンする。したがって与えられた名前のシンボルがすでにインターンされているかテストするために、@code{intern-soft}を使用することができる。@var{obarray}が省略されるとグローバル変数@code{obarray}の値が使用される。
+
+引数@var{name}にはシンボルも使用できる。この場合、指定されたobarrayに@var{name}がインターンされていれば@var{name}、それ以外なら@code{nil}をリターンする。
+
+@example
+(intern-soft "frazzle")        ; @r{そのようなシンボルは存在しない}
+     @result{} nil
+(make-symbol "frazzle")        ; @r{インターンされていないシンボルを作成する}
+     @result{} frazzle
+@group
+(intern-soft "frazzle")        ; @r{そのようなシンボルは見つからない}
+     @result{} nil
+@end group
+@group
+(setq sym (intern "frazzle"))  ; @r{インターンされたシンボルを作成する}
+     @result{} frazzle
+@end group
+@group
+(intern-soft "frazzle")        ; @r{シンボルが見つかった!}
+     @result{} frazzle
+@end group
+@group
+(eq sym 'frazzle)              ; @r{そしてそれは同じシンボル}
+     @result{} t
+@end group
+@end example
+@end defun
+
+@defvar obarray
+この変数は@code{intern}と@code{read}が使用する標準のobarrayである。
+@end defvar
+
+@defun mapatoms function &optional obarray
+@anchor{Definition of mapatoms}
+この関数はオブジェクト配列@var{obarray}の中の各シンボルにたいして、@var{function}を一度呼び出しその後@code{nil}をリターンする。@var{obarray}が省略されると、通常のシンボルにたいする標準のオブジェクト配列@code{obarray}の値がデフォルトになる。
+
+@example
+(setq count 0)
+     @result{} 0
+(defun count-syms (s)
+  (setq count (1+ count)))
+     @result{} count-syms
+(mapatoms 'count-syms)
+     @result{} nil
+count
+     @result{} 1871
+@end example
+
+@code{mapatoms}を使用する他の例については、@ref{Accessing
+Documentation}の@code{documentation}を参照のこと。
+@end defun
+
+@defun unintern symbol obarray
+この関数はオブジェクト配列@var{obarray}から@var{symbol}を削除する。obarrayの中に@code{symbol}が存在ければ、@code{unintern}は何も行なわない。@var{obarray}が@code{nil}なら現在のobarrayが使用される。
+
+@var{symbol}にシンボルではなく文字列を与えると、それはシンボルの名前を意味する。この場合、@code{unintern}は(もしあれば)obarrayからその名前のシンボルを削除する。そのようなシンボルが存在するなら@code{unintern}は何も行なわない。
+
+@code{unintern}がシンボルを削除したら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@node Symbol Properties
+@section シンボルのプロパティ
+@cindex symbol property
+
+  シンボルはそのシンボルについての様々な情報を記録するために使用される、任意の数の@dfn{シンボルプロパティー(symbol
+properties)}をもつことができます。たとえばシンボルの@code{risky-local-variable}プロパティーが@code{nil}なら、その変数の名前が危険なファイルローカル変数(@ref{File
+Local Variables}を参照)であることを意味します。
+
+  シンボルのプロパティーとプロパティー値はそれぞれ、シンボルのプロパティーリストセル(@ref{Symbol
+Components}を参照)に、プロパティーリスト形式(@ref{Property Lists}を参照)で格納されます。
+
+@menu
+* Symbol Plists::            シンボルプロパティーへのアクセス。
+* Standard Properties::      シンボルプロパティーの標準的な意味。
+@end menu
+
+@node Symbol Plists
+@subsection シンボルのプロパティへのアクセス
+
+  以下の関数を使用してシンボルプロパティーにアクセスできます。
+
+@defun get symbol property
+この関数は@var{symbol}のプロパティーリスト内の、名前が@var{property}というプロパティーの値をリターンする。そのようなプロパティーが存在しなければ@code{nil}をリターンする。したがって値が@code{nil}のときとプロパティーが存在しないときの違いはない。
+
+名前@var{property}は@code{eq}を使用して既存のプロパティーと比較されるので、すべてのオブジェクトがプロパティーとして適正である。
+
+@code{put}の例を参照のこと。
+@end defun
+
+@defun put symbol property value
+この関数は@var{symbol}のプロパティーリストの、プロパティー名@var{property}に@var{value}をputして、前のプロパティー値を置き換える。@code{put}関数は@var{value}をリターンする。
+
+@example
+(put 'fly 'verb 'transitive)
+     @result{}'transitive
+(put 'fly 'noun '(a buzzing little bug))
+     @result{} (a buzzing little bug)
+(get 'fly 'verb)
+     @result{} transitive
+(symbol-plist 'fly)
+     @result{} (verb transitive noun (a buzzing little bug))
+@end example
+@end defun
+
+@defun symbol-plist symbol
+この関数は@var{symbol}のプロパティーリストをリターンする。
+@end defun
+
+@defun setplist symbol plist
+この関数は@var{symbol}のプロパティーリストを@var{plist}にセットする。@var{plist}は通常は適正なプロパティーリストであるべきだが、これは強制ではない。リターン値は@var{plist}です。
+
+@example
+(setplist 'foo '(a 1 b (2 3) c nil))
+     @result{} (a 1 b (2 3) c nil)
+(symbol-plist 'foo)
+     @result{} (a 1 b (2 3) c nil)
+@end example
+
+通常の用途には使用されない特別なobarray内のシンボルでは、非標準的な方法でプロパティーリストセルを使用することに意味があるかもしれない。実際にabbrev(@ref{Abbrevs}を参照)のメカニズムでこれを行なっている。
+
+以下のように@code{setplist}と@code{plist-put}で@code{put}を定義できる:
+
+@example
+(defun put (symbol prop value)
+  (setplist symbol
+            (plist-put (symbol-plist symbol) prop value)))
+@end example
+@end defun
+
+@defun function-get symbol property &optional autoload
+この関数は@code{get}と等価だが@var{symbol}が関数のエイリアス名なら。実際の関数を命名するシンボルのプロパティリストを照合する点が異なる。@ref{Defining
+Functions}を参照のこと。オプション引数@var{autoload}が非@code{nil}で、@var{symbol}が自動ロードされていれば、その自動ロードにより@var{symbol}の@var{property}がセットされるかもしれないので、この関数はそれの自動ロードを試みるだろう。@var{autoload}がシンボル@code{macro}なら、@var{symbol}が自動ロードされたマクロのときだけ自動ロードを試みる。
+@end defun
+
+@defun function-put function property value
+この関数は@var{function}の@var{property}に@var{value}をセットする。@var{function}はシンボルであること。関数のプロパティのセットには、@code{put}よりこの関数を呼び出すほうがよい。この関数を使用すれば、いつか古いプロパティから新しいプロパティへのリマップを実装することができるからである。
+@end defun
+
+@node Standard Properties
+@subsection シンボルの標準的なプロパティ
+
+  Emacsで特別な目的のために使用されるシンボルプロパティーを以下に一覧します。以下のテーブルで、``命名される関数(the named
+function)''と言うときは、関数名がそのシンボルであるような関数を意味します。``命名される変数(the named
+variable)''等の場合も同様です。
+
+@table @code
+@item :advertised-binding
+このプロパティーリストは、命名される関数のドキュメントを表示する際に優先されるキーバインディングを指定する。@ref{Keys in
+Documentation}を参照のこと。
+
+@item char-table-extra-slots
+値が非@code{nil}なら、それは命名される文字テーブル型の追加スロットの数を指定する。@ref{Char-Tables}を参照のこと。
+
+@item customized-face
+@itemx face-defface-spec
+@itemx saved-face
+@itemx theme-face
+これらのプロパティーはフェイスの標準のフェイス仕様(face
+specs)と、フォント仕様のsaved-fase、customized-face、themed-faceを記録するために使用される。これらのプロパティーを直接セットしないこと。これらのプロパティーは@code{defface}と関連する関数により管理される。@ref{Defining
+Faces}を参照のこと。
+
+@item customized-value
+@itemx saved-value
+@itemx standard-value
+@itemx theme-value
+これらのプロパティーは、カスタマイズ可能な変数のstandard-value、saved-value、customized-value(しかし保存はされない)、themed-valueを記録するために使用される。これらのプロパティーを直接セットしないこと。これらは@code{defcustom}と関連する関数により管理される。@ref{Variable
+Definitions}を参照のこと。
+
+@item disabled
+値が非@code{nil}なら命名される関数はコマンドとして無効になる。@ref{Disabling Commands}を参照のこと。
+
+@item face-documentation
+値には命名されるフェイスのドキュメント文字列が格納される。これは@code{defface}により自動的にセットされる。@ref{Defining
+Faces}を参照のこと。
+
+@item history-length
+値が非@code{nil}なら、命名されるヒストリーリスト変数のミニバッファーヒストリーの最大長を指定する。@ref{Minibuffer
+History}を参照のこと。
+
+@item interactive-form
+この値は命名される関数のインタラクティブ形式である。通常はこれを直接セットするべきではない。かわりにスペシャルフォーム@code{interactive}を使用すること。@ref{Interactive
+Call}を参照されたい。
+
+@item menu-enable
+この値は命名されるメニューアイテムが、メニュー内で有効であるべきか否かを決定するための式である。@ref{Simple Menu
+Items}を参照のこと。
+
+@item mode-class
+値が@code{special}なら命名されるメジャーモードはspecial(特別)である。@ref{Major Mode
+Conventions}を参照のこと。
+
+@item permanent-local
+値が非@code{nil}なら命名される変数はバッファーローカル変数となり、メジャーモードの変更によって変数の値はリセットされない。@ref{Creating
+Buffer-Local}を参照のこと。
+
+@item permanent-local-hook
+値が非@code{nil}なら、命名される関数はメジャーモード変更時にフック変数のローカル値から削除されない。@ref{Setting
+Hooks}を参照のこと。
+
+@item pure
+@cindex @code{pure} property
+値が非@code{nil}の場合には、名づけられた関数は純粋(pure)だとみなされる。定数の引数で呼び出された場合には、コンパイル時に評価することができる。これは実行時のエラーをコンパイル時へとシフトする。純粋ストレージ(pure
+storage)と混同しないこと(@ref{Pure Storage}を参照)。
+
+@item risky-local-variable
+値が非@code{nil}なら、命名される変数はファイルローカル変数としては危険だとみなされる。@ref{File Local
+Variables}を参照のこと。
+
+@item safe-function
+値が非@code{nil}なら、命名される関数は評価において一般的に安全だとみなされます。@ref{Function Safety}を参照のこと。
+
+@item safe-local-eval-function
+値が非@code{nil}なら、命名される関数はファイルローカルの評価フォーム内で安全に呼び出すことができる。@ref{File Local
+Variables}を参照のこと。
+
+@item safe-local-variable
+値は命名される変数の、安全なファイルローカル値を決定する関数を指定する。@ref{File Local Variables}を参照のこと。
+
+@item side-effect-free
+@cindex @code{side-effect-free} property
+非@code{nil}値は命名される関数は副作用(@ref{What Is a
+Function}を参照)をもたないので、バイトコンパイラーは値が使用されない呼び出しを無視する。このプロパティの値が@code{error-free}なら、バイトコンパイラーはそのような呼び出しの削除すら行うかもしれない。バイトコンパイラーの最適化に加えて、このプロパティは関数の安全性を判断するためにも使用される(@ref{Function
+Safety}を参照)。
+
+@item undo-inhibit-region
+非@code{nil}の場合には、命名される関数の直後に@code{undo}が呼び出されると、@code{undo}操作をアクティブなリージョンに限定することを抑止する。@ref{Undo}を参照のこと。
+
+@item variable-documentation
+非@code{nil}なら、それは命名される変数のドキュメント文字列を指定する。ドキュメント文字列は@code{defvar}と関連する関数により自動的にセットされる。@ref{Defining
+Faces}を参照のこと。
+@end table

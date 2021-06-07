@@ -1,0 +1,212 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+@c This is part of the Emacs manual.
+@c Copyright (C) 2000--2021 Free Software Foundation, Inc.
+@c See file emacs-ja.texi for copying conditions.
+@node Mac OS / GNUstep
+@appendix EmacsとmacOS / GNUstep
+@cindex macOS
+@cindex Macintosh
+@cindex GNUstep
+
+  このセクションでは、GNU/Linuxまたはその他のオペレーティングシステムでGNUstepライブラリーとともにビルドされたEmacs、またはmacOSでネイティブウィンドウシステムのサポートつきでビルドされたEmacsを使用する際の特性を説明します。macOSでは、Emacsはウィンドウシステムサポートなし/あり、X11、Cocoaインターフェースのいずれかでビルドできます。このセクションはCocoaビルドだけに適合します。バージョン10.6より前のmacOSはサポートしません。
+
+  GNUstepはフリーソフトウェアであり、macOSはそうではありません。非フリーなオペレーティングシステムのため、macOSはすべてのコンピューターユーザーが享受すべき自由を、ユーザーに与えません。これは不当です。あなたの自由のために、わたしたちはフリーなオペレーティングシステムへの切り替えを強く推奨します。
+
+  わたしたちは、商業オペレーティングシステム上のGNU
+Emacsをサポートします。なぜならそれは、この自由の経験が、商業オペレーティングシステムから脱却するよう、ユーザーを奮起するだろうからです。
+
+  さまざまな歴史的、技術的な理由により、Emacsは内部的に``Cocoa''や``macOS''ではなく、@samp{Nextstep}という用語を使用します。たとえばこのセクションで説明するほとんどのコマンドや変数は@samp{ns-}で始まりますが、これは@samp{Nextstep}を短縮したものです。NeXTstepは1980年代にNeXT
+Inc.からリリースされたアプリケーションインターフェースで、Cocoaはそれの直系の子孫です。Cocoaとは別に、他にもNeXTstepスタイルのシステムのGNUstepがあり、これはフリーソフトウェアです。これを記述している時点で、EmacsのGNUstepサポートはアルファ状態(@ref{GNUstep
+Support}を参照してください)ですが、わたしたちは、将来これを改善したいと望んでいます。
+
+@menu
+* Mac / GNUstep Basics::     GNUstepまたはmacOSでのEmacsの基本的な使用方法。
+* Mac / GNUstep Customization::  GNUstepまたはmacOSでのカスタマイズ。
+* Mac / GNUstep Events::     ウィンドウシステムイベントが処理される方法。
+* GNUstep Support::          GNUstepサポート状態の詳細。
+@end menu
+
+@node Mac / GNUstep Basics
+@section macOSおよびGNUstepでのEmacsの基本的な使い方
+
+@cindex modifier keys (macOS)
+  デフォルトでは、キー@key{Alt}と@key{Option}は、@key{Meta}と同じです。Macの@key{Cmd}キーは@key{Super}と同じで、Emacsは他のMac/GNUstepアプリケーション(@ref{Mac
+/ GNUstep
+Events}を参照してください)を模倣するこれらの修飾キーを使用した、一連のキーバインドを提供します。これらのキーバインドは通常の方法で変更できます(@ref{Key
+Bindings}を参照)。修飾キー自体はカスタマイズできます。@ref{Mac / GNUstep Customization}を参照してください。
+
+  @kbd{S-mouse-1}は@kbd{mouse-3}と同様に、クリックした位置にリージョンを調整します(@code{mouse-save-then-kill})。@kbd{S-mouse-1}が通常行なうように、デフォルトフェイスを変更するためのポップアップメニュー(@ref{Text
+Scale}を参照してください)は表示しません。この変更は、Emacsが他のMac/GNUstepアプリケーションと同じように動作させるためです。
+
+  メニューを使用してファイルを開いたり保存するときや、@kbd{Cmd-o}や@kbd{Cmd-S}といったキーバインドを使用する場合、Emacsはファイル名の読み取りにグラフィカルなファイルダイアログを使用します。しかし@kbd{C-x
+C-f}のような標準のEmacsのキーシーケンスを使用する場合、Emacsはミニバッファーを使用してファイル名を読み取ります。
+
+@cindex copy/paste to/from primary selection (macOS)
+  GNUstepでは、X-windows環境においてテキストをXのプライマリー選択(primary
+selection)に転送するために、@kbd{C-w}や@kbd{M-w}のかわりに、@kbd{Cmd-c}を使用する必要があります。そうでない場合、Emacsはクリップボード選択を使用します。同様に(@kbd{C-y}のかわりに)@kbd{Cmd-y}は、killリングやクリップボードではなく、Xのプライマリー選択からyankします。
+
+
+@subsection 環境変数の取得
+
+@c How is this any different to launching from a window manager menu
+@c in GNU/Linux?  These are sometimes not login shells either.
+@cindex environment variables (macOS)
+latexやmanのような、Emacsの下で実行される多くのプログラムは、環境変数のセッティングに依存します。Emacsがシェルから起動された場合、自動的にこれらの環境変数を継承し、Emacsのサブプロセスもそれらを継承します。しかしEmacsがFinderから起動された場合は、シェルの子プロセスではないので、環境変数はセットされません。これによりサブプロセスの振る舞いが、シェルから実行したときと異なることが起こり得ます。
+
+変数PATHおよびMANPATHにたいしては、macOSではPATHをセットするシステムワイドな手法は、@file{/etc/paths}ファイルと@file{/etc/paths.d}ディレクトリーを使用することが推奨されています。
+
+@node Mac / GNUstep Customization
+@section Mac/GNUstepでのカスタマイズ
+
+多くはありませんが、Nextstepポートに特有のカスタマイズオプションがいくつかあります。たとえば修飾キーやフルスクリーン動作に影響するオプションです。そのようなオプションをすべて閲覧するには、@kbd{M-x
+customize-group @key{RET} ns @key{RET}}を使用します。
+
+@subsection 修飾キー
+
+以下の変数は実際の修飾キーの挙動を制御します:
+
+@table @code
+@vindex ns-alternate-modifier
+@vindex ns-right-alternate-modifier
+@item ns-alternate-modifier
+@itemx ns-right-alternate-modifier
+左および右の@key{Option}キーまたは@key{Alt}キー。
+
+@vindex ns-command-modifier
+@vindex ns-right-command-modifier
+@item ns-command-modifier
+@itemx ns-right-command-modifier
+左および右の@key{Command}キー。
+
+@vindex ns-control-modifier
+@vindex ns-right-control-modifier
+@item ns-control-modifier
+@itemx ns-right-control-modifier
+左および右の@key{Control}キー。
+
+@vindex ns-function-modifier
+@item ns-function-modifier
+@key{Function}キー(fnキー)。
+@end table
+
+各変数の値は目的にたいしてキーを記述するシンボル、通常のキーとともに使用された際の修飾を記述する@code{(:ordinary
+@var{symbol} :function @var{symbol} :mouse
+@var{symbol})}という形式のリスト、ファンクションキー(矢印キーのように文字を生成しない)、マウスクリックのいずれかです。
+
+@var{symbol}が@code{control}、@code{meta}、@code{alt}、@code{super}、@code{hyper}のいずれかなら、それを表すEmacs修飾を記述すします。@var{symbol}が@code{none}ならEmacsはそのキーを使用せず標準的な挙動のままとなります。たとえばmacOSの@key{Option}キーなら追加の文字の合成に使用されます。
+
+@code{ns-right-alternate-modifier}のような右手側のキーにたいする変数は、対応する左手側のキーと同じ振る舞いの使用を意味する@code{left}にもセットできます。
+
+@subsection フレーム変数
+
+@table @code
+@vindex ns-use-proxy-icon
+@item ns-use-proxy-icon
+この変数はtitlebarにproxyアイコンを表示するかどうかを指定します。
+
+@vindex ns-confirm-quit
+@item ns-confirm-quit
+この変数はquit時にグラフィカルなconfirmationダイアログを表示するかどうかを指定します。
+
+@vindex ns-auto-hide-menu-bar
+@item ns-auto-hide-menu-bar
+この変数はEmacsフレーム選択時にmacOSのメニューバーを隠すかどうかを指定します。非nilならマウスポインターがスクリーン上端近傍に移動するまでメニューバーは表示されません。
+
+@vindex ns-use-native-fullscreen
+@item ns-use-native-fullscreen
+この変数はネィティブフルスクリーンか非ネイティブフルスクリーンを使用するかどうかを制御します。ネイティブフルスクリーンはmacOS
+10.7以降でのみ利用可能です。
+@end table
+
+@subsection macOSのトラックパッドとマウスホイールの変数
+
+これらの変数はmacOS 10.7(Lion)以降にのみ適用されます。
+
+@table @code
+@vindex ns-use-mwheel-acceleration
+@item ns-use-mwheel-acceleration
+この変数はEmacsがシステムのマウスホイールアクセラレーションを無視するかどうかを制御します。nilならマウスホイールの`クリック'はそれぞれ正確に1つのマウスホイールイベントに対応します。非nil(デフォルト)ならマウスホイールの`クリック'はそれぞれユーザー入力に依存して1つ以上のマウスホイールイベントに対応するかもしれません。
+
+@vindex ns-use-mwheel-momentum
+@item ns-use-mwheel-momentum
+この変数はトラックパッドを使用したスクロール時にEmacsがシステムの`momentum'を無視するかどうかを制御します。非nil(デフォルト)なら高速にスクロールするとユーザーがトラックパッドから指を離した後も少しの間バッファーがスクロールを継続するかもしれません。
+
+@vindex ns-mwheel-line-height
+@item ns-mwheel-line-height
+この変数はトラックパッドによるスクロールの感度を制御します。Appleのトラックパッドは行単位ではなくピクセル単位でスクロールするので、Emacsがシステムのピクセル値を行に変換します。数値をセットすると、この変数はそれをEmacsが1行とみなすピクセル数としてセットします。nilか非数値ならデフォルトの行高さを使用します。
+
+低い数値をセットするとトラックパッドはより高感度に、高い数値では低感度になります。
+@end table
+
+@subsection フォントパネル
+
+@findex ns-popup-font-panel
+標準のMac/GNUstepのフォントパネルにアクセスするには、@kbd{M-x
+ns-popup-font-panel}を使用します。これは一番最近使用された、またはクリックされたフレームの、デフォルトフォントをセットします。
+
+@c  To make the setting permanent, use @samp{Save Options} in the
+@c Options menu, or run @code{menu-bar-options-save}.
+
+@node Mac / GNUstep Events
+@section macOSおよびGNUstepでのウィンドウシステムイベント
+@cindex events on macOS
+
+  Nextstepアプリケーションは、Xでは同等なものがない、特別なイベントを受け取ります。これらは、対応するキーストロークのシーケンスとしてではなく、特別に定義されたキーイベントとして送られます。Emacsでは、これらのキーイベントを、通常のキーストロークのように、関数にバインドできます。以下はこのようなイベントのリストです。
+
+@table @key
+@item ns-open-file
+@vindex ns-pop-up-frames
+このイベントは、他のNextstepアプリケーションがEmacsにファイルを開くよう要求したときに発生します。これの典型的な理由としては、ユーザーがFinderアプリケーションでファイルをダブルクリックしたときなどです。デフォルトでは、Emacsはこのイベントにたいして、新しいフレームを開いて、そのフレームでファイルをvisitして応答します(@code{ns-find-file})。例外として、選択されたバッファーが@file{*scratch*}バッファーの場合、Emacsは選択されたフレームでファイルをvisitします。
+
+Emacsが@code{ns-open-file}イベントにたいしてどのように応答するかは、@code{ns-pop-up-frames}を変更することにより、変えることができます。デフォルト値は@samp{fresh}で、これは上で説明したとおりの動作を行ないます。値@code{t}は、ファイルを常に新しいフレームでvisitすることを意味します。値@code{nil}は、ファイルを常に選択されたフレームでvisitすることを意味します。
+
+@item ns-open-temp-file
+このイベントは、他のアプリケーションがEmacsに一時ファイルを開くように要求したとき発生します。デフォルトでは、単に@code{ns-open-file}イベントを生成することにより処理され、結果は上で説明したとおりになります。
+
+@item ns-open-file-line
+ProjectBuilderやgdbのようないくつかのアプリケーションは、特定のファイルだけではなく、そのファイルの特定の行、または一連の行を要求します。Emacsはそのファイルをvisitして要求された行をハイライトすることにより、これを処理します(@code{ns-open-file-select-line})。
+
+@item ns-drag-n-drop
+このイベントは、ユーザーが他のアプリケーションから、Emacsフレームにファイルをドラッグしたとき発生します。デフォルトの動作は、マウスの下にあるウィンドウでファイルをオープンするか、マウスの下にあるウィンドウのポイント位置にテキストを挿入します。
+
+送信オブジェクトをEmacsが処理する方法を送信アプリケーションが判断する能力にはいくつかの制限がありますが、ユーザーは1つ以上の修飾キーを押し続けることによりデフォルトの挙動をオーバーライドできます。
+
+@table @kbd
+@item control
+テキストとしてカレントバッファーに挿入します。オブジェクトがファイルならファイル名を挿入します。
+@item alt/option
+オブジェクトがファイルかURLであるかのようにオープンを試みます。
+@item super/command
+そのタイプにたいするデフォルトのアクションを行います。これはアプリケーションがデフォルトの挙動をオーバーライドしている場合に有用かもしれません。
+@end table
+
+上記にリストした修飾キーはmacOSが定義したもので、ユーザーによるEmacs内での修飾の変更は影響を受けません。
+
+@item ns-change-font
+このイベントは、ユーザーがNextstep font
+panel(これは@kbd{Cmd-t}で開くことができます)でフォントを選択したとき発生します。デフォルトの動作は、選択されたフレームのフォントを変更します(@code{ns-respond-to-changefont})。選択されたフォントの名前とサイズは、変数@code{ns-input-font}と@code{ns-input-fontsize}に格納されます。
+
+@item ns-power-off
+このイベントは、ユーザーがEmacsを実行中にログアウトしたとき、またはアプリケーションメニューから``Quit
+Emacs''を選択したとき発生します。デフォルトの動作は、ファイルをvisitしているすべてのバッファーを保存します。
+@end table
+
+@cindex using Nextstep services (macOS)
+  Emacsはユーザーに、@samp{ns-service-}で始まりサービス名で終わるコマンドを通じて、Nextstepサービスを使用することも可能にします。@kbd{M-x
+ns-service-@key{TAB}}とタイプして、これらのコマンドをリストを見ることができます。これらの関数は、マークされたテキストを処理(結果でそれを置き換える)したり、文字列を引数として結果を文字列で返します。Lisp関数@code{ns-perform-service}を使用して、任意の文字列を任意のサービスに渡して、結果を受けとることもできます。新たに利用可能になったサービスにアクセスするには、Emacsの再起動が必要なことに注意してください。
+
+@node GNUstep Support
+@section GNUstepにたいするサポート
+
+EmacsはGNUstepの下でビルドして実行することができますが、解決すべき問題が残っています。興味のある開発者は、
+@ifnothtml
+@email{emacs-devel@@gnu.org}に連絡してください。
+@end ifnothtml
+@ifhtml
+@url{https://lists.gnu.org/mailman/listinfo/emacs-devel,
+emacs-develメーリングリスト}に連絡してください。
+@end ifhtml

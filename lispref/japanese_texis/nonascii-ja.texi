@@ -1,0 +1,1273 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+@c -*- mode: texinfo; coding: utf-8 -*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1998--1999, 2001--2021 Free Software Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Non-ASCII Characters
+@chapter 非@acronym{ASCII}文字
+@cindex multibyte characters
+@cindex characters, multi-byte
+@cindex non-@acronym{ASCII} characters
+
+  このチャプターは文字に関する特別な問題と、それらが文字列やバッファーに格納される方法について網羅しています。
+
+@menu
+* Text Representations::     Emacsがテキストを表す方法。
+* Disabling Multibyte::      マルチバイト使用を制御する。
+* Converting Representations::  ユニバイトとマルチバイトの相互変換。
+* Selecting a Representation::  バイトシーケンスをユニバイトやマルチバイトとして扱う。
+* Character Codes::          ユニバイトやマルチバイトが個々の文字のコードと関わる方法。
+* Character Properties::     文字の挙動と処理を定義する文字属性。
+* Character Sets::           利用可能な文字コード空間はさまざまな文字セットに分割される。
+* Scanning Charsets::        バッファーで使用されている文字セットは?
+* Translation of Characters::  変換に使用される変換テーブル。
+* Coding Systems::           コーディングシステムはファイル保存のための変換である。
+* Input Methods::            入力メソッドによりユーザーは特別なキーボードなしで非ASCII文字を入力できる。
+* Locales::                  POSIX localeとの対話。
+@end menu
+
+@node Text Representations
+@section テキストの表現方法
+@cindex text representation
+
+  Emacsのバッファーと文字列は、既知のスクリプトで記述されたほとんどすべてのテキストをユーザーがタイプしたり表示できるように、多種多様な言語の広大な文字レパートリーをサポートします。
+
+@cindex character codepoint
+@cindex codespace
+@cindex Unicode
+  多種多様な文字やスクリプトをサポートするために、Emacsは@dfn{Unicode標準(Unicode
+Standard)}に厳密にしたがいます。Unicode標準はすべての文字それぞれにたいして、@dfn{コードポイント(codepoint)}と呼ばれる一意な番号を割り当てています。コードポイントの範囲はUnicode、またはUnicode@dfn{コード空間(codespace)}により定義され、範囲は@code{0..#x10FFFF}(16進表記、範囲両端を含む)です。Emacsはこれを範囲@code{#x110000..#x3FFFFF}のコードポイント範囲に拡張します。この範囲はUnicodeとして統一されていない文字や、文字として解釈できない@dfn{8ビットrawバイト(raw
+8-bit bytes)}を表すために使用します。したがってEmacs内の文字コードポイントは22ビットの整数になります。
+
+@cindex internal representation of characters
+@cindex characters, representation in buffers and strings
+@cindex multibyte text
+  メモリー節約のために、Emacsはバッファーや文字列内のテキスト文字にたいするコードポイントである22ビットの整数を固定長で保持しません。かわりにEmacsは文字の内部表現として可変長を使用します。これはそのコードポイントの値に応じて、各文字を5ビットから8ビットのバイトシーケンスとして格納するものです@footnote{この内部表現は任意のUnicodeコードポイントを表すための、@dfn{UTF-8}と呼ばれるUnicode標準によるエンコーディングの1つにもとづいたものですが、8ビットrawバイトおよびUnicodeに統一されていない文字を使用する追加のコードポイントを表現するためにEmacsはUTF-8を拡張しています。}。たとえばすべての@acronym{ASCII}文字は1バイト、Latin-1文字は2バイトといった具合です。わたしたちはこれをテキストの@dfn{マルチバイト(multibyte)}表現と呼んでいます。
+
+  Emacs外部ではISO-8859-1、GB-2312、Big-5等のような多種の異なるエンコーディングで文字を表すことができます。Emacsはバッファーや文字列へのテキスト読み込み時、およびディスク上のファイルへのテキスト書き込みや他プロセスへの引き渡し時に、これらの外部エンコーディングと内部表現の間で適切な変換を行います。
+
+  Emacsがエンコード済みテキストや非テキストデータをバッファーや文字列に保持したり操作する必要がある場合も時折あります。たとえばEmacsがファイルをvisitする際には、まずそのファイルのテキストをそのままバッファーに読み込んで、その後にのみそれを内部表現に変換します。この変換前にバッファーに保持されいるのはエンコード済みテキストです。
+
+@cindex unibyte text
+  Emacsに関する限り、エンコードされたテキストは実際のテキストではなく8ビットrawバイトです。エンコード済みテキストを保持するバッファーや文字列は、Emacsがそれらを個々のバイトシーケンスとして扱うことから、@dfn{ユニバイト(unibyte)}のバッファー(文字列)と呼んでいます。Emacsは通常はユニバイトのバッファーや文字列を@code{\237}のような8進コードで表示します。エンコード済みテキストやバイナリー非テキストデータを処理する場合を除いて、ユニバイトバッファーとユニバイト文字列は決して使用しないよう推奨します。
+
+  バッファーでは変数@code{enable-multibyte-characters}のバッファーローカルな値が使用する表現を指定します。文字列での表現は文字列構築時に判断して、それを文字列内に記録します。
+
+@defvar enable-multibyte-characters
+この変数はカレントバッファーのテキスト表現を指定する。非@code{nil}ならバッファーはマルチバイトテキスト、それ以外ならエンコード済みユニバイトテキスト、またはバイナリー非テキストデータが含れる。
+
+この変数は直接セットできない。バッファーの表現の変更には、かわりに関数@code{set-buffer-multibyte}を使用すること。
+@end defvar
+
+@defun position-bytes position
+バッファー位置は文字単位で測られる。この関数はカレントバッファー内のバッファー位置を、それに対応するバイト位置でリターンする。これはバッファー先頭を1としてバイト単位で増加方向に数えられる。@var{position}が範囲外なら値は@code{nil}。
+@end defun
+
+@defun byte-to-position byte-position
+カレントバッファー内で与えられた@var{byte-position}に対応するバッファー位置を文字単位でリターンする。@var{byte-position}が範囲外なら値は@code{nil}。マルチバイトバッファーでは@var{byte-position}の任意の値が文字境界上になく、1文字として表現されたマルチバイトシーケンス内にあるかもしれない。この場合には関数はその文字のマルチバイトシーケンスが@var{byte-position}を含むようなバッファー位置をリターンする。言い換えるとこの値は同じ文字に属するすべてのバイト位置にたいして変化しない。
+@end defun
+
+@cindex convert file byte to buffer position
+@cindex convert buffer position to file byte
+  以下の2つの関数はバッファーにvisitされているファイル内でのバイトオフセットとバッファー位置をLispプログラムがマッピングする際に有用です。
+
+@defun bufferpos-to-filepos position &optional quality coding-system
+この関数は@code{position-bytes}と似ているがカレントバッファー内でのバイト位置ではなく、バッファー内の@var{position}により与えられる文字に対応するカレントバッファーのファイル先頭からのオフセットをリターンする点が異なる。この変換にはバッファーのファイル内でテキストがエンコードされる方法を知ることが要求される。これが@var{coding-system}引数の存在意義であり、デフォルトは@code{buffer-file-coding-system}の値。オプション引数@var{quality}は結果のあるべき正確さを指定する。これは以下いずれかであること:
+
+@table @code
+@item exact
+正確な結果でなければならない。関数は高価で低速になり得るバッファーの大きな範囲のエンコードとデコードを要するかもしれない。
+@item approximate
+近似的な値が可能。関数は高価な処理を回避して不正確な結果をリターンするかもしれない。
+@item nil
+正確な結果に高価な処理を要するなら、関数は近似値ではなく@code{nil}をリターンするだろう。これは引数が省略された場合のデフォルト。
+@end table
+@end defun
+
+@defun filepos-to-bufferpos byte &optional quality coding-system
+この関数は@var{byte}
+(ファイル先頭からの0基準のバイトオフセット)が指定するファイル位置に対応するバッファー位置をリターンする。この関数は@code{bufferpos-to-filepos}が行う変換と逆の処理を行う。オプション引数@var{quality}と@var{coding-system}のもつ意味と値は@code{bufferpos-to-filepos}の場合と同様。
+@end defun
+
+@defun multibyte-string-p string
+@var{string}がマルチバイト文字列なら@code{t}、それ以外は@code{nil}をリターンする。この関数は@var{string}が文字列以外でも@code{nil}をリターンする。
+@end defun
+
+@defun string-bytes string
+@cindex string, number of bytes
+この関数は@var{string}内のバイト数をリターンする。@var{string}がマルチバイト文字列なら、これは@code{(length
+@var{string})}より大きいかもしれない。
+@end defun
+
+@defun unibyte-string &rest bytes
+この関数は引数@var{bytes}をすべて結合して、その結果をユニバイト文字列で作成する。
+@end defun
+
+@node Disabling Multibyte
+@section マルチバイト文字の無効化
+@cindex disabling multibyte
+
+  デフォルトではEmacsはマルチバイトモードで開始されます。Emacsはマルチバイトシーケンスを使用して非@acronym{ASCII}文字を表現する内部エンコーディングを使用することにより、バッファーや文字列のコンテンツを格納します。マルチバイトモードでは、サポートされるすべての言語とスクリプトを使用できます。
+
+@cindex turn multibyte support on or off
+  非常に特別な状況下においては、特定のバッファーでマルチバイト文字のサポートを無効にしたいときがあるかもしれません。あるバッファーにおいてマルチバイト文字が無効になっているときには、それを@dfn{ユニバイトモード(unibyte
+mode)}と呼びます。ユニバイトモードではバッファー内の各文字は0から255(8進の0377)の範囲の文字コードをもちます。0から127(8進の0177)は@acronym{ASCII}文字、128から255(8進の0377)は非@acronym{ASCII}文字を表します。
+
+  特定のファイルをユニバイト表現で編集するためには、@code{find-file-literally}を使用してファイルをvisitします。@ref{Visiting
+Functions}を参照してください。マルチバイトバッファーをファイルに保存してバッファーをkillした後に、再びそのファイルを@code{find-file-literally}でvisitすることによりマルチバイトバッファーをユニバイトに変換できます。かわりに@kbd{C-x
+@key{RET}
+c}(@code{universal-coding-system-argument})を使用して、ファイルをvisitまたは保存するコーディングシステムとして@samp{raw-text}を指定することもできます。@ref{Text
+Coding, , Specifying a Coding System for File Text, emacs, GNU Emacs
+Manual}を参照してください。@code{find-file-literally}とは異なり、@samp{raw-text}としてファイルをvisitしてもフォーマット変換、解凍、自動的なモード選択は無効になりません。
+
+@c See https://debbugs.gnu.org/11226 for lack of unibyte tooltip.
+@vindex enable-multibyte-characters
+バッファーローカル変数@code{enable-multibyte-characters}はマルチバイトバッファーなら非@code{nil}、ユニバイトバッファーなら@code{nil}です。マルチバイトバッファーかどうかはモードラインにも示されます。グラフィカルなディスプレイでのマルチバイトバッファーには文字セットを示すモードライン部分と、そのバッファーがマルチバイトであること(とそれ以外の事項)を告げるツールチップがあります。ユニバイトバッファーでは文字セットのインジケーターはありません。したがって(グラフィカルなディスプレイ使用時の)ユニバイトバッファーでは入力メソッドを使用していなければ、visitしているファイルの行末変換(コロン、バックスラッシュ等)の標識の前には通常は何も標識がありません。
+
+@findex toggle-enable-multibyte-characters
+特定のバッファーでマルチバイトサポートをオフに切り替えるには、そのバッファー内でコマンド@code{toggle-enable-multibyte-characters}を呼び出してください。
+
+@node Converting Representations
+@section テキスト表現の変換
+
+  Emacsはユニバイトテキストをマルチバイトに変換できます。マルチバイトテキストに含まれるのが@acronym{ASCII}と8ビットrawバイトだけという条件つきでマルチバイトテキストからユニバイトへの変換もできます。一般的にこれらの変換はバッファーへのテキスト挿入時、または複数の文字列を1つの文字列に合成してテキストにputするときに発生します。文字列のコンテンツを明示的にいずれかの表現に変換することもできます。
+
+  Emacsはそのテキストの構成にもとづいて文字列の表現を選択します。一般的なルールではユニバイトテキストが他のマルチバイトテキストと組み合わされていればマルチバイト表現のほうがより一般的であり、ユニバイトテキストのすべての文字を保有できるのでユニバイトテキストをマルチバイトテキストに変換します。
+
+  バッファーへのテキスト挿入時にEmacsはそのバッファーの@code{enable-multibyte-characters}の指定にしたがってテキストをそのバッファーの表現に変換します。特にユニバイトバッファーにマルチバイトテキストを挿入する際には、たとえ一般的にはマルチバイトテキスト内のすべての文字を保持することはできなくてもEmacsはテキストをユニバイトに変換します。バッファーコンテンツをマルチバイトに変換するという自然な代替方法は、そのバッファーの表現が自動的にオーバーライドできないユーザーによる選択にもとづく表現であるため許容されません。
+
+  ユニバイトテキストからマルチバイトテキストへの変換では@acronym{ASCII}文字は未変更のまま残されて、128から255のコードをもつバイトが8ビットrawバイトのマルチバイト表現に変換されます。
+
+  マルチバイトテキストからユニバイトテキストへの変換では、すべての@acronym{ASCII}と8ビット文字が、それらの1バイト形式に変換されますが、各文字のコードポイントの下位8ビット以外は破棄されるために非@acronym{ASCII}文字の情報は失われます。ユニバイトテキストからマルチバイトテキストに変換してそれをユニバイトに戻せば、元のユニバイトテキストが再生成されます。
+
+以下の2つの関数は引数@var{string}、またはテキストプロパティをもたない新たに作成された文字列のいずれかをリターンします。
+
+@defun string-to-multibyte string
+この関数は@var{string}と同じ文字シーケンスを含むマルチバイト文字列をリターンする。@var{string}がマルチバイト文字列なら未変更のままそれがリターンされる。この関数は@var{string}が@acronym{ASCII}文字と8ビットrawバイトだけを含むと仮定する。後者は@code{#x3FFF80}から@code{#x3FFFFF}(両端を含む)に対応する8ビットrawバイトのマルチバイト表現に変換される(@ref{Text
+Representations, codepoints}を参照)。
+@end defun
+
+@defun string-to-unibyte string
+この関数は@var{string}と同じ文字シーケンスを含むユニバイト文字列をリターンする。@var{string}に非@acronym{ASCII}文字が含まれる場合にはエラーをシグナルする。@var{string}がユニバイト文字列なら未変更のままそれがリターンされる。@acronym{ASCII}文字と8ビット文字だけを含む@var{string}引数にたいしてのみこの関数を使用すること。
+@end defun
+
+@defun byte-to-string byte
+@cindex byte to string
+この関数は文字データ@var{byte}の単一バイトを含むユニバイト文字列をリターンする。@var{byte}が0から255までの整数でなければ、エラーをシグナルする。
+@end defun
+
+@defun multibyte-char-to-unibyte char
+これはマルチバイト文字@var{char}をユニバイト文字に変換してその文字をリターンする。@var{char}が@acronym{ASCII}と8ビットのいずれでもなければこの関数は@minus{}1をリターンする。
+@end defun
+
+@defun unibyte-char-to-multibyte char
+This converts the unibyte character @var{char} to a multibyte character,
+assuming @var{char} is either @acronym{ASCII} or raw 8-bit byte.
+@end defun
+
+@node Selecting a Representation
+@section 表現の選択
+
+  既存のバッファーや文字列がユニバイトの際に、それらをマルチバイトとして調べたり、その逆を行うことが有用なときがあります。
+
+@defun set-buffer-multibyte multibyte
+カレントバッファーの表現タイプをセットする。@var{multibyte}が非@code{nil}ならバッファーはマルチバイト、@code{nil}ならユニバイト。
+
+この関数はバイトシーケンスとして認識時にはバッファーを未変更のままとする。結果として文字として認識時にはコンテンツを変更できる。たとえばマルチバイト表現では1文字として扱われる3バイトのシーケンスは、ユニバイト表現では3文字として数えられるだろう。例外はrawバイトを表す8ビット文字。これらはユニバイトバッファーでは1バイトで表現されるが、バッファーをマルチバイトにセットした際は2バイトのシーケンスに変換されて、その逆の変換も行われる。
+
+この関数はどの表現が使用されているかを記録するために@code{enable-multibyte-characters}をセットする。これは以前の同じテキストをカバーするように、バッファー内のさまざまなデータ(オーバーレイ、テキストプロパティ、マーカーを含む)を調整する。
+
+ナローイングはマルチバイト文字シーケンス中間で発生するかもしれないので、この関数はバッファーがナローイングされている場合はエラーをシグナルする。
+
+そのバッファーがインダイレクトバッファー(indirect buffer:
+間接バッファー)の場合にもエラーをシグナルする。インダイレクトバッファーは常にベースバッファー(base buffer:
+基底バッファー)の表現を継承する。
+@end defun
+
+@defun string-as-unibyte string
+@var{string}がすでにユニバイト文字列なら、この関数は@var{string}自身をリターンする。それ以外は@var{string}と同じバイトだが、それぞれの文字を個別の文字としてとして扱って新たな文字列をリターンする(値は@var{string}より多くの文字をもつかもしれない)。例外としてrawバイトを表す8ビット文字は、それぞれ単一のバイトに変換される。新たに作成された文字列にテキストプロパティは含まれない。
+@end defun
+
+@defun string-as-multibyte string
+@var{string}がすでにマルチバイト文字列なら、この関数は@var{string}自身をリターンする。それ以外は@var{string}と同じバイトだが、それぞれのマルチバイトシーケンスを1つの文字としてとして扱って新たな文字列をリターンする。これは値が@var{string}より少ない文字をもつかもしれないことを意味する。@var{string}内のバイトシーケンスが単一文字のマルチバイト表現として無効なら、そのシーケンスないの各バイトは8ビットrawバイトとして扱われる。新たに作成された文字列にはテキストプロパティは含まれない
+@end defun
+
+@node Character Codes
+@section 文字コード
+@cindex character codes
+
+  ユニバイトやマルチバイトによるテキスト表現は異なる文字コードを使用します。ユニバイト表現にたいして有効な文字コードの範囲は0から@code{#xFF}(255)でこれは1バイト範囲に収まる値です。マルチバイト表現にたいして有効な文字コードの範囲は0から@code{#x3FFFFF}です。このコード空間では値0から@code{#x7F}(127)が@acronym{ASCII}文字用、値@code{#x80}(128)から@code{#x3FFF7F}(4194175)が非@acronym{ASCII}文字用になります。
+
+  Emacsの文字コードは、Unicode標準のスーパーセット(superset:
+上位集合)です。値0から@code{#x10FFFF}(1114111)は同じコードポイントのUnicode文字に対応します。値@code{#x110000}(1114112)から@code{#x3FFF7F}(4194175)はUnicodeに統一されていない文字、値@code{#x3FFF80}(4194176)から@code{#x3FFFFF}(4194303)は8ビットrawバイトを表します。
+
+@defun characterp charcode
+これは@var{charcode}が有効な文字なら@code{t}、それ以外は@code{nil}をリターンする。
+
+@example
+@group
+(characterp 65)
+     @result{} t
+@end group
+@group
+(characterp 4194303)
+     @result{} t
+@end group
+@group
+(characterp 4194304)
+     @result{} nil
+@end group
+@end example
+@end defun
+
+@cindex maximum value of character codepoint
+@cindex codepoint, largest value
+@defun max-char
+この関数は有効な文字コードポイントが保有し得る最大の値をリターンする。
+
+@example
+@group
+(characterp (max-char))
+     @result{} t
+@end group
+@group
+(characterp (1+ (max-char)))
+     @result{} nil
+@end group
+@end example
+@end defun
+
+@defun char-from-name string &optional ignore-case
+この関数はUnicode名が@var{string}であるような文字をリターンする。@var{ignore-case}が非@code{nil}なら@var{string}のcase(大文字小文字)は無視する。@var{string}が文字の名前でなければ、この関数は@code{nil}をリターンする。
+
+@example
+;; U+03A3
+(= (char-from-name "GREEK CAPITAL LETTER SIGMA") #x03A3)
+     @result{} t
+@end example
+@end defun
+
+@defun get-byte &optional pos string
+この関数はカレントバッファー内の文字位置@var{pos}にあるバイトをリターンする。カレントバッファーがユニバイトなら、その位置のバイトをそのままリターンする。バッファーがマルチバイトなら、8ビットrawバイトは8ビットコードに変換される一方で、@acronym{ASCII}文字のバ値は文字コードポイントと同じになる。この関数は@var{pos}にある文字が非@acronym{ASCII}ならエラーをシグナルする。
+
+オプション引数@var{string}はカレントバッファーのかわりに文字列からバイト値を得ることを意味する。
+@end defun
+
+@node Character Properties
+@section 文字のプロパティ
+@cindex character properties
+@dfn{文字プロパティ(character
+property}とは、その文字の振る舞いとテキストが処理や表示される間にどのように処理されるべきかを指定する名前つきの文字属性です。したがって文字プロパティはその文字の意味を指定するための重要な一部です。
+
+@c FIXME: Use the latest URI of this chapter?
+@c https://www.unicode.org/versions/latest/ch04.pdf
+  全体としてEmacsは自身の文字プロパティ実装においてUnicode標準にしたがいます。特にEmacsは@uref{https://www.unicode.org/reports/tr23/,
+Unicode Character Property
+Model}をサポートしており、Emacs文字プロパティデータベースはUnicode文字データベース(@acronym{UCD}: Unicode
+Character
+Database)から派生したものです。Unicode文字プロパティとその意味についての詳細な説明は@uref{https://www.unicode.org/versions/Unicode12.1.0/ch04.pdf,
+Character Properties chapter of the Unicode
+Standard}を参照してください。このセクションではあなたがすでにUnicode標準の該当する章に親しんでいて、その知識をEmacs
+Lispプログラムに適用したいものと仮定します。
+
+  Emacsでは各プロパティは名前をもつシンボルであり、そのシンボルは利用可能な値セットをもち、値の型はプロパティに依存します。ある文字が特定のプロパティをもたなければ、その値は@code{nil}になります。一般的なルールとしてEmacsでの文字プロパティ名は対応するUnicodeプロパティ名を小文字にして、文字@samp{_}をダッシュ文字@samp{-}で置き換えることにより生成されます。たとえば@code{Canonical_Combining_Class}は@code{canonical-combining-class}となります。しかし簡単に使用できるように名前を短くすることもあります。
+
+@cindex unassigned character codepoints
+  @acronym{UCD}によりいくつかのコードポイントは@dfn{未割り当て(unassigned)}のまま残されており、それらに対応する文字はありません。Unicode標準は、そのようなコードポイントのプロパティにたいしてデフォルト値を定義しています。それらについては以下の各プロパティごとに注記することにします。
+
+  以下はEmacsが関知するすべての文字プロパティにたいする値タイプの完全なリストです:
+
+@table @code
+@item name
+Unicodeプロパティ@code{Name}に対応する。値はラテン大文字のAからZ、数字、スペース、ハイフン@samp{-}の文字から構成される文字列。未割り当てのコードポイントにたいする値は@code{nil}。
+
+@cindex unicode general category
+@item general-category
+Unicodeプロパティ@code{General_Category}に対応する。値はその文字の分類をアルファベット2文字に略したものを名前としてもつようなシンボル。未割り当てのコードポイントにたいする値は@code{Cn}。
+
+@item canonical-combining-class
+Unicodeプロパティ@code{Canonical_Combining_Class}に対応する。値は整数。未割り当てのコードポイントにたいする値は0。
+
+@cindex bidirectional class of characters
+@item bidi-class
+Unicodeプロパティ@code{Bidi_Class}に対応する。値はその文字のUnicode@dfn{方向タイプ(directional
+type)}が名前であるようなシンボル。Emacsは表示のために双方向テキストを並び替える際にこのプロパティを使用する(@ref{Bidirectional
+Display}を参照)。未割り当てのコードポイントにたいする値はそのコードポイントが属するコードブロックに依存する。未割り当てのコードポイントのほとんどは@code{L}(強い左方向)だが、@code{AL}
+( Arabic letter: アラビア文字)や@code{R} (強い右方向)を受け取るコースポイントもいくつかある。
+
+@item decomposition
+Unicodeプロパティの@code{Decomposition_Type}と@code{Decomposition_Value}に対応する。値は最初の要素が@code{small}のような互換性のあるフォーマットタグ(compatibility
+formatting
+tag)であるかもしれないリスト@footnote{Unicode仕様ではこれらのタグ名を@samp{<..>}カッコ内に記述しますがEmacsでのタグ名にはカッコは含まれません。Unicodeでの@samp{<small>}指定はEmacsでは@samp{small}となります。}。分割シーケンス(compatibility
+decomposition
+sequence)をもたない文字、および未割り当てのコードポイントにたいする値はその文字自身が唯一のメンバーであるようなリスト。
+
+@item decimal-digit-value
+@code{Numeric_Type}が@samp{Decimal}であるような文字Unicodeプロパティ@code{Numeric_Value}に対応する。値は整数、その文字が10進値をもたなければ@code{nil}。未割り当てのコードポイントにたいする値は、@acronym{NaN}または``not
+a number(数字ではない)''を意味する@code{nil}。
+
+@item digit-value
+@code{Numeric_Type}が@samp{Digit}であるような文字のUnicodeプロパティ@code{Numeric_Value}に対応する。値は整数。このような文字には互換性のある添字や上付き数字が含まれ、値は対応する数字。何も数値をもたない文字および未割り当てのコードポイントにたいする値は@acronym{NaN}を意味する@code{nil}。
+
+@item numeric-value
+@code{Numeric_Type}が@samp{Numeric}であるような文字のUnicodeプロパティ@code{Numeric_Value}に対応する。このプロパティの値は数字。このプロパティをもつ文字の例には分数、添字、上付き数字、ローマ数字、通貨分数(訳注:
+原文は``currency numerators''でベンガル語の分数値用の歴史的な記号を指すと思われる)、丸数字が含まれる。たとえば文字U+2155
+(@sc{vulgar fraction one fifth:
+(訳注)スラッシュで分子と分母を区切った表記による5分の1のこと})にたいするこのプロパティの値は@code{0.2}。数値をもたない文字と未割り当てのコードポイントにたいする値は@acronym{NaN}を意味する@code{nil}。
+
+@cindex mirroring of characters
+@item mirrored
+Unicodeプロパティ@code{Bidi_Mirrored}に対応する。このプロパティの値は@code{Y}か@code{N}いずれかのシンボル。未割り当てのコードポイントにたいする値は@code{N}。
+
+@item mirroring
+Unicodeプロパティ@code{Bidi_Mirroring_Glyph}に対応する。このプロパティの値は、そのグリフ(glyph)がその文字のグリフの鏡像(mirror
+image)を表すような文字、定義済みの鏡像グリフがなければ@code{nil}。@code{mirrored}プロパティが@code{N}であるようなすべての文字の@code{mirroring}プロパティは@code{nil}。しかし@code{mirrored}プロパティが@code{Y}の文字でも、鏡像をもつ適切な文字がないという理由により@code{mirroring}が@code{nil}の文字もある。Emacsは適切な際は鏡像を表示するためにこのプロパティを使用する(@ref{Bidirectional
+Display}を参照)。未割り当てのコードポイントにたいする値は@code{nil}。
+
+@item paired-bracket
+Unicodeプロパティ@code{Bidi_Paired_Bracket}に対応する。このプロパティの値は文字の@dfn{paired
+bracket(カッコのペア)}のコードポイント、その文字がbracket文字でなければ@code{nil}。これはUnicode双方向アルゴリズム(Unicode
+Bidirectional Algorithm)によりカッコのペアとして扱われる文字間のマッピングを確立する。
+Emacsは丸カッコ(parentheses)や角カッコ(braces)、およびその類の文字を再配置する方法を決定する際にこのプロパティを使用する(@ref{Bidirectional
+Display}を参照)。
+
+@item bracket-type
+Unicodeの@code{Bidi_Paired_Bracket_Type}プロパティに対応する。@code{paired-bracket}プロパティが非@code{nil}の文字にたいするこのプロパティは@code{o}
+(開カッコ文字)か@code{c}
+(閉カッコ文字)を表すシンボルのいずれか。@code{paired-bracket}プロパティが@code{nil}の文字にたいする値は@code{n}
+(None: なし)。@code{paired-bracket}と同じようにこのプロパティは双方向ディスプレーにより使用される。
+
+@item old-name
+Unicodeプロパティ@code{Unicode_1_Name}に対応する。値は文字列。未割り当てのコードポイント、およびこのプロパティにたいする値をもたない文字では値は@code{nil}。
+
+@item iso-10646-comment
+Unicodeプロパティ@code{ISO_Comment}に対応する。値は文字列か@code{nil}。未割り当てのコードポイントにたいする値は@code{nil}。
+
+@item uppercase
+Unicodeプロパティ@code{Simple_Uppercase_Mapping}に対応する。このプロパティの値は単一の文字。未割り当てのコードポイントの値は@code{nil}であり、これはその文字自身を意味する。
+
+@item lowercase
+Unicodeプロパティ@code{Simple_Lowercase_Mapping}に対応する。このプロパティの値は単一の文字。未割り当てのコードポイントの値は@code{nil}であり、これはその文字自身を意味する。
+
+@item titlecase
+Unicodeプロパティ@code{Simple_Titlecase_Mapping}に対応する。@dfn{タイトルケース(title
+case)}とは単語の最初の文字を大文字にする必要がある際に使用される文字の特別な形式のこと。このプロパティの値は単一の文字。未割り当てのコードポイントにたいする値は@code{nil}であり、これはその文字自身を意味する。
+
+@item special-uppercase
+Unicodeの言語やコンテキストに依存しない特別な大文字caseルールに対応する。このプロパティの値は文字列(空も可)。たとえばU+00DF
+@sc{latin small letter sharp
+s}にたいするマッピングは@code{"SS"}。特別なマッピングのない文字にたいする値は@code{nil}
+(かわりに@code{uppercase}プロパティの照会が必要なことを意味する)。
+
+@item special-lowercase
+Unicodeの言語やコンテキストに依存しない特別な小文字caseルールに対応する。このプロパティの値は文字列(空も可)。たとえばU+0130
+@sc{latin capital letter i with dot
+above}にたいするマッピングは@code{"SS"}。特別なマッピングのない文字にたいする値は@code{nil}
+(かわりに@code{lowercase}プロパティの照会が必要なことを意味する)。
+
+@item special-titlecase
+Unicodeの無条件の特別なタイトルcaseルールに対応する。このプロパティの値は文字列(空も可)。たとえばU+FB01 @sc{latin
+small ligature fi}にたいするマッピングは@code{"Fi"}。特別なマッピングのない文字にたいする値は@code{nil}
+(かわりに@code{titlecase}プロパティの照会が必要なことを意味する)。
+@end table
+
+@defun get-char-code-property char propname
+この関数は@var{char}のプロパティ@var{propname}の値をリターンする。
+
+@example
+@group
+(get-char-code-property ?\s 'general-category)
+     @result{} Zs
+@end group
+@group
+(get-char-code-property ?1 'general-category)
+     @result{} Nd
+@end group
+@group
+;; U+2084
+(get-char-code-property ?\N@{SUBSCRIPT FOUR@}
+                        'digit-value)
+     @result{} 4
+@end group
+@group
+;; U+2155
+(get-char-code-property ?\N@{VULGAR FRACTION ONE FIFTH@}
+                        'numeric-value)
+     @result{} 0.2
+@end group
+@group
+;; U+2163
+(get-char-code-property ?\N@{ROMAN NUMERAL FOUR@}
+                        'numeric-value)
+     @result{} 4
+@end group
+@group
+(get-char-code-property ?\( 'paired-bracket)
+     @result{} 41  ; closing parenthesis
+@end group
+@group
+(get-char-code-property ?\) 'bracket-type)
+     @result{} c
+@end group
+@end example
+@end defun
+
+@defun char-code-property-description prop value
+この関数はプロパティ@var{prop}の@var{value}の説明文字列(description
+string)、@var{value}が説明をもたなければ@code{nil}をリターンする。
+
+@example
+@group
+(char-code-property-description 'general-category 'Zs)
+     @result{} "Separator, Space"
+@end group
+@group
+(char-code-property-description 'general-category 'Nd)
+     @result{} "Number, Decimal Digit"
+@end group
+@group
+(char-code-property-description 'numeric-value '1/5)
+     @result{} nil
+@end group
+@end example
+@end defun
+
+@defun put-char-code-property char propname value
+この関数は文字@var{char}のプロパティ@var{propname}の値として@var{value}を格納する。
+@end defun
+
+@defvar unicode-category-table
+この変数の値は、それぞれの文字にたいしてそのUnicodeプロパティ@code{General_Category}をシンボルとして指定する文字テーブル(@ref{Char-Tables}を参照)。
+@end defvar
+
+@defvar char-script-table
+@cindex script symbols
+The value of this variable is a char-table that specifies, for each
+character, a symbol whose name is the script to which the character belongs,
+according to the Unicode Standard classification of the Unicode code space
+into script-specific blocks.  This char-table has a single extra slot whose
+value is the list of all script symbols.  Note that Emacs' classification of
+characters into scripts is not a 1-for-1 reflection of the Unicode standard,
+e.g. there is no @samp{symbol} script in Unicode.
+@end defvar
+
+@defvar char-width-table
+この変数の値は、それぞれの文字がスクリーン上で占めるであろう幅を列単位で指定する文字テーブル。
+@end defvar
+
+@defvar printable-chars
+この変数の値は、それぞれの文字にたいしてそれがプリント可能かどうかを指定する文字テーブル。すなわち@code{(aref printable-chars
+char)}を評価した結果が@code{t}ならプリント可、@code{nil}なら不可。
+@end defvar
+
+@node Character Sets
+@section 文字セット
+@cindex character sets
+
+@cindex charset
+@cindex coded character set
+Emacsの@dfn{文字セット(character
+set、もしくはcharset)}とは、それぞれの文字が数字のコードポイントに割り当てられれた文字セットのことです(Unicode標準ではこれを@dfn{符号化文字集合(coded
+character
+set)}と呼ぶ)。Emacsの各文字セットはシンボルであるような名前をもちます。1つの文字が任意の数の異なる文字セットに属することができますが、各文字セット内で異なるコードポイントをもつのが一般的でしょう。文字セットの例には@code{ascii}、@code{iso-8859-1}、@code{greek-iso8859-7}、@code{windows-1255}が含まれます。文字セット内で文字に割り当てられるコードポイントは、Emacs内のバッファーや文字列内で使用されるコードポイントとは通常は異なります。
+
+@cindex @code{emacs}, a charset
+@cindex @code{unicode}, a charset
+@cindex @code{eight-bit}, a charset
+  Emacsは特別な文字セットをいくつか定義しています。文字セット@code{unicode}はEmacsコードポイントが@code{0..#x10FFFF}の範囲のすべての文字セットを含みます。文字セット@code{emacs}はすべての@acronym{ASCII}、および非@acronym{ASCII}文字を含みます。最後に@code{eight-bit}文字セットは8ビットrawバイトを含みます。テキスト内でrawバイトを見つけたときにEmacsはこれを使用します。
+
+@defun charsetp object
+@var{object}は文字セットを命名するシンボルなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defvar charset-list
+値はすべての定義済み文字セットの名前のリスト。
+@end defvar
+
+@defun charset-priority-list &optional highestp
+この関数はすべての定義済み文字セットの優先順にソートされたリストをリターンする。@var{highestp}が非@code{nil}なら、この関数はもっとも優先度の高い文字セット1つをリターンする。
+@end defun
+
+@defun set-charset-priority &rest charsets
+この関数は@var{charsets}をもっとも高い優先度の文字セットにする。
+@end defun
+
+@defun char-charset character &optional restriction
+この関数は@var{character}が属する文字セットで、もっとも優先度の高い文字セットの名前をリターンする。ただし@acronym{ASCII}文字は例外であり、この関数は常に@code{ascii}をリターンする。
+
+@var{restriction}が非@code{nil}なら、それは検索する文字セットのリストであること。かわりにコーディングシステムも指定でき、その場合にはそのコーディングシステムによりサポートされている必要がある(@ref{Coding
+Systems}を参照)。
+@end defun
+
+@c TODO: Explain the properties here and add indexes such as 'charset property'.
+@defun charset-plist charset
+この関数は文字セット@var{charset}のプロパティをリターンする。たとえ@var{charset}がシンボルだったとしても、これはそのシンボルのプロパティリストと同じではない。文字セットプロパティにはドキュメント文字列、短い名前等、その文字セットに関する重要な情報が含まれる。
+@end defun
+
+@defun put-charset-property charset propname value
+この関数は@var{charset}のプロパティ@var{propname}に与えられた@var{value}をセットする。
+@end defun
+
+@defun get-charset-property charset propname
+この関数は@var{charset}のプロパティ@var{propname}の値をリターンする。
+@end defun
+
+@deffn Command list-charset-chars charset
+このコマンドは文字セット@var{charset}内の文字のリストを表示する。
+@end deffn
+
+  Emacsは文字の内部的な表現と、その文字の特定の文字セット内でのコードポイントを相互に変換することができます。以下はこれらをサポートするための関数です。
+
+@c FIXME: decode-char and encode-char accept and ignore an additional
+@c argument @var{restriction}.  When that argument actually makes a
+@c difference, it should be documented here.
+@defun decode-char charset code-point
+この関数は@var{charset}内で@var{code-point}に割り当てられた文字をEmacsの対応する文字にデコードしてリターンする。そのコードポイントの文字が@var{charset}に含まれなければ値は@code{nil}。
+
+後方互換性のために@var{code-point}がLispのfixnum (@ref{Integer Basics,
+most-positive-fixnum}を参照)に収まらなければ、コンスセル@code{(@var{high}
+.
+@var{low})}として指定できる。ここで@var{low}は値の下位16ビット、@var{high}は高位16ビット。この使用方法は時代遅れである。
+@end defun
+
+@defun encode-char char charset
+この関数は@var{charset}内で文字@var{char}に割り当てられたコードポイントをリターンする。@var{charset}が@var{char}にたいするコードポイントをもたなければ値は@code{nil}。
+@end defun
+
+  以下の関数は文字セット内の文字の一部、またはすべてにたいして特定の関数を適用するのに有用です。
+
+@defun map-charset-chars function charset &optional arg from-code to-code
+@var{charset}内の文字にたいして@var{function}を呼び出す。@var{function}は2つの引数で呼び出される。1つ目はコンスセル@code{(@var{from}
+.
+@var{to})}であり、@var{from}と@var{to}は文字セット内に含まれる文字の範囲。@var{arg}は2つ目の引数として@var{function}に渡される。
+
+デフォルトでは@var{function}に渡されるコードポイントの範囲には@var{charset}内のすべての文字が含まれるが、オプション引数@var{from-code}と@var{to-code}により、それは@var{charset}の2つのコードポイント間にある文字範囲に制限される。@var{from-code}か@var{to-code}のいずれかが@code{nil}の場合のデフォルトは、@var{charset}のコードポイントの最初か最後。
+@end defun
+
+@node Scanning Charsets
+@section 文字セットのスキャン
+@cindex scanning for character sets
+@cindex character set, searching
+
+  特定の文字がどの文字セットに属するか調べられると便利なときがあります。これの用途の1つは、どのコーディングシステム(@ref{Coding
+Systems}を参照)が問題となっているテキストすべてを表現可能か判断することです。他にもそのテキストを表示するフォントの判断があります。
+
+@defun charset-after &optional pos
+この関数は、カレントバッファー内の位置@var{pos}にある文字を含む、もっとも高い優先度の文字セットをリターンする。@var{pos}が省略または@code{nil}の場合のデフォルトはポイントのカレント値。@var{pos}が範囲外なら値は@code{nil}。
+@end defun
+
+@defun find-charset-region beg end &optional translation
+この関数はカレントバッファー内の位置@var{beg}から@var{end}の間の文字を含む、もっとも優先度の高い文字セットのリストをリターンする。
+
+オプション引数@var{translation}はテキストのスキャンに使用するための変換テーブルを指定する(@ref{Translation of
+Characters}を参照)。これが非@code{nil}ならリージョン内の各文字はそのテーブルを通じて変換され、リターンされる値にはバッファーの実際の文字ではなく変換された文字が記述される。
+@end defun
+
+@defun find-charset-string string &optional translation
+この関数は@var{string}内の文字を含む、もっとも優先度の高い文字セットのリストをリターンする。これは@code{find-charset-region}と似ているが、カレントバッファーの一部ではなく@var{string}のコンテンツに適用される点が異なる。
+@end defun
+
+@node Translation of Characters
+@section 文字の変換
+@cindex character translation tables
+@cindex translation tables
+
+  @dfn{変換テーブル(translation
+table)}とは文字から文字へのマッピングを指定する文字テーブルです(@ref{Char-Tables}を参照)。これらのテーブルはエンコーディング、デコーディング、および他の用途にも使用されます。独自に変換テーブルを指定するコーディングシステムもいくつかあります。他のすべてのコーディングシステムに適用されるデフォルトの変換テーブルも存在します。
+
+  変換テーブルには余分のスロット(extra
+slots)が2つあります。1つ目のスロットは@code{nil}、または逆の変換を処理する変換テーブルです。2つ目のスロットは変換する文字シーケンスを照合する際の最大文字数です(以下の@code{make-translation-table-from-alist}の説明を参照)。
+
+@defun make-translation-table &rest translations
+この関数は引数@var{translations}にもとづいて変換テーブルをリターンする。@var{translations}の各要素は@code{(@var{from}
+. @var{to})}という形式のリストであること。これは@var{from}から@var{to}への文字の変換を指示する。
+
+各引数内の引数とフォームは順に処理され、もし前のフォームですでに@var{to}がたとえば@var{to-alt}に変換されていれば@var{from}も@var{to-alt}に変換される。
+@end defun
+
+  デコードを行う間、その変換テーブルの変換は通常のデコーディングの結果の文字に適用されます。あるコーディングシステムがプロパティ@code{:decode-translation-table}をもつなら、それは使用する変換テーブル、または順に適用するべき変換テーブルのリストを指定します(これはコーディングシステムの名前であるようなシンボルのプロパティではなく、@code{coding-system-get}がリターンするようなコーディングシステムのプロパティ。@ref{Coding
+System Basics,, Basic Concepts of Coding
+Systems}を参照)。最後にもし@code{standard-translation-table-for-decode}が非@code{nil}なら、結果となる文字はそのテーブルにより変換されます。
+
+  エンコードを行う間は、その変換テーブルの変換はバッファー内の文字に適用されて、変換結果は実際にエンコードされます。あるコーディングシステムがプロパティ@code{:encode-translation-table}をもつならそれは使用する変換テーブル、または順に適用するべき変換テーブルのリストを指定します。加えてもし変数@code{standard-translation-table-for-encode}が非@code{nil}なら、それは変換結果にたいして使用するべき変換テーブルを指定します。
+
+@defvar standard-translation-table-for-decode
+This is the default translation table for decoding.  If a coding system
+specifies its own translation tables, the table that is the value of this
+variable, if non-@code{nil}, is applied after them.
+@end defvar
+
+@defvar standard-translation-table-for-encode
+This is the default translation table for encoding.  If a coding system
+specifies its own translation tables, the table that is the value of this
+variable, if non-@code{nil}, is applied after them.
+@end defvar
+
+@c FIXME: This variable is obsolete since 23.1.  We should mention
+@c that here or simply remove this defvar.  --xfq
+@defvar translation-table-for-input
+自己挿入文字は挿入前にこの変換テーブルを通じて変換が行われる。検索コマンドもバッファー内の内容とより信頼性のある比較ができるようにこのテーブルを通じて入力を変換する。
+
+この変数はセット時に自動的にバッファーローカルになる。
+@end defvar
+
+@defun make-translation-table-from-vector vec
+この関数はバイト(値は0から#xFF)から文字にマップする256要素の配列であるような、@var{vec}から作成した変換テーブルをリターンする。未変換のバイトにたいする要素は@code{nil}かもしれない。リターンされるテーブルは余分な1つ目のスロットにそのマッピングを保持する変換テーブル、2つ目の余分なスロットに値@code{1}をもつ。
+
+この関数は各バイトを特定の文字にマップするようなプライベートなコーディングシステムを簡単に作成する手段を提供する。@code{define-coding-system}の@var{props}引数のプロパティ@code{:decode-translation-table}と@code{:encode-translation-table}に、リターンされるテーブルと逆変換テーブルを指定できる。
+@end defun
+
+@defun make-translation-table-from-alist alist
+この関数は@code{make-translation-table}と似ているが、シンプルな1対1のマッピングを行う変換テーブルではなく、より複雑な変換テーブルをリターンする。@var{alist}の各要素は@code{(@var{from}
+.
+@var{to})}という形式をもち、ここで@var{from}および@var{to}は文字または文字シーケンスを指定するベクター。@var{from}が文字なら、その文字は@var{to}(文字か文字シーケンス)に変換される。@var{from}が文字のベクターならそのシーケンスは@var{to}に変換される。リターンされるテーブルは1つ目の余分なスロットに逆のマッピングを行う変換テーブル、2つ目の余分なスロットには文字シーケンス@var{from}すべての最大長をもつ。
+@end defun
+
+@node Coding Systems
+@section コーディングシステム
+
+@cindex coding system
+  Emacsがファイルにたいして読み書きをしたりサブプロセスとテキストの送受信を行う際には、通常は特定の@dfn{コーディングシステム(coding
+system)}の指定にしたがって文字コード変換や行末変換を行います。
+
+  コーディングシステムの定義は難解な問題であり、ここには記述しません。
+
+@menu
+* Coding System Basics::     基本的な概念。
+* Encoding and I/O::         ファイル入出力関数がコーディングシステムを扱う方法。
+* Lisp and Coding Systems::  コーディングシステム名を処理する関数。
+* User-Chosen Coding Systems::  ユーザーにコーディングシステムの選択を求める。
+* Default Coding Systems::   デフォルトの選択の制御。
+* Specifying Coding Systems::  単一ファイル処理にたいして特定のコーディングシステムを要求する。
+* Explicit Encoding::        入出力を伴わないテキストのエンコードおよびデコード。
+* Terminal I/O Encoding::    端末入出力にたいするエンコーディングの使用。
+@end menu
+
+@node Coding System Basics
+@subsection コーディングシステムの基本概念
+
+@cindex character code conversion
+  @dfn{文字コード変換(character code
+conversion)}により、Emacs内部で使用される文字の内部表現と他のエンコーディングの間で変換が行われます。Emacsは多くの異なるエンコーディングをサポートしており、それらは双方向に変換が可能です。たとえばLatin
+1、Latin 2、Latin 3、Latin 4、Latin 5、およびいくつかのISO
+2022の変種等のようなエンコーディングにたいしてテキストを双方向に変換できます。あるケースにおいては同じ文字にたいしてEmacsは複数のエンコーディング候補をサポートします。たとえばキリル(ロシア語)のアルファベットにたいしてはISO、Alternativnyj、KOI8のように3つにコーディングシステムが存在します。
+
+@vindex undecided@r{ coding system}
+@vindex prefer-utf-8@r{ coding system}
+  コーディングシステムはそれぞれ特定の文字コード変換セットを指定しますが、@code{undecided}というコーディングシステムは特別です。これはそれぞれのファイルにたいして、そのファイルのデータにもとづいて発見的に選択が行われるように選択を未指定のままにします。コーディングシステム@code{prefer-utf-8}は@code{undecided}と似ていますが、可能なら@code{utf-8}を優先的に選択します。
+
+  一般的にコーディングシステムは可逆的な同一性を保証しません。あるコーディングシステムを使用してバイトシーケンスをデコードしてから、同じコーディングシステムで結果テキストをエンコードしても、異なるバイトシーケンスが生成される可能性があります。しかしデコードされたオリジナルのバイトシーケンスとなることを保証するコーディングシステムもいくつかあります。以下にいくつかの例を挙げます:
+
+@quotation
+iso-8859-1、utf-8、big5、shift_jis、euc-jp
+@end quotation
+
+  バッファーテキストのエンコードと結果のデコードでもオリジナルテキストの再生成に失敗する可能性があります。たとえばその文字をサポートしないコーディングシステムで文字をエンコードした場合の結果は予測できず、したがって同じコーディングシステムを使用してそれをデコードしても異なるテキストが生成されるでしょう。現在のところEmacsは未サポート文字のエンコーディングによる結果をエラーとして報告できません。
+
+@cindex EOL conversion
+@cindex end-of-line conversion
+@cindex line end conversion
+  @dfn{行末変換(end of line conversion:
+改行変換)}はファイル内の行末を表すために、さまざまなシステム上で使用される3つの異なる慣例を扱います。GNUやUnixシステムで使用されるUnixの慣例ではLF文字(linefeed文字、改行とも呼ばれる)が使用されます。MS-WindowsやMS-DOSシステムで使用されるDOSの慣例では行末にCR文字(carriage-return文字、復帰文字とも呼ばれる)とLF文字が使用されます。Macの慣例ではCR文字だけが使用されます(これはクラシックなMac
+OSで使用されていた慣例)。
+
+@cindex base coding system
+@cindex variant coding system
+  @code{latin-1}のような@dfn{ベースコーディングシステム(base coding systems:
+基本コーディングシステム)}では、データにもとづいて選択されるように行末変換は未指定となっています。@code{latin-1-unix}、@code{latin-1-dos}、@code{latin-1-mac}のような@dfn{バリアントコーディングシステム(variant
+coding systems:
+変種コーディングシステム)}では行末変換を明示的に指定します。ほとんどのベースコーディングシステムは@samp{-unix}、@samp{-dos}、@samp{-mac}を追加した3つの対応する形式の変種をもちます。
+
+@vindex raw-text@r{ coding system}
+  @code{raw-text}は文字コード変換を抑制して、このコーディングシステムでvisitされたバッファーがユニバイトバッファーとなる点において特殊なコーディングシステムです。歴史的な理由によりこのコーディングシステムによりユニバイトとマルチバイト両方のテキストを保存できます。マルチバイトテキストのエンコードに@code{raw-text}を使用した際には1文字コード変換を行います。8ビット文字は1バイトの外部表現に変換されます。@code{raw-text}は通常のようにデータにより判断できるように行末変換を指定せず、通常のように行末変換を指定する3つの変種をもちます。
+
+@vindex no-conversion@r{ coding system}
+@vindex binary@r{ coding system}
+  @code{no-conversion}
+(とエイリアスの@code{binary})は@code{raw-text-unix}と等価です。これは文字コードおよび行末にたいする変換をいずれも指定しません。
+
+@vindex emacs-internal@r{ coding system}
+@vindex utf-8-emacs@r{ coding system}
+  @code{utf-8-emacs}はデータがEmacsの内部エンコーディング(@ref{Text
+Representations}を参照)で表されることを指定するコーディングシステムです。コード変換が何も発生しない点で@code{raw-text}と似ていますが、結果がマルチバイトデータである点が異なります。
+@code{emacs-internal}という名前は@code{utf-8-emacs-unix}にたいするエイリアスです(そのため3種類すべての行末変換をデコードする@code{utf-8-emacs}と異なり行末変換を強制しない)。
+
+@defun coding-system-get coding-system property
+この関数はコーディングシステム@var{coding-system}の指定されたプロパティをリターンする。コーディングシステムのプロパティのほとんどは内部的な目的のために存在するが、@code{:mime-charset}については有用と思うかもしれない。このプロパティの値はそのコーディングシステムが読み書きできる文字コードにたいしてMIME内で使用される名前。以下は例:
+
+@example
+(coding-system-get 'iso-latin-1 :mime-charset)
+     @result{} iso-8859-1
+(coding-system-get 'iso-2022-cn :mime-charset)
+     @result{} iso-2022-cn
+(coding-system-get 'cyrillic-koi8 :mime-charset)
+     @result{} koi8-r
+@end example
+
+@code{:mime-charset}プロパティの値はそのコーディングシステムにたいするエイリアスとしても定義されている。
+@end defun
+
+@cindex alias, for coding systems
+@defun coding-system-aliases coding-system
+この関数は@var{coding-system}のエイリアスのリストをリターンする。
+@end defun
+
+@node Encoding and I/O
+@subsection エンコーディングとI/O
+
+  コーディングシステムの主な目的はファイルの読み込みと書き込みへの使用です。関数@code{insert-file-contents}はファイルデータのデコードにコーディングシステムを使用して、@code{write-region}はバッファーコンテンツのエンコードにコーディングシステムを使用します。
+
+  使用するコーディングシステムは明示的(@ref{Specifying Coding
+Systems}を参照)、またはデフォルトメカニズム(@ref{Default Coding
+Systems}を参照)を使用により暗黙的に指定できます。しかしこれらの手法は何を行うかを完全には指定しないかもしれません。たとえば、これらはデータから文字コード変換を行わない@code{undecided}のようなコーディングシステムを選択するかもしれません。このような場合、I/O処理はコーディングシステム選択により処理を完了します。後でどのコーディングシステムが選択されたか調べたいことが頻繁にあるでしょう。
+
+@defvar buffer-file-coding-system
+このバッファーローカル変数はバッファーの保存、および@code{write-region}によるバッファー部分のファイルへの書き出しに使用されるコーディングシステムを記録する。書き込まれるテキストがこの変数で指定されたコーディングシステムを使用して安全にエンコードできない場合には、これらの操作は関数@code{select-safe-coding-system}を呼び出すことにより代替となるエンコーディングを選択する(@ref{User-Chosen
+Coding
+Systems}を参照)。異なるエンコーディングの選択がユーザーによるコーディングシステムの指定を要するなら、@code{buffer-file-coding-system}は新たに選択されたコーディングシステムに更新される。
+
+@code{buffer-file-coding-system}はサブプロセスへのテキスト送信に@emph{影響しない}。
+@end defvar
+
+@defvar save-buffer-coding-system
+この変数は、(@code{buffer-file-coding-system}をオーバーライドして)バッファーを保存するためのコーディングシステムを指定する。これは@code{write-region}には使用されないことに注意。
+
+あるコマンドがバッファーを保存するために@code{buffer-file-coding-system}
+(または@code{save-buffer-coding-system})の使用を開始して、そのコーディングシステムがバッファー内の実際のテキストを処理できなければ、(@code{select-safe-coding-system}を呼び出すことにより)そのコマンドは他のコーディングシステムの選択をユーザーに求める。これが発生した後はコマンドはユーザー指定のコーディングシステムを表すために@code{buffer-file-coding-system}の更新も行う。
+@end defvar
+
+@defvar last-coding-system-used
+ファイルやサブプロセスにたいするI/O操作は、使用したコーディングシステムの名前をこの変数にセットする。明示的にエンコードとデコードを行う関数(@ref{Explicit
+Encoding}を参照)もこの変数をセットする。
+
+@strong{警告:}
+サブプロセス出力の受信によりこの変数がセットされるため、この変数はEmacsがwaitしている際は常に変更され得る。したがって興味対象となる値を格納する関数呼び出し後は、間を空けずにその値をコピーすること。
+@end defvar
+
+  変数@code{selection-coding-system}はウィンドウシステムにたいして選択(selection)をエンコードする方法を指定します。@ref{Window
+System Selections}を参照してください。
+
+@defvar file-name-coding-system
+変数@code{file-name-coding-system}はファイル名のエンコーディングに使用するコーディングシステムを指定する。Emacsは、すべてのファイル操作にたいして、ファイル名のエンコードにそのコーディングシステムを使用する。@code{file-name-coding-system}が@code{nil}ならEmacsは選択された言語環境(language
+environment)により決定されたデフォルトのコーディングシステムを使用する。デフォルト言語環境ではファイル名に含まれるすべての非@acronym{ASCII}文字は特別にエンコードされない。これらはEmacsの内部表現を使用してファイルシステム内で表される。
+@end defvar
+
+  @strong{警告:} Emacsのセッション中に@code{file-name-coding-system}
+(または言語環境)を変更した場合には、以前のコーディングシステムを使用してエンコードされた名前をもつファイルをvisitしていると、新たなコーディングシステムでは異なるように扱われるので問題が発生し得る。これらのvisitされたファイル名でこれらのバッファーの保存を試みると、保存で間違ったファイル名が使用されたりエラーとなるかもしれない。そのような問題が発生したら、そのバッファーにたいして新たなファイル名を指定するために@kbd{C-x
+C-w}を使用すること。
+
+@cindex file-name encoding, MS-Windows
+  Windows 2000以降ではEmacsはOSに渡すファイル名にデフォルトでUnicode
+APIを使用するため、@code{file-name-coding-system}の値は大部分が無視される。Lispレベルでファイル名のエンコードやデコードを必要とするLispアプリケーションは、@code{system-type}が@code{windows-nt}のときは@code{utf-8}をコーディングシステムに使用すること。UTF-8でエンコードされたファイル名から、OSと対話するために適したエンコーディングへの変換はEmacsにより内部的に処理される。
+
+@node Lisp and Coding Systems
+@subsection Lispでのコーディングシステム
+
+  以下はコーディングシステムと連携するLisp機能です:
+
+@cindex list all coding systems
+@defun coding-system-list &optional base-only
+この関数はすべてのコーディングシステムの名前(シンボル)をリターンする。@var{base-only}が非@code{nil}なら、値にはベースコーディングシステムだけが含まれる。それ以外ならエイリアス、およびバリアントコーディングシステムも同様に含まれる。
+@end defun
+
+@defun coding-system-p object
+この関数は@var{object}がコーディングシステムの名前なら@code{t}、または@code{nil}をリターンする。
+@end defun
+
+@cindex validity of coding system
+@cindex coding system, validity check
+@defun check-coding-system coding-system
+This function checks the validity of @var{coding-system}.  If that is valid,
+it returns @var{coding-system}.  If @var{coding-system} is @code{nil}, the
+function returns @code{nil}.  For any other values, it signals an error
+whose @code{error-symbol} is @code{coding-system-error} (@pxref{Signaling
+Errors, signal}).
+@end defun
+
+@cindex eol type of coding system
+@defun coding-system-eol-type coding-system
+この関数は行末(@dfn{eol}とも言う)を@var{coding-system}で使用されるタイプに変換する。@var{coding-system}が特定のeol変換を指定する場合にはリターン値は0、1、2のいずれかであり、それらは順に@code{unix}、@code{dos}、@code{mac}を意味する。@var{coding-system}が明示的にeol変換を指定しなければ、リターン値は以下のようにそれぞれが可能なeol変換タイプをもつようなコーディングシステムのベクター:
+
+@lisp
+(coding-system-eol-type 'latin-1)
+     @result{} [latin-1-unix latin-1-dos latin-1-mac]
+@end lisp
+
+@noindent
+この関数がベクターをリターンしたら、Emacsはテキストのエンコードやデコードプロセスの一部として使用するeol変換を決定するだろう。デコードではテキストの行末フォーマットは自動検知され、eol変換はそれに適合するようセットされる(DOSスタイルのCRLFフォーマットは暗黙でeol変換に@code{dos}をセットする)。エンコードにたいしては適切なデフォルトコーディングシステム(@code{buffer-file-coding-system}にたいする@code{buffer-file-coding-system}のデフォルト値)、または背景にあるプラットフォームにたいして適切なデフォルトeol変換が採用される。
+@end defun
+
+@cindex eol conversion of coding system
+@defun coding-system-change-eol-conversion coding-system eol-type
+この関数は@var{coding-system}と似ているが@code{eol-type}で指定されたeol変換の異なるコーディングシステムをリターンする。@var{eol-type}は@code{unix}、@code{dos}、@code{mac}、または@code{nil}であること。これが@code{nil}ならリターンされるコーディングシステムは、データのeol変換により決定される。
+
+@var{eol-type}は@code{unix}、@code{dos}、@code{mac}を意味する0、1、2でもよい。
+@end defun
+
+@cindex text conversion of coding system
+@defun coding-system-change-text-conversion eol-coding text-coding
+この関数は@var{eol-coding}の行末変換と、@var{text-coding}のテキスト変換を使用するコーディングシステムをリターンする。@var{text-coding}が@code{nil}ならこれは@code{undecided}、または@var{eol-coding}に対応するバリアントの1つをリターンする。
+@end defun
+
+@cindex safely encode region
+@cindex coding systems for encoding region
+@defun find-coding-systems-region from to
+この関数は@var{from}と@var{to}の間のテキストのエンコードに使用可能なコーディングシステムのリストをリターンする。このリスト内のすべてのリストは、そのテキスト範囲内にあるすべてのマルチバイト文字を安全にエンコードできる。
+
+そのテキストがマルチバイト文字を含まれなければ、この関数はリスト@code{(undecided)}をリターンする。
+@end defun
+
+@cindex safely encode a string
+@cindex coding systems for encoding a string
+@defun find-coding-systems-string string
+この関数は@var{string}のテキストのエンコードに使用可能な、コーディングシステムのリストをリターンする。このリスト内のすべてのリストは@var{string}にあるすべてのマルチバイト文字を安全にエンコードできる。そのテキストがマルチバイト文字を含まれなければ、この関数はリスト@code{(undecided)}をリターンする。
+@end defun
+
+@cindex charset, coding systems to encode
+@cindex safely encode characters in a charset
+@defun find-coding-systems-for-charsets charsets
+この関数はリスト@var{charsets}内のすべての文字セットのエンコードに使用可能なコーディングシステムのリストをリターンする。
+@end defun
+
+@defun check-coding-systems-region start end coding-system-list
+この関数はリスト@code{coding-system-list}内のコーディングシステムが@var{start}と@var{end}の間のリージョン内にあるすべての文字をエンコード可能かどうかをチェックする。このリスト内のすべてのコーディングシステムが指定されたテキストをエンコード可能なら、この関数は@code{nil}をリターンする。ある文字をエンコードできないコーディングシステムがある場合には、各要素が@code{(@var{coding-system1}
+@var{pos1} @var{pos2}
+@dots{})}という形式のalistが値となる。これは@var{coding-system1}がバッファーの位置@var{pos1}、@var{pos2}、@enddots{}にある文字をエンコードできないことを意味する。
+
+@var{start}は文字列かもしれず、その場合には@var{end}は無視されてリターン値はバッファー位置のかわりに文字列のインデックスを参照することになる。
+@end defun
+
+@defun detect-coding-region start end &optional highest
+この関数は@var{start}から@var{end}のテキストのデコードに適したコーディングシステムを選択する。このテキストはバイトシーケンス、すなわちユニバイトテキスト、@acronym{ASCII}のみのマルチバイトテキスト、8ビット文字のシーケンスであること(@ref{Explicit
+Encoding}を参照)。
+
+この関数は通常はスキャンしたテキストのデコーディングを処理可能なコーディングシステムのリストをリターンする。これらのコーディングシステムは優先度降順でリストされる。しかし@var{highest}が非@code{nil}なら、リターン値はもっとも高い優先度のコーディングシステムただ1つとなる。
+
+リージョンにISO-2022の@code{ESC}のようなISO-2022制御文字を除いて@acronym{ASCII}文字だけが含まれる場合には値は@code{undecided}、@code{(undecided)}、またはテキストから推論可能ならeol変換を指定するバリアントとなる。
+
+リージョンにnullバイトが含まれる場合には、あるコーディングシステムによりエンコードされたテキストがリージョン内に含まれる場合でも値は@code{no-conversion}となる。
+@end defun
+
+@defun detect-coding-string string &optional highest
+この関数は@code{detect-coding-region}と似ているがバッファー内のバイトのかわりに@var{string}のコンテンツを処理する点が異なる。
+@end defun
+
+@cindex null bytes, and decoding text
+@defvar inhibit-null-byte-detection
+この変数が非@code{nil}値をもつなら、リージョンや文字列のエンコーディング検出時にnullバイトを無視する。これによりIndexノードをもつInfoファイルのようなnullバイトを含むテキストのエンコーディングを正しく検出できる。
+@end defvar
+
+@defvar inhibit-iso-escape-detection
+この変数が非@code{nil}値をもつなら、リージョンや文字列のエンコーディング検出時にISO-2022エスケープシーケンスを無視する。結果としてこれまでいくつかのISO-2022エンコーディングにおいてエンコード済みと検出されていたテキストがなくなり、バッファー内ですべてのエスケープシーケンスが可視になる。@strong{警告:}
+この変数の使用には特に注意を払うこと。なぜならEmacsディストリビューション内で多くのファイルがISO-2022エンコーディングを使用するからである。
+@end defvar
+
+@cindex charsets supported by a coding system
+@defun coding-system-charset-list coding-system
+この関数は@var{coding-system}がサポートする文字セット(@ref{Character
+Sets}を参照)のリストをリターンする。リストすべき文字セットを非常に多くサポートするいくつかのコーディングシステムでは特別な値がリストされる:
+@itemize @bullet
+@item
+@var{coding-system}がすべてのEmacs文字をサポートするなら値は@code{(emacs)}。
+@item
+@var{coding-system}がすべてのUnicode文字をサポートするなら値は@code{(unicode)}。
+@item
+@var{coding-system}がすべてのISO-2022文字をサポートするなら値は@code{iso-2022}。
+@item
+@var{coding-system}がEmacsバージョン21(Unicodeサポートの内部的な実装以前)で使用される内部的コーディングシステム内のすべての文字をサポートするなら値は@code{emacs-mule}。
+@end itemize
+@end defun
+
+  サブプロセスへの入出力に使用されるコーディングシステムのチェックやセットの方法については@ref{Coding systems for a
+subprocess,, Process
+Information}、特に関数@code{process-coding-system}や@code{set-process-coding-system}の説明を参照してください。
+
+@node User-Chosen Coding Systems
+@subsection ユーザーが選択したコーディングシステム
+
+@cindex select safe coding system
+@defun select-safe-coding-system from to &optional default-coding-system accept-default-p file
+この関数は指定されたテキストをエンコードするために、必要ならユーザーに選択を求めてコーディングシステムを選択する。指定されるテキストは通常はカレントバッファーの@var{from}と@var{to}の間のテキスト。@var{from}が文字列なら、その文字列がエンコードするテキストを指定して、@var{to}は無視される。
+
+指定されたテキストにrawバイト(@ref{Text
+Representations}を参照)が含まれる場合には、@code{select-safe-coding-system}はそのエンコーディングに@code{raw-text}を提案する。
+
+@var{default-coding-system}が非@code{nil}なら、それは試行すべき最初のコーディングシステムである。それがテキストを処理できるなら、@code{select-safe-coding-system}はそのコーディングシステムをリターンする。これはコーディングシステムのリストの可能性もある。その場合にはこの関数はそれらを1つずつ試みる。それらをすべて試した後に、(@code{undecided}以外なら)カレントバッファーの@code{buffer-file-coding-system}の値、次に@code{buffer-file-coding-system}のデフォルト値、最後にユーザーがもっとも好むコーディングシステム(コマンド@code{prefer-coding-system}でセットできる最優先されるコーディングシステム)を試みる(@ref{Recognize
+Coding,, Recognizing Coding Systems, emacs, The GNU Emacs Manual}を参照)。
+
+これらのうちいずれかのコーディングシステムが指定されたテキストすべてを安全にエンコード可能なら、@code{select-safe-coding-system}はそれを選択およびリターンする。それ以外ならコーディングシステムのリストからすべてのテキストをエンコードできるコーディングシステムの選択をユーザーに求めてユーザーの選択をリターンする。
+
+@var{default-coding-system}は、最初の要素が@code{t}で他の要素がコーディングシステムであるようなリストかもしれない。その場合にはリスト内にテキストを処理できるコーディングシステムがなければ、@code{select-safe-coding-system}は上述した3つの代替えいずれを試みることなく即座にユーザーに問い合わせる。これはリスト内のコーディングシステムだけをチェックするのに手軽。
+
+オプション引数@var{accept-default-p}はユーザーとの対話なしで選択されたコーディングシステムを許容するかどうかを決定する。これが省略か@code{nil}なら、そのような暗黙の選択は常に許容される。非@code{nil}なら関数であること。@code{select-safe-coding-system}は選択するコーディングシステムのベースとなるコーディングシステムを単一の引数としてその関数を呼び出す。関数が@code{nil}をリターンしたら@code{select-safe-coding-system}は黙って選択されたコーディングシステムを拒絶して、可能な候補リストからコーディングシステムの選択をユーザーに求める。
+
+@vindex select-safe-coding-system-accept-default-p
+変数@code{select-safe-coding-system-accept-defaultf-p}が非@code{nil}なら、それは1つの引数をとる関数であること。これは@var{accept-default-p}引数に与えられた値をオーバーライドすることにより@var{accept-default-p}のかわりに使用される。
+
+最後のステップとして選択されたコーディングシステムをリターンする前に、@code{select-safe-coding-system}はもしリージョンのコンテンツがファイルから読み込まれたものだったとしたなら選択されたであろうコーディングシステムと、そのコーディングシステムが一致するかどうかをチェックする(異なるならその後の再visitと編集でファイル内のデータ汚染が起こり得る)。@code{select-safe-coding-system}は通常はこの目的のためのファイルとして@code{buffer-file-name}を使用するが、@var{file}が非@code{nil}ならかわりにそのファイルを使用する(これは@code{write-region}や類似の関数に関連し得る)。明らかな不一致が検出された場合には@code{select-safe-coding-system}はそのコーディングシステムを選択する前にユーザーに問い合わせる。
+@end defun
+
+@defvar select-safe-coding-system-function
+この変数は出力処理がテキストを安全にエンコードできないときに、テキストをエンコードするための正しいコーディングシステムの選択をユーザーに求めるために呼び出される関数。この変数のデフォルト値は@code{select-safe-coding-system}。@code{write-region}のようにテキストをファイルに書き込んだり、@code{process-send-region}のように別プロセスにテキストを送信するEmacsプリミティブは、@code{coding-system-for-write}が@code{nil}にバインドされていれば、通常はこの変数の値を呼び出す(@ref{Specifying
+Coding Systems}を参照)。
+@end defvar
+
+  以下の2つの関数は補完つきでユーザーにコーディングシステムの選択を求めるために使用できます。@ref{Completion}を参照してください。
+
+@defun read-coding-system prompt &optional default
+この関数は文字列@var{prompt}をプロンプトにミニバッファーを使用してコーディングシステムを読み取り、そのコーディングシステムの名前をシンボルとしてリターンする。@var{default}はユーザーの入力が空の場合にリターンするべきコーディングシステムを指定する。これはシンボルか文字列であること。
+@end defun
+
+@defun read-non-nil-coding-system prompt
+この関数は文字列@var{prompt}をプロンプトにミニバッファーを使用してコーディングシステムを読み取り、そのコーディングシステムの名前をシンボルとしてリターンする。ユーザーが空の入力を試みると再度ユーザーに問い合わせを行う。@ref{Coding
+Systems}を参照のこと。
+@end defun
+
+@node Default Coding Systems
+@subsection デフォルトのコーディングシステム
+@cindex default coding system
+@cindex coding system, automatically determined
+
+  このセクションでは特定のファイルや特定のサブプロセス実行時のデフォルトコーディングシステムを指定する変数、およびそれらへアクセスするためのI/O処理が使用する関数について説明します。
+
+  これらの変数は希望するデフォルトにそれらすべてを一度セットして、その後は再びそれを変更しないというアイデアにもとづいています。Lispプログラム内の特定の処理で特定のコーディングシステムを指定するために、これらの変数を変更しないでください。かわりに@code{coding-system-for-read}や@code{coding-system-for-write}を使用して、それらをオーバーライドしてください(@ref{Specifying
+Coding Systems}を参照)。
+
+@cindex file contents, and default coding system
+@defopt auto-coding-regexp-alist
+この変数はテキストパターンと対応するコーディングシステムのalist。要素はそれぞれ@code{(@var{regexp}
+.
+@var{coding-system})}という形式をもつ。冒頭の数キロバイトが@var{regexp}にマッチするファイルは、そのコンテンツをバッファーに読み込む際に@var{coding-system}によりデコードされる。このalist内のセッティングはファイル内の@code{coding:}タグ、および@code{file-coding-system-alist}
+(以下参照)の内容より優先される。デフォルト値は、Emacsが自動的にBabylフォーマットのメールファイルを認識してコード変換なしでそれらを読み取れるようにセットされている。
+@end defopt
+
+@cindex file name, and default coding system
+@defopt file-coding-system-alist
+この変数は特定のファイルの読み書きに使用するコーディングシステムを指定するalist。要素はそれぞれ@code{(@var{pattern}
+.
+@var{coding})}という形式をもち、@var{pattern}は特定のファイル名にマッチする正規表現。この要素は@var{pattern}にマッチするファイル名に適用される。
+
+要素の@sc{cdr}となる@var{coding}はコーディングシステム、2つのコーディングシステムを含むコンスセル、または関数名(関数定義をもつシンボル)であること。@var{coding}がコーディングシステムなら、そのコーディングシステムはファイルの読み込みと書き込みの両方で使用される。@var{coding}が2つのコーディングシステムを含むコンスセルなら、@sc{car}はデコード用のコーディングシステム、@sc{cdr}はエンコード用のコーディングシステムを指定する。
+
+@var{coding}が関数名なら、それは@code{find-operation-coding-system}に渡されたすべての引数からなるリストを唯一の引数とする関数であること。これはコーディングシステム、または2つのコーディングシステムを含むコンスセルをリターンしなければならない。この値は上記と同じ意味をもつ。
+
+@var{coding} (または上記関数のリターン値)が@code{undecided}なら通常のコード検出が行われる。
+@end defopt
+
+@defopt auto-coding-alist
+この変数は特定のファイルの読み書きに使用するコーディングシステムを指定するalist。この変数の形式は@code{file-coding-system-alist}の形式と似ているが、後者と異なるのはこの変数がファイル内の@code{coding:}タグより優先されること。
+@end defopt
+
+@cindex program name, and default coding system
+@defvar process-coding-system-alist
+この変数は何のプログラムがサブプロセス内で実行中かによって、そのサブプロセスにたいしてどのコーディングシステムを使用するかを指定するalist。これは@code{file-coding-system-alist}と同じように機能するが、@var{pattern}がそのサブプロセスを開始するために使用されたプログラム名にたいしてマッチされる点が異なる。コーディングシステム、またはalist内で指定されたコーディングシステムは、そのサブプロセスへのI/Oに使用されるコーディングシステムの初期化に使用されるが、@code{set-process-coding-system}を使用して後から他のコーディングシステムを指定できる。
+@end defvar
+
+  @strong{警告:}
+データからコーディングシステムを判断する@code{undecided}のようなコーディングシステムは、非同期のサブプロセスでは完全な信頼性をもって機能はしない。これはEmacsが非同期サブプロセスの出力を到着によりバッチ処理するためである。そのコーディングシステムが文字コード変換や行末変換を未指定にしておくと、Emacsは一度に1バッチから正しい変換の検出を試みなければならず、これは常に機能するとは限らない。
+
+  したがって非同期サブプロセスでは可能なら文字コード変換と行末変換の両方を判断するコーディングシステム、つまり@code{undecided}や@code{latin-1}ではなく@code{latin-1-unix}のようなコーディングシステムを使用すること。
+
+@cindex port number, and default coding system
+@cindex network service name, and default coding system
+@defvar network-coding-system-alist
+この変数はネットワークストリームに使用するコーディングシステムを指定するalist。これは@code{file-coding-system-alist}と同じように機能するが、要素内の@var{pattern}がポート番号、または正規表現かもしれない点が異なる。正規表現ならそのネットワークストリームのオープンに使用されたネットワークサービス名にたいしてマッチされる。
+@end defvar
+
+@defvar default-process-coding-system
+この変数は他に何を行うか指定されていない際に、サブプロセス(とネットワークストリーム)への入出力に使用するコーディングシステムを指定する。
+
+値は@code{(@var{input-coding}
+.
+@var{output-coding})}という形式のコンスセルであること。ここで@var{input-coding}はサブプロセスからの入力、@var{output-coding}はサブプロセスへの出力に適用される。
+@end defvar
+
+@cindex default coding system, functions to determine
+@defopt auto-coding-functions
+この変数はファイルのデコードされていないコンテンツにもとづいて、ファイルにたいするコーディングシステムの判断を試みる関数のリストを保持する。
+
+このリスト内の各関数はカレントバッファー内のテキストを調べるように、ただしいかなる方法にせよそれを変更しないよう記述されるべきである。そのバッファーはファイルの一部であるデコードされていないUnicodeテキストを含むだろう。各関数はポイントを始点に何文字を調べる可を告げる唯一の引数@var{size}をとること。そのファイルにたいするコーディングシステムの決定に関数が成功したら、そのコーディングシステムをリターンすること。それ以外は@code{nil}をリターンするべきである。
+
+このリスト内の関数はファイルがvisitされる際にEmacsがファイルのコンテンツのデコードをしようとする場合、および/またはそのファイルのバッファーを保存しようとする際にEmacsがファイルのコンテンツのエンコード方法を決定しようと場合に呼び出されるかもしれない。
+
+ファイルに@samp{coding:}タグがある場合にはそれが優先されるので、これらの関数が呼び出されることはないだろう。
+@end defopt
+
+@defun find-auto-coding filename size
+この関数は@var{filename}に適するコーディングシステムの判定を試みる。これは上記で説明した変数により指定されたルールのいずれかにマッチするまで、それらの変数を順に使用してファイルをvisitするバッファーを調べる。そして@code{(@var{coding}
+.
+@var{source})}という形式のコンスセルをリターンする。ここで@var{coding}は使用するコーディングシステム、@var{source}は@code{auto-coding-alist}、@code{auto-coding-regexp-alist}、@code{:coding}、@code{auto-coding-functions}のいずれかであるようなシンボルであり、マッチングルールとして提供されるルールを示す。値@code{:coding}はファイル内の@code{coding:}タグによりコーディングシステムが指定されたことを意味する(@ref{Specify
+Coding,, coding tag, emacs, The GNU Emacs
+Manual}を参照)。マッチングルールを調べる順序は@code{auto-coding-alist}、@code{auto-coding-regexp-alist}、@code{coding:}、@code{auto-coding-functions}の順。マッチングルールが見つからなければこの関数は@code{nil}をリターンする。
+
+2つ目の引数@var{size}はポイントの後のテキストの文字単位のサイズ。この関数はポイントの後の@var{size}文字のテキストだけを調べる。@code{coding:}タグが置かれる箇所としてはファイルの先頭2行が想定される箇所の1つなので、通常はバッファーの先頭位置でこの関数を呼び出すこと。その場合には@var{size}はそのバッファーのサイズであること。
+@end defun
+
+@defun set-auto-coding filename size
+この関数はファイル@var{filename}に適するコーディングシステムをリターンする。これはコーディングシステムを探すために@code{find-auto-coding}を使用する。コーディングシステムを決定できなかったら、この関数は@code{nil}をリターンする。引数@var{size}の意味は@code{find-auto-coding}と同様。
+@end defun
+
+@defun find-operation-coding-system operation &rest arguments
+この関数は@var{operation}を@var{arguments}で行う際に、(デフォルトで)使用するコーディングシステムをリターンする。値は以下の形式:
+
+@example
+(@var{decoding-system} . @var{encoding-system})
+@end example
+
+1つ目の要素@var{decoding-system}はデコード(@var{operation}がデコードを行う場合)、@var{encoding-system}はエンコード(@var{operation}がエンコードを行う場合)に使用するコーディングシステム。
+
+引数@var{operation}はシンボルで@code{write-region}、@code{start-process}、@code{call-process}、@code{call-process-region}、@code{insert-file-contents}、@code{open-network-stream}のいずれかであること。これらは文字コード変換と行末変換を行うことができるEmacsのI/Oプリミティブの名前である。
+
+残りの引数は対応するI/Oプリミティブに与えられる引数と同じであること。そのプリミティブに応じてこれらの引数のうち1つが@dfn{ターゲット}として選択される。たとえば@var{operation}がファイルI/Oならファイル名を指定する引数がターゲット。サブプロセス用のプリミティブではプロセス名がターゲット。@code{open-network-stream}ではサービス名またはポート番号がターゲット。
+
+@var{operation}に応じてこの関数は@code{file-coding-system-alist}、@code{process-coding-system-alist}、@code{network-coding-system-alist}の中からターゲットを探す。このalist内でターゲットが見つかったら@code{find-operation-coding-system}はalist内のassociation(連想:
+キーと連想値からなるコンスセル)、それ以外は@code{nil}をリターンする。
+
+@var{operation}が@code{insert-file-contents}ならターゲットに対応する引数は@code{(@var{filename}
+.
+@var{buffer})}という形式のコンスセルだろう。この場合には@var{filename}は@code{file-coding-system-alist}内で照合されるファイル名であり、@var{buffer}はそのファイルの(デコードされていない)コンテンツを含むバッファー。@code{file-coding-system-alist}がこのファイルにたいして呼び出す関数を指定していて、かつ(通常行われるように)ファイルのコンテンツを調べる必要があるならファイルを読み込むかわりに@var{buffer}のコンテンツを調べること。
+@end defun
+
+@node Specifying Coding Systems
+@subsection 単一の操作にたいするコーディングシステムの指定
+@cindex specify coding system
+@cindex force coding system for operation
+@cindex coding system for operation
+
+  変数@code{coding-system-for-read}および/または@code{coding-system-for-write}をバインドすることにより、特定の操作にたいしてコーディングシステムを指定できます。
+
+@defvar coding-system-for-read
+この変数が非@code{nil}なら、それはファイルの読み込みや同期サブプロセスプロセスからの入力にたいして使用するコーディングシステムを指定する。
+
+これは非同期サブプロセスやネットワークストリームにも適用されるが方法は異なる。サブプロセス開始時やネットワークストリームオープン時の@code{coding-system-for-read}の値は、サブプロセスやネットワークストリームにたいして入力のデコードメソッドを指定する。そのサブプロセスやネットワークストリームにたいして、オーバーライドされるまでそれが使用され続ける。
+
+特定のI/O操作にたいして@code{let}でバインドするのがこの変数の正しい使い方である。この変数のグローバル値は常に@code{nil}であり、他の値にグローバルにセットするべきではない。以下はこの変数の正しい使用例:
+
+@example
+;; @r{文字コード変換なしでファイルを読み込む}
+(let ((coding-system-for-read 'no-conversion))
+  (insert-file-contents filename))
+@end example
+
+この変数の値が非@code{nil}のときは@code{file-coding-system-alist}、@code{process-coding-system-alist}、@code{network-coding-system-alist}を含む、入力にたいして使用するコーディングシステムを指定するすべてのメソッドよりこの変数が優先される。
+@end defvar
+
+@defvar coding-system-for-write
+これは@code{coding-system-for-read}と同じように機能するが、入力ではなく出力に適用される点が異なる。これはファイルへの書き込み、同様にサブプロセスやネットワークストリームへの出力の送信にも適用される。これはEmacsがサブプロセスを呼び出す際のコマンドライン引数のエンコーディングにも適用される。
+
+単一の操作が@code{call-process-region}や@code{start-process}のように入力と出力の両方を行う際には、@code{coding-system-for-read}と@code{coding-system-for-write}の両方がそれに影響する。
+@end defvar
+
+@defvar coding-system-require-warning
+@code{coding-system-for-write}に非@code{nil}値をバインドすることにより、@code{select-safe-coding-system-function}が指定する関数の呼び出しによる出力プリミティブを抑制する(@ref{User-Chosen
+Coding Systems}を参照)。これは@kbd{C-x @key{RET} c}
+(@code{universal-coding-system-argument})が@code{coding-system-for-write}をバインドすることにより機能して、かつEmacsはユーザーの選択にしたがう必要があるからである。Lispプログラムが書き込むテキストのエンコーディングに安全ではないかもしれない値を@code{coding-system-for-write}にバインドする場合には、@code{coding-system-require-warning}にも非@code{nil}値をバインドできる。これはたとえ@code{coding-system-for-write}が非@code{nil}でも@code{select-safe-coding-system-function}の値の呼び出しによる出力プリミティブにエンコードのチェックを強制する。または指定されたエンコーディングを使用する前に、明示的に@code{select-safe-coding-system}を呼び出すこと。
+@end defvar
+
+@defopt inhibit-eol-conversion
+この変数が非@code{nil}なら、どのコーディングシステムが指定されたかに関わらず行末変換は何も行われない。これはEmacsすべてのI/Oやサブプロセスにたいするプリミティブ、および明示的なエンコード関数(@ref{Explicit
+Encoding}を参照)とデコード関数に適用される。
+@end defopt
+
+@cindex priority order of coding systems
+@cindex coding systems, priority
+  ある操作にたいして固定された1つのコーディングシステムではなく複数のコーディングシステムを選択する必要があることがあります。Emacsでは使用するコーディングシステムにたいして優先順位を指定できます。これは@code{find-coding-systems-region}(@ref{Lisp
+and Coding Systems}を参照)のような関数によりリターンされるコーディングシステムのリストのソート順に影響します。
+
+@defun coding-system-priority-list &optional highestp
+この関数はコーディングシステムのカレント優先順にコーディングシステムのリストをリターンする。オプション引数@var{highestp}が非@code{nil}なら、それはもっとも高い優先度のコーディングシステムだけをリターンすることを意味する。
+@end defun
+
+@defun set-coding-system-priority &rest coding-systems
+この関数はコーディングシステムの優先リストの先頭に@var{coding-systems}を配置して、それらを他のコーディングシステムすべてより高い優先度とする。
+@end defun
+
+@defmac with-coding-priority coding-systems &rest body
+このマクロは@var{coding-systems}をコーディングシステム優先リスト先頭に配置して、@code{progn}
+(@ref{Sequencing,
+progn}を参照)が行うように@var{body}を実行する。@var{coding-systems}は@var{body}実行中に選択するコーディングシステムのリストであること。
+@end defmac
+
+@node Explicit Encoding
+@subsection 明示的なエンコードとデコード
+@cindex encoding in coding systems
+@cindex decoding in coding systems
+
+  Emacs内外へテキストを転送するすべての操作は、そのテキストをエンコードまたはデコードする能力をもっています。このセクション内の関数を使用してテキストの明示的なエンコードやデコードを行うことができます。
+
+  エンコード結果やデコーディングへの入力は通常のテキストではありません。これらは理論的には一連のバイト値から構成されており、すなわち一連の@acronym{ASCII}文字と8ビット文字から構成されます。ユニバイトのバッファーや文字列では、これらの文字は0から#xFF(255)の範囲のコードをもちます。マルチバイトのバッファーや文字列では8ビット文字は#xFFより大きい文字コードをもちますが(@ref{Text
+Representations}を参照)、そのようなテキストのエンコードやデコードの際にEmacsは透過的にそれらを単一バイト値に変換します。
+
+  コンテンツを明示的にデコードできるようにバイトシーケンスとしてバッファーにファイルを読み込むには、@code{insert-file-contents-literally}
+(@ref{Reading from
+Files}を参照)を使用するのが通常の方法です。あるいは@code{find-file-noselect}でファイルをvisitする際には、引数@var{rawfile}に非@code{nil}を指定することもできます。これらのメソッドの結果はユニバイトバッファーになります。
+
+  テキストを明示的にエンコードした結果であるバイトシーケンスは、たとえばそれを@code{write-region} (@ref{Writing to
+Files}を参照)で書き込み、@code{coding-system-for-write}を@code{no-conversion}にバインドすることによりエンコードを抑制する等、それをファイルまたはプロセスへコピーするのが通常の使い方です。
+
+  以下はエンコードやデコードを明示的に行う関数です。エンコード関数とはバイトシーケンスを生成し、デコード関数とはバイトシーケンスを操作する関数のことを意味します。これらの関数はすべてテキストプロパティを破棄します。これらは自身が使用したコーディングシステムを、正確に@code{last-coding-system-used}にセットすることも行います。
+
+@deffn Command encode-coding-region start end coding-system &optional destination
+このコマンドは@var{start}から@var{end}のテキストをコーディングシステム@var{coding-system}でエンコードする。バッファー内の元テキストは通常はエンコードされたテキストで置き換えられるが、オプション引数@var{destination}でそれを変更できる。@var{destination}がバッファーなら、エンコードされたテキストはそのバッファーのポイントの後に挿入される(ポイントは移動しない)。@code{t}ならこのコマンドはエンコードされたテキストを挿入せずにユニバイトとしてリターンする。
+
+エンコードされたテキストが何らかのバッファーに挿入された場合には、このコマンドはエンコードされたテキストの長さをリターンする。
+
+エンコードされた結果は理論的にはバイトシーケンスだが、バッファーが以前マルチバイトだったならマルチバイトのまま留まり、すべての8ビットのバイトはマルチバイト表現に変換される(@ref{Text
+Representations}を参照)。
+
+@cindex @code{undecided} coding-system, when encoding
+期待しない結果となる恐れがあるので、テキストをエンコードする際には@var{coding-system}に@code{undecided}を@emph{使用してはならない}。@var{coding-system}にたいして自明な適値が存在しなければ適切なエンコードを提案させるために、かわりに@code{select-safe-coding-system}を使用すること(@ref{User-Chosen
+Coding Systems, select-safe-coding-system}を参照)。
+@end deffn
+
+@defun encode-coding-string string coding-system &optional nocopy buffer
+この関数はコーディングシステム@var{coding-system}で@var{string}内のテキストをエンコードする。これはエンコードされたテキストを含む新たな文字列をリターンするが、@var{nocopy}が非@code{nil}の場合には、それが些細なエンコード処理ならこの関数は@var{string}自身をリターンする。エンコード結果はユニバイト文字列。
+@end defun
+
+@deffn Command decode-coding-region start end coding-system &optional destination
+このコマンドはコーディングシステム@var{coding-system}で、@var{start}から@var{end}のテキストをデコードする。明示的なデコードを使いやすくするためにデコード前のテキストはバイトシーケンス値であるべきだが、マルチバイトとユニバイトのバッファーいずれでも許すようになっている(マルチバイトバッファーの場合rawバイト値は8ビット文字で表現されていること)。デコードされたテキストにより通常はバッファー内の元のテキストは置き換えられるが、オプション引数@var{destination}はそれを変更する。@var{destination}がバッファーなら、デコードされたテキストはそのバッファーのポイントの後に挿入される(ポイントは移動しない)。これが@code{t}ならこのコマンドはデコードされたテキストを挿入せずにマルチバイト文字列としてリターンする。
+
+デコードしたテキストを何らかのバッファーに挿入すると、このコマンドはデコード済みテキストの長さをリターンする。バッファーがユニバイトバッファー(@ref{Selecting
+a Representation}を参照)なら、デコード済みテキストの内部表現(@ref{Text
+Representations}を参照)が個別のバイトとしてバッファーに挿入される。
+
+このコマンドはデコードされたテキストにテキストプロパティ@code{charset}をputする。このプロパティの値は元のテキストのデコードに使用された文字セットを示す。
+@end deffn
+
+@defun decode-coding-string string coding-system &optional nocopy buffer
+この関数は@var{coding-system}で@var{string}内のテキストをデコードする。これはデコードされたテキストを含む新たな文字列をリターンするが、@var{nocopy}が非@code{nil}の場合には、それが些細なデコード処理なら@var{string}自体をリターンするかもしれない。明示的なデコードを使いやすくするために、@var{string}のコンテンツはバイトシーケンス値をもつユニバイト文字列であるべきだが、マルチバイト文字列も許すようになっている(マルチバイト形式で8ビットバイトを含むと仮定する)。
+
+オプション引数@var{buffer}がバッファーを指定する場合には、デコードされたテキストはバッファー内のポイントの後に挿入される(ポイントは移動しない)。この場合にはリターン値はデコードされたテキストの長さとなる。バッファーがユニバイトバッファーなら、デコード済みテキストの内部表現が個別のバイトとしてバッファーに挿入される。
+
+@cindex @code{charset}, text property
+この関数はデコードされたテキストにテキストプロパティ@code{charset}をputする。このプロパティの値は元のテキストのデコードに使用された文字セットを示す。
+
+@example
+@group
+(decode-coding-string "Gr\374ss Gott" 'latin-1)
+     @result{} #("Grüss Gott" 0 9 (charset iso-8859-1))
+@end group
+@end example
+@end defun
+
+@defun decode-coding-inserted-region from to filename &optional visit beg end replace
+この関数は@var{from}から@var{to}のテキストを、あたかも与えられた残りの引数で@code{insert-file-contents}を使用してファイル@var{filename}から読み込んだかのようにデコードする。
+
+デコードせずにファイルからテキストを読み込んだ後で、やはりデコードすることを決心したときに使用するのがこの関数の通常の使い方である。テキストを削除して再度読み込むかわりに、この関数を呼び出せばデコードして読み込むことができる。
+@end defun
+
+@node Terminal I/O Encoding
+@subsection 端末I/Oのエンコーディング
+
+  Emacsはキーボード入力のデコード、および端末出力のエンコードにコーディングシステムを使用できます。これはLatin-1のような特定のエンコーディングを使用したテキストの送信や表示を行う端末にとって有用です。端末I/Oをエンコードまたはデコードする際には、Emacsは@code{last-coding-system-used}をセットしません。
+
+@defun keyboard-coding-system &optional terminal
+この関数は@var{terminal}からのキーボード入力をデコードするために使用するコーディングシステムをリターンする。@code{no-conversion}という値は何のデコーディングも行われていないことを意味する。@var{terminal}が省略または@code{nil}なら、それは選択されたフレームの端末を意味する。@ref{Multiple
+Terminals}を参照のこと。
+@end defun
+
+@deffn Command set-keyboard-coding-system coding-system &optional terminal
+このコマンドは@var{terminal}からのキーボード入力のデコードに使用するコーディングシステムとして@var{coding-system}を指定する。@var{coding-system}が@code{nil}なら、キーボード入力をデコードしないことを意味する。@var{terminal}がフレームなら、それはそのフレームの端末を意味する。@code{nil}ならそれはカレントで選択されたフレームの端末を意味する。@ref{Multiple
+Terminals}を参照のこと。
+@end deffn
+
+@defun terminal-coding-system &optional terminal
+この関数は@var{terminal}からの端末出力のエンコードに使用中のコーディングシステムをリターンする。@code{no-conversion}という値は何のデコーディングも行われていないことを意味する。@var{terminal}がフレームならそれはそのフレームの端末を意味する。@code{nil}ならそれはカレントで選択されたフレームの端末を意味する。
+@end defun
+
+@deffn Command set-terminal-coding-system coding-system &optional terminal
+この関数は@var{terminal}からの端末出力のエンコードに使用するためのコーディングシステムとして@var{coding-system}を指定する。@var{coding-system}が@code{nil}なら端末出力をエンコードしないことを意味する。@var{terminal}がフレームならそれはそのフレームの端末を意味する。@code{nil}ならそれはカレントで選択されたフレームの端末を意味する。
+@end deffn
+
+@node Input Methods
+@section 入力メソッド
+@cindex input methods
+
+  @dfn{入力メソッド(input
+methods)}はキーボードから非@acronym{ASCII}文字を簡単に入力する手段を提供します。プログラムが読み取ることを意図して非@acronym{ASCII}文字とエンコーディングを相互に変換するコーディングシステムとは異なり、入力メソッドはヒューマンフレンドリーなコマンドを提供します(テキストを入力するためにユーザーが入力メソッドを使う方法については@ref{Input
+Methods,,, emacs, The GNU Emacs
+Manual}を参照)。入力メソッドの定義方法はまだこのマニュアルにはありませんが、ここではそれらの使い方について説明します。
+
+  現在のところ入力メソッドは文字列で名前をもっていますが、将来的には入力メソッド名としてシンボルも利用可能になるかもしれません。
+
+@defvar current-input-method
+この変数はカレントバッファーで現在アクティブな、入力メソッドの名前を保持する(方法に関わらずセット時には各バッファーで自動的にローカルになる)。バッファーで現在アクティブな入力メソッドがなければ値は@code{nil}。
+@end defvar
+
+@defopt default-input-method
+この変数は入力メソッドを選択するコマンドにたいしてデフォルトの入力メソッドを保持する。@code{current-input-method}と異なり、この変数は通常はグローバルである。
+@end defopt
+
+@deffn Command set-input-method input-method
+このコマンドはカレントバッファーで入力メソッド@var{input-method}をアクティブにする。同様に@code{default-input-method}に@var{input-method}のセットも行う。@var{input-method}が@code{nil}なら、このコマンドはカレントバッファーで入力メソッドを非アクティブにする。
+@end deffn
+
+@defun read-input-method-name prompt &optional default inhibit-null
+この関数はプロンプト@var{prompt}とともにミニバッファーで入力メソッドの名前を読み取る。@var{default}が非@code{nil}の場合には、ユーザーの入力が空ならそれがデフォルトとしてリターンされる。しかし@var{inhibit-null}が非@code{nil}なら空の入力はエラーをシグナルする。
+
+リターン値は文字列。
+@end defun
+
+@defvar input-method-alist
+この変数はサポートされているすべての入力メソッドを定義する。各要素は1つの入力メソッドを定義して、それぞれ以下の形式をもつ:
+
+@example
+(@var{input-method} @var{language-env} @var{activate-func}
+ @var{title} @var{description} @var{args}...)
+@end example
+
+ここで@var{input-method}はメソッド名の文字列、@var{language-env}はこの入力メソッドが推奨される言語環境の名前の文字列(これはドキュメントとしての目的のみの役割を果たす)。
+
+@var{activate-func}はこのメソッドをアクティブにするために呼び出す関数、もしあれば@var{args}は@var{activate-func}に渡す引数。つまり@var{activate-func}の引数は@var{input-method}と@var{args}。
+
+@var{title}は、その入力メソッドがアクティブな間にモードライン内に表示するための文字列、@var{description}はそのメソッドを説明して、それが何に適するかを説明する文字列。
+@end defvar
+
+  入力メソッドのための基本的インターフェースは変数@code{input-method-function}です。@ref{Reading One
+Event}と@ref{Invoking the Input Method}を参照してください。
+
+@node Locales
+@section locale
+@cindex locale
+
+  POSIXでは、言語に関連する機能において使用する言語を制御するためにlocaleという概念があります。以下のEmacs変数はEmacsがこれらの機能と相互作用する方法を制御します。
+
+@defvar locale-coding-system
+@cindex keyboard input decoding on X
+この変数は標準出力とエラーストリームへのバッチ出力の送信、@code{format-time-string}にたいするformat引数のエンコーディング、@code{format-time-string}のリターン値のデコーディングに際してシステムエラーメッセージ(およびXウィンドウシステムに限りキーボード入力)をデコーディングするコーディングシステムを指定する。
+@end defvar
+
+@defvar system-messages-locale
+この変数はシステムエラーメッセージを生成するために使用するlocaleを指定する。locale変更によりメッセージが異なる言語になったり異なる表記になり得る。この変数が@code{nil}なら通常のPOSIX方式のようにlocaleは環境変数により指定される。
+@end defvar
+
+@defvar system-time-locale
+この変数はタイムバリューをフォーマットするために使用するlocaleを指定する。locale変更により異なる慣習によりメッセージが表示され得る。この変数が@code{nil}なら通常のPOSIX方式のようにlocaleは環境変数により指定される。
+@end defvar
+
+@defun locale-info item
+この変数は、もし利用可能ならカレントPOSIX
+localeにたいするlocaleデータ@var{item}をリターンする。@var{item}は以下のシンボルのいずれかであること:
+
+@table @code
+@item codeset
+文字列として文字セットをリターンする(localeアイテムの@code{CODESET})。
+
+@item days
+曜日名からなる7要素のベクターをリターンする(localeアイテムの@code{DAY_1}から@code{DAY_7})。
+
+@item months
+月の名前からなる12要素のベクターをリターンする(localeアイテムの@code{MON_1}から@code{MON_12})。
+
+@item paper
+@w{@code{(@var{width}
+@var{height})}}という2つの整数のリストで、デフォルト用紙サイズをmm単位でリターンする(localeアイテム@code{_NL_PAPER_WIDTH}と@code{_NL_PAPER_HEIGHT})。
+@end table
+
+システムが要求された情報を提供できなかったり、@var{item}が上記いずれのシンボルでもなければ値は@code{nil}。リターン値内のすべての文字列は@code{locale-coding-system}を使用してデコードされる。localeとlocaleアイテムについての詳細な情報は@ref{Locales,,,
+libc, The GNU Libc Manual}を参照のこと。
+@end defun
