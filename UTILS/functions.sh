@@ -191,11 +191,30 @@ function sed_for_L11N_name_at_include () {
     echo "done."
 }
 
+# custom merge driver("gettext-msgmerge")
+# msgmerge,s --update doesn't work as I expect. 
+function gettext-msgmerge-function () {
+# This is the information we pass through in the driver config via
+# the placeholders `%A %O %B %P`
+# %A = tmp filepath to our version of the conflicted file
+# %O = tmp filepath to the base version of the file
+# %B = tmp filepath to the other branches version of the file
+# %P = placeholder / real file name
+# %L = conflict marker size (to be able to still serve according to this setting)
 
+    OURS=${1};
+    BASE=${2}; # not use
+    THEIRS=${3};
+    FILENAME=${4}; # not use
 
+    TMPFILE=$(mktemp);
+    msgmerge --verbose \
+	     --previous \
+	     --no-wrap \
+	     --compendium ${THEIRS} \
+	     /dev/null ${OURS} >${TMPFILE};
 
-
-
-
+    mv --update ${TMPFILE} ${OURS};
+}
 
 $*
