@@ -718,7 +718,7 @@ Emacs can then detect the first attempt to modify a buffer visiting a
 file that is locked by another Emacs job, and ask the user what to do.
 The file lock is really a file, a symbolic link with a special name,
 stored in the same directory as the file you are editing.  The name is
-constructed by prepending @file{.#} to the filename of the buffer.
+constructed by prepending @file{.#} to the file name of the buffer.
 The target of the symbolic link will be of the form
 @code{@var{user}@@@var{host}.@var{pid}:@var{boot}}, where @var{user}
 is replaced with the current username (from @code{user-login-name}),
@@ -772,6 +772,20 @@ and otherwise ignores the error.
 If this variable is @code{nil}, Emacs does not lock files.
 @end defopt
 
+@defopt lock-file-name-transforms
+By default, Emacs creates the lock files in the same directory as the
+files that are being locked.  This can be changed by customizing this
+variable.  Is has the same syntax as
+@code{auto-save-file-name-transforms} (@pxref{Auto-Saving}).  For
+instance, to make Emacs write all the lock files to @file{/var/tmp/},
+you could say something like:
+
+@lisp
+(setq lock-file-name-transforms
+      '(("\\`/.*/\\([^/]+\\)\\'" "/var/tmp/\\1" t)))
+@end lisp
+@end defopt
+
 @defun ask-user-about-lock file other-user
 This function is called when the user tries to modify @var{file}, but it
 is locked by another user named @var{other-user}.  The default
@@ -806,6 +820,16 @@ name of the user who has locked the file.
 If you wish, you can replace the @code{ask-user-about-lock} function
 with your own version that makes the decision in another way.
 @end defun
+
+@defopt remote-file-name-inhibit-locks
+You can prevent the creation of remote lock files by setting the
+variable @code{remote-file-name-inhibit-locks} to @code{t}.
+@end defopt
+
+@deffn Command lock-file-mode
+This command, called interactively, toggles the local value of
+@code{create-lockfiles} in the current buffer.
+@end deffn
 
 @node Information about Files
 @section Information about Files
@@ -911,6 +935,16 @@ file in @file{/foo/} will give an error:
      @result{} nil
 @end example
 @end defun
+
+@defmac with-existing-directory body@dots{}
+This macro ensures that @code{default-directory} is bound to an
+existing directory before executing @var{body}.  If
+@code{default-directory} already exists, that's preferred, and
+otherwise some other directory is used.  This macro can be useful, for
+instance, when calling an external command that requires that it's
+running in a directory that exists.  The chosen directory is not
+guaranteed to be writable.
+@end defmac
 
 @defun access-file filename string
 If you can read @var{filename} this function returns @code{nil};
@@ -1932,7 +1966,7 @@ is a symbolic link and @var{flag} is @code{nofollow}.
 
 @defun set-file-extended-attributes filename attribute-alist
 This function sets the Emacs-recognized extended file attributes for
-@code{filename}.  The second argument @var{attribute-alist} should be
+@var{filename}.  The second argument @var{attribute-alist} should be
 an alist of the same form returned by @code{file-extended-attributes}.
 The return value is @code{t} if the attributes are successfully set,
 otherwise it is @code{nil}.
@@ -2129,6 +2163,25 @@ the period that delimits the extension, and if @var{filename} has no
 extension, the value is @code{""}.
 @end defun
 
+@defun file-name-with-extension filename extension
+This function returns @var{filename} with its extension set to
+@var{extension}.  A single leading dot in the @var{extension} will be
+stripped if there is one.  For example:
+
+@example
+(file-name-with-extension "file" "el")
+     @result{} "file.el"
+(file-name-with-extension "file" ".el")
+     @result{} "file.el"
+(file-name-with-extension "file.c" "el")
+     @result{} "file.el"
+@end example
+
+Note that this function will error if @var{filename} or
+@var{extension} are empty, or if the @var{filename} is shaped like a
+directory (i.e., if @code{directory-name-p} returns non-@code{nil}).
+@end defun
+
 @defun file-name-sans-extension filename
 This function returns @var{filename} minus its extension, if any.  The
 version/backup part, if present, is only removed if the file has an
@@ -2300,49 +2353,26 @@ entirely of directory separators.
 @end example
 @end defun
 
-  Given a directory name, you can combine it with a relative file name
-using @code{concat}:
+@defun file-name-concat directory &rest components
+Concatenate @var{components} to @var{directory}, inserting a slash
+before the components if @var{directory} or the preceding component
+didn't end with a slash.
 
 @example
-(concat @var{dirname} @var{relfile})
+@group
+(file-name-concat "/tmp" "foo")
+     @result{} "/tmp/foo"
+@end group
 @end example
 
-@noindent
-Be sure to verify that the file name is relative before doing that.
-If you use an absolute file name, the results could be syntactically
-invalid or refer to the wrong file.
+A @var{directory} or components that are @code{nil} or the empty
+string are ignored---they are filtered out first and do not affect the
+results in any way.
 
-  If you want to use a directory file name in making such a
-combination, you must first convert it to a directory name using
-@code{file-name-as-directory}:
-
-@example
-(concat (file-name-as-directory @var{dirfile}) @var{relfile})
-@end example
-
-@noindent
-Don't try concatenating a slash by hand, as in
-
-@example
-;;; @r{Wrong!}
-(concat @var{dirfile} "/" @var{relfile})
-@end example
-
-@noindent
-because this is not portable.  Always use
-@code{file-name-as-directory}.
-
-  To avoid the issues mentioned above, or if the @var{dirname} value
-might be @code{nil} (for example, from an element of @code{load-path}),
-use:
-
-@example
-(expand-file-name @var{relfile} @var{dirname})
-@end example
-
-However, @code{expand-file-name} expands leading @samp{~} in
-@var{relfile}, which may not be what you want.  @xref{File Name
-Expansion}.
+This is almost the same as using @code{concat}, but @var{dirname} (and
+the non-final components) may or may not end with slash characters,
+and this function will not double those characters.
+@end defun
 
   To convert a directory name to its abbreviation, use this
 function:
@@ -2415,7 +2445,7 @@ might begin with a literal @samp{~}, you can use @code{(concat
 (file-name-as-directory directory) filename)} instead of
 @code{(expand-file-name filename directory)}.
 
-Filenames containing @samp{.} or @samp{..} are simplified to their
+File names containing @samp{.} or @samp{..} are simplified to their
 canonical form:
 
 @example
@@ -3254,7 +3284,7 @@ first, before handlers for jobs such as remote file access.
 @code{file-equal-p},
 @code{file-executable-p}, @code{file-exists-p},
 @code{file-in-directory-p},
-@code{file-local-copy},
+@code{file-local-copy}, @code{file-locked-p},
 @code{file-modes}, @code{file-name-all-completions},
 @code{file-name-as-directory},
 @code{file-name-case-insensitive-p},
@@ -3273,10 +3303,11 @@ first, before handlers for jobs such as remote file access.
 @code{get-file-buffer},
 @code{insert-directory},
 @code{insert-file-contents},@*
-@code{load},
+@code{load}, @code{lock-file},
 @code{make-auto-save-file-name},
 @code{make-directory},
 @code{make-directory-internal},
+@code{make-lock-file-name},
 @code{make-nearby-temp-file},
 @code{make-process},
 @code{make-symbolic-link},@*
@@ -3288,6 +3319,7 @@ first, before handlers for jobs such as remote file access.
 @code{substitute-in-file-name},@*
 @code{temporary-file-directory},
 @code{unhandled-file-name-directory},
+@code{unlock-file},
 @code{vc-registered},
 @code{verify-visited-file-modtime},@*
 @code{write-region}.
@@ -3312,7 +3344,7 @@ first, before handlers for jobs such as remote file access.
 @code{file-equal-p},
 @code{file-executable-p}, @code{file-exists-p},
 @code{file-in-directory-p},
-@code{file-local-copy},
+@code{file-local-copy}, @code{file-locked-p},
 @code{file-modes}, @code{file-name-all-completions},
 @code{file-name-as-directory},
 @code{file-name-case-insensitive-p},
@@ -3331,10 +3363,12 @@ first, before handlers for jobs such as remote file access.
 @code{get-file-buffer},
 @code{insert-directory},
 @code{insert-file-contents},
-@code{load},
+@code{load}, @code{lock-file},
 @code{make-auto-save-file-name},
 @code{make-direc@discretionary{}{}{}tory},
 @code{make-direc@discretionary{}{}{}tory-internal},
+@code{make-lock-file-name},
+@code{make-nearby-temp-file},
 @code{make-process},
 @code{make-symbolic-link},
 @code{process-file},
@@ -3343,7 +3377,9 @@ first, before handlers for jobs such as remote file access.
 @code{set-visited-file-modtime}, @code{shell-command},
 @code{start-file-process},
 @code{substitute-in-file-name},
+@code{temporary-file-directory},
 @code{unhandled-file-name-directory},
+@code{unlock-file},
 @code{vc-regis@discretionary{}{}{}tered},
 @code{verify-visited-file-modtime},
 @code{write-region}.
@@ -3457,11 +3493,11 @@ identifies the remote system.
 
 This identifier string can include a host name and a user name, as
 well as characters designating the method used to access the remote
-system.  For example, the remote identifier string for the filename
+system.  For example, the remote identifier string for the file name
 @code{/sudo::/some/file} is @code{/sudo:root@@localhost:}.
 
 If @code{file-remote-p} returns the same identifier for two different
-filenames, that means they are stored on the same file system and can
+file names, that means they are stored on the same file system and can
 be accessed locally with respect to each other.  This means, for
 example, that it is possible to start a remote process accessing both
 files at the same time.  Implementers of file name handlers need to

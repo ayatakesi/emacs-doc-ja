@@ -623,7 +623,7 @@ button.
 the theme file and asks if you really want to load it.  Because
 loading a Custom theme can execute arbitrary Lisp code, you should
 only say yes if you know that the theme is safe; in that case, Emacs
-offers to remember in the future that the theme is safe (this is done
+offers to remember in the future that the theme is safe(this is done
 by saving the theme file's SHA-256 hash to the variable
 @code{custom-safe-themes}; if you want to treat all themes as safe,
 change its value to @code{t}).  Themes that come with Emacs (in the
@@ -1271,7 +1271,13 @@ confirmation prompt.  When Emacs encounters these variable/value pairs
 subsequently, in the same file or others, it will assume they are
 safe.
 
+  You can also tell Emacs to permanently ignore all the variable/value
+pairs in the file, by typing @kbd{i} at the confirmation prompt --
+these pairs will thereafter be ignored in this file and in all other
+files.
+
 @vindex safe-local-variable-values
+@vindex ignored-local-variable-values
 @cindex risky variable
   Some variables, such as @code{load-path}, are considered
 particularly @dfn{risky}: there is seldom any reason to specify them
@@ -1283,6 +1289,8 @@ can enter @kbd{!} at the prompt.  It applies all the variables, but only
 marks the non-risky ones as safe for the future.  If you really want to
 record safe values for risky variables, do it directly by customizing
 @samp{safe-local-variable-values} (@pxref{Easy Customization}).
+Similarly, if you want to record values of risky variables that should
+be permanently ignored, customize @code{ignored-local-variable-values}.
 
 @vindex enable-local-variables
   The variable @code{enable-local-variables} allows you to change the
@@ -1406,6 +1414,16 @@ You can specify the variables @code{mode}, @code{eval}, and
 meanings as they would have in file local variables.  @code{coding}
 cannot be specified as a directory local variable.  @xref{File
 Variables}.
+
+The special key @code{auto-mode-alist} in a @file{.dir-locals.el} lets
+you set a file's major mode.  It works much like the variable
+@code{auto-mode-alist} (@pxref{Choosing Modes}).  For example, here is
+how you can tell Emacs that @file{.def} source files in this directory
+should be in C mode:
+
+@example
+((auto-mode-alist . (("\\.def\\'" . c-mode))))
+@end example
 
 @findex add-dir-local-variable
 @findex delete-dir-local-variable
@@ -1702,6 +1720,17 @@ for cautious completion.
 previous ones, but they are specifically for file name completion.
 They do not bind @key{SPC}.
 @end itemize
+
+By default, @key{TAB}, @key{SPC} and @key{?} do completion in
+@code{minibuffer-local-completion-map}.  If you commonly complete over
+collections that have elements with space or question mark characters in
+them, it may be convenient to disable completion on those keys by
+putting this in your init file:
+
+@lisp
+(define-key minibuffer-local-completion-map " " 'self-insert-command)
+(define-key minibuffer-local-completion-map "?" 'self-insert-command)
+@end lisp
 
 @node Rebinding
 @subsection Changing Key Bindings Interactively
@@ -2337,14 +2366,19 @@ function @code{setq} to set the variable @code{fill-column}
 (@pxref{Filling}) to 60.
 
   You can set any Lisp variable with @code{setq}, but with certain
-variables @code{setq} won't do what you probably want in the
-init file.  Some variables automatically become buffer-local
-when set with @code{setq}; what you want in the init file is to set
-the default value, using @code{setq-default}.  Some customizable minor
-mode variables do special things to enable the mode when you set them
-with Customize, but ordinary @code{setq} won't do that; to enable the
-mode in your init file, call the minor mode command.  The
-following section has examples of both of these methods.
+variables @code{setq} won't do what you probably want in the init
+file.  Some variables automatically become buffer-local when set with
+@code{setq}; what you want in the init file is to set the default
+value, using @code{setq-default}.  (The following section has examples
+of both of these methods.)
+
+Some customizable minor mode variables do special things to enable the
+mode when you set them with Customize, but ordinary @code{setq} won't
+do that; to enable the mode in your init file, call the minor mode
+command.  Finally, a few customizable user options are initialized in
+complex ways, and these have to be set either via the customize
+interface (@pxref{Customization}) or by using
+@code{customize-set-variable} (@pxref{Examining}).
 
   The second argument to @code{setq} is an expression for the new
 value of the variable.  This can be a constant, a variable, or a
@@ -2490,6 +2524,14 @@ Turn on Auto Fill mode automatically in Text mode and related modes
 
 @example
 (add-hook 'text-mode-hook 'auto-fill-mode)
+@end example
+
+@item
+Change the coding system used when using the clipboard
+(@pxref{Communication Coding}).
+
+@example
+(customize-set-variable 'selection-coding-system 'utf-8)
 @end example
 
 @item

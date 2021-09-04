@@ -163,14 +163,13 @@ List killed groups (@code{gnus-group-list-killed}).
 List zombie groups (@code{gnus-group-list-zombies}).
 
 @kindex u @r{(Gnus Group mode)}
-@findex gnus-group-unsubscribe-current-group
+@findex gnus-group-toggle-subscription
 @cindex subscribe groups
 @cindex unsubscribe groups
 @item u
 Toggle the subscription status of the group
-(@code{gnus-group-unsubscribe-current-group}) on the current line
-(i.e., turn a subscribed group into an unsubscribed group, or vice
-versa).  Invoking this on a killed or zombie group turns it into an
+(@code{gnus-group-toggle-subscription}) on the current line.
+Invoking this on a killed or zombie group turns it into an
 unsubscribed group.
 
 @kindex C-k @r{(Gnus Group mode)}
@@ -1021,7 +1020,10 @@ pending in the shell buffer and not yet sent.
 @findex comint-delete-output
 Delete the last batch of output from a shell command
 (@code{comint-delete-output}).  This is useful if a shell command spews
-out lots of output that just gets in the way.
+out lots of output that just gets in the way.  With a prefix argument,
+this command saves the deleted text in the @code{kill-ring}
+(@pxref{Kill Ring}), so that you could later yank it (@pxref{Yanking})
+elsewhere.
 
 @item C-c C-s
 @kindex C-c C-s @r{(Shell mode)}
@@ -1110,6 +1112,19 @@ subshell:
           'comint-truncate-buffer)
 @end example
 @end table
+
+By default, Shell mode handles common @acronym{ANSI} escape codes (for
+instance, for changing the color of text).  Emacs also optionally
+supports some extend escape codes, like some of the @acronym{OSC}
+(Operating System Codes) if you put the following in your init file:
+
+@lisp
+(add-hook 'comint-output-filter-functions 'comint-osc-process-output)
+@end lisp
+
+With this enabled, the output from, for instance, @code{ls
+--hyperlink} will be made into clickable buttons in the Shell mode
+buffer.
 
 @cindex Comint mode
 @cindex mode, Comint
@@ -1757,6 +1772,13 @@ expression @code{(+ 1 2)} on the @samp{foo} server, and returns
 @code{3}.  (If there is no server with that name, an error is
 signaled.)  Currently, this feature is mainly useful for developers.
 
+  If your operating system’s desktop environment is
+@url{https://www.freedesktop.org/wiki/Specifications/,,freedesktop.org-compatible}
+(which is true of most GNU/Linux and other recent Unix-like GUIs), you
+may use the @samp{Emacs (Client)} menu entry to connect to an Emacs
+server with @command{emacsclient}.  The daemon starts if not
+already running.
+
 @menu
 * TCP Emacs server::     Listening to a TCP socket.
 * Invoking emacsclient:: Connecting to the Emacs server.
@@ -2024,7 +2046,7 @@ evaluation performed is for side-effect rather than result.
 Connect to the Emacs server named @var{server-name}.  (This option is
 not supported on MS-Windows.)  The server name is given by the
 variable @code{server-name} on the Emacs server.  If this option is
-omitted, @command{emacsclient} connects to the first server it finds.
+omitted, @command{emacsclient} connects to the default socket.
 If you set @code{server-name} of the Emacs server to an absolute file
 name, give the same absolute file name as @var{server-name} to this
 option to instruct @command{emacsclient} to connect to that server.
@@ -2963,6 +2985,15 @@ URLs.
 
 For more information, view the package commentary by typing @kbd{C-h P
 browse-url @key{RET}}.
+
+@findex url-handler-mode
+  Emacs also has a minor mode that has some support for handling
+@acronym{URL}s as if they were files.  @code{url-handler-mode} is a
+global minor mode that affects most of the Emacs commands and
+primitives that deal with file names.  After switching on this mode,
+you can say, for instance, @kbd{C-x C-f https://www.gnu.org/ RET} to
+see the @acronym{HTML} for that web page, and you can then edit it and
+save it to a local file, for instance.
 
 @node Goto Address mode
 @subsection Activating URLs
