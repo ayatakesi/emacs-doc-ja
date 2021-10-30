@@ -2050,7 +2050,7 @@ displayed in a given window.  This function is used by
 (@pxref{Resizing Windows}) to make a window exactly as large as the text
 it contains.
 
-@defun window-text-pixel-size &optional window from to x-limit y-limit mode-and-header-line
+@defun window-text-pixel-size &optional window from to x-limit y-limit mode-lines
 This function returns the size of the text of @var{window}'s buffer in
 pixels.  @var{window} must be a live window and defaults to the
 selected one.  The return value is a cons of the maximum pixel-width
@@ -2092,12 +2092,12 @@ calculating the pixel-height of a large buffer can take some time, it
 makes sense to specify this argument; in particular, if the caller
 does not know the size of the buffer.
 
-The optional argument @var{mode-and-header-line} @code{nil} or omitted
-means to not include the height of the mode- or header-line of
-@var{window} in the return value.  If it is either the symbol
-@code{mode-line} or @code{header-line}, include only the height of that
+The optional argument @var{mode-lines} @code{nil} or omitted means to
+not include the height of the mode-, tab- or header-line of @var{window}
+in the return value.  If it is either the symbol @code{mode-line},
+@code{tab-line} or @code{header-line}, include only the height of that
 line, if present, in the return value.  If it is @code{t}, include the
-height of both, if present, in the return value.
+height of all of these lines, if present, in the return value.
 @end defun
 
 @code{window-text-pixel-size} treats the text displayed in a window as a
@@ -2750,6 +2750,11 @@ terminal must match one of the @var{value}s specified for it in
   :group 'basic-faces)
 @end example
 
+@kindex face-defface-spec @r{(face symbol property)}
+@kindex saved-face @r{(face symbol property)}
+@kindex customized-face @r{(face symbol property)}
+@kindex theme-face @r{(face symbol property)}
+@kindex face-documentation @r{(face symbol property)}
   Internally, Emacs stores each face's default spec in its
 @code{face-defface-spec} symbol property (@pxref{Symbol Properties}).
 The @code{saved-face} property stores any face spec saved by the user
@@ -2806,9 +2811,12 @@ This function returns the value of the @var{attribute} attribute for
 
 If @var{frame} is omitted or @code{nil}, that means the selected frame
 (@pxref{Input Focus}).  If @var{frame} is @code{t}, this function
-returns the value of the specified attribute for newly-created frames
-(this is normally @code{unspecified}, unless you have specified some
-value using @code{set-face-attribute}; see below).
+returns the value of the specified attribute for newly-created frames,
+i.e.@: the value of the attribute before applying the face spec in the
+face's @code{defface} definition (@pxref{Defining Faces}) or the spec
+set by @code{face-spec-set}.  This default value of @var{attribute} is
+normally @code{unspecified}, unless you have specified some other
+value using @code{set-face-attribute}; see below.
 
 If @var{inherit} is @code{nil}, only attributes directly defined by
 @var{face} are considered, so the return value may be
@@ -2858,7 +2866,12 @@ elements of the result are name-value pairs of the form
 @w{@code{(@var{attr-name} . @var{attr-value})}}.  Optional argument
 @var{frame} specifies the frame whose definition of @var{face} to
 return; if omitted or @code{nil}, the returned value describes the
-default attributes of @var{face} for newly created frames.
+default attributes of @var{face} for newly created frames, i.e.@: the
+values these attributes have before applying the face spec in the
+face's @code{defface} definition or the spec set by
+@code{face-spec-set}.  These default values of the attributes are
+normally @code{unspecified}, unless you have specified some other
+value using @code{set-face-attribute}; see below.
 @end defun
 
 @defun merge-face-attribute attribute value1 value2
@@ -2876,7 +2889,7 @@ for all frames.  This function is mostly intended for internal usage.
 
 @defun set-face-attribute face frame &rest arguments
 This function sets one or more attributes of @var{face} for
-@var{frame}.  The attributes specifies in this way override the face
+@var{frame}.  The attributes specified in this way override the face
 spec(s) belonging to @var{face}.
 
 The extra arguments @var{arguments} specify the attributes to set, and
@@ -2893,9 +2906,10 @@ sets the attribute @code{:weight} to @code{bold} and the attribute
 
 
 If @var{frame} is @code{t}, this function sets the default attributes
-for newly created frames.  If @var{frame} is @code{nil}, this function
-sets the attributes for all existing frames, as well as for newly
-created frames.
+for newly created frames; they will effectively override the attribute
+values specified by @code{defface}.  If @var{frame} is @code{nil},
+this function sets the attributes for all existing frames, as well as
+for newly created frames.
 @end defun
 
   The following commands and functions mostly provide compatibility
@@ -7951,6 +7965,11 @@ Non-@acronym{ASCII}, non-printing characters @code{U+0080} to
 Characters of Unicode General Category [Cf], such as U+200E
 @sc{left-to-right mark}, but excluding characters that have graphic
 images, such as U+00AD @sc{soft hyphen}.
+
+@item variation-selectors
+Unicode VS-1 through VS-16 (U+FE00 through U+FE0F), which are used to
+select between different glyphs for the same codepoints (typically
+emojis).
 
 @item no-font
 Characters for which there is no suitable font, or which cannot be
