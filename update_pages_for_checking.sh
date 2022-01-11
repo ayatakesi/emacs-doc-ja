@@ -1,19 +1,19 @@
 #!/bin/bash
 
+# https://docs.github.com/ja/actions/learn-github-actions/environment-variables
+
 cd emacs/japanese_texis/;
 texi2any --html \
 	 --output=html/ \
-	 --document-language=ja_JP \
 	 -c DATE_IN_HEADER=1 \
-	 -c PRE_BODY_CLOSE="This page has generated for branch:${TRAVIS_BRANCH}, commit:${TRAVIS_COMMIT} to check Japanese translation." emacs-ja.texi
+	 -c PRE_BODY_CLOSE="This page has generated for branch:${GITHUB_REF_NAME}, commit:${GITHUB_SHA} to check Japanese translation." emacs-ja.texi
 cd -;
 
 cd lispref/japanese_texis/;
 texi2any --html \
 	 --output=html/ \
-	 --document-language=ja_JP \
 	 -c DATE_IN_HEADER=1 \
-	 -c PRE_BODY_CLOSE="This page has generated for branch:${TRAVIS_BRANCH}, commit:${TRAVIS_COMMIT} to check Japanese translation." elisp-ja.texi
+	 -c PRE_BODY_CLOSE="This page has generated for branch:${GITHUB_REF_NAME}, commit:${GITHUB_SHA} to check Japanese translation." elisp-ja.texi
 cd -;
 
 git config --global user.email "ayanokoji.takesi@gmail.com"
@@ -29,8 +29,7 @@ rm -fr ayatakesi.github.io/lispref/translation_HEAD/;
 mkdir -p ayatakesi.github.io/lispref/translation_HEAD/;
 cp -pr lispref/japanese_texis/html/ ayatakesi.github.io/lispref/translation_HEAD/;
 
-
 git -C ayatakesi.github.io/ add emacs/translation_HEAD/;
 git -C ayatakesi.github.io/ add lispref/translation_HEAD/;
-git -C ayatakesi.github.io/ commit -m "Generate pages for branch:${TRAVIS_BRANCH}, commit:${TRAVIS_COMMIT} to check Japanese translation.";
-git -C ayatakesi.github.io/ push --quiet https://${AYATAKESI_PAT}@github.com/ayatakesi/ayatakesi.github.io.git;
+git -C ayatakesi.github.io/ commit -m "Generate pages for branch:${GITHUB_REF_NAME}, commit:${GITHUB_SHA} to check Japanese translation.";
+git -C ayatakesi.github.io/ push --quiet https://${API_GITHUB_TOKEN}@github.com/ayatakesi/ayatakesi.github.io.git;
