@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990--1995, 1998--1999, 2001--2021 Free Software
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2022 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Windows
@@ -3038,6 +3038,11 @@ desired total height with respect to the total height of its frame's
 root window.
 
 @item
+A cons cell whose @sc{car} is @code{body-lines} and whose @sc{cdr} is an
+integer that specifies the height of the chosen window's body in frame
+lines.
+
+@item
 If the value specifies a function, that function is called with one
 argument---the chosen window.  The function is supposed to adjust the
 height of the window; its return value is ignored.  Suitable functions
@@ -3071,16 +3076,47 @@ desired total width with respect to the total width of the frame's
 root window.
 
 @item
+A cons cell whose @sc{car} is @code{body-columns} and whose @sc{cdr} is
+an integer that specifies the width of the chosen window's body in frame
+columns.
+
+@item
 If the value specifies a function, that function is called with one
 argument---the chosen window.  The function is supposed to adjust the
 width of the window; its return value is ignored.
 @end itemize
 
-By convention, the width of the chosen window is adjusted only if the
-window is part of a horizontal combination (@pxref{Windows and
-Frames}) to avoid changing the width of other, unrelated windows.
-Also, this entry should be processed under only certain conditions
-which are specified right below this list.
+@vindex window-size@r{, a buffer display action alist entry}
+@item window-size
+This entry is a combination of the two preceding ones and can be used to
+adjust the chosen window's height @emph{and} width.  Since windows can
+be resized in one direction only without affecting other windows,
+@code{window-size} is effective only to set up the size of a window
+appearing alone on a frame.  The value can be one of the following:
+
+@itemize @bullet
+@item
+@code{nil} means to leave the size of the chosen window alone.
+
+@item
+A cons cell of two integers specifies the desired total width and height
+of the chosen window in lines and columns.  It's effect is to adjust the
+size of the frame accordingly.
+
+@item
+A cons cell whose @sc{car} equals @code{body-chars} and whose @sc{cdr}
+is a cons cell of two integers---the desired body width and height of
+the chosen window in frame columns and lines.  It's effect is to adjust
+the size of the frame accordingly.
+
+@item
+If the value specifies a function, that function is called with one
+argument---the chosen window.  The function is supposed to adjust the
+size of the window's frame; its return value is ignored.
+@end itemize
+
+This entry should be processed under only certain conditions which are
+specified right below this list.
 
 @vindex dedicated@r{, a buffer display action alist entry}
 @item dedicated
@@ -3181,6 +3217,14 @@ the window was created earlier by @code{display-buffer} to show the
 buffer and never was used to show another buffer until it was reused
 by the current invocation of @code{display-buffer}.
 
+If no @code{window-height}, @code{window-width} or @code{window-size}
+entry was specified, the window may still be resized automatically when
+the buffer is temporary and @code{temp-buffer-resize-mode} has been
+enabled, @ref{Temporary Displays}.  In that case, the @sc{cdr} of a
+@code{window-height}, @code{window-width} or @code{window-size} entry
+can be used to inhibit or override the default behavior of
+@code{temp-buffer-resize-mode} for specific buffers or invocations of
+@code{display-buffer}.
 
 @node Choosing Window Options
 @subsection Additional Options for Displaying Buffers
@@ -5237,13 +5281,6 @@ other window is selected.  When it is non-@code{nil} and the
 minibuffer is selected, it takes precedence over
 @code{other-window-scroll-buffer}.  @xref{Definition of
 minibuffer-scroll-window}.
-
-When the minibuffer is active, it is the next window if the selected
-window is the one at the bottom right corner.  In this case,
-@code{scroll-other-window} attempts to scroll the minibuffer.  If the
-minibuffer contains just one line, it has nowhere to scroll to, so the
-line reappears after the echo area momentarily displays the message
-@samp{End of buffer}.
 @end deffn
 
 @deffn Command scroll-other-window-down &optional count

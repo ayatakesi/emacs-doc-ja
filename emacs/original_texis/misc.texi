@@ -1,5 +1,5 @@
 @c This is part of the Emacs manual.
-@c Copyright (C) 1985--1987, 1993--1995, 1997, 2000--2021 Free Software
+@c Copyright (C) 1985--1987, 1993--1995, 1997, 2000--2022 Free Software
 @c Foundation, Inc.
 @c See file emacs.texi for copying conditions.
 @iftex
@@ -1497,14 +1497,20 @@ directory stack if they are not already on it
 underlying shell, of course.
 
 @vindex comint-terminfo-terminal
+@vindex system-uses-terminfo
 @vindex TERM@r{, environment variable, in sub-shell}
 Comint mode sets the @env{TERM} environment variable to a safe default
 value, but this value disables some useful features.  For example,
 color is disabled in applications that use @env{TERM} to determine if
 color is supported.  Therefore, Emacs provides an option
-@code{comint-terminfo-terminal}, which you can set to a terminal that
-is present in your system's terminfo database, in order to take
-advantage of advanced features of that terminal.
+@code{comint-terminfo-terminal} to let you choose a terminal with more
+advanced features, as defined in your system's terminfo database.
+Emacs will use this option as the value for @env{TERM} so long as
+@code{system-uses-terminfo} is non-nil.
+
+Both @code{comint-terminfo-terminal} and @code{system-uses-terminfo}
+can be declared as connection-local variables to adjust these options
+to match what a remote system expects (@pxref{Connection Variables}).
 
 @node Terminal emulator
 @subsection Emacs Terminal Emulator
@@ -1697,6 +1703,11 @@ options.  @xref{Initial Options}.  When Emacs is started this way, it
 calls @code{server-start} after initialization and does not open an
 initial frame.  It then waits for edit requests from clients.
 
+@item
+Run the command @code{emacsclient} with the @samp{--alternate-editor=""}
+command-line option.  This starts an Emacs daemon only if no Emacs daemon
+is already running.
+
 @cindex systemd unit file
 @item
 If your operating system uses @command{systemd} to manage startup,
@@ -1762,6 +1773,32 @@ you can give each daemon its own server name like this:
 @example
   emacs --daemon=foo
 @end example
+
+@findex server-stop-automatically
+  The Emacs server can optionally be stopped automatically when
+certain conditions are met.  To do this, call the function
+@code{server-stop-automatically} in your init file (@pxref{Init
+File}), with one of the following arguments:
+
+@itemize
+@item
+With the argument @code{empty}, the server is stopped when it has no
+clients, no unsaved file-visiting buffers and no running processes
+anymore.
+
+@item
+With the argument @code{delete-frame}, when the last client frame is
+being closed, you are asked whether each unsaved file-visiting buffer
+must be saved and each unfinished process can be stopped, and if so,
+the server is stopped.
+
+@item
+With the argument @code{kill-terminal}, when the last client frame is
+being closed with @kbd{C-x C-c} (@code{save-buffers-kill-terminal}),
+you are asked whether each unsaved file-visiting buffer must be saved
+and each unfinished process can be stopped, and if so, the server is
+stopped.
+@end itemize
 
 @findex server-eval-at
   If you have defined a server by a unique server name, it is possible
@@ -1985,6 +2022,11 @@ If you omit a filename argument while supplying the @samp{-c} option,
 the new frame displays the @file{*scratch*} buffer by default.  You
 can customize this behavior with the variable @code{initial-buffer-choice}
 (@pxref{Entering Emacs}).
+
+@item -r
+@itemx --reuse-frame
+Create a new graphical client frame if none exists, otherwise use an
+existing Emacs frame.
 
 @item -F @var{alist}
 @itemx --frame-parameters=@var{alist}
@@ -2941,6 +2983,41 @@ the specified URL@.  The buffer is put in the Xwidget-WebKit mode
 one-key commands for scrolling the widget, changing its size, and
 reloading it.  Type @w{@kbd{C-h b}} in that buffer to see the key
 bindings.
+
+@findex xwidget-webkit-edit-mode
+@cindex xwidget-webkit-edit-mode
+  By default, typing a self-inserting character inside an xwidget
+webkit buffer will do nothing, or trigger some special action.  To
+make those characters and other common editing keys insert themselves
+when pressed, you can enable @code{xwidget-webkit-edit-mode}, which
+redefines them to be passed through to the WebKit xwidget.
+
+You can also enable @code{xwidget-webkit-edit-mode} by typing @kbd{e}
+inside the xwidget webkit buffer.
+
+@findex xwidget-webkit-isearch-mode
+@cindex searching in webkit buffers
+  @code{xwidget-webkit-isearch-mode} is a minor mode that behaves
+similarly to incremental search (@pxref{Incremental Search}), but
+operates on the contents of a WebKit widget instead of the current
+buffer.  It is bound to @kbd{C-s} and @kbd{C-r} inside xwidget-webkit
+buffers.  When it is invoked by @kbd{C-r}, the initial search will be
+performed in reverse direction.
+
+Typing any self-inserting character will cause the character to be
+inserted into the current search query.  Typing @kbd{C-s} will cause
+the WebKit widget to display the next search result, while typing
+@kbd{C-r} will cause it to display the previous one.
+
+To leave incremental search, you can type @kbd{C-g}.
+
+@findex xwidget-webkit-browse-history
+@cindex history of webkit buffers
+  The command @code{xwidget-webkit-browse-history} displays a buffer
+containing a list of pages previously loaded by the current WebKit
+buffer, and lets you navigate to those pages by hitting @kbd{RET}.
+
+It is bound to @kbd{H}.
 
 @node Browse-URL
 @subsection  Following URLs
