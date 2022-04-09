@@ -1,0 +1,60 @@
+name: releases-translated-texis
+on:
+  push:
+    tags:
+      - 'emacs-*'
+
+name: Create Release
+
+jobs:
+  main:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Create translated Texinfo files
+        run: |
+          sudo apt-get install -y gettext
+          sudo apt-get install -y po4a
+          sudo apt-get install -y libintl-perl
+          sudo apt-get install -y coreutils
+          sudo apt-get install -y texinfo
+          make all
+      - name: Archive Texinfo files
+        run: |
+          tar cvfz ${{ github.ref }}.tar.gz **/japanese_texis/*.texi **/japanese_texis/texinfo.tex
+          zip -r ${{ github.ref }}.zip  **/japanese_texis/*.texi **/japanese_texis/texinfo.tex
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            Update Japanese translated Texinfo files for ${{ github.ref }}
+          draft: false
+          prerelease: false
+        - name: Upload tar.gz
+        id: upload-release-asset-01
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ github.ref }}.tar.gz
+          asset_name: ${{ github.ref }}.tar.gz
+          asset_content_type: application/gzip
+        - name: Upload zip
+        id: upload-release-asset-02
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ github.ref }}.zip
+          asset_name: ${{ github.ref }}.zip
+          asset_content_type: application/zip
+          
