@@ -1,0 +1,151 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>kill-ring-yank-pointer (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="kill-ring-yank-pointer (プログラミングEmacs Lisp)">
+<meta name="keywords" content="kill-ring-yank-pointer (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Yanking.html" rel="up" title="Yanking">
+<link href="yank-nthcdr-Exercises.html" rel="next" title="yank nthcdr Exercises">
+<link href="Kill-Ring-Overview.html" rel="prev" title="Kill Ring Overview">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="section" id="kill_002dring_002dyank_002dpointer">
+<div class="header">
+<p>
+Next: <a href="yank-nthcdr-Exercises.html" accesskey="n" rel="next">Exercises with <code>yank</code> and <code>nthcdr</code></a>, Previous: <a href="Kill-Ring-Overview.html" accesskey="p" rel="prev">Kill Ring Overview</a>, Up: <a href="Yanking.html" accesskey="u" rel="up">Yanking Text Back</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-kill_002dring_002dyank_002dpointer-Variable"></span><h3 class="section">10.2 The <code>kill-ring-yank-pointer</code> Variable</h3>
+
+<p><code>kill-ring-yank-pointer</code> is a variable, just as <code>kill-ring</code> is a
+variable.  It points to something by being bound to the value of what it
+points to, like any other Lisp variable.
+</p>
+<p>Thus, if the value of the kill ring is:
+</p>
+<div class="example">
+<pre class="example">(&quot;some text&quot; &quot;a different piece of text&quot; &quot;yet more text&quot;)
+</pre></div>
+
+<p>and the <code>kill-ring-yank-pointer</code> points to the second clause, the value
+of <code>kill-ring-yank-pointer</code> is:
+</p>
+<div class="example">
+<pre class="example">(&quot;a different piece of text&quot; &quot;yet more text&quot;)
+</pre></div>
+
+<p>As explained in the previous chapter (see <a href="List-Implementation.html">How Lists are Implemented</a>), the
+computer does not keep two different copies of the text being pointed to by
+both the <code>kill-ring</code> and the <code>kill-ring-yank-pointer</code>.  The words
+&ldquo;a different piece of text&rdquo; and &ldquo;yet more text&rdquo; are not duplicated.
+Instead, the two Lisp variables point to the same pieces of text.  Here is a
+diagram:
+</p>
+<div class="example">
+<pre class="example">kill-ring     kill-ring-yank-pointer
+    |               |
+    |      ___ ___  |     ___ ___      ___ ___
+     ---&gt; |   |   |  --&gt; |   |   |    |   |   |
+          |___|___|----&gt; |___|___|--&gt; |___|___|--&gt; nil
+            |              |            |
+            |              |            |
+            |              |             --&gt; &quot;yet more text&quot;
+            |              |
+            |               --&gt; &quot;a different piece of text&quot;
+            |
+             --&gt; &quot;some text&quot;
+</pre></div>
+<br>
+<br>
+<br>
+
+<p>Both the variable <code>kill-ring</code> and the variable
+<code>kill-ring-yank-pointer</code> are pointers.  But the kill ring itself is
+usually described as if it were actually what it is composed of.  The
+<code>kill-ring</code> is spoken of as if it were the list rather than that it
+points to the list.  Conversely, the <code>kill-ring-yank-pointer</code> is spoken
+of as pointing to a list.
+</p>
+<p>These two ways of talking about the same thing sound confusing at first but
+make sense on reflection.  The kill ring is generally thought of as the
+complete structure of data that holds the information of what has recently
+been cut out of the Emacs buffers.  The <code>kill-ring-yank-pointer</code> on the
+other hand, serves to indicate&mdash;that is, to point to&mdash;that part of the
+kill ring of which the first element (the <small>CAR</small>) will be inserted.
+</p>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="yank-nthcdr-Exercises.html">Exercises with <code>yank</code> and <code>nthcdr</code></a>, Previous: <a href="Kill-Ring-Overview.html">Kill Ring Overview</a>, Up: <a href="Yanking.html">Yanking Text Back</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

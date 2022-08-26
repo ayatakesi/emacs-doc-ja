@@ -1,0 +1,295 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>fwd-para while (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="fwd-para while (プログラミングEmacs Lisp)">
+<meta name="keywords" content="fwd-para while (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="forward_002dparagraph.html" rel="up" title="forward-paragraph">
+<link href="fwd_002dpara-let.html" rel="prev" title="fwd-para let">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="unnumberedsubsec" id="fwd_002dpara-while">
+<div class="header">
+<p>
+Previous: <a href="fwd_002dpara-let.html" accesskey="p" rel="prev">The <code>let*</code> expression</a>, Up: <a href="forward_002dparagraph.html" accesskey="u" rel="up"><code>forward-paragraph</code>: a Goldmine of Functions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-forward-motion-while-loop"></span><h4 class="unnumberedsubsec">The forward motion <code>while</code> loop</h4>
+
+<p>The second part of the body of the <code>let*</code> deals with forward motion.
+It is a <code>while</code> loop that repeats itself so long as the value of
+<code>arg</code> is greater than zero.  In the most common use of the function,
+the value of the argument is 1, so the body of the <code>while</code> loop is
+evaluated exactly once, and the cursor moves forward one paragraph.
+</p>
+
+<p>This part handles three situations: when point is between paragraphs, when
+there is a fill prefix and when there is no fill prefix.
+</p>
+<p>The <code>while</code> loop looks like this:
+</p>
+<div class="example">
+<pre class="example">;; <span class="roman">going forwards and not at the end of the buffer</span>
+(while (and (&gt; arg 0) (not (eobp)))
+
+  ;; <span class="roman">between paragraphs</span>
+  ;; Move forward over separator lines...
+  (while (and (not (eobp))
+              (progn (move-to-left-margin) (not (eobp)))
+              (looking-at parsep))
+    (forward-line 1))
+  ;;  <span class="roman">This decrements the loop</span>
+  (unless (eobp) (setq arg (1- arg)))
+  ;; ... and one more line.
+  (forward-line 1)
+</pre><pre class="example">
+
+</pre><pre class="example">  (if fill-prefix-regexp
+      ;; There is a fill prefix; it overrides parstart;
+      ;; we go forward line by line
+      (while (and (not (eobp))
+                  (progn (move-to-left-margin) (not (eobp)))
+                  (not (looking-at parsep))
+                  (looking-at fill-prefix-regexp))
+        (forward-line 1))
+</pre><pre class="example">
+
+</pre><pre class="example">    ;; There is no fill prefix;
+    ;; we go forward character by character
+    (while (and (re-search-forward sp-parstart nil 1)
+                (progn (setq start (match-beginning 0))
+                       (goto-char start)
+                       (not (eobp)))
+                (progn (move-to-left-margin)
+                       (not (looking-at parsep)))
+                (or (not (looking-at parstart))
+                    (and use-hard-newlines
+                         (not (get-text-property (1- start) 'hard)))))
+      (forward-char 1))
+</pre><pre class="example">
+
+</pre><pre class="example">    ;; and if there is no fill prefix and if we are not at the end,
+    ;;     go to whatever was found in the regular expression search
+    ;;     for sp-parstart
+    (if (&lt; (point) (point-max))
+        (goto-char start))))
+</pre></div>
+
+<span id="index-eobp"></span>
+<p>We can see that this is a decrementing counter <code>while</code> loop, using the
+expression <code>(setq arg (1- arg))</code> as the decrementer.  That expression
+is not far from the <code>while</code>, but is hidden in another Lisp macro, an
+<code>unless</code> macro.  Unless we are at the end of the buffer&mdash;that is what
+the <code>eobp</code> function determines; it is an abbreviation of &lsquo;<samp>End Of
+Buffer P</samp>&rsquo;&mdash;we decrease the value of <code>arg</code> by one.
+</p>
+<p>(If we are at the end of the buffer, we cannot go forward any more and the
+next loop of the <code>while</code> expression will test false since the test is
+an <code>and</code> with <code>(not (eobp))</code>.  The <code>not</code> function means
+exactly as you expect; it is another name for <code>null</code>, a function that
+returns true when its argument is false.)
+</p>
+<p>Interestingly, the loop count is not decremented until we leave the space
+between paragraphs, unless we come to the end of buffer or stop seeing the
+local value of the paragraph separator.
+</p>
+<p>That second <code>while</code> also has a <code>(move-to-left-margin)</code>
+expression.  The function is self-explanatory.  It is inside a <code>progn</code>
+expression and not the last element of its body, so it is only invoked for
+its side effect, which is to move point to the left margin of the current
+line.
+</p>
+<span id="index-looking_002dat"></span>
+<p>The <code>looking-at</code> function is also self-explanatory; it returns true if
+the text after point matches the regular expression given as its argument.
+</p>
+<p>The rest of the body of the loop looks difficult at first, but makes sense
+as you come to understand it.
+</p>
+<p>First consider what happens if there is a fill prefix:
+</p>
+<div class="example">
+<pre class="example">  (if fill-prefix-regexp
+      ;; There is a fill prefix; it overrides parstart;
+      ;; we go forward line by line
+      (while (and (not (eobp))
+                  (progn (move-to-left-margin) (not (eobp)))
+                  (not (looking-at parsep))
+                  (looking-at fill-prefix-regexp))
+        (forward-line 1))
+</pre></div>
+
+<p>This expression moves point forward line by line so long as four conditions
+are true:
+</p>
+<ol>
+<li> Point is not at the end of the buffer.
+
+</li><li> We can move to the left margin of the text and are not at the end of the
+buffer.
+
+</li><li> The text following point does not separate paragraphs.
+
+</li><li> The pattern following point is the fill prefix regular expression.
+</li></ol>
+
+<p>The last condition may be puzzling, until you remember that point was moved
+to the beginning of the line early in the <code>forward-paragraph</code>
+function.  This means that if the text has a fill prefix, the
+<code>looking-at</code> function will see it.
+</p>
+<p>Consider what happens when there is no fill prefix.
+</p>
+<div class="example">
+<pre class="example">    (while (and (re-search-forward sp-parstart nil 1)
+                (progn (setq start (match-beginning 0))
+                       (goto-char start)
+                       (not (eobp)))
+                (progn (move-to-left-margin)
+                       (not (looking-at parsep)))
+                (or (not (looking-at parstart))
+                    (and use-hard-newlines
+                         (not (get-text-property (1- start) 'hard)))))
+      (forward-char 1))
+</pre></div>
+
+<p>This <code>while</code> loop has us searching forward for <code>sp-parstart</code>,
+which is the combination of possible whitespace with the local value of the
+start of a paragraph or of a paragraph separator.  (The latter two are
+within an expression starting <code>\(?:</code> so that they are not referenced by
+the <code>match-beginning</code> function.)
+</p>
+<p>The two expressions,
+</p>
+<div class="example">
+<pre class="example">(setq start (match-beginning 0))
+(goto-char start)
+</pre></div>
+
+<p>mean go to the start of the text matched by the regular expression search.
+</p>
+<p>The <code>(match-beginning 0)</code> expression is new.  It returns a number
+specifying the location of the start of the text that was matched by the
+last search.
+</p>
+<p>The <code>match-beginning</code> function is used here because of a characteristic
+of a forward search: a successful forward search, regardless of whether it
+is a plain search or a regular expression search, moves point to the end of
+the text that is found.  In this case, a successful search moves point to
+the end of the pattern for <code>sp-parstart</code>.
+</p>
+<p>However, we want to put point at the end of the current paragraph, not
+somewhere else.  Indeed, since the search possibly includes the paragraph
+separator, point may end up at the beginning of the next one unless we use
+an expression that includes <code>match-beginning</code>.
+</p>
+<span id="index-match_002dbeginning"></span>
+<p>When given an argument of 0, <code>match-beginning</code> returns the position
+that is the start of the text matched by the most recent search.  In this
+case, the most recent search looks for <code>sp-parstart</code>.  The
+<code>(match-beginning 0)</code> expression returns the beginning position of that
+pattern, rather than the end position of that pattern.
+</p>
+<p>(Incidentally, when passed a positive number as an argument, the
+<code>match-beginning</code> function returns the location of point at that
+parenthesized expression in the last search unless that parenthesized
+expression begins with <code>\(?:</code>.  I don&rsquo;t know why <code>\(?:</code> appears
+here since the argument is 0.)
+</p>
+<p>The last expression when there is no fill prefix is
+</p>
+<div class="example">
+<pre class="example">(if (&lt; (point) (point-max))
+    (goto-char start))))
+</pre></div>
+
+<p>This says that if there is no fill prefix and if we are not at the end,
+point should move to the beginning of whatever was found by the regular
+expression search for <code>sp-parstart</code>.
+</p>
+<p>The full definition for the <code>forward-paragraph</code> function not only
+includes code for going forwards, but also code for going backwards.
+</p>
+<p>If you are reading this inside of GNU Emacs and you want to see the whole
+function, you can type <kbd>C-h f</kbd> (<code>describe-function</code>)  and the name
+of the function.  This gives you the function documentation and the name of
+the library containing the function&rsquo;s source.  Place point over the name of
+the library and press the <tt class="key">RET</tt> key; you will be taken directly to the
+source.  (Be sure to install your sources! Without them, you are like a
+person who tries to drive a car with his eyes shut!)
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Previous: <a href="fwd_002dpara-let.html">The <code>let*</code> expression</a>, Up: <a href="forward_002dparagraph.html"><code>forward-paragraph</code>: a Goldmine of Functions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

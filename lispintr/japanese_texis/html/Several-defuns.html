@@ -1,0 +1,140 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Several defuns (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Several defuns (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Several defuns (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Words-in-a-defun.html" rel="up" title="Words in a defun">
+<link href="Find-a-File.html" rel="next" title="Find a File">
+<link href="count_002dwords_002din_002ddefun.html" rel="prev" title="count-words-in-defun">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="section" id="Several-defuns">
+<div class="header">
+<p>
+Next: <a href="Find-a-File.html" accesskey="n" rel="next">Find a File</a>, Previous: <a href="count_002dwords_002din_002ddefun.html" accesskey="p" rel="prev">The <code>count-words-in-defun</code> Function</a>, Up: <a href="Words-in-a-defun.html" accesskey="u" rel="up">Counting Words in a <code>defun</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Count-Several-defuns-Within-a-File"></span><h3 class="section">14.4 Count Several <code>defuns</code> Within a File</h3>
+
+<p>A file such as <samp>simple.el</samp> may have a hundred or more function
+definitions within it.  Our long term goal is to collect statistics on many
+files, but as a first step, our immediate goal is to collect statistics on
+one file.
+</p>
+<p>The information will be a series of numbers, each number being the length of
+a function definition.  We can store the numbers in a list.
+</p>
+<p>We know that we will want to incorporate the information regarding one file
+with information about many other files; this means that the function for
+counting definition lengths within one file need only return the list of
+lengths.  It need not and should not display any messages.
+</p>
+<p>The word count commands contain one expression to jump point forward word by
+word and another expression to count the jumps.  The function to return the
+lengths of definitions can be designed to work the same way, with one
+expression to jump point forward definition by definition and another
+expression to construct the lengths&rsquo; list.
+</p>
+<p>This statement of the problem makes it elementary to write the function
+definition.  Clearly, we will start the count at the beginning of the file,
+so the first command will be <code>(goto-char (point-min))</code>.  Next, we start
+the <code>while</code> loop; and the true-or-false test of the loop can be a
+regular expression search for the next function definition&mdash;so long as the
+search succeeds, point is moved forward and then the body of the loop is
+evaluated.  The body needs an expression that constructs the lengths&rsquo; list.
+<code>cons</code>, the list construction command, can be used to create the list.
+That is almost all there is to it.
+</p>
+<p>Here is what this fragment of code looks like:
+</p>
+<div class="example">
+<pre class="example">(goto-char (point-min))
+(while (re-search-forward &quot;^(defun&quot; nil t)
+  (setq lengths-list
+        (cons (count-words-in-defun) lengths-list)))
+</pre></div>
+
+<p>What we have left out is the mechanism for finding the file that contains
+the function definitions.
+</p>
+<p>In previous examples, we either used this, the Info file, or we switched
+back and forth to some other buffer, such as the <samp>*scratch*</samp> buffer.
+</p>
+<p>Finding a file is a new process that we have not yet discussed.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Find-a-File.html">Find a File</a>, Previous: <a href="count_002dwords_002din_002ddefun.html">The <code>count-words-in-defun</code> Function</a>, Up: <a href="Words-in-a-defun.html">Counting Words in a <code>defun</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

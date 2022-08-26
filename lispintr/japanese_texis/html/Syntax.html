@@ -1,0 +1,167 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Syntax (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Syntax (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Syntax (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Words-in-a-defun.html" rel="up" title="Words in a defun">
+<link href="count_002dwords_002din_002ddefun.html" rel="next" title="count-words-in-defun">
+<link href="Words-and-Symbols.html" rel="prev" title="Words and Symbols">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="section" id="Syntax">
+<div class="header">
+<p>
+Next: <a href="count_002dwords_002din_002ddefun.html" accesskey="n" rel="next">The <code>count-words-in-defun</code> Function</a>, Previous: <a href="Words-and-Symbols.html" accesskey="p" rel="prev">What to Count?</a>, Up: <a href="Words-in-a-defun.html" accesskey="u" rel="up">Counting Words in a <code>defun</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="What-Constitutes-a-Word-or-Symbol_003f"></span><h3 class="section">14.2 What Constitutes a Word or Symbol?</h3>
+<span id="index-Syntax-categories-and-tables"></span>
+
+<p>Emacs treats different characters as belonging to different <em>syntax
+categories</em>.  For example, the regular expression, &lsquo;<samp>\\w+</samp>&rsquo;, is a pattern
+specifying one or more <em>word constituent</em> characters.  Word constituent
+characters are members of one syntax category.  Other syntax categories
+include the class of punctuation characters, such as the period and the
+comma, and the class of whitespace characters, such as the blank space and
+the tab character.  (For more information, see <a data-manual="elisp" href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Syntax-Tables.html#Syntax-Tables">Syntax
+Tables</a> in <cite>The GNU Emacs Lisp Reference Manual</cite>.)
+</p>
+<p>Syntax tables specify which characters belong to which categories.  Usually,
+a hyphen is not specified as a word constituent character.  Instead, it is
+specified as being in the class of characters that are part of symbol names
+but not words.  This means that the <code>count-words-example</code> function
+treats it in the same way it treats an interword white space, which is why
+<code>count-words-example</code> counts &lsquo;<samp>multiply-by-seven</samp>&rsquo; as three words.
+</p>
+<p>There are two ways to cause Emacs to count &lsquo;<samp>multiply-by-seven</samp>&rsquo; as one
+symbol: modify the syntax table or modify the regular expression.
+</p>
+<p>We could redefine a hyphen as a word constituent character by modifying the
+syntax table that Emacs keeps for each mode.  This action would serve our
+purpose, except that a hyphen is merely the most common character within
+symbols that is not typically a word constituent character; there are
+others, too.
+</p>
+<p>Alternatively, we can redefine the regexp used in the
+<code>count-words-example</code> definition so as to include symbols.  This
+procedure has the merit of clarity, but the task is a little tricky.
+</p>
+<p>The first part is simple enough: the pattern must match at least one
+character that is a word or symbol constituent.  Thus:
+</p>
+<div class="example">
+<pre class="example">&quot;\\(\\w\\|\\s_\\)+&quot;
+</pre></div>
+
+<p>The &lsquo;<samp>\\(</samp>&rsquo; is the first part of the grouping construct that includes the
+&lsquo;<samp>\\w</samp>&rsquo; and the &lsquo;<samp>\\s_</samp>&rsquo; as alternatives, separated by the
+&lsquo;<samp>\\|</samp>&rsquo;.  The &lsquo;<samp>\\w</samp>&rsquo; matches any word-constituent character and the
+&lsquo;<samp>\\s_</samp>&rsquo; matches any character that is part of a symbol name but not a
+word-constituent character.  The &lsquo;<samp>+</samp>&rsquo; following the group indicates that
+the word or symbol constituent characters must be matched at least once.
+</p>
+<p>However, the second part of the regexp is more difficult to design.  What we
+want is to follow the first part with optionally one or more characters that
+are not constituents of a word or symbol.  At first, I thought I could
+define this with the following:
+</p>
+<div class="example">
+<pre class="example">&quot;\\(\\W\\|\\S_\\)*&quot;
+</pre></div>
+
+<p>The upper case &lsquo;<samp>W</samp>&rsquo; and &lsquo;<samp>S</samp>&rsquo; match characters that are <em>not</em>
+word or symbol constituents.  Unfortunately, this expression matches any
+character that is either not a word constituent or not a symbol
+constituent.  This matches any character!
+</p>
+<p>I then noticed that every word or symbol in my test region was followed by
+white space (blank space, tab, or newline).  So I tried placing a pattern to
+match one or more blank spaces after the pattern for one or more word or
+symbol constituents.  This failed, too.  Words and symbols are often
+separated by whitespace, but in actual code parentheses may follow symbols
+and punctuation may follow words.  So finally, I designed a pattern in which
+the word or symbol constituents are followed optionally by characters that
+are not white space and then followed optionally by white space.
+</p>
+<p>Here is the full regular expression:
+</p>
+<div class="example">
+<pre class="example">&quot;\\(\\w\\|\\s_\\)+[^ \t\n]*[ \t\n]*&quot;
+</pre></div>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="count_002dwords_002din_002ddefun.html">The <code>count-words-in-defun</code> Function</a>, Previous: <a href="Words-and-Symbols.html">What to Count?</a>, Up: <a href="Words-in-a-defun.html">Counting Words in a <code>defun</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>sentence-end (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="sentence-end (プログラミングEmacs Lisp)">
+<meta name="keywords" content="sentence-end (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Regexp-Search.html" rel="up" title="Regexp Search">
+<link href="re_002dsearch_002dforward.html" rel="next" title="re-search-forward">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="section" id="sentence_002dend">
+<div class="header">
+<p>
+Next: <a href="re_002dsearch_002dforward.html" accesskey="n" rel="next">The <code>re-search-forward</code> Function</a>, Up: <a href="Regexp-Search.html" accesskey="u" rel="up">Regular Expression Searches</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-Regular-Expression-for-sentence_002dend"></span><h3 class="section">12.1 The Regular Expression for <code>sentence-end</code></h3>
+<span id="index-sentence_002dend"></span>
+
+<p>The symbol <code>sentence-end</code> is bound to the pattern that marks the end of
+a sentence.  What should this regular expression be?
+</p>
+<p>Clearly, a sentence may be ended by a period, a question mark, or an
+exclamation mark.  Indeed, in English, only clauses that end with one of
+those three characters should be considered the end of a sentence.  This
+means that the pattern should include the character set:
+</p>
+<div class="example">
+<pre class="example">[.?!]
+</pre></div>
+
+<p>However, we do not want <code>forward-sentence</code> merely to jump to a period,
+a question mark, or an exclamation mark, because such a character might be
+used in the middle of a sentence.  A period, for example, is used after
+abbreviations.  So other information is needed.
+</p>
+<p>According to convention, you type two spaces after every sentence, but only
+one space after a period, a question mark, or an exclamation mark in the
+body of a sentence.  So a period, a question mark, or an exclamation mark
+followed by two spaces is a good indicator of an end of sentence.  However,
+in a file, the two spaces may instead be a tab or the end of a line.  This
+means that the regular expression should include these three items as
+alternatives.
+</p>
+<p>This group of alternatives will look like this:
+</p>
+<div class="example">
+<pre class="example">\\($\\| \\|  \\)
+       ^   ^^
+      TAB  SPC
+</pre></div>
+
+<p>Here, &lsquo;<samp>$</samp>&rsquo; indicates the end of the line, and I have pointed out where
+the tab and two spaces are inserted in the expression.  Both are inserted by
+putting the actual characters into the expression.
+</p>
+<p>Two backslashes, &lsquo;<samp>\\</samp>&rsquo;, are required before the parentheses and vertical
+bars: the first backslash quotes the following backslash in Emacs; and the
+second indicates that the following character, the parenthesis or the
+vertical bar, is special.
+</p>
+<p>Also, a sentence may be followed by one or more carriage returns, like this:
+</p>
+<div class="example">
+<pre class="example">[
+]*
+</pre></div>
+
+<p>Like tabs and spaces, a carriage return is inserted into a regular
+expression by inserting it literally.  The asterisk indicates that the
+<tt class="key">RET</tt> is repeated zero or more times.
+</p>
+<p>But a sentence end does not consist only of a period, a question mark or an
+exclamation mark followed by appropriate space: a closing quotation mark or
+a closing brace of some kind may precede the space.  Indeed more than one
+such mark or brace may precede the space.  These require a expression that
+looks like this:
+</p>
+<div class="example">
+<pre class="example">[]\&quot;')}]*
+</pre></div>
+
+<p>In this expression, the first &lsquo;<samp>]</samp>&rsquo; is the first character in the
+expression; the second character is &lsquo;<samp>&quot;</samp>&rsquo;, which is preceded by a
+&lsquo;<samp>\</samp>&rsquo; to tell Emacs the &lsquo;<samp>&quot;</samp>&rsquo; is <em>not</em> special.  The last three
+characters are &lsquo;<samp>'</samp>&rsquo;, &lsquo;<samp>)</samp>&rsquo;, and &lsquo;<samp>}</samp>&rsquo;.
+</p>
+<p>All this suggests what the regular expression pattern for matching the end
+of a sentence should be; and, indeed, if we evaluate <code>sentence-end</code> we
+find that it returns the following value:
+</p>
+<div class="example">
+<pre class="example">sentence-end
+     &rArr; &quot;[.?!][]\&quot;')}]*\\($\\|     \\|  \\)[
+]*&quot;
+</pre></div>
+
+<p>(Well, not in GNU Emacs 22; that is because of an effort to make the process
+simpler and to handle more glyphs and languages.  When the value of
+<code>sentence-end</code> is <code>nil</code>, then use the value defined by the
+function <code>sentence-end</code>.  (Here is a use of the difference between a
+value and a function in Emacs Lisp.)  The function returns a value
+constructed from the variables <code>sentence-end-base</code>,
+<code>sentence-end-double-space</code>, <code>sentence-end-without-period</code>, and
+<code>sentence-end-without-space</code>.  The critical variable is
+<code>sentence-end-base</code>; its global value is similar to the one described
+above but it also contains two additional quotation marks.  These have
+differing degrees of curliness.  The <code>sentence-end-without-period</code>
+variable, when true, tells Emacs that a sentence may end without a period,
+such as text in Thai.)
+</p>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="re_002dsearch_002dforward.html">The <code>re-search-forward</code> Function</a>, Up: <a href="Regexp-Search.html">Regular Expression Searches</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

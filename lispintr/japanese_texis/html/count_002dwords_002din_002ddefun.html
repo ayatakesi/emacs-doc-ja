@@ -1,0 +1,254 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>count-words-in-defun (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="count-words-in-defun (プログラミングEmacs Lisp)">
+<meta name="keywords" content="count-words-in-defun (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Words-in-a-defun.html" rel="up" title="Words in a defun">
+<link href="Several-defuns.html" rel="next" title="Several defuns">
+<link href="Syntax.html" rel="prev" title="Syntax">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="section" id="count_002dwords_002din_002ddefun">
+<div class="header">
+<p>
+Next: <a href="Several-defuns.html" accesskey="n" rel="next">Count Several <code>defuns</code> Within a File</a>, Previous: <a href="Syntax.html" accesskey="p" rel="prev">What Constitutes a Word or Symbol?</a>, Up: <a href="Words-in-a-defun.html" accesskey="u" rel="up">Counting Words in a <code>defun</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-count_002dwords_002din_002ddefun-Function"></span><h3 class="section">14.3 The <code>count-words-in-defun</code> Function</h3>
+<span id="index-Counting-words-in-a-defun-1"></span>
+
+<p>We have seen that there are several ways to write a
+<code>count-words-region</code> function.  To write a <code>count-words-in-defun</code>,
+we need merely adapt one of these versions.
+</p>
+<p>The version that uses a <code>while</code> loop is easy to understand, so I am
+going to adapt that.  Because <code>count-words-in-defun</code> will be part of a
+more complex program, it need not be interactive and it need not display a
+message but just return the count.  These considerations simplify the
+definition a little.
+</p>
+<p>On the other hand, <code>count-words-in-defun</code> will be used within a buffer
+that contains function definitions.  Consequently, it is reasonable to ask
+that the function determine whether it is called when point is within a
+function definition, and if it is, to return the count for that definition.
+This adds complexity to the definition, but saves us from needing to pass
+arguments to the function.
+</p>
+<p>These considerations lead us to prepare the following template:
+</p>
+<div class="example">
+<pre class="example">(defun count-words-in-defun ()
+  &quot;<var>documentation</var>&hellip;&quot;
+  (<var>set up</var>&hellip;
+     (<var>while loop</var>&hellip;)
+   <var>return count</var>)
+</pre></div>
+
+<p>As usual, our job is to fill in the slots.
+</p>
+<p>First, the set up.
+</p>
+<p>We are presuming that this function will be called within a buffer
+containing function definitions.  Point will either be within a function
+definition or not.  For <code>count-words-in-defun</code> to work, point must move
+to the beginning of the definition, a counter must start at zero, and the
+counting loop must stop when point reaches the end of the definition.
+</p>
+<p>The <code>beginning-of-defun</code> function searches backwards for an opening
+delimiter such as a &lsquo;<samp>(</samp>&rsquo; at the beginning of a line, and moves point to
+that position, or else to the limit of the search.  In practice, this means
+that <code>beginning-of-defun</code> moves point to the beginning of an enclosing
+or preceding function definition, or else to the beginning of the buffer.
+We can use <code>beginning-of-defun</code> to place point where we wish to start.
+</p>
+<p>The <code>while</code> loop requires a counter to keep track of the words or
+symbols being counted.  A <code>let</code> expression can be used to create a
+local variable for this purpose, and bind it to an initial value of zero.
+</p>
+<p>The <code>end-of-defun</code> function works like <code>beginning-of-defun</code> except
+that it moves point to the end of the definition.  <code>end-of-defun</code> can
+be used as part of an expression that determines the position of the end of
+the definition.
+</p>
+<p>The set up for <code>count-words-in-defun</code> takes shape rapidly: first we
+move point to the beginning of the definition, then we create a local
+variable to hold the count, and finally, we record the position of the end
+of the definition so the <code>while</code> loop will know when to stop looping.
+</p>
+<p>The code looks like this:
+</p>
+<div class="example">
+<pre class="example">(beginning-of-defun)
+(let ((count 0)
+      (end (save-excursion (end-of-defun) (point))))
+</pre></div>
+
+<p>The code is simple.  The only slight complication is likely to concern
+<code>end</code>: it is bound to the position of the end of the definition by a
+<code>save-excursion</code> expression that returns the value of point after
+<code>end-of-defun</code> temporarily moves it to the end of the definition.
+</p>
+<p>The second part of the <code>count-words-in-defun</code>, after the set up, is the
+<code>while</code> loop.
+</p>
+<p>The loop must contain an expression that jumps point forward word by word
+and symbol by symbol, and another expression that counts the jumps.  The
+true-or-false-test for the <code>while</code> loop should test true so long as
+point should jump forward, and false when point is at the end of the
+definition.  We have already redefined the regular expression for this, so
+the loop is straightforward:
+</p>
+<div class="example">
+<pre class="example">(while (and (&lt; (point) end)
+            (re-search-forward
+             &quot;\\(\\w\\|\\s_\\)+[^ \t\n]*[ \t\n]*&quot; end t))
+  (setq count (1+ count)))
+</pre></div>
+
+<p>The third part of the function definition returns the count of words and
+symbols.  This part is the last expression within the body of the <code>let</code>
+expression, and can be, very simply, the local variable <code>count</code>, which
+when evaluated returns the count.
+</p>
+<p>Put together, the <code>count-words-in-defun</code> definition looks like this:
+</p>
+<span id="index-count_002dwords_002din_002ddefun"></span>
+<div class="example">
+<pre class="example">(defun count-words-in-defun ()
+  &quot;Return the number of words and symbols in a defun.&quot;
+  (beginning-of-defun)
+  (let ((count 0)
+        (end (save-excursion (end-of-defun) (point))))
+</pre><pre class="example">    (while
+        (and (&lt; (point) end)
+             (re-search-forward
+              &quot;\\(\\w\\|\\s_\\)+[^ \t\n]*[ \t\n]*&quot;
+              end t))
+      (setq count (1+ count)))
+    count))
+</pre></div>
+
+<p>How to test this? The function is not interactive, but it is easy to put a
+wrapper around the function to make it interactive; we can use almost the
+same code as for the recursive version of <code>count-words-example</code>:
+</p>
+<div class="example">
+<pre class="example">;;; <span class="roman">Interactive version.</span>
+(defun count-words-defun ()
+  &quot;Number of words and symbols in a function definition.&quot;
+  (interactive)
+  (message
+   &quot;Counting words and symbols in function definition ... &quot;)
+</pre><pre class="example">  (let ((count (count-words-in-defun)))
+    (cond
+     ((zerop count)
+      (message
+       &quot;The definition does NOT have any words or symbols.&quot;))
+</pre><pre class="example">     ((= 1 count)
+      (message
+       &quot;The definition has 1 word or symbol.&quot;))
+     (t
+      (message
+       &quot;The definition has %d words or symbols.&quot; count)))))
+</pre></div>
+
+<p>Let&rsquo;s re-use <kbd>C-c =</kbd> as a convenient keybinding:
+</p>
+<div class="example">
+<pre class="example">(global-set-key &quot;\C-c=&quot; 'count-words-defun)
+</pre></div>
+
+<p>Now we can try out <code>count-words-defun</code>: install both
+<code>count-words-in-defun</code> and <code>count-words-defun</code>, and set the
+keybinding.  Then copy the following to an Emacs Lisp buffer (like, for
+instance, <samp>*scratch*</samp>), place the cursor within the definition, and use
+the <kbd>C-c =</kbd> command.
+</p>
+<div class="example">
+<pre class="example">(defun multiply-by-seven (number)
+  &quot;Multiply NUMBER by seven.&quot;
+  (* 7 number))
+     &rArr; 10
+</pre></div>
+
+<p>Success! The definition has 10 words and symbols.
+</p>
+<p>The next problem is to count the numbers of words and symbols in several
+definitions within a single file.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Several-defuns.html">Count Several <code>defuns</code> Within a File</a>, Previous: <a href="Syntax.html">What Constitutes a Word or Symbol?</a>, Up: <a href="Words-in-a-defun.html">Counting Words in a <code>defun</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

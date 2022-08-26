@@ -1,0 +1,170 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Complete forward-sentence (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Complete forward-sentence (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Complete forward-sentence (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="forward_002dsentence.html" rel="up" title="forward-sentence">
+<link href="fwd_002dsentence-while-loops.html" rel="next" title="fwd-sentence while loops">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="unnumberedsubsec" id="Complete-forward_002dsentence">
+<div class="header">
+<p>
+Next: <a href="fwd_002dsentence-while-loops.html" accesskey="n" rel="next">The <code>while</code> loops</a>, Up: <a href="forward_002dsentence.html" accesskey="u" rel="up"><code>forward-sentence</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Complete-forward_002dsentence-function-definition"></span><h4 class="unnumberedsubsec">Complete <code>forward-sentence</code> function definition</h4>
+
+<p>Here is the code for <code>forward-sentence</code>:
+</p>
+<div class="example">
+<pre class="example">(defun forward-sentence (&amp;optional arg)
+  &quot;Move forward to next end of sentence.  With argument, repeat.
+With negative argument, move backward repeatedly to start of sentence.
+
+The variable `sentence-end' is a regular expression that matches ends of
+sentences.  Also, every paragraph boundary terminates sentences as well.&quot;
+</pre><pre class="example">  (interactive &quot;p&quot;)
+  (or arg (setq arg 1))
+  (let ((opoint (point))
+        (sentence-end (sentence-end)))
+    (while (&lt; arg 0)
+      (let ((pos (point))
+            (par-beg (save-excursion (start-of-paragraph-text) (point))))
+       (if (and (re-search-backward sentence-end par-beg t)
+                (or (&lt; (match-end 0) pos)
+                    (re-search-backward sentence-end par-beg t)))
+           (goto-char (match-end 0))
+         (goto-char par-beg)))
+      (setq arg (1+ arg)))
+</pre><pre class="example">    (while (&gt; arg 0)
+      (let ((par-end (save-excursion (end-of-paragraph-text) (point))))
+       (if (re-search-forward sentence-end par-end t)
+           (skip-chars-backward &quot; \t\n&quot;)
+         (goto-char par-end)))
+      (setq arg (1- arg)))
+    (constrain-to-field nil opoint t)))
+</pre></div>
+
+
+<p>The function looks long at first sight and it is best to look at its
+skeleton first, and then its muscle.  The way to see the skeleton is to look
+at the expressions that start in the left-most columns:
+</p>
+<div class="example">
+<pre class="example">(defun forward-sentence (&amp;optional arg)
+  &quot;<var>documentation</var>&hellip;&quot;
+  (interactive &quot;p&quot;)
+  (or arg (setq arg 1))
+  (let ((opoint (point)) (sentence-end (sentence-end)))
+    (while (&lt; arg 0)
+      (let ((pos (point))
+            (par-beg (save-excursion (start-of-paragraph-text) (point))))
+       <var>rest-of-body-of-while-loop-when-going-backwards</var>
+    (while (&gt; arg 0)
+      (let ((par-end (save-excursion (end-of-paragraph-text) (point))))
+       <var>rest-of-body-of-while-loop-when-going-forwards</var>
+    <var>handle-forms-and-equivalent</var>
+</pre></div>
+
+<p>This looks much simpler! The function definition consists of documentation,
+an <code>interactive</code> expression, an <code>or</code> expression, a <code>let</code>
+expression, and <code>while</code> loops.
+</p>
+<p>Let&rsquo;s look at each of these parts in turn.
+</p>
+<p>We note that the documentation is thorough and understandable.
+</p>
+<p>The function has an <code>interactive &quot;p&quot;</code> declaration.  This means that the
+processed prefix argument, if any, is passed to the function as its
+argument.  (This will be a number.)  If the function is not passed an
+argument (it is optional) then the argument <code>arg</code> will be bound to 1.
+</p>
+<p>When <code>forward-sentence</code> is called non-interactively without an
+argument, <code>arg</code> is bound to <code>nil</code>.  The <code>or</code> expression
+handles this.  What it does is either leave the value of <code>arg</code> as it
+is, but only if <code>arg</code> is bound to a value; or it sets the value of
+<code>arg</code> to 1, in the case when <code>arg</code> is bound to <code>nil</code>.
+</p>
+<p>Next is a <code>let</code>.  That specifies the values of two local variables,
+<code>opoint</code> and <code>sentence-end</code>.  The local value of point, from
+before the search, is used in the <code>constrain-to-field</code> function which
+handles forms and equivalents.  The <code>sentence-end</code> variable is set by
+the <code>sentence-end</code> function.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="fwd_002dsentence-while-loops.html">The <code>while</code> loops</a>, Up: <a href="forward_002dsentence.html"><code>forward-sentence</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

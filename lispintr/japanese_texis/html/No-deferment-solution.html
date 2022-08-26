@@ -1,0 +1,235 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>No deferment solution (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="No deferment solution (プログラミングEmacs Lisp)">
+<meta name="keywords" content="No deferment solution (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Recursion.html" rel="up" title="Recursion">
+<link href="No-Deferment.html" rel="prev" title="No Deferment">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="subsection" id="No-deferment-solution">
+<div class="header">
+<p>
+Previous: <a href="No-Deferment.html" accesskey="p" rel="prev">Recursion without Deferments</a>, Up: <a href="Recursion.html" accesskey="u" rel="up">Recursion</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="No-Deferment-Solution"></span><h4 class="subsection">11.3.8 No Deferment Solution</h4>
+<span id="index-No-deferment-solution"></span>
+<span id="index-Solution-without-deferment"></span>
+
+<p>The solution to the problem of deferred operations is to write in a manner
+that does not defer operations<a id="DOCF13" href="#FOOT13"><sup>13</sup></a>.  This
+requires writing to a different pattern, often one that involves writing two
+function definitions, an initialization function and a helper function.
+</p>
+<p>The initialization function sets up the job; the helper function does the
+work.
+</p>
+<p>Here are the two function definitions for adding up numbers.  They are so
+simple, I find them hard to understand.
+</p>
+<div class="example">
+<pre class="example">(defun triangle-initialization (number)
+  &quot;Return the sum of the numbers 1 through NUMBER inclusive.
+This is the initialization component of a two function
+duo that uses recursion.&quot;
+  (triangle-recursive-helper 0 0 number))
+</pre></div>
+
+<div class="example">
+<pre class="example">(defun triangle-recursive-helper (sum counter number)
+  &quot;Return SUM, using COUNTER, through NUMBER inclusive.
+This is the helper component of a two function duo
+that uses recursion.&quot;
+  (if (&gt; counter number)
+      sum
+    (triangle-recursive-helper (+ sum counter)  ; <span class="roman">sum</span>
+                               (1+ counter)     ; <span class="roman">counter</span>
+                               number)))        ; <span class="roman">number</span>
+</pre></div>
+
+<p>Install both function definitions by evaluating them, then call
+<code>triangle-initialization</code> with 2 rows:
+</p>
+<div class="example">
+<pre class="example">(triangle-initialization 2)
+    &rArr; 3
+</pre></div>
+
+<p>The initialization function calls the first instance of the helper function
+with three arguments: zero, zero, and a number which is the number of rows
+in the triangle.
+</p>
+<p>The first two arguments passed to the helper function are initialization
+values.  These values are changed when <code>triangle-recursive-helper</code>
+invokes new instances.<a id="DOCF14" href="#FOOT14"><sup>14</sup></a>
+</p>
+<p>Let&rsquo;s see what happens when we have a triangle that has one row.  (This
+triangle will have one pebble in it!)
+</p>
+<p><code>triangle-initialization</code> will call its helper with the arguments
+<code>0&nbsp;0&nbsp;1</code><!-- /@w -->.  That function will run the conditional test whether
+<code>(&gt; counter number)</code>:
+</p>
+<div class="example">
+<pre class="example">(&gt; 0 1)
+</pre></div>
+
+<p>and find that the result is false, so it will invoke the else-part of the
+<code>if</code> clause:
+</p>
+<div class="example">
+<pre class="example">    (triangle-recursive-helper
+     (+ sum counter)  ; <span class="roman">sum plus counter</span> &rArr; <span class="roman">sum</span>
+     (1+ counter)     ; <span class="roman">increment counter</span> &rArr; <span class="roman">counter</span>
+     number)          ; <span class="roman">number stays the same</span>
+</pre></div>
+
+<p>which will first compute:
+</p>
+<div class="example">
+<pre class="example">(triangle-recursive-helper (+ 0 0)  ; <span class="roman">sum</span>
+                           (1+ 0)   ; <span class="roman">counter</span>
+                           1)       ; <span class="roman">number</span>
+</pre><pre class="example">which is:
+</pre><pre class="example">
+
+(triangle-recursive-helper 0 1 1)
+</pre></div>
+
+<p>Again, <code>(&gt; counter number)</code> will be false, so again, the Lisp
+interpreter will evaluate <code>triangle-recursive-helper</code>, creating a new
+instance with new arguments.
+</p>
+<p>This new instance will be;
+</p>
+<div class="example">
+<pre class="example">    (triangle-recursive-helper
+     (+ sum counter)  ; <span class="roman">sum plus counter</span> &rArr; <span class="roman">sum</span>
+     (1+ counter)     ; <span class="roman">increment counter</span> &rArr; <span class="roman">counter</span>
+     number)          ; <span class="roman">number stays the same</span>
+
+</pre><pre class="example">which is:
+</pre><pre class="example">
+
+(triangle-recursive-helper 1 2 1)
+</pre></div>
+
+<p>In this case, the <code>(&gt; counter number)</code> test will be true! So the
+instance will return the value of the sum, which will be 1, as expected.
+</p>
+<p>Now, let&rsquo;s pass <code>triangle-initialization</code> an argument of 2, to find out
+how many pebbles there are in a triangle with two rows.
+</p>
+<p>That function calls <code>(triangle-recursive-helper 0 0 2)</code>.
+</p>
+<p>In stages, the instances called will be:
+</p>
+<div class="example">
+<pre class="example">                          <span class="roman">sum counter number</span>
+(triangle-recursive-helper 0    1       2)
+
+(triangle-recursive-helper 1    2       2)
+
+(triangle-recursive-helper 3    3       2)
+</pre></div>
+
+<p>When the last instance is called, the <code>(&gt; counter number)</code> test will be
+true, so the instance will return the value of <code>sum</code>, which will be 3.
+</p>
+<p>This kind of pattern helps when you are writing functions that can use many
+resources in a computer.
+</p>
+</div>
+<div class="footnote">
+<hr>
+<h4 class="footnotes-heading">Footnotes</h4>
+
+<h5><a id="FOOT13" href="#DOCF13">(13)</a></h5>
+<p>The phrase <em>tail recursive</em> is
+used to describe such a process, one that uses constant space.</p>
+<h5><a id="FOOT14" href="#DOCF14">(14)</a></h5>
+<p>The jargon is mildly confusing:
+<code>triangle-recursive-helper</code> uses a process that is iterative in a
+procedure that is recursive.  The process is called iterative because the
+computer need only record the three values, <code>sum</code>, <code>counter</code>, and
+<code>number</code>; the procedure is recursive because the function calls
+itself.  On the other hand, both the process and the procedure used by
+<code>triangle-recursively</code> are called recursive.  The word &ldquo;recursive&rdquo;
+has different meanings in the two contexts.</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Previous: <a href="No-Deferment.html">Recursion without Deferments</a>, Up: <a href="Recursion.html">Recursion</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

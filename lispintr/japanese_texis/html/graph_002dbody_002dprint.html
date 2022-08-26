@@ -1,0 +1,221 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>graph-body-print (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="graph-body-print (プログラミングEmacs Lisp)">
+<meta name="keywords" content="graph-body-print (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Readying-a-Graph.html" rel="up" title="Readying a Graph">
+<link href="recursive_002dgraph_002dbody_002dprint.html" rel="next" title="recursive-graph-body-print">
+<link href="Columns-of-a-graph.html" rel="prev" title="Columns of a graph">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="section" id="graph_002dbody_002dprint">
+<div class="header">
+<p>
+Next: <a href="recursive_002dgraph_002dbody_002dprint.html" accesskey="n" rel="next">The <code>recursive-graph-body-print</code> Function</a>, Previous: <a href="Columns-of-a-graph.html" accesskey="p" rel="prev">Printing the Columns of a Graph</a>, Up: <a href="Readying-a-Graph.html" accesskey="u" rel="up">Readying a Graph</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-graph_002dbody_002dprint-Function"></span><h3 class="section">15.1 The <code>graph-body-print</code> Function</h3>
+<span id="index-graph_002dbody_002dprint"></span>
+
+<p>After our preparation in the preceding section, the <code>graph-body-print</code>
+function is straightforward.  The function will print column after column of
+asterisks and blanks, using the elements of a numbers&rsquo; list to specify the
+number of asterisks in each column.  This is a repetitive act, which means
+we can use a decrementing <code>while</code> loop or recursive function for the
+job.  In this section, we will write the definition using a <code>while</code>
+loop.
+</p>
+<p>The <code>column-of-graph</code> function requires the height of the graph as an
+argument, so we should determine and record that as a local variable.
+</p>
+<p>This leads us to the following template for the <code>while</code> loop version of
+this function:
+</p>
+<div class="example">
+<pre class="example">(defun graph-body-print (numbers-list)
+  &quot;<var>documentation</var>&hellip;&quot;
+  (let ((height  &hellip;
+         &hellip;))
+</pre><pre class="example">
+
+</pre><pre class="example">    (while numbers-list
+      <var>insert-columns-and-reposition-point</var>
+      (setq numbers-list (cdr numbers-list)))))
+</pre></div>
+
+<p>We need to fill in the slots of the template.
+</p>
+<p>Clearly, we can use the <code>(apply 'max numbers-list)</code> expression to
+determine the height of the graph.
+</p>
+<p>The <code>while</code> loop will cycle through the <code>numbers-list</code> one element
+at a time.  As it is shortened by the <code>(setq numbers-list (cdr
+numbers-list))</code> expression, the <small>CAR</small> of each instance of the list is the
+value of the argument for <code>column-of-graph</code>.
+</p>
+<p>At each cycle of the <code>while</code> loop, the <code>insert-rectangle</code> function
+inserts the list returned by <code>column-of-graph</code>.  Since the
+<code>insert-rectangle</code> function moves point to the lower right of the
+inserted rectangle, we need to save the location of point at the time the
+rectangle is inserted, move back to that position after the rectangle is
+inserted, and then move horizontally to the next place from which
+<code>insert-rectangle</code> is called.
+</p>
+<p>If the inserted columns are one character wide, as they will be if single
+blanks and asterisks are used, the repositioning command is simply
+<code>(forward-char 1)</code>; however, the width of a column may be greater than
+one.  This means that the repositioning command should be written
+<code>(forward-char symbol-width)</code>.  The <code>symbol-width</code> itself is the
+length of a <code>graph-blank</code> and can be found using the expression
+<code>(length graph-blank)</code>.  The best place to bind the <code>symbol-width</code>
+variable to the value of the width of graph column is in the varlist of the
+<code>let</code> expression.
+</p>
+<p>These considerations lead to the following function definition:
+</p>
+<div class="example">
+<pre class="example">(defun graph-body-print (numbers-list)
+  &quot;Print a bar graph of the NUMBERS-LIST.
+The numbers-list consists of the Y-axis values.&quot;
+
+  (let ((height (apply 'max numbers-list))
+        (symbol-width (length graph-blank))
+        from-position)
+</pre><pre class="example">
+
+</pre><pre class="example">    (while numbers-list
+      (setq from-position (point))
+      (insert-rectangle
+       (column-of-graph height (car numbers-list)))
+      (goto-char from-position)
+      (forward-char symbol-width)
+</pre><pre class="example">      ;; <span class="roman">Draw graph column by column.</span>
+      (sit-for 0)
+      (setq numbers-list (cdr numbers-list)))
+</pre><pre class="example">    ;; <span class="roman">Place point for X axis labels.</span>
+    (forward-line height)
+    (insert &quot;\n&quot;)
+))
+</pre></div>
+
+<p>The one unexpected expression in this function is the <code><span class="nolinebreak">(sit-for</span>&nbsp;0)</code><!-- /@w -->
+expression in the <code>while</code> loop.  This expression makes the graph
+printing operation more interesting to watch than it would be otherwise.
+The expression causes Emacs to <em>sit</em> or do nothing for a zero length of
+time and then redraw the screen.  Placed here, it causes Emacs to redraw the
+screen column by column.  Without it, Emacs would not redraw the screen
+until the function exits.
+</p>
+<p>We can test <code>graph-body-print</code> with a short list of numbers.
+</p>
+<ol>
+<li> Install <code>graph-symbol</code>, <code>graph-blank</code>, <code>column-of-graph</code>,
+which are in
+<a href="Columns-of-a-graph.html">Printing the Columns of a Graph</a>,
+and <code>graph-body-print</code>.
+
+</li><li> Copy the following expression:
+
+<div class="example">
+<pre class="example">(graph-body-print '(1 2 3 4 6 4 3 5 7 6 5 2 3))
+</pre></div>
+
+</li><li> Switch to the <samp>*scratch*</samp> buffer and place the cursor where you want
+the graph to start.
+
+</li><li> Type <kbd>M-:</kbd> (<code>eval-expression</code>).
+
+</li><li> Yank the <code>graph-body-print</code> expression into the minibuffer with
+<kbd>C-y</kbd> (<code>yank)</code>.
+
+</li><li> Press <tt class="key">RET</tt> to evaluate the <code>graph-body-print</code> expression.
+</li></ol>
+
+<p>Emacs will print a graph like this:
+</p>
+<div class="example">
+<pre class="example">                    *
+                *   **
+                *  ****
+               *** ****
+              ********* *
+             ************
+            *************
+</pre></div>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="recursive_002dgraph_002dbody_002dprint.html">The <code>recursive-graph-body-print</code> Function</a>, Previous: <a href="Columns-of-a-graph.html">Printing the Columns of a Graph</a>, Up: <a href="Readying-a-Graph.html">Readying a Graph</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

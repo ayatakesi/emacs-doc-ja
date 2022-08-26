@@ -1,0 +1,241 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Design count-words-example (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Design count-words-example (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Design count-words-example (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="count_002dwords_002dexample.html" rel="up" title="count-words-example">
+<link href="Whitespace-Bug.html" rel="next" title="Whitespace Bug">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="unnumberedsubsec" id="Design-count_002dwords_002dexample">
+<div class="header">
+<p>
+Next: <a href="Whitespace-Bug.html" accesskey="n" rel="next">The Whitespace Bug in <code>count-words-example</code></a>, Up: <a href="count_002dwords_002dexample.html" accesskey="u" rel="up">The <code>count-words-example</code> Function</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Designing-count_002dwords_002dexample"></span><h4 class="unnumberedsubsec">Designing <code>count-words-example</code></h4>
+
+<p>First, we will implement the word count command with a <code>while</code> loop,
+then with recursion.  The command will, of course, be interactive.
+</p>
+<p>The template for an interactive function definition is, as always:
+</p>
+<div class="example">
+<pre class="example">(defun <var>name-of-function</var> (<var>argument-list</var>)
+  &quot;<var>documentation</var>&hellip;&quot;
+  (<var>interactive-expression</var>&hellip;)
+  <var>body</var>&hellip;)
+</pre></div>
+
+<p>What we need to do is fill in the slots.
+</p>
+<p>The name of the function should be self-explanatory and easy to remember.
+<code>count-words-region</code> is the obvious choice.  Since that name is used
+for the standard Emacs command to count words, we will name our
+implementation <code>count-words-example</code>.
+</p>
+<p>The function counts words within a region.  This means that the argument
+list must contain symbols that are bound to the two positions, the beginning
+and end of the region.  These two positions can be called &lsquo;<samp>beginning</samp>&rsquo;
+and &lsquo;<samp>end</samp>&rsquo; respectively.  The first line of the documentation should be
+a single sentence, since that is all that is printed as documentation by a
+command such as <code>apropos</code>.  The interactive expression will be of the
+form &lsquo;<samp>(interactive &quot;r&quot;)</samp>&rsquo;, since that will cause Emacs to pass the
+beginning and end of the region to the function&rsquo;s argument list.  All this
+is routine.
+</p>
+<p>The body of the function needs to be written to do three tasks: first, to
+set up conditions under which the <code>while</code> loop can count words, second,
+to run the <code>while</code> loop, and third, to send a message to the user.
+</p>
+<p>When a user calls <code>count-words-example</code>, point may be at the beginning
+or the end of the region.  However, the counting process must start at the
+beginning of the region.  This means we will want to put point there if it
+is not already there.  Executing <code>(goto-char beginning)</code> ensures this.
+Of course, we will want to return point to its expected position when the
+function finishes its work.  For this reason, the body must be enclosed in a
+<code>save-excursion</code> expression.
+</p>
+<p>The central part of the body of the function consists of a <code>while</code> loop
+in which one expression jumps point forward word by word, and another
+expression counts those jumps.  The true-or-false-test of the <code>while</code>
+loop should test true so long as point should jump forward, and false when
+point is at the end of the region.
+</p>
+<p>We could use <code>(forward-word 1)</code> as the expression for moving point
+forward word by word, but it is easier to see what Emacs identifies as a
+&ldquo;word&rdquo; if we use a regular expression search.
+</p>
+<p>A regular expression search that finds the pattern for which it is searching
+leaves point after the last character matched.  This means that a succession
+of successful word searches will move point forward word by word.
+</p>
+<p>As a practical matter, we want the regular expression search to jump over
+whitespace and punctuation between words as well as over the words
+themselves.  A regexp that refuses to jump over interword whitespace would
+never jump more than one word! This means that the regexp should include the
+whitespace and punctuation that follows a word, if any, as well as the word
+itself.  (A word may end a buffer and not have any following whitespace or
+punctuation, so that part of the regexp must be optional.)
+</p>
+<p>Thus, what we want for the regexp is a pattern defining one or more word
+constituent characters followed, optionally, by one or more characters that
+are not word constituents.  The regular expression for this is:
+</p>
+<div class="example">
+<pre class="example">\w+\W*
+</pre></div>
+
+<p>The buffer&rsquo;s syntax table determines which characters are and are not word
+constituents.  For more information about syntax, see <a data-manual="elisp" href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Syntax-Tables.html#Syntax-Tables">Syntax Tables</a> in <cite>The GNU Emacs Lisp Reference Manual</cite>.
+</p>
+<p>The search expression looks like this:
+</p>
+<div class="example">
+<pre class="example">(re-search-forward &quot;\\w+\\W*&quot;)
+</pre></div>
+
+<p>(Note that paired backslashes precede the &lsquo;<samp>w</samp>&rsquo; and &lsquo;<samp>W</samp>&rsquo;.  A single
+backslash has special meaning to the Emacs Lisp interpreter.  It indicates
+that the following character is interpreted differently than usual.  For
+example, the two characters, &lsquo;<samp>\n</samp>&rsquo;, stand for &lsquo;<samp>newline</samp>&rsquo;, rather
+than for a backslash followed by &lsquo;<samp>n</samp>&rsquo;.  Two backslashes in a row stand
+for an ordinary, unspecial backslash, so Emacs Lisp interpreter ends of
+seeing a single backslash followed by a letter.  So it discovers the letter
+is special.)
+</p>
+<p>We need a counter to count how many words there are; this variable must
+first be set to 0 and then incremented each time Emacs goes around the
+<code>while</code> loop.  The incrementing expression is simply:
+</p>
+<div class="example">
+<pre class="example">(setq count (1+ count))
+</pre></div>
+
+<p>Finally, we want to tell the user how many words there are in the region.
+The <code>message</code> function is intended for presenting this kind of
+information to the user.  The message has to be phrased so that it reads
+properly regardless of how many words there are in the region: we don&rsquo;t want
+to say that &ldquo;there are 1 words in the region&rdquo;.  The conflict between
+singular and plural is ungrammatical.  We can solve this problem by using a
+conditional expression that evaluates different messages depending on the
+number of words in the region.  There are three possibilities: no words in
+the region, one word in the region, and more than one word.  This means that
+the <code>cond</code> special form is appropriate.
+</p>
+<p>All this leads to the following function definition:
+</p>
+<div class="example">
+<pre class="example">;;; <span class="roman">First version; has bugs!</span>
+(defun count-words-example (beginning end)
+  &quot;Print number of words in the region.
+Words are defined as at least one word-constituent
+character followed by at least one character that
+is not a word-constituent.  The buffer's syntax
+table determines which characters these are.&quot;
+  (interactive &quot;r&quot;)
+  (message &quot;Counting words in region ... &quot;)
+</pre><pre class="example">
+
+</pre><pre class="example">;;; <span class="roman">1. Set up appropriate conditions.</span>
+  (save-excursion
+    (goto-char beginning)
+    (let ((count 0))
+</pre><pre class="example">
+
+</pre><pre class="example">;;; <span class="roman">2. Run the</span> while <span class="roman">loop.</span>
+      (while (&lt; (point) end)
+        (re-search-forward &quot;\\w+\\W*&quot;)
+        (setq count (1+ count)))
+</pre><pre class="example">
+
+</pre><pre class="example">;;; <span class="roman">3. Send a message to the user.</span>
+      (cond ((zerop count)
+             (message
+              &quot;The region does NOT have any words.&quot;))
+            ((= 1 count)
+             (message
+              &quot;The region has 1 word.&quot;))
+            (t
+             (message
+              &quot;The region has %d words.&quot; count))))))
+</pre></div>
+
+<p>As written, the function works, but not in all circumstances.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Whitespace-Bug.html">The Whitespace Bug in <code>count-words-example</code></a>, Up: <a href="count_002dwords_002dexample.html">The <code>count-words-example</code> Function</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

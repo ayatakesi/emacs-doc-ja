@@ -27,12 +27,16 @@ lispintr:
 		japanese_texis \
 		. \
 		"-ja"; \
+		echo; tput rev; \
+		echo "CAUTION: This could be take VERY long time ... "; \
 		../UTILS/functions.sh \
 		translate_title_by_gettext \
 			$${TEXI} \
 			japanese_texis \
 			TITLES \
 			"-ja"; \
+		echo "DONE!!!"; \
+		tput sgr0; echo; \
 		../UTILS/functions.sh \
 		rm -f japanese_texis/$$(basename $${TEXI}); \
 	done
@@ -41,5 +45,3 @@ lispintr:
 		original_texis \
 		japanese_texis \
 		"-ja";
-
-

@@ -1,0 +1,150 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Lisp macro (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Lisp macro (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Lisp macro (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="kill_002dregion.html" rel="up" title="kill-region">
+<link href="condition_002dcase.html" rel="prev" title="condition-case">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="subsection" id="Lisp-macro">
+<div class="header">
+<p>
+Previous: <a href="condition_002dcase.html" accesskey="p" rel="prev"><code>condition-case</code></a>, Up: <a href="kill_002dregion.html" accesskey="u" rel="up"><code>kill-region</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Lisp-macro-1"></span><h4 class="subsection">8.2.2 Lisp macro</h4>
+<span id="index-Macro_002c-lisp"></span>
+<span id="index-Lisp-macro"></span>
+
+<p>The part of the <code>condition-case</code> expression that is evaluated in the
+expectation that all goes well has a <code>when</code>.  The code uses <code>when</code>
+to determine whether the <code>string</code> variable points to text that exists.
+</p>
+<p>A <code>when</code> expression is simply a programmers&rsquo; convenience.  It is an
+<code>if</code> without the possibility of an else clause.  In your mind, you can
+replace <code>when</code> with <code>if</code> and understand what goes on.  That is
+what the Lisp interpreter does.
+</p>
+<p>Technically speaking, <code>when</code> is a Lisp macro.  A Lisp macro enables you
+to define new control constructs and other language features.  It tells the
+interpreter how to compute another Lisp expression which will in turn
+compute the value.  In this case, the other expression is an <code>if</code>
+expression.
+</p>
+<p>The <code>kill-region</code> function definition also has an <code>unless</code> macro;
+it is the converse of <code>when</code>.  The <code>unless</code> macro is an <code>if</code>
+without a then clause
+</p>
+<p>For more about Lisp macros, see <a data-manual="elisp" href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Macros.html#Macros">Macros</a> in <cite>The GNU Emacs
+Lisp Reference Manual</cite>.  The C programming language also provides macros.
+These are different, but also useful.
+</p>
+
+<p>Regarding the <code>when</code> macro, in the <code>condition-case</code> expression,
+when the string has content, then another conditional expression is
+executed.  This is an <code>if</code> with both a then-part and an else-part.
+</p>
+<div class="example">
+<pre class="example">(if (eq last-command 'kill-region)
+    (kill-append string (&lt; end beg) yank-handler)
+  (kill-new string nil yank-handler))
+</pre></div>
+
+<p>The then-part is evaluated if the previous command was another call to
+<code>kill-region</code>; if not, the else-part is evaluated.
+</p>
+<p><code>yank-handler</code> is an optional argument to <code>kill-region</code> that tells
+the <code>kill-append</code> and <code>kill-new</code> functions how deal with
+properties added to the text, such as bold or italics.
+</p>
+<p><code>last-command</code> is a variable that comes with Emacs that we have not
+seen before.  Normally, whenever a function is executed, Emacs sets the
+value of <code>last-command</code> to the previous command.
+</p>
+<p>In this segment of the definition, the <code>if</code> expression checks whether
+the previous command was <code>kill-region</code>.  If it was,
+</p>
+<div class="example">
+<pre class="example">(kill-append string (&lt; end beg) yank-handler)
+</pre></div>
+
+<p>concatenates a copy of the newly clipped text to the just previously clipped
+text in the kill ring.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Previous: <a href="condition_002dcase.html"><code>condition-case</code></a>, Up: <a href="kill_002dregion.html"><code>kill-region</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>debug (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="debug (プログラミングEmacs Lisp)">
+<meta name="keywords" content="debug (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Debugging.html" rel="up" title="Debugging">
+<link href="debug_002don_002dentry.html" rel="next" title="debug-on-entry">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="section" id="debug">
+<div class="header">
+<p>
+Next: <a href="debug_002don_002dentry.html" accesskey="n" rel="next"><code>debug-on-entry</code></a>, Up: <a href="Debugging.html" accesskey="u" rel="up">Debugging</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="debug-1"></span><h3 class="section">17.1 <code>debug</code></h3>
+<span id="index-debug"></span>
+
+<p>Suppose you have written a function definition that is intended to return
+the sum of the numbers 1 through a given number.  (This is the
+<code>triangle</code> function discussed earlier.  See <a href="Decrementing-Example.html">Example with Decrementing Counter</a>, for a discussion.)
+</p>
+<p>However, your function definition has a bug.  You have mistyped &lsquo;<samp>1=</samp>&rsquo;
+for &lsquo;<samp>1-</samp>&rsquo;.  Here is the broken definition:
+</p>
+<span id="index-triangle_002dbugged"></span>
+<div class="example">
+<pre class="example">(defun triangle-bugged (number)
+  &quot;Return sum of numbers 1 through NUMBER inclusive.&quot;
+  (let ((total 0))
+    (while (&gt; number 0)
+      (setq total (+ total number))
+      (setq number (1= number)))      ; <span class="roman">Error here.</span>
+    total))
+</pre></div>
+
+<p>If you are reading this in Info, you can evaluate this definition in the
+normal fashion.  You will see <code>triangle-bugged</code> appear in the echo
+area.
+</p>
+<p>Now evaluate the <code>triangle-bugged</code> function with an argument of 4:
+</p>
+<div class="example">
+<pre class="example">(triangle-bugged 4)
+</pre></div>
+
+<p>This will create and enter a <samp>*Backtrace*</samp> buffer that says:
+</p>
+<div class="example">
+<pre class="example">---------- Buffer: *Backtrace* ----------
+Debugger entered--Lisp error: (void-function 1=)
+  (1= number)
+  (setq number (1= number))
+  (while (&gt; number 0) (setq total (+ total number))
+        (setq number (1= number)))
+  (let ((total 0)) (while (&gt; number 0) (setq total ...)
+    (setq number ...)) total)
+  triangle-bugged(4)
+</pre><pre class="example">  eval((triangle-bugged 4) nil)
+  eval-expression((triangle-bugged 4) nil nil 127)
+  funcall-interactively(eval-expression (triangle-bugged 4) nil nil 127)
+  call-interactively(eval-expression nil nil)
+  command-execute(eval-expression)
+---------- Buffer: *Backtrace* ----------
+</pre></div>
+
+<p>(I have reformatted this example slightly; the debugger does not fold long
+lines.  As usual, you can quit the debugger by typing <kbd>q</kbd> in the
+<samp>*Backtrace*</samp> buffer.)
+</p>
+<p>In practice, for a bug as simple as this, the Lisp error line will tell you
+what you need to know to correct the definition.  The function <code>1=</code> is
+void.
+</p>
+<p>However, suppose you are not quite certain what is going on? You can read
+the complete backtrace.
+</p>
+<p>Emacs automatically starts the debugger that puts you in the
+<samp>*Backtrace*</samp> buffer.  You can also start the debugger manually as
+described below.
+</p>
+<p>Read the <samp>*Backtrace*</samp> buffer from the bottom up; it tells you what
+Emacs did that led to the error.  Emacs made an interactive call to <kbd>C-x
+C-e</kbd> (<code>eval-last-sexp</code>), which led to the evaluation of the
+<code>triangle-bugged</code> expression.  Each line above tells you what the Lisp
+interpreter evaluated next.
+</p>
+<p>The third line from the top of the buffer is
+</p>
+<div class="example">
+<pre class="example">(setq number (1= number))
+</pre></div>
+
+<p>Emacs tried to evaluate this expression; in order to do so, it tried to
+evaluate the inner expression shown on the second line from the top:
+</p>
+<div class="example">
+<pre class="example">(1= number)
+</pre></div>
+
+<p>This is where the error occurred; as the top line says:
+</p>
+<div class="example">
+<pre class="example">Debugger entered--Lisp error: (void-function 1=)
+</pre></div>
+
+<p>You can correct the mistake, re-evaluate the function definition, and then
+run your test again.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="debug_002don_002dentry.html"><code>debug-on-entry</code></a>, Up: <a href="Debugging.html">Debugging</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

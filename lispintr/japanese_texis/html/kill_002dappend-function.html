@@ -1,0 +1,192 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>kill-append function (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="kill-append function (プログラミングEmacs Lisp)">
+<meta name="keywords" content="kill-append function (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="copy_002dregion_002das_002dkill-body.html" rel="up" title="copy-region-as-kill body">
+<link href="kill_002dnew-function.html" rel="next" title="kill-new function">
+<link href="last_002dcommand-_0026-this_002dcommand.html" rel="prev" title="last-command &amp; this-command">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="unnumberedsubsubsec" id="kill_002dappend-function">
+<div class="header">
+<p>
+Next: <a href="kill_002dnew-function.html" accesskey="n" rel="next">The <code>kill-new</code> function</a>, Previous: <a href="last_002dcommand-_0026-this_002dcommand.html" accesskey="p" rel="prev"><code>last-command</code> and <code>this-command</code></a>, Up: <a href="copy_002dregion_002das_002dkill-body.html" accesskey="u" rel="up">The Body of <code>copy-region-as-kill</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-kill_002dappend-function"></span><h4 class="unnumberedsubsubsec">The <code>kill-append</code> function</h4>
+<span id="index-kill_002dappend"></span>
+
+<p>The <code>kill-append</code> function looks like this:
+</p>
+<div class="example">
+<pre class="example">(defun kill-append (string before-p &amp;optional yank-handler)
+  &quot;Append STRING to the end of the latest kill in the kill ring.
+If BEFORE-P is non-nil, prepend STRING to the kill.
+&hellip; &quot;
+  (let* ((cur (car kill-ring)))
+    (kill-new (if before-p (concat string cur) (concat cur string))
+              (or (= (length cur) 0)
+                  (equal yank-handler
+                         (get-text-property 0 'yank-handler cur)))
+              yank-handler)))
+</pre></div>
+
+
+<p>The <code>kill-append</code> function is fairly straightforward.  It uses the
+<code>kill-new</code> function, which we will discuss in more detail in a moment.
+</p>
+<p>(Also, the function provides an optional argument called
+<code>yank-handler</code>; when invoked, this argument tells the function how to
+deal with properties added to the text, such as bold or italics.)
+</p>
+<p>It has a <code>let*</code> function to set the value of the first element of the
+kill ring to <code>cur</code>.  (I do not know why the function does not use
+<code>let</code> instead; only one value is set in the expression.  Perhaps this
+is a bug that produces no problems?)
+</p>
+<p>Consider the conditional that is one of the two arguments to
+<code>kill-new</code>.  It uses <code>concat</code> to concatenate the new text to the
+<small>CAR</small> of the kill ring.  Whether it prepends or appends the text depends
+on the results of an <code>if</code> expression:
+</p>
+<div class="example">
+<pre class="example">(if before-p                            ; <span class="roman">if-part</span>
+    (concat string cur)                 ; <span class="roman">then-part</span>
+  (concat cur string))                  ; <span class="roman">else-part</span>
+</pre></div>
+
+<p>If the region being killed is before the region that was killed in the last
+command, then it should be prepended before the material that was saved in
+the previous kill; and conversely, if the killed text follows what was just
+killed, it should be appended after the previous text.  The <code>if</code>
+expression depends on the predicate <code>before-p</code> to decide whether the
+newly saved text should be put before or after the previously saved text.
+</p>
+<p>The symbol <code>before-p</code> is the name of one of the arguments to
+<code>kill-append</code>.  When the <code>kill-append</code> function is evaluated, it
+is bound to the value returned by evaluating the actual argument.  In this
+case, this is the expression <code>(&lt; end beg)</code>.  This expression does not
+directly determine whether the killed text in this command is located before
+or after the kill text of the last command; what it does is determine
+whether the value of the variable <code>end</code> is less than the value of the
+variable <code>beg</code>.  If it is, it means that the user is most likely
+heading towards the beginning of the buffer.  Also, the result of evaluating
+the predicate expression, <code>(&lt; end beg)</code>, will be true and the text will
+be prepended before the previous text.  On the other hand, if the value of
+the variable <code>end</code> is greater than the value of the variable
+<code>beg</code>, the text will be appended after the previous text.
+</p>
+<p>When the newly saved text will be prepended, then the string with the new
+text will be concatenated before the old text:
+</p>
+<div class="example">
+<pre class="example">(concat string cur)
+</pre></div>
+
+<p>But if the text will be appended, it will be concatenated after the old
+text:
+</p>
+<div class="example">
+<pre class="example">(concat cur string))
+</pre></div>
+
+<p>To understand how this works, we first need to review the <code>concat</code>
+function.  The <code>concat</code> function links together or unites two strings
+of text.  The result is a string.  For example:
+</p>
+<div class="example">
+<pre class="example">(concat &quot;abc&quot; &quot;def&quot;)
+     &rArr; &quot;abcdef&quot;
+</pre><pre class="example">
+
+</pre><pre class="example">(concat &quot;new &quot;
+        (car '(&quot;first element&quot; &quot;second element&quot;)))
+     &rArr; &quot;new first element&quot;
+
+(concat (car
+        '(&quot;first element&quot; &quot;second element&quot;)) &quot; modified&quot;)
+     &rArr; &quot;first element modified&quot;
+</pre></div>
+
+<p>We can now make sense of <code>kill-append</code>: it modifies the contents of the
+kill ring.  The kill ring is a list, each element of which is saved text.
+The <code>kill-append</code> function uses the <code>kill-new</code> function which in
+turn uses the <code>setcar</code> function.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="kill_002dnew-function.html">The <code>kill-new</code> function</a>, Previous: <a href="last_002dcommand-_0026-this_002dcommand.html"><code>last-command</code> and <code>this-command</code></a>, Up: <a href="copy_002dregion_002das_002dkill-body.html">The Body of <code>copy-region-as-kill</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

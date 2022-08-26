@@ -1,0 +1,337 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Counting function definitions (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Counting function definitions (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Counting function definitions (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Prepare-the-data.html" rel="up" title="Prepare the data">
+<link href="Files-List.html" rel="prev" title="Files List">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="subsection" id="Counting-function-definitions">
+<div class="header">
+<p>
+Previous: <a href="Files-List.html" accesskey="p" rel="prev">Making a List of Files</a>, Up: <a href="Prepare-the-data.html" accesskey="u" rel="up">Prepare the Data for Display in a Graph</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Counting-function-definitions-1"></span><h4 class="subsection">14.9.3 Counting function definitions</h4>
+
+<p>Our immediate goal is to generate a list that tells us how many function
+definitions contain fewer than 10 words and symbols, how many contain
+between 10 and 19 words and symbols, how many contain between 20 and 29
+words and symbols, and so on.
+</p>
+<p>With a sorted list of numbers, this is easy: count how many elements of the
+list are smaller than 10, then, after moving past the numbers just counted,
+count how many are smaller than 20, then, after moving past the numbers just
+counted, count how many are smaller than 30, and so on.  Each of the
+numbers, 10, 20, 30, 40, and the like, is one larger than the top of that
+range.  We can call the list of such numbers the <code>top-of-ranges</code> list.
+</p>
+<p>If we wished, we could generate this list automatically, but it is simpler
+to write a list manually.  Here it is:
+<span id="index-top_002dof_002dranges"></span>
+</p>
+<div class="example">
+<pre class="example">(defvar top-of-ranges
+ '(10  20  30  40  50
+   60  70  80  90 100
+  110 120 130 140 150
+  160 170 180 190 200
+  210 220 230 240 250
+  260 270 280 290 300)
+ &quot;List specifying ranges for `defuns-per-range'.&quot;)
+</pre></div>
+
+<p>To change the ranges, we edit this list.
+</p>
+<p>Next, we need to write the function that creates the list of the number of
+definitions within each range.  Clearly, this function must take the
+<code>sorted-lengths</code> and the <code>top-of-ranges</code> lists as arguments.
+</p>
+<p>The <code>defuns-per-range</code> function must do two things again and again: it
+must count the number of definitions within a range specified by the current
+top-of-range value; and it must shift to the next higher value in the
+<code>top-of-ranges</code> list after counting the number of definitions in the
+current range.  Since each of these actions is repetitive, we can use
+<code>while</code> loops for the job.  One loop counts the number of definitions
+in the range defined by the current top-of-range value, and the other loop
+selects each of the top-of-range values in turn.
+</p>
+<p>Several entries of the <code>sorted-lengths</code> list are counted for each
+range; this means that the loop for the <code>sorted-lengths</code> list will be
+inside the loop for the <code>top-of-ranges</code> list, like a small gear inside
+a big gear.
+</p>
+<p>The inner loop counts the number of definitions within the range.  It is a
+simple counting loop of the type we have seen before.  (See <a href="Incrementing-Loop.html">A loop with an incrementing counter</a>.)  The true-or-false test of
+the loop tests whether the value from the <code>sorted-lengths</code> list is
+smaller than the current value of the top of the range.  If it is, the
+function increments the counter and tests the next value from the
+<code>sorted-lengths</code> list.
+</p>
+<p>The inner loop looks like this:
+</p>
+<div class="example">
+<pre class="example">(while <var>length-element-smaller-than-top-of-range</var>
+  (setq number-within-range (1+ number-within-range))
+  (setq sorted-lengths (cdr sorted-lengths)))
+</pre></div>
+
+<p>The outer loop must start with the lowest value of the <code>top-of-ranges</code>
+list, and then be set to each of the succeeding higher values in turn.  This
+can be done with a loop like this:
+</p>
+<div class="example">
+<pre class="example">(while top-of-ranges
+  <var>body-of-loop</var>&hellip;
+  (setq top-of-ranges (cdr top-of-ranges)))
+</pre></div>
+
+<p>Put together, the two loops look like this:
+</p>
+<div class="example">
+<pre class="example">(while top-of-ranges
+
+  ;; <span class="roman">Count the number of elements within the current range.</span>
+  (while <var>length-element-smaller-than-top-of-range</var>
+    (setq number-within-range (1+ number-within-range))
+    (setq sorted-lengths (cdr sorted-lengths)))
+
+  ;; <span class="roman">Move to next range.</span>
+  (setq top-of-ranges (cdr top-of-ranges)))
+</pre></div>
+
+<p>In addition, in each circuit of the outer loop, Emacs should record the
+number of definitions within that range (the value of
+<code>number-within-range</code>) in a list.  We can use <code>cons</code> for this
+purpose.  (See <a href="cons.html"><code>cons</code></a>.)
+</p>
+<p>The <code>cons</code> function works fine, except that the list it constructs will
+contain the number of definitions for the highest range at its beginning and
+the number of definitions for the lowest range at its end.  This is because
+<code>cons</code> attaches new elements of the list to the beginning of the list,
+and since the two loops are working their way through the lengths&rsquo; list from
+the lower end first, the <code>defuns-per-range-list</code> will end up largest
+number first.  But we will want to print our graph with smallest values
+first and the larger later.  The solution is to reverse the order of the
+<code>defuns-per-range-list</code>.  We can do this using the <code>nreverse</code>
+function, which reverses the order of a list.
+<span id="index-nreverse"></span>
+</p>
+<p>For example,
+</p>
+<div class="example">
+<pre class="example">(nreverse '(1 2 3 4))
+</pre></div>
+
+<p>produces:
+</p>
+<div class="example">
+<pre class="example">(4 3 2 1)
+</pre></div>
+
+<p>Note that the <code>nreverse</code> function is destructive&mdash;that is, it changes
+the list to which it is applied; this contrasts with the <code>car</code> and
+<code>cdr</code> functions, which are non-destructive.  In this case, we do not
+want the original <code>defuns-per-range-list</code>, so it does not matter that
+it is destroyed.  (The <code>reverse</code> function provides a reversed copy of a
+list, leaving the original list as is.)
+<span id="index-reverse"></span>
+</p>
+<p>Put all together, the <code>defuns-per-range</code> looks like this:
+</p>
+<div class="example">
+<pre class="example">(defun defuns-per-range (sorted-lengths top-of-ranges)
+  &quot;SORTED-LENGTHS defuns in each TOP-OF-RANGES range.&quot;
+  (let ((top-of-range (car top-of-ranges))
+        (number-within-range 0)
+        defuns-per-range-list)
+</pre><pre class="example">
+
+</pre><pre class="example">    ;; <span class="roman">Outer loop.</span>
+    (while top-of-ranges
+</pre><pre class="example">
+
+</pre><pre class="example">      ;; <span class="roman">Inner loop.</span>
+      (while (and
+              ;; <span class="roman">Need number for numeric test.</span>
+              (car sorted-lengths)
+              (&lt; (car sorted-lengths) top-of-range))
+</pre><pre class="example">
+
+</pre><pre class="example">        ;; <span class="roman">Count number of definitions within current range.</span>
+        (setq number-within-range (1+ number-within-range))
+        (setq sorted-lengths (cdr sorted-lengths)))
+
+      ;; <span class="roman">Exit inner loop but remain within outer loop.</span>
+</pre><pre class="example">
+
+</pre><pre class="example">      (setq defuns-per-range-list
+            (cons number-within-range defuns-per-range-list))
+      (setq number-within-range 0)      ; <span class="roman">Reset count to zero.</span>
+</pre><pre class="example">
+
+</pre><pre class="example">      ;; <span class="roman">Move to next range.</span>
+      (setq top-of-ranges (cdr top-of-ranges))
+      ;; <span class="roman">Specify next top of range value.</span>
+      (setq top-of-range (car top-of-ranges)))
+</pre><pre class="example">
+
+</pre><pre class="example">    ;; <span class="roman">Exit outer loop and count the number of defuns larger than</span>
+    ;; <span class="roman">  the largest top-of-range value.</span>
+    (setq defuns-per-range-list
+          (cons
+           (length sorted-lengths)
+           defuns-per-range-list))
+</pre><pre class="example">
+
+</pre><pre class="example">    ;; <span class="roman">Return a list of the number of definitions within each range,</span>
+    ;; <span class="roman">  smallest to largest.</span>
+    (nreverse defuns-per-range-list)))
+</pre></div>
+
+<p>The function is straightforward except for one subtle feature.  The
+true-or-false test of the inner loop looks like this:
+</p>
+<div class="example">
+<pre class="example">(and (car sorted-lengths)
+     (&lt; (car sorted-lengths) top-of-range))
+</pre></div>
+
+<p>instead of like this:
+</p>
+<div class="example">
+<pre class="example">(&lt; (car sorted-lengths) top-of-range)
+</pre></div>
+
+<p>The purpose of the test is to determine whether the first item in the
+<code>sorted-lengths</code> list is less than the value of the top of the range.
+</p>
+<p>The simple version of the test works fine unless the <code>sorted-lengths</code>
+list has a <code>nil</code> value.  In that case, the <code>(car sorted-lengths)</code>
+expression function returns <code>nil</code>.  The <code>&lt;</code> function cannot
+compare a number to <code>nil</code>, which is an empty list, so Emacs signals an
+error and stops the function from attempting to continue to execute.
+</p>
+<p>The <code>sorted-lengths</code> list always becomes <code>nil</code> when the counter
+reaches the end of the list.  This means that any attempt to use the
+<code>defuns-per-range</code> function with the simple version of the test will
+fail.
+</p>
+<p>We solve the problem by using the <code>(car sorted-lengths)</code> expression in
+conjunction with the <code>and</code> expression.  The <code>(car sorted-lengths)</code>
+expression returns a non-<code>nil</code> value so long as the list has at least
+one number within it, but returns <code>nil</code> if the list is empty.  The
+<code>and</code> expression first evaluates the <code>(car sorted-lengths)</code>
+expression, and if it is <code>nil</code>, returns false <em>without</em> evaluating
+the <code>&lt;</code> expression.  But if the <code>(car sorted-lengths)</code> expression
+returns a non-<code>nil</code> value, the <code>and</code> expression evaluates the
+<code>&lt;</code> expression, and returns that value as the value of the <code>and</code>
+expression.
+</p>
+<p>This way, we avoid an error.
+</p>
+<p>Here is a short test of the <code>defuns-per-range</code> function.  First,
+evaluate the expression that binds (a shortened)  <code>top-of-ranges</code> list
+to the list of values, then evaluate the expression for binding the
+<code>sorted-lengths</code> list, and then evaluate the <code>defuns-per-range</code>
+function.
+</p>
+<div class="example">
+<pre class="example">;; <span class="roman">(Shorter list than we will use later.)</span>
+(setq top-of-ranges
+ '(110 120 130 140 150
+   160 170 180 190 200))
+
+(setq sorted-lengths
+      '(85 86 110 116 122 129 154 176 179 200 265 300 300))
+
+(defuns-per-range sorted-lengths top-of-ranges)
+</pre></div>
+
+<p>The list returned looks like this:
+</p>
+<div class="example">
+<pre class="example">(2 2 2 0 0 1 0 2 0 0 4)
+</pre></div>
+
+<p>Indeed, there are two elements of the <code>sorted-lengths</code> list smaller
+than 110, two elements between 110 and 119, two elements between 120 and
+129, and so on.  There are four elements with a value of 200 or larger.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Previous: <a href="Files-List.html">Making a List of Files</a>, Up: <a href="Prepare-the-data.html">Prepare the Data for Display in a Graph</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

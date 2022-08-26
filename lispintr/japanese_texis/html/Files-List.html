@@ -1,0 +1,291 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Files List (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Files List (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Files List (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Prepare-the-data.html" rel="up" title="Prepare the data">
+<link href="Counting-function-definitions.html" rel="next" title="Counting function definitions">
+<link href="Sorting.html" rel="prev" title="Sorting">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="subsection" id="Files-List">
+<div class="header">
+<p>
+Next: <a href="Counting-function-definitions.html" accesskey="n" rel="next">Counting function definitions</a>, Previous: <a href="Sorting.html" accesskey="p" rel="prev">Sorting Lists</a>, Up: <a href="Prepare-the-data.html" accesskey="u" rel="up">Prepare the Data for Display in a Graph</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Making-a-List-of-Files"></span><h4 class="subsection">14.9.2 Making a List of Files</h4>
+
+<p>The <code>recursive-lengths-list-many-files</code> function requires a list of
+files as its argument.  For our test examples, we constructed such a list by
+hand; but the Emacs Lisp source directory is too large for us to do for
+that.  Instead, we will write a function to do the job for us.  In this
+function, we will use both a <code>while</code> loop and a recursive call.
+</p>
+<span id="index-directory_002dfiles"></span>
+<p>We did not have to write a function like this for older versions of GNU
+Emacs, since they placed all the &lsquo;<samp>.el</samp>&rsquo; files in one directory.
+Instead, we were able to use the <code>directory-files</code> function, which
+lists the names of files that match a specified pattern within a single
+directory.
+</p>
+<p>However, recent versions of Emacs place Emacs Lisp files in sub-directories
+of the top level <samp>lisp</samp> directory.  This re-arrangement eases
+navigation.  For example, all the mail related files are in a <samp>lisp</samp>
+sub-directory called <samp>mail</samp>.  But at the same time, this arrangement
+forces us to create a file listing function that descends into the
+sub-directories.
+</p>
+<span id="index-files_002din_002dbelow_002ddirectory"></span>
+<p>We can create this function, called <code>files-in-below-directory</code>, using
+familiar functions such as <code>car</code>, <code>nthcdr</code>, and <code>substring</code>
+in conjunction with an existing function called
+<code>directory-files-and-attributes</code>.  This latter function not only lists
+all the filenames in a directory, including the names of sub-directories,
+but also their attributes.
+</p>
+<p>To restate our goal: to create a function that will enable us to feed
+filenames to <code>recursive-lengths-list-many-files</code> as a list that looks
+like this (but with more elements):
+</p>
+<div class="example">
+<pre class="example">(&quot;./lisp/macros.el&quot;
+ &quot;./lisp/mail/rmail.el&quot;
+ &quot;./lisp/makesum.el&quot;)
+</pre></div>
+
+<p>The <code>directory-files-and-attributes</code> function returns a list of lists.
+Each of the lists within the main list consists of 13 elements.  The first
+element is a string that contains the name of the file&mdash;which, in
+GNU/Linux, may be a <em>directory file</em>, that is to say, a file with the
+special attributes of a directory.  The second element of the list is
+<code>t</code> for a directory, a string for symbolic link (the string is the name
+linked to), or <code>nil</code>.
+</p>
+<p>For example, the first &lsquo;<samp>.el</samp>&rsquo; file in the <samp>lisp/</samp> directory is
+<samp>abbrev.el</samp>.  Its name is
+<samp>/usr/local/share/emacs/22.1.1/lisp/abbrev.el</samp> and it is not a
+directory or a symbolic link.
+</p>
+<p>This is how <code>directory-files-and-attributes</code> lists that file and its
+attributes:
+</p>
+<div class="example">
+<pre class="example">(&quot;abbrev.el&quot;
+nil
+1
+1000
+100
+</pre><pre class="example">(20615 27034 579989 697000)
+(17905 55681 0 0)
+(20615 26327 734791 805000)
+13188
+&quot;-rw-r--r--&quot;
+</pre><pre class="example">t
+2971624
+773)
+</pre></div>
+
+<p>On the other hand, <samp>mail/</samp> is a directory within the <samp>lisp/</samp>
+directory.  The beginning of its listing looks like this:
+</p>
+<div class="example">
+<pre class="example">(&quot;mail&quot;
+t
+&hellip;
+)
+</pre></div>
+
+<p>(To learn about the different attributes, look at the documentation of
+<code>file-attributes</code>.  Bear in mind that the <code>file-attributes</code>
+function does not list the filename, so its first element is
+<code>directory-files-and-attributes</code>&rsquo;s second element.)
+</p>
+<p>We will want our new function, <code>files-in-below-directory</code>, to list the
+&lsquo;<samp>.el</samp>&rsquo; files in the directory it is told to check, and in any
+directories below that directory.
+</p>
+<p>This gives us a hint on how to construct <code>files-in-below-directory</code>:
+within a directory, the function should add &lsquo;<samp>.el</samp>&rsquo; filenames to a list;
+and if, within a directory, the function comes upon a sub-directory, it
+should go into that sub-directory and repeat its actions.
+</p>
+<p>However, we should note that every directory contains a name that refers to
+itself, called <samp>.</samp> (&ldquo;dot&rdquo;), and a name that refers to its parent
+directory, called <samp>..</samp> (&ldquo;dot dot&rdquo;).  (In <samp>/</samp>, the root
+directory, <samp>..</samp> refers to itself, since <samp>/</samp> has no parent.)
+Clearly, we do not want our <code>files-in-below-directory</code> function to
+enter those directories, since they always lead us, directly or indirectly,
+to the current directory.
+</p>
+<p>Consequently, our <code>files-in-below-directory</code> function must do several
+tasks:
+</p>
+<ul>
+<li> Check to see whether it is looking at a filename that ends in &lsquo;<samp>.el</samp>&rsquo;;
+and if so, add its name to a list.
+
+</li><li> Check to see whether it is looking at a filename that is the name of a
+directory; and if so,
+
+<ul class="no-bullet">
+<li>- Check to see whether it is looking at <samp>.</samp> or <samp>..</samp>; and if so skip
+it.
+
+</li><li>- Or else, go into that directory and repeat the process.
+</li></ul>
+</li></ul>
+
+<p>Let&rsquo;s write a function definition to do these tasks.  We will use a
+<code>while</code> loop to move from one filename to another within a directory,
+checking what needs to be done; and we will use a recursive call to repeat
+the actions on each sub-directory.  The recursive pattern is Accumulate
+(see <a href="Accumulate.html">Recursive Pattern: <em>accumulate</em></a>), using <code>append</code> as the combiner.
+</p>
+
+
+<p>Here is the function:
+</p>
+<div class="example">
+<pre class="example">(defun files-in-below-directory (directory)
+  &quot;List the .el files in DIRECTORY and in its sub-directories.&quot;
+  ;; Although the function will be used non-interactively,
+  ;; it will be easier to test if we make it interactive.
+  ;; The directory will have a name such as
+  ;;  &quot;/usr/local/share/emacs/22.1.1/lisp/&quot;
+  (interactive &quot;DDirectory name: &quot;)
+</pre><pre class="example">  (let (el-files-list
+        (current-directory-list
+         (directory-files-and-attributes directory t)))
+    ;; while we are in the current directory
+    (while current-directory-list
+</pre><pre class="example">      (cond
+       ;; check to see whether filename ends in '.el'
+       ;; and if so, add its name to a list.
+       ((equal &quot;.el&quot; (substring (car (car current-directory-list)) -3))
+        (setq el-files-list
+              (cons (car (car current-directory-list)) el-files-list)))
+</pre><pre class="example">       ;; check whether filename is that of a directory
+       ((eq t (car (cdr (car current-directory-list))))
+        ;; decide whether to skip or recurse
+        (if
+            (equal &quot;.&quot;
+                   (substring (car (car current-directory-list)) -1))
+            ;; then do nothing since filename is that of
+            ;;   current directory or parent, &quot;.&quot; or &quot;..&quot;
+            ()
+</pre><pre class="example">          ;; else descend into the directory and repeat the process
+          (setq el-files-list
+                (append
+                 (files-in-below-directory
+                  (car (car current-directory-list)))
+                 el-files-list)))))
+      ;; move to the next filename in the list; this also
+      ;; shortens the list so the while loop eventually comes to an end
+      (setq current-directory-list (cdr current-directory-list)))
+    ;; return the filenames
+    el-files-list))
+</pre></div>
+
+
+<p>The <code>files-in-below-directory</code> <code>directory-files</code> function takes
+one argument, the name of a directory.
+</p>
+<p>Thus, on my system,
+</p>
+
+<div class="example">
+<pre class="example">(length
+ (files-in-below-directory &quot;/usr/local/share/emacs/22.1.1/lisp/&quot;))
+</pre></div>
+
+<p>tells me that in and below my Lisp sources directory are 1031 &lsquo;<samp>.el</samp>&rsquo;
+files.
+</p>
+<p><code>files-in-below-directory</code> returns a list in reverse alphabetical
+order.  An expression to sort the list in alphabetical order looks like
+this:
+</p>
+<div class="example">
+<pre class="example">(sort
+ (files-in-below-directory &quot;/usr/local/share/emacs/22.1.1/lisp/&quot;)
+ 'string-lessp)
+</pre></div>
+
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Counting-function-definitions.html">Counting function definitions</a>, Previous: <a href="Sorting.html">Sorting Lists</a>, Up: <a href="Prepare-the-data.html">Prepare the Data for Display in a Graph</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

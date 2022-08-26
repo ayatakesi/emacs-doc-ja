@@ -1,0 +1,153 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Recursion with cond (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Recursion with cond (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Recursion with cond (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Recursion.html" rel="up" title="Recursion">
+<link href="Recursive-Patterns.html" rel="next" title="Recursive Patterns">
+<link href="Recursive-triangle-function.html" rel="prev" title="Recursive triangle function">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="subsection" id="Recursion-with-cond">
+<div class="header">
+<p>
+Next: <a href="Recursive-Patterns.html" accesskey="n" rel="next">Recursive Patterns</a>, Previous: <a href="Recursive-triangle-function.html" accesskey="p" rel="prev">Recursion in Place of a Counter</a>, Up: <a href="Recursion.html" accesskey="u" rel="up">Recursion</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Recursion-Example-Using-cond"></span><h4 class="subsection">11.3.5 Recursion Example Using <code>cond</code></h4>
+<span id="index-cond"></span>
+
+<p>The version of <code>triangle-recursively</code> described earlier is written with
+the <code>if</code> special form.  It can also be written using another special
+form called <code>cond</code>.  The name of the special form <code>cond</code> is an
+abbreviation of the word &lsquo;<samp>conditional</samp>&rsquo;.
+</p>
+<p>Although the <code>cond</code> special form is not used as often in the Emacs Lisp
+sources as <code>if</code>, it is used often enough to justify explaining it.
+</p>
+<p>The template for a <code>cond</code> expression looks like this:
+</p>
+<div class="example">
+<pre class="example">(cond
+ <var>body</var>&hellip;)
+</pre></div>
+
+<p>where the <var>body</var> is a series of lists.
+</p>
+<p>Written out more fully, the template looks like this:
+</p>
+<div class="example">
+<pre class="example">(cond
+ (<var>first-true-or-false-test</var> <var>first-consequent</var>)
+ (<var>second-true-or-false-test</var> <var>second-consequent</var>)
+ (<var>third-true-or-false-test</var> <var>third-consequent</var>)
+  &hellip;)
+</pre></div>
+
+<p>When the Lisp interpreter evaluates the <code>cond</code> expression, it evaluates
+the first element (the <small>CAR</small> or true-or-false-test) of the first
+expression in a series of expressions within the body of the <code>cond</code>.
+</p>
+<p>If the true-or-false-test returns <code>nil</code> the rest of that expression,
+the consequent, is skipped and the true-or-false-test of the next expression
+is evaluated.  When an expression is found whose true-or-false-test returns
+a value that is not <code>nil</code>, the consequent of that expression is
+evaluated.  The consequent can be one or more expressions.  If the
+consequent consists of more than one expression, the expressions are
+evaluated in sequence and the value of the last one is returned.  If the
+expression does not have a consequent, the value of the true-or-false-test
+is returned.
+</p>
+<p>If none of the true-or-false-tests test true, the <code>cond</code> expression
+returns <code>nil</code>.
+</p>
+<p>Written using <code>cond</code>, the <code>triangle</code> function looks like this:
+</p>
+<div class="example">
+<pre class="example">(defun triangle-using-cond (number)
+  (cond ((&lt;= number 0) 0)
+        ((= number 1) 1)
+        ((&gt; number 1)
+         (+ number (triangle-using-cond (1- number))))))
+</pre></div>
+
+<p>In this example, the <code>cond</code> returns 0 if the number is less than or
+equal to 0, it returns 1 if the number is 1 and it evaluates <code>(+ number
+(triangle-using-cond (1- number)))</code> if the number is greater than 1.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Recursive-Patterns.html">Recursive Patterns</a>, Previous: <a href="Recursive-triangle-function.html">Recursion in Place of a Counter</a>, Up: <a href="Recursion.html">Recursion</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

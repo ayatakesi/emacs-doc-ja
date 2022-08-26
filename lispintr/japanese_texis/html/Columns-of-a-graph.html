@@ -1,0 +1,414 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Columns of a graph (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Columns of a graph (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Columns of a graph (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Readying-a-Graph.html" rel="up" title="Readying a Graph">
+<link href="graph_002dbody_002dprint.html" rel="next" title="graph-body-print">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="unnumberedsec" id="Columns-of-a-graph">
+<div class="header">
+<p>
+Next: <a href="graph_002dbody_002dprint.html" accesskey="n" rel="next">The <code>graph-body-print</code> Function</a>, Up: <a href="Readying-a-Graph.html" accesskey="u" rel="up">Readying a Graph</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Printing-the-Columns-of-a-Graph"></span><h3 class="unnumberedsec">Printing the Columns of a Graph</h3>
+
+<p>Since Emacs is designed to be flexible and work with all kinds of terminals,
+including character-only terminals, the graph will need to be made from one
+of the typewriter symbols.  An asterisk will do; as we enhance the
+graph-printing function, we can make the choice of symbol a user option.
+</p>
+<p>We can call this function <code>graph-body-print</code>; it will take a
+<code>numbers-list</code> as its only argument.  At this stage, we will not label
+the graph, but only print its body.
+</p>
+<p>The <code>graph-body-print</code> function inserts a vertical column of asterisks
+for each element in the <code>numbers-list</code>.  The height of each line is
+determined by the value of that element of the <code>numbers-list</code>.
+</p>
+<p>Inserting columns is a repetitive act; that means that this function can be
+written either with a <code>while</code> loop or recursively.
+</p>
+<p>Our first challenge is to discover how to print a column of asterisks.
+Usually, in Emacs, we print characters onto a screen horizontally, line by
+line, by typing.  We have two routes we can follow: write our own
+column-insertion function or discover whether one exists in Emacs.
+</p>
+<p>To see whether there is one in Emacs, we can use the <kbd>M-x apropos</kbd>
+command.  This command is like the <kbd>C-h a</kbd> (<code>command-apropos</code>)
+command, except that the latter finds only those functions that are
+commands.  The <kbd>M-x apropos</kbd> command lists all symbols that match a
+regular expression, including functions that are not interactive.
+<span id="index-apropos"></span>
+</p>
+<p>What we want to look for is some command that prints or inserts columns.
+Very likely, the name of the function will contain either the word &ldquo;print&rdquo;
+or the word &ldquo;insert&rdquo; or the word &ldquo;column&rdquo;.  Therefore, we can simply
+type <kbd>M-x apropos <span class="key">RET</span> print\|insert\|column <span class="key">RET</span></kbd> and look at
+the result.  On my system, this command once took quite some time, and then
+produced a list of 79 functions and variables.  Now it does not take much
+time at all and produces a list of 211 functions and variables.  Scanning
+down the list, the only function that looks as if it might do the job is
+<code>insert-rectangle</code>.
+</p>
+<p>Indeed, this is the function we want; its documentation says:
+</p>
+<div class="example">
+<pre class="example">insert-rectangle:
+Insert text of RECTANGLE with upper left corner at point.
+RECTANGLE's first line is inserted at point,
+its second line is inserted at a point vertically under point, etc.
+RECTANGLE should be a list of strings.
+After this command, the mark is at the upper left corner
+and point is at the lower right corner.
+</pre></div>
+
+<p>We can run a quick test, to make sure it does what we expect of it.
+</p>
+<p>Here is the result of placing the cursor after the <code>insert-rectangle</code>
+expression and typing <kbd>C-u C-x C-e</kbd> (<code>eval-last-sexp</code>).  The
+function inserts the strings &lsquo;<samp>&quot;first&quot;</samp>&rsquo;, &lsquo;<samp>&quot;second&quot;</samp>&rsquo;, and
+&lsquo;<samp>&quot;third&quot;</samp>&rsquo; at and below point.  Also the function returns <code>nil</code>.
+</p>
+<div class="example">
+<pre class="example">(insert-rectangle '(&quot;first&quot; &quot;second&quot; &quot;third&quot;))first
+                                              second
+                                              thirdnil
+</pre></div>
+
+<p>Of course, we won&rsquo;t be inserting the text of the <code>insert-rectangle</code>
+expression itself into the buffer in which we are making the graph, but will
+call the function from our program.  We shall, however, have to make sure
+that point is in the buffer at the place where the <code>insert-rectangle</code>
+function will insert its column of strings.
+</p>
+<p>If you are reading this in Info, you can see how this works by switching to
+another buffer, such as the <samp>*scratch*</samp> buffer, placing point somewhere
+in the buffer, typing <kbd>M-:</kbd>, typing the <code>insert-rectangle</code>
+expression into the minibuffer at the prompt, and then typing <tt class="key">RET</tt>.
+This causes Emacs to evaluate the expression in the minibuffer, but to use
+as the value of point the position of point in the <samp>*scratch*</samp> buffer.
+(<kbd>M-:</kbd> is the keybinding for <code>eval-expression</code>. Also, <code>nil</code>
+does not appear in the <samp>*scratch*</samp> buffer since the expression is
+evaluated in the minibuffer.)
+</p>
+<p>We find when we do this that point ends up at the end of the last inserted
+line&mdash;that is to say, this function moves point as a side-effect.  If we
+were to repeat the command, with point at this position, the next insertion
+would be below and to the right of the previous insertion.  We don&rsquo;t want
+this! If we are going to make a bar graph, the columns need to be beside
+each other.
+</p>
+<p>So we discover that each cycle of the column-inserting <code>while</code> loop
+must reposition point to the place we want it, and that place will be at the
+top, not the bottom, of the column.  Moreover, we remember that when we
+print a graph, we do not expect all the columns to be the same height.  This
+means that the top of each column may be at a different height from the
+previous one.  We cannot simply reposition point to the same line each time,
+but moved over to the right&mdash;or perhaps we can&hellip;
+</p>
+<p>We are planning to make the columns of the bar graph out of asterisks.  The
+number of asterisks in the column is the number specified by the current
+element of the <code>numbers-list</code>.  We need to construct a list of
+asterisks of the right length for each call to <code>insert-rectangle</code>.  If
+this list consists solely of the requisite number of asterisks, then we will
+have to position point the right number of lines above the base for the
+graph to print correctly.  This could be difficult.
+</p>
+<p>Alternatively, if we can figure out some way to pass <code>insert-rectangle</code>
+a list of the same length each time, then we can place point on the same
+line each time, but move it over one column to the right for each new
+column.  If we do this, however, some of the entries in the list passed to
+<code>insert-rectangle</code> must be blanks rather than asterisks.  For example,
+if the maximum height of the graph is 5, but the height of the column is 3,
+then <code>insert-rectangle</code> requires an argument that looks like this:
+</p>
+<div class="example">
+<pre class="example">(&quot; &quot; &quot; &quot; &quot;*&quot; &quot;*&quot; &quot;*&quot;)
+</pre></div>
+
+<p>This last proposal is not so difficult, so long as we can determine the
+column height.  There are two ways for us to specify the column height: we
+can arbitrarily state what it will be, which would work fine for graphs of
+that height; or we can search through the list of numbers and use the
+maximum height of the list as the maximum height of the graph.  If the
+latter operation were difficult, then the former procedure would be easiest,
+but there is a function built into Emacs that determines the maximum of its
+arguments.  We can use that function.  The function is called <code>max</code> and
+it returns the largest of all its arguments, which must be numbers.  Thus,
+for example,
+</p>
+<div class="example">
+<pre class="example">(max  3 4 6 5 7 3)
+</pre></div>
+
+<p>returns 7.  (A corresponding function called <code>min</code> returns the smallest
+of all its arguments.)
+<span id="index-max"></span>
+<span id="index-min"></span>
+</p>
+<p>However, we cannot simply call <code>max</code> on the <code>numbers-list</code>; the
+<code>max</code> function expects numbers as its argument, not a list of numbers.
+Thus, the following expression,
+</p>
+<div class="example">
+<pre class="example">(max  '(3 4 6 5 7 3))
+</pre></div>
+
+<p>produces the following error message;
+</p>
+<div class="example">
+<pre class="example">Wrong type of argument:  number-or-marker-p, (3 4 6 5 7 3)
+</pre></div>
+
+<span id="index-apply"></span>
+<p>We need a function that passes a list of arguments to a function.  This
+function is <code>apply</code>.  This function applies its first argument (a
+function) to its remaining arguments, the last of which may be a list.
+</p>
+<p>For example,
+</p>
+<div class="example">
+<pre class="example">(apply 'max 3 4 7 3 '(4 8 5))
+</pre></div>
+
+<p>returns 8.
+</p>
+<p>(Incidentally, I don&rsquo;t know how you would learn of this function without a
+book such as this.  It is possible to discover other functions, like
+<code>search-forward</code> or <code>insert-rectangle</code>, by guessing at a part of
+their names and then using <code>apropos</code>.  Even though its base in metaphor
+is clear&mdash;apply its first argument to the rest&mdash;I doubt a novice would
+come up with that particular word when using <code>apropos</code> or other aid.
+Of course, I could be wrong; after all, the function was first named by
+someone who had to invent it.)
+</p>
+<p>The second and subsequent arguments to <code>apply</code> are optional, so we can
+use <code>apply</code> to call a function and pass the elements of a list to it,
+like this, which also returns 8:
+</p>
+<div class="example">
+<pre class="example">(apply 'max '(4 8 5))
+</pre></div>
+
+<p>This latter way is how we will use <code>apply</code>.  The
+<code>recursive-lengths-list-many-files</code> function returns a numbers&rsquo; list to
+which we can apply <code>max</code> (we could also apply <code>max</code> to the sorted
+numbers&rsquo; list; it does not matter whether the list is sorted or not.)
+</p>
+<p>Hence, the operation for finding the maximum height of the graph is this:
+</p>
+<div class="example">
+<pre class="example">(setq max-graph-height (apply 'max numbers-list))
+</pre></div>
+
+<p>Now we can return to the question of how to create a list of strings for a
+column of the graph.  Told the maximum height of the graph and the number of
+asterisks that should appear in the column, the function should return a
+list of strings for the <code>insert-rectangle</code> command to insert.
+</p>
+<p>Each column is made up of asterisks or blanks.  Since the function is passed
+the value of the height of the column and the number of asterisks in the
+column, the number of blanks can be found by subtracting the number of
+asterisks from the height of the column.  Given the number of blanks and the
+number of asterisks, two <code>while</code> loops can be used to construct the
+list:
+</p>
+<div class="example">
+<pre class="example">;;; <span class="roman">First version.</span>
+(defun column-of-graph (max-graph-height actual-height)
+  &quot;Return list of strings that is one column of a graph.&quot;
+  (let ((insert-list nil)
+        (number-of-top-blanks
+         (- max-graph-height actual-height)))
+</pre><pre class="example">
+
+</pre><pre class="example">    ;; <span class="roman">Fill in asterisks.</span>
+    (while (&gt; actual-height 0)
+      (setq insert-list (cons &quot;*&quot; insert-list))
+      (setq actual-height (1- actual-height)))
+</pre><pre class="example">
+
+</pre><pre class="example">    ;; <span class="roman">Fill in blanks.</span>
+    (while (&gt; number-of-top-blanks 0)
+      (setq insert-list (cons &quot; &quot; insert-list))
+      (setq number-of-top-blanks
+            (1- number-of-top-blanks)))
+</pre><pre class="example">
+
+</pre><pre class="example">    ;; <span class="roman">Return whole list.</span>
+    insert-list))
+</pre></div>
+
+<p>If you install this function and then evaluate the following expression you
+will see that it returns the list as desired:
+</p>
+<div class="example">
+<pre class="example">(column-of-graph 5 3)
+</pre></div>
+
+<p>returns
+</p>
+<div class="example">
+<pre class="example">(&quot; &quot; &quot; &quot; &quot;*&quot; &quot;*&quot; &quot;*&quot;)
+</pre></div>
+
+<p>As written, <code>column-of-graph</code> contains a major flaw: the symbols used
+for the blank and for the marked entries in the column are hard-coded as a
+space and asterisk.  This is fine for a prototype, but you, or another user,
+may wish to use other symbols.  For example, in testing the graph function,
+you may want to use a period in place of the space, to make sure the point
+is being repositioned properly each time the <code>insert-rectangle</code>
+function is called; or you might want to substitute a &lsquo;<samp>+</samp>&rsquo; sign or other
+symbol for the asterisk.  You might even want to make a graph-column that is
+more than one display column wide.  The program should be more flexible.
+The way to do that is to replace the blank and the asterisk with two
+variables that we can call <code>graph-blank</code> and <code>graph-symbol</code> and
+define those variables separately.
+</p>
+<p>Also, the documentation is not well written.  These considerations lead us
+to the second version of the function:
+</p>
+<div class="example">
+<pre class="example">(defvar graph-symbol &quot;*&quot;
+  &quot;String used as symbol in graph, usually an asterisk.&quot;)
+</pre><pre class="example">
+
+</pre><pre class="example">(defvar graph-blank &quot; &quot;
+  &quot;String used as blank in graph, usually a blank space.
+graph-blank must be the same number of columns wide
+as graph-symbol.&quot;)
+</pre></div>
+
+<p>(For an explanation of <code>defvar</code>, see <a href="defvar.html">Initializing a
+Variable with <code>defvar</code></a>.)
+</p>
+<div class="example">
+<pre class="example">;;; <span class="roman">Second version.</span>
+(defun column-of-graph (max-graph-height actual-height)
+  &quot;Return MAX-GRAPH-HEIGHT strings; ACTUAL-HEIGHT are graph-symbols.
+
+</pre><pre class="example">The graph-symbols are contiguous entries at the end
+of the list.
+The list will be inserted as one column of a graph.
+The strings are either graph-blank or graph-symbol.&quot;
+</pre><pre class="example">
+
+</pre><pre class="example">  (let ((insert-list nil)
+        (number-of-top-blanks
+         (- max-graph-height actual-height)))
+</pre><pre class="example">
+
+</pre><pre class="example">    ;; <span class="roman">Fill in <code>graph-symbols</code>.</span>
+    (while (&gt; actual-height 0)
+      (setq insert-list (cons graph-symbol insert-list))
+      (setq actual-height (1- actual-height)))
+</pre><pre class="example">
+
+</pre><pre class="example">    ;; <span class="roman">Fill in <code>graph-blanks</code>.</span>
+    (while (&gt; number-of-top-blanks 0)
+      (setq insert-list (cons graph-blank insert-list))
+      (setq number-of-top-blanks
+            (1- number-of-top-blanks)))
+
+    ;; <span class="roman">Return whole list.</span>
+    insert-list))
+</pre></div>
+
+<p>If we wished, we could rewrite <code>column-of-graph</code> a third time to
+provide optionally for a line graph as well as for a bar graph.  This would
+not be hard to do.  One way to think of a line graph is that it is no more
+than a bar graph in which the part of each bar that is below the top is
+blank.  To construct a column for a line graph, the function first
+constructs a list of blanks that is one shorter than the value, then it uses
+<code>cons</code> to attach a graph symbol to the list; then it uses <code>cons</code>
+again to attach the top blanks to the list.
+</p>
+<p>It is easy to see how to write such a function, but since we don&rsquo;t need it,
+we will not do it.  But the job could be done, and if it were done, it would
+be done with <code>column-of-graph</code>.  Even more important, it is worth
+noting that few changes would have to be made anywhere else.  The
+enhancement, if we ever wish to make it, is simple.
+</p>
+<p>Now, finally, we come to our first actual graph printing function.  This
+prints the body of a graph, not the labels for the vertical and horizontal
+axes, so we can call this <code>graph-body-print</code>.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="graph_002dbody_002dprint.html">The <code>graph-body-print</code> Function</a>, Up: <a href="Readying-a-Graph.html">Readying a Graph</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

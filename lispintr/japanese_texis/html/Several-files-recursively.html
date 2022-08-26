@@ -1,0 +1,165 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Several files recursively (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Several files recursively (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Several files recursively (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Words-in-a-defun.html" rel="up" title="Words in a defun">
+<link href="Prepare-the-data.html" rel="next" title="Prepare the data">
+<link href="Several-files.html" rel="prev" title="Several files">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="section" id="Several-files-recursively">
+<div class="header">
+<p>
+Next: <a href="Prepare-the-data.html" accesskey="n" rel="next">Prepare the Data for Display in a Graph</a>, Previous: <a href="Several-files.html" accesskey="p" rel="prev">Count Words in <code>defuns</code> in Different Files</a>, Up: <a href="Words-in-a-defun.html" accesskey="u" rel="up">Counting Words in a <code>defun</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Recursively-Count-Words-in-Different-Files"></span><h3 class="section">14.8 Recursively Count Words in Different Files</h3>
+
+<p>Besides a <code>while</code> loop, you can work on each of a list of files with
+recursion.  A recursive version of <code>lengths-list-many-files</code> is short
+and simple.
+</p>
+<p>The recursive function has the usual parts: the do-again-test, the
+next-step-expression, and the recursive call.  The do-again-test determines
+whether the function should call itself again, which it will do if the
+<code>list-of-files</code> contains any remaining elements; the
+next-step-expression resets the <code>list-of-files</code> to the <small>CDR</small> of
+itself, so eventually the list will be empty; and the recursive call calls
+itself on the shorter list.  The complete function is shorter than this
+description!
+<span id="index-recursive_002dlengths_002dlist_002dmany_002dfiles"></span>
+</p>
+<div class="example">
+<pre class="example">(defun recursive-lengths-list-many-files (list-of-files)
+  &quot;Return list of lengths of each defun in LIST-OF-FILES.&quot;
+  (if list-of-files                     ; <span class="roman">do-again-test</span>
+      (append
+       (lengths-list-file
+        (expand-file-name (car list-of-files)))
+       (recursive-lengths-list-many-files
+        (cdr list-of-files)))))
+</pre></div>
+
+<p>In a sentence, the function returns the lengths&rsquo; list for the first of the
+<code>list-of-files</code> appended to the result of calling itself on the rest of
+the <code>list-of-files</code>.
+</p>
+<p>Here is a test of <code>recursive-lengths-list-many-files</code>, along with the
+results of running <code>lengths-list-file</code> on each of the files
+individually.
+</p>
+<p>Install <code>recursive-lengths-list-many-files</code> and
+<code>lengths-list-file</code>, if necessary, and then evaluate the following
+expressions.  You may need to change the files&rsquo; pathnames; those here work
+when this Info file and the Emacs sources are located in their customary
+places.  To change the expressions, copy them to the <samp>*scratch*</samp>
+buffer, edit them, and then evaluate them.
+</p>
+<p>The results are shown after the &lsquo;<samp>&rArr;</samp>&rsquo;.  (These results are for
+files from Emacs version 22.1.1; files from other versions of Emacs may
+produce different results.)
+</p>
+<div class="example">
+<pre class="example">(cd &quot;/usr/local/share/emacs/22.1.1/&quot;)
+
+(lengths-list-file &quot;./lisp/macros.el&quot;)
+     &rArr; (283 263 480 90)
+</pre><pre class="example">
+
+</pre><pre class="example">(lengths-list-file &quot;./lisp/mail/mailalias.el&quot;)
+     &rArr; (38 32 29 95 178 180 321 218 324)
+</pre><pre class="example">
+
+</pre><pre class="example">(lengths-list-file &quot;./lisp/makesum.el&quot;)
+     &rArr; (85 181)
+</pre><pre class="example">
+
+</pre><pre class="example">  (recursive-lengths-list-many-files
+   '(&quot;./lisp/macros.el&quot;
+     &quot;./lisp/mail/mailalias.el&quot;
+     &quot;./lisp/makesum.el&quot;))
+       &rArr; (283 263 480 90 38 32 29 95 178 180 321 218 324 85 181)
+</pre></div>
+
+<p>The <code>recursive-lengths-list-many-files</code> function produces the output we
+want.
+</p>
+<p>The next step is to prepare the data in the list for display in a graph.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Prepare-the-data.html">Prepare the Data for Display in a Graph</a>, Previous: <a href="Several-files.html">Count Words in <code>defuns</code> in Different Files</a>, Up: <a href="Words-in-a-defun.html">Counting Words in a <code>defun</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

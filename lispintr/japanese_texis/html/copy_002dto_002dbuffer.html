@@ -1,0 +1,159 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>copy-to-buffer (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="copy-to-buffer (プログラミングEmacs Lisp)">
+<meta name="keywords" content="copy-to-buffer (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="More-Complex.html" rel="up" title="More Complex">
+<link href="insert_002dbuffer.html" rel="next" title="insert-buffer">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="section" id="copy_002dto_002dbuffer">
+<div class="header">
+<p>
+Next: <a href="insert_002dbuffer.html" accesskey="n" rel="next">The Definition of <code>insert-buffer</code></a>, Up: <a href="More-Complex.html" accesskey="u" rel="up">A Few More Complex Functions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-Definition-of-copy_002dto_002dbuffer"></span><h3 class="section">5.1 The Definition of <code>copy-to-buffer</code></h3>
+<span id="index-copy_002dto_002dbuffer"></span>
+
+<p>After understanding how <code>append-to-buffer</code> works, it is easy to
+understand <code>copy-to-buffer</code>.  This function copies text into a buffer,
+but instead of adding to the second buffer, it replaces all the previous
+text in the second buffer.
+</p>
+<p>The body of <code>copy-to-buffer</code> looks like this,
+</p>
+<div class="example">
+<pre class="example">&hellip;
+(interactive &quot;BCopy to buffer: \nr&quot;)
+(let ((oldbuf (current-buffer)))
+  (with-current-buffer (get-buffer-create buffer)
+    (barf-if-buffer-read-only)
+    (erase-buffer)
+    (save-excursion
+      (insert-buffer-substring oldbuf start end)))))
+</pre></div>
+
+<p>The <code>copy-to-buffer</code> function has a simpler <code>interactive</code>
+expression than <code>append-to-buffer</code>.
+</p>
+<p>The definition then says
+</p>
+<div class="example">
+<pre class="example">(with-current-buffer (get-buffer-create buffer) &hellip;
+</pre></div>
+
+<p>First, look at the earliest inner expression; that is evaluated first.  That
+expression starts with <code>get-buffer-create buffer</code>.  The function tells
+the computer to use the buffer with the name specified as the one to which
+you are copying, or if such a buffer does not exist, to create it.  Then,
+the <code>with-current-buffer</code> function evaluates its body with that buffer
+temporarily current.
+</p>
+<p>(This demonstrates another way to shift the computer&rsquo;s attention but not the
+user&rsquo;s.  The <code>append-to-buffer</code> function showed how to do the same with
+<code>save-excursion</code> and <code>set-buffer</code>.  <code>with-current-buffer</code> is
+a newer, and arguably easier, mechanism.)
+</p>
+<p>The <code>barf-if-buffer-read-only</code> function sends you an error message
+saying the buffer is read-only if you cannot modify it.
+</p>
+<p>The next line has the <code>erase-buffer</code> function as its sole contents.
+That function erases the buffer.
+</p>
+<p>Finally, the last two lines contain the <code>save-excursion</code> expression
+with <code>insert-buffer-substring</code> as its body.  The
+<code>insert-buffer-substring</code> expression copies the text from the buffer
+you are in (and you have not seen the computer shift its attention, so you
+don&rsquo;t know that that buffer is now called <code>oldbuf</code>).
+</p>
+<p>Incidentally, this is what is meant by &ldquo;replacement&rdquo;.  To replace text,
+Emacs erases the previous text and then inserts new text.
+</p>
+<p>In outline, the body of <code>copy-to-buffer</code> looks like this:
+</p>
+<div class="example">
+<pre class="example">(let (<var>bind-</var><code>oldbuf</code><var>-to-value-of-</var><code>current-buffer</code>)
+    (<var>with-the-buffer-you-are-copying-to</var>
+      (<var>but-do-not-erase-or-copy-to-a-read-only-buffer</var>)
+      (erase-buffer)
+      (save-excursion
+        <var>insert-substring-from-</var><code>oldbuf</code><var>-into-buffer</var>)))
+</pre></div>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="insert_002dbuffer.html">The Definition of <code>insert-buffer</code></a>, Up: <a href="More-Complex.html">A Few More Complex Functions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

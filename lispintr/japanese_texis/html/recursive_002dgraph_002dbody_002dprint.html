@@ -1,0 +1,164 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>recursive-graph-body-print (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="recursive-graph-body-print (プログラミングEmacs Lisp)">
+<meta name="keywords" content="recursive-graph-body-print (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Readying-a-Graph.html" rel="up" title="Readying a Graph">
+<link href="Printed-Axes.html" rel="next" title="Printed Axes">
+<link href="graph_002dbody_002dprint.html" rel="prev" title="graph-body-print">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="section" id="recursive_002dgraph_002dbody_002dprint">
+<div class="header">
+<p>
+Next: <a href="Printed-Axes.html" accesskey="n" rel="next">Need for Printed Axes</a>, Previous: <a href="graph_002dbody_002dprint.html" accesskey="p" rel="prev">The <code>graph-body-print</code> Function</a>, Up: <a href="Readying-a-Graph.html" accesskey="u" rel="up">Readying a Graph</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-recursive_002dgraph_002dbody_002dprint-Function"></span><h3 class="section">15.2 The <code>recursive-graph-body-print</code> Function</h3>
+<span id="index-recursive_002dgraph_002dbody_002dprint"></span>
+
+<p>The <code>graph-body-print</code> function may also be written recursively.  The
+recursive solution is divided into two parts: an outside wrapper that uses a
+<code>let</code> expression to determine the values of several variables that need
+only be found once, such as the maximum height of the graph, and an inside
+function that is called recursively to print the graph.
+</p>
+<p>The wrapper is uncomplicated:
+</p>
+<div class="example">
+<pre class="example">(defun recursive-graph-body-print (numbers-list)
+  &quot;Print a bar graph of the NUMBERS-LIST.
+The numbers-list consists of the Y-axis values.&quot;
+  (let ((height (apply 'max numbers-list))
+        (symbol-width (length graph-blank))
+        from-position)
+    (recursive-graph-body-print-internal
+     numbers-list
+     height
+     symbol-width)))
+</pre></div>
+
+<p>The recursive function is a little more difficult.  It has four parts: the
+do-again-test, the printing code, the recursive call, and the
+next-step-expression.  The do-again-test is a <code>when</code> expression that
+determines whether the <code>numbers-list</code> contains any remaining elements;
+if it does, the function prints one column of the graph using the printing
+code and calls itself again.  The function calls itself again according to
+the value produced by the next-step-expression which causes the call to act
+on a shorter version of the <code>numbers-list</code>.
+</p>
+<div class="example">
+<pre class="example">(defun recursive-graph-body-print-internal
+  (numbers-list height symbol-width)
+  &quot;Print a bar graph.
+Used within recursive-graph-body-print function.&quot;
+</pre><pre class="example">
+
+</pre><pre class="example">  (when numbers-list
+        (setq from-position (point))
+        (insert-rectangle
+         (column-of-graph height (car numbers-list)))
+</pre><pre class="example">        (goto-char from-position)
+        (forward-char symbol-width)
+        (sit-for 0)     ; <span class="roman">Draw graph column by column.</span>
+        (recursive-graph-body-print-internal
+         (cdr numbers-list) height symbol-width)))
+</pre></div>
+
+<p>After installation, this expression can be tested; here is a sample:
+</p>
+<div class="example">
+<pre class="example">(recursive-graph-body-print '(3 2 5 6 7 5 3 4 6 4 3 2 1))
+</pre></div>
+
+<p>Here is what <code>recursive-graph-body-print</code> produces:
+</p>
+<div class="example">
+<pre class="example">                *
+               **   *
+              ****  *
+              **** ***
+            * *********
+            ************
+            *************
+</pre></div>
+
+<p>Either of these two functions, <code>graph-body-print</code> or
+<code>recursive-graph-body-print</code>, create the body of a graph.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Printed-Axes.html">Need for Printed Axes</a>, Previous: <a href="graph_002dbody_002dprint.html">The <code>graph-body-print</code> Function</a>, Up: <a href="Readying-a-Graph.html">Readying a Graph</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

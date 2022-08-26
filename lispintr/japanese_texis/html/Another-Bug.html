@@ -1,0 +1,233 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Another Bug (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Another Bug (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Another Bug (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Print-Whole-Graph.html" rel="up" title="Print Whole Graph">
+<link href="Final-printed-graph.html" rel="next" title="Final printed graph">
+<link href="mapcar.html" rel="prev" title="mapcar">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="appendixsubsec" id="Another-Bug">
+<div class="header">
+<p>
+Next: <a href="Final-printed-graph.html" accesskey="n" rel="next">The Printed Graph</a>, Previous: <a href="mapcar.html" accesskey="p" rel="prev">The <code>mapcar</code> Function</a>, Up: <a href="Print-Whole-Graph.html" accesskey="u" rel="up">Printing the Whole Graph</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Another-Bug-_2026-Most-Insidious"></span><h4 class="appendixsubsec">C.4.5 Another Bug &hellip; Most Insidious</h4>
+<span id="index-Bug_002c-most-insidious-type"></span>
+<span id="index-Insidious-type-of-bug"></span>
+
+<p>I said &ldquo;almost ready to print&rdquo;! Of course, there is a bug in the
+<code>print-graph</code> function &hellip; It has a <code>vertical-step</code> option,
+but not a <code>horizontal-step</code> option.  The <code>top-of-range</code> scale goes
+from 10 to 300 by tens.  But the <code>print-graph</code> function will print only
+by ones.
+</p>
+<p>This is a classic example of what some consider the most insidious type of
+bug, the bug of omission.  This is not the kind of bug you can find by
+studying the code, for it is not in the code; it is an omitted feature.
+Your best actions are to try your program early and often; and try to
+arrange, as much as you can, to write code that is easy to understand and
+easy to change.  Try to be aware, whenever you can, that whatever you have
+written, <em>will</em> be rewritten, if not soon, eventually.  A hard maxim to
+follow.
+</p>
+<p>It is the <code>print-X-axis-numbered-line</code> function that needs the work;
+and then the <code>print-X-axis</code> and the <code>print-graph</code> functions need
+to be adapted.  Not much needs to be done; there is one nicety: the numbers
+ought to line up under the tic marks.  This takes a little thought.
+</p>
+<p>Here is the corrected <code>print-X-axis-numbered-line</code>:
+</p>
+<div class="example">
+<pre class="example">(defun print-X-axis-numbered-line
+  (number-of-X-tics X-axis-leading-spaces
+   &amp;optional horizontal-step)
+  &quot;Print line of X-axis numbers&quot;
+  (let ((number X-axis-label-spacing)
+        (horizontal-step (or horizontal-step 1)))
+</pre><pre class="example">    (insert X-axis-leading-spaces)
+    ;; <span class="roman">Delete extra leading spaces.</span>
+    (delete-char
+     (- (1-
+         (length (number-to-string horizontal-step)))))
+    (insert (concat
+             (make-string
+</pre><pre class="example">              ;; <span class="roman">Insert white space.</span>
+              (-  (* symbol-width
+                     X-axis-label-spacing)
+                  (1-
+                   (length
+                    (number-to-string horizontal-step)))
+                  2)
+              ? )
+             (number-to-string
+              (* number horizontal-step))))
+</pre><pre class="example">    ;; <span class="roman">Insert remaining numbers.</span>
+    (setq number (+ number X-axis-label-spacing))
+    (while (&gt; number-of-X-tics 1)
+      (insert (X-axis-element
+               (* number horizontal-step)))
+      (setq number (+ number X-axis-label-spacing))
+      (setq number-of-X-tics (1- number-of-X-tics)))))
+</pre></div>
+
+<p>If you are reading this in Info, you can see the new versions of
+<code>print-X-axis</code> <code>print-graph</code> and evaluate them.  If you are
+reading this in a printed book, you can see the changed lines here (the full
+text is too much to print).
+</p>
+
+<div class="example">
+<pre class="example">(defun print-X-axis (numbers-list horizontal-step)
+  &quot;Print X axis labels to length of NUMBERS-LIST.
+Optionally, HORIZONTAL-STEP, a positive integer,
+specifies how much an X  axis label increments for
+each column.&quot;
+</pre><pre class="example">;; Value of symbol-width and full-Y-label-width
+;; are passed by print-graph.
+  (let* ((leading-spaces
+          (make-string full-Y-label-width ? ))
+       ;; symbol-width <span class="roman">is provided by</span> graph-body-print
+       (tic-width (* symbol-width X-axis-label-spacing))
+       (X-length (length numbers-list))
+</pre><pre class="example">       (X-tic
+        (concat
+         (make-string
+          ;; <span class="roman">Make a string of blanks.</span>
+          (-  (* symbol-width X-axis-label-spacing)
+              (length X-axis-tic-symbol))
+          ? )
+</pre><pre class="example">         ;; <span class="roman">Concatenate blanks with tic symbol.</span>
+         X-axis-tic-symbol))
+       (tic-number
+        (if (zerop (% X-length tic-width))
+            (/ X-length tic-width)
+          (1+ (/ X-length tic-width)))))
+</pre><pre class="example">
+
+</pre><pre class="example">    (print-X-axis-tic-line
+     tic-number leading-spaces X-tic)
+    (insert &quot;\n&quot;)
+    (print-X-axis-numbered-line
+     tic-number leading-spaces horizontal-step)))
+</pre></div>
+
+<div class="example">
+<pre class="example">(defun print-graph
+  (numbers-list &amp;optional vertical-step horizontal-step)
+  &quot;Print labeled bar graph of the NUMBERS-LIST.
+The numbers-list consists of the Y-axis values.
+</pre><pre class="example">
+
+</pre><pre class="example">Optionally, VERTICAL-STEP, a positive integer,
+specifies how much a Y axis label increments for
+each line.  For example, a step of 5 means that
+each row is five units.
+</pre><pre class="example">
+
+</pre><pre class="example">Optionally, HORIZONTAL-STEP, a positive integer,
+specifies how much an X  axis label increments for
+each column.&quot;
+  (let* ((symbol-width (length graph-blank))
+         ;; <code>height</code> <span class="roman">is both the largest number</span>
+         ;; <span class="roman">and the number with the most digits.</span>
+         (height (apply 'max numbers-list))
+</pre><pre class="example">         (height-of-top-line
+          (if (zerop (% height Y-axis-label-spacing))
+              height
+            ;; <span class="roman">else</span>
+            (* (1+ (/ height Y-axis-label-spacing))
+               Y-axis-label-spacing)))
+</pre><pre class="example">         (vertical-step (or vertical-step 1))
+         (full-Y-label-width
+          (length
+           (concat
+            (number-to-string
+             (* height-of-top-line vertical-step))
+            Y-axis-tic))))
+</pre><pre class="example">    (print-Y-axis
+     height-of-top-line full-Y-label-width vertical-step)
+    (graph-body-print
+        numbers-list height-of-top-line symbol-width)
+    (print-X-axis numbers-list horizontal-step)))
+</pre></div>
+
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Final-printed-graph.html">The Printed Graph</a>, Previous: <a href="mapcar.html">The <code>mapcar</code> Function</a>, Up: <a href="Print-Whole-Graph.html">Printing the Whole Graph</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

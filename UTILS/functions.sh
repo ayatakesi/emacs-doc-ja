@@ -84,7 +84,8 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 EOT
-	    perl -ne 'chomp; print "msgid \"$_\"\nmsgstr \"\"\n\n";' ${GREP_OUT} >>${POT};
+	    perl -ne 'chomp; print "msgid \"$_\"\nmsgstr \"\"\n\n";' ${GREP_OUT} |
+		 msguniq --use-first - >> ${POT};
 
 	    MERGED_TMP=$(mktemp);
 	    msgmerge --previous \

@@ -1,0 +1,259 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Lists diagrammed (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Lists diagrammed (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Lists diagrammed (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="List-Implementation.html" rel="up" title="List Implementation">
+<link href="Symbols-as-Chest.html" rel="next" title="Symbols as Chest">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="unnumberedsec" id="Lists-diagrammed">
+<div class="header">
+<p>
+Next: <a href="Symbols-as-Chest.html" accesskey="n" rel="next">Symbols as a Chest of Drawers</a>, Up: <a href="List-Implementation.html" accesskey="u" rel="up">How Lists are Implemented</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Lists-diagrammed-1"></span><h3 class="unnumberedsec">Lists diagrammed</h3>
+
+<p>For example, the list <code>(rose violet buttercup)</code> has three elements,
+&lsquo;<samp>rose</samp>&rsquo;, &lsquo;<samp>violet</samp>&rsquo;, and &lsquo;<samp>buttercup</samp>&rsquo;.  In the computer, the
+electronic address of &lsquo;<samp>rose</samp>&rsquo; is recorded in a segment of computer
+memory along with the address that gives the electronic address of where the
+atom &lsquo;<samp>violet</samp>&rsquo; is located; and that address (the one that tells where
+&lsquo;<samp>violet</samp>&rsquo; is located) is kept along with an address that tells where the
+address for the atom &lsquo;<samp>buttercup</samp>&rsquo; is located.
+</p>
+<p>This sounds more complicated than it is and is easier seen in a diagram:
+</p>
+<div class="example">
+<pre class="example">    ___ ___      ___ ___      ___ ___
+   |___|___|--&gt; |___|___|--&gt; |___|___|--&gt; nil
+     |            |            |
+     |            |            |
+      --&gt; rose     --&gt; violet   --&gt; buttercup
+</pre></div>
+<br>
+<br>
+
+<p>In the diagram, each box represents a word of computer memory that holds a
+Lisp object, usually in the form of a memory address.  The boxes, i.e., the
+addresses, are in pairs.  Each arrow points to what the address is the
+address of, either an atom or another pair of addresses.  The first box is
+the electronic address of &lsquo;<samp>rose</samp>&rsquo; and the arrow points to &lsquo;<samp>rose</samp>&rsquo;;
+the second box is the address of the next pair of boxes, the first part of
+which is the address of &lsquo;<samp>violet</samp>&rsquo; and the second part of which is the
+address of the next pair.  The very last box points to the symbol
+<code>nil</code>, which marks the end of the list.
+</p>
+<p>When a variable is set to a list with an operation such as <code>setq</code>, it
+stores the address of the first box in the variable.  Thus, evaluation of
+the expression
+</p>
+<div class="example">
+<pre class="example">(setq bouquet '(rose violet buttercup))
+</pre></div>
+
+<p>creates a situation like this:
+</p>
+<div class="example">
+<pre class="example">bouquet
+     |
+     |     ___ ___      ___ ___      ___ ___
+      --&gt; |___|___|--&gt; |___|___|--&gt; |___|___|--&gt; nil
+            |            |            |
+            |            |            |
+             --&gt; rose     --&gt; violet   --&gt; buttercup
+</pre></div>
+<br>
+<br>
+
+<p>In this example, the symbol <code>bouquet</code> holds the address of the first
+pair of boxes.
+</p>
+<p>This same list can be illustrated in a different sort of box notation like
+this:
+</p>
+<div class="example">
+<pre class="example">bouquet
+ |
+ |    --------------       ---------------       ----------------
+ |   | car   | cdr  |     | car    | cdr  |     | car     | cdr  |
+  --&gt;| rose  |   o-------&gt;| violet |   o-------&gt;| butter- |  nil |
+     |       |      |     |        |      |     | cup     |      |
+      --------------       ---------------       ----------------
+</pre></div>
+<br>
+<br>
+
+<p>(Symbols consist of more than pairs of addresses, but the structure of a
+symbol is made up of addresses.  Indeed, the symbol <code>bouquet</code> consists
+of a group of address-boxes, one of which is the address of the printed word
+&lsquo;<samp>bouquet</samp>&rsquo;, a second of which is the address of a function definition
+attached to the symbol, if any, a third of which is the address of the first
+pair of address-boxes for the list <code>(rose violet buttercup)</code>, and so
+on.  Here we are showing that the symbol&rsquo;s third address-box points to the
+first pair of address-boxes for the list.)
+</p>
+<p>If a symbol is set to the <small>CDR</small> of a list, the list itself is not
+changed; the symbol simply has an address further down the list.  (In the
+jargon, <small>CAR</small> and <small>CDR</small> are &ldquo;non-destructive&rdquo;.)  Thus, evaluation of
+the following expression
+</p>
+<div class="example">
+<pre class="example">(setq flowers (cdr bouquet))
+</pre></div>
+
+<p>produces this:
+</p>
+<br>
+<div class="example">
+<pre class="example">bouquet        flowers
+  |              |
+  |     ___ ___  |     ___ ___      ___ ___
+   --&gt; |   |   |  --&gt; |   |   |    |   |   |
+       |___|___|----&gt; |___|___|--&gt; |___|___|--&gt; nil
+         |              |            |
+         |              |            |
+          --&gt; rose       --&gt; violet   --&gt; buttercup
+</pre></div>
+<br>
+<br>
+<br>
+
+<p>The value of <code>flowers</code> is <code>(violet buttercup)</code>, which is to say,
+the symbol <code>flowers</code> holds the address of the pair of address-boxes,
+the first of which holds the address of <code>violet</code>, and the second of
+which holds the address of <code>buttercup</code>.
+</p>
+<p>A pair of address-boxes is called a <em>cons cell</em> or <em>dotted pair</em>.
+See <a data-manual="elisp" href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Cons-Cell-Type.html#Cons-Cell-Type">Cons Cell and List Types</a> in <cite>The GNU Emacs Lisp
+Reference Manual</cite>, and <a data-manual="elisp" href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Dotted-Pair-Notation.html#Dotted-Pair-Notation">Dotted Pair Notation</a> in <cite>The GNU Emacs Lisp Reference Manual</cite>, for more information about cons
+cells and dotted pairs.
+</p>
+<p>The function <code>cons</code> adds a new pair of addresses to the front of a
+series of addresses like that shown above.  For example, evaluating the
+expression
+</p>
+<div class="example">
+<pre class="example">(setq bouquet (cons 'lily bouquet))
+</pre></div>
+
+<p>produces:
+</p>
+<br>
+<div class="example">
+<pre class="example">bouquet                       flowers
+  |                             |
+  |     ___ ___        ___ ___  |     ___ ___       ___ ___
+   --&gt; |   |   |      |   |   |  --&gt; |   |   |     |   |   |
+       |___|___|----&gt; |___|___|----&gt; |___|___|----&gt;|___|___|--&gt; nil
+         |              |              |             |
+         |              |              |             |
+          --&gt; lily      --&gt; rose       --&gt; violet    --&gt; buttercup
+</pre></div>
+<br>
+<br>
+<br>
+
+<p>However, this does not change the value of the symbol <code>flowers</code>, as you
+can see by evaluating the following,
+</p>
+<div class="example">
+<pre class="example">(eq (cdr (cdr bouquet)) flowers)
+</pre></div>
+
+<p>which returns <code>t</code> for true.
+</p>
+<p>Until it is reset, <code>flowers</code> still has the value <code>(violet
+buttercup)</code>; that is, it has the address of the cons cell whose first
+address is of <code>violet</code>.  Also, this does not alter any of the
+pre-existing cons cells; they are all still there.
+</p>
+<p>Thus, in Lisp, to get the <small>CDR</small> of a list, you just get the address of
+the next cons cell in the series; to get the <small>CAR</small> of a list, you get the
+address of the first element of the list; to <code>cons</code> a new element on a
+list, you add a new cons cell to the front of the list.  That is all there
+is to it! The underlying structure of Lisp is brilliantly simple!
+</p>
+<p>And what does the last address in a series of cons cells refer to? It is the
+address of the empty list, of <code>nil</code>.
+</p>
+<p>In summary, when a Lisp variable is set to a value, it is provided with the
+address of the list to which the variable refers.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Symbols-as-Chest.html">Symbols as a Chest of Drawers</a>, Up: <a href="List-Implementation.html">How Lists are Implemented</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

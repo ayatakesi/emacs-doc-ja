@@ -1,0 +1,207 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>The final version (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="The final version (プログラミングEmacs Lisp)">
+<meta name="keywords" content="The final version (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Print-Whole-Graph.html" rel="up" title="Print Whole Graph">
+<link href="Test-print_002dgraph.html" rel="next" title="Test print-graph">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="unnumberedsubsec" id="The-final-version">
+<div class="header">
+<p>
+Next: <a href="Test-print_002dgraph.html" accesskey="n" rel="next">Testing <code>print-graph</code></a>, Up: <a href="Print-Whole-Graph.html" accesskey="u" rel="up">Printing the Whole Graph</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Changes-for-the-Final-Version"></span><h4 class="unnumberedsubsec">Changes for the Final Version</h4>
+
+<p>The final version is different from what we planned in two ways: first, it
+contains additional values calculated once in the varlist; second, it
+carries an option to specify the labels&rsquo; increment per row.  This latter
+feature turns out to be essential; otherwise, a graph may have more rows
+than fit on a display or on a sheet of paper.
+</p>
+<p>This new feature requires a change to the <code>Y-axis-column</code> function, to
+add <code>vertical-step</code> to it.  The function looks like this:
+</p>
+<span id="index-Y_002daxis_002dcolumn-Final-version_002e"></span>
+<div class="example">
+<pre class="example">;;; <span class="roman">Final version.</span>
+(defun Y-axis-column
+  (height width-of-label &amp;optional vertical-step)
+  &quot;Construct list of labels for Y axis.
+HEIGHT is maximum height of graph.
+WIDTH-OF-LABEL is maximum width of label.
+VERTICAL-STEP, an option, is a positive integer
+that specifies how much a Y axis label increments
+for each line.  For example, a step of 5 means
+that each line is five units of the graph.&quot;
+</pre><pre class="example">  (let (Y-axis
+        (number-per-line (or vertical-step 1)))
+    (while (&gt; height 1)
+      (if (zerop (% height Y-axis-label-spacing))
+</pre><pre class="example">          ;; <span class="roman">Insert label.</span>
+          (setq Y-axis
+                (cons
+                 (Y-axis-element
+                  (* height number-per-line)
+                  width-of-label)
+                 Y-axis))
+</pre><pre class="example">        ;; <span class="roman">Else, insert blanks.</span>
+        (setq Y-axis
+              (cons
+               (make-string width-of-label ? )
+               Y-axis)))
+      (setq height (1- height)))
+</pre><pre class="example">    ;; <span class="roman">Insert base line.</span>
+    (setq Y-axis (cons (Y-axis-element
+                        (or vertical-step 1)
+                        width-of-label)
+                       Y-axis))
+    (nreverse Y-axis)))
+</pre></div>
+
+<p>The values for the maximum height of graph and the width of a symbol are
+computed by <code>print-graph</code> in its <code>let</code> expression; so
+<code>graph-body-print</code> must be changed to accept them.
+</p>
+<span id="index-graph_002dbody_002dprint-Final-version_002e"></span>
+<div class="example">
+<pre class="example">;;; <span class="roman">Final version.</span>
+(defun graph-body-print (numbers-list height symbol-width)
+  &quot;Print a bar graph of the NUMBERS-LIST.
+The numbers-list consists of the Y-axis values.
+HEIGHT is maximum height of graph.
+SYMBOL-WIDTH is number of each column.&quot;
+</pre><pre class="example">  (let (from-position)
+    (while numbers-list
+      (setq from-position (point))
+      (insert-rectangle
+       (column-of-graph height (car numbers-list)))
+      (goto-char from-position)
+      (forward-char symbol-width)
+</pre><pre class="example">      ;; <span class="roman">Draw graph column by column.</span>
+      (sit-for 0)
+      (setq numbers-list (cdr numbers-list)))
+    ;; <span class="roman">Place point for X axis labels.</span>
+    (forward-line height)
+    (insert &quot;\n&quot;)))
+</pre></div>
+
+<p>Finally, the code for the <code>print-graph</code> function:
+</p>
+<span id="index-print_002dgraph-Final-version_002e"></span>
+<div class="example">
+<pre class="example">;;; <span class="roman">Final version.</span>
+(defun print-graph
+  (numbers-list &amp;optional vertical-step)
+  &quot;Print labeled bar graph of the NUMBERS-LIST.
+The numbers-list consists of the Y-axis values.
+</pre><pre class="example">
+
+</pre><pre class="example">Optionally, VERTICAL-STEP, a positive integer,
+specifies how much a Y axis label increments for
+each line.  For example, a step of 5 means that
+each row is five units.&quot;
+</pre><pre class="example">  (let* ((symbol-width (length graph-blank))
+         ;; <code>height</code> <span class="roman">is both the largest number</span>
+         ;; <span class="roman">and the number with the most digits.</span>
+         (height (apply 'max numbers-list))
+</pre><pre class="example">         (height-of-top-line
+          (if (zerop (% height Y-axis-label-spacing))
+              height
+            ;; <span class="roman">else</span>
+            (* (1+ (/ height Y-axis-label-spacing))
+               Y-axis-label-spacing)))
+</pre><pre class="example">         (vertical-step (or vertical-step 1))
+         (full-Y-label-width
+          (length
+</pre><pre class="example">           (concat
+            (number-to-string
+             (* height-of-top-line vertical-step))
+            Y-axis-tic))))
+</pre><pre class="example">
+
+</pre><pre class="example">    (print-Y-axis
+     height-of-top-line full-Y-label-width vertical-step)
+</pre><pre class="example">    (graph-body-print
+     numbers-list height-of-top-line symbol-width)
+    (print-X-axis numbers-list)))
+</pre></div>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Test-print_002dgraph.html">Testing <code>print-graph</code></a>, Up: <a href="Print-Whole-Graph.html">Printing the Whole Graph</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

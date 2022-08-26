@@ -1,0 +1,160 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Body of current-kill (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Body of current-kill (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Body of current-kill (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Understanding-current_002dkill.html" rel="up" title="Understanding current-kill">
+<link href="Digression-concerning-error.html" rel="next" title="Digression concerning error">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="unnumberedsubsubsec" id="Body-of-current_002dkill">
+<div class="header">
+<p>
+Next: <a href="Digression-concerning-error.html" accesskey="n" rel="next">Digression about the word &ldquo;error&rdquo;</a>, Up: <a href="Understanding-current_002dkill.html" accesskey="u" rel="up"><code>current-kill</code> in Outline</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-Body-of-current_002dkill"></span><h4 class="unnumberedsubsubsec">The Body of <code>current-kill</code></h4>
+
+<p>The body of the function definition is a <code>let</code> expression, which itself
+has a body as well as a <var>varlist</var>.
+</p>
+<p>The <code>let</code> expression declares a variable that will be only usable
+within the bounds of this function.  This variable is called
+<code>interprogram-paste</code> and is for copying to another program.  It is not
+for copying within this instance of GNU Emacs.  Most window systems provide
+a facility for interprogram pasting.  Sadly, that facility usually provides
+only for the last element.  Most windowing systems have not adopted a ring
+of many possibilities, even though Emacs has provided it for decades.
+</p>
+<p>The <code>if</code> expression has two parts, one if there exists
+<code>interprogram-paste</code> and one if not.
+</p>
+<p>Let us consider the else-part of the <code>current-kill</code> function.  (The
+then-part uses the <code>kill-new</code> function, which we have already
+described.  See <a href="kill_002dnew-function.html">The <code>kill-new</code> function</a>.)
+</p>
+<div class="example">
+<pre class="example">(or kill-ring (error &quot;Kill ring is empty&quot;))
+(let ((ARGth-kill-element
+       (nthcdr (mod (- n (length kill-ring-yank-pointer))
+                    (length kill-ring))
+               kill-ring)))
+  (or do-not-move
+      (setq kill-ring-yank-pointer ARGth-kill-element))
+  (car ARGth-kill-element))
+</pre></div>
+
+<p>The code first checks whether the kill ring has content; otherwise it
+signals an error.
+</p>
+<p>Note that the <code>or</code> expression is very similar to testing length with an
+<code>if</code>:
+</p>
+<span id="index-zerop"></span>
+<span id="index-error"></span>
+<div class="example">
+<pre class="example">(if (zerop (length kill-ring))          ; <span class="roman">if-part</span>
+    (error &quot;Kill ring is empty&quot;))       ; <span class="roman">then-part</span>
+  ;; No else-part
+</pre></div>
+
+<p>If there is not anything in the kill ring, its length must be zero and an
+error message sent to the user: &lsquo;<samp>Kill ring is empty</samp>&rsquo;.  The
+<code>current-kill</code> function uses an <code>or</code> expression which is simpler.
+But an <code>if</code> expression reminds us what goes on.
+</p>
+<p>This <code>if</code> expression uses the function <code>zerop</code> which returns true
+if the value it is testing is zero.  When <code>zerop</code> tests true, the
+then-part of the <code>if</code> is evaluated.  The then-part is a list starting
+with the function <code>error</code>, which is a function that is similar to the
+<code>message</code> function (see <a href="message.html">The <code>message</code> Function</a>) in
+that it prints a one-line message in the echo area.  However, in addition to
+printing a message, <code>error</code> also stops evaluation of the function
+within which it is embedded.  This means that the rest of the function will
+not be evaluated if the length of the kill ring is zero.
+</p>
+<p>Then the <code>current-kill</code> function selects the element to return.  The
+selection depends on the number of places that <code>current-kill</code> rotates
+and on where <code>kill-ring-yank-pointer</code> points.
+</p>
+<p>Next, either the optional <code>do-not-move</code> argument is true or the current
+value of <code>kill-ring-yank-pointer</code> is set to point to the list.
+Finally, another expression returns the first element of the list even if
+the <code>do-not-move</code> argument is true.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Digression-concerning-error.html">Digression about the word &ldquo;error&rdquo;</a>, Up: <a href="Understanding-current_002dkill.html"><code>current-kill</code> in Outline</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>last-command &amp; this-command (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="last-command &amp; this-command (プログラミングEmacs Lisp)">
+<meta name="keywords" content="last-command &amp; this-command (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="copy_002dregion_002das_002dkill-body.html" rel="up" title="copy-region-as-kill body">
+<link href="kill_002dappend-function.html" rel="next" title="kill-append function">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="unnumberedsubsubsec" id="last_002dcommand-_0026-this_002dcommand">
+<div class="header">
+<p>
+Next: <a href="kill_002dappend-function.html" accesskey="n" rel="next">The <code>kill-append</code> function</a>, Up: <a href="copy_002dregion_002das_002dkill-body.html" accesskey="u" rel="up">The Body of <code>copy-region-as-kill</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="last_002dcommand-and-this_002dcommand"></span><h4 class="unnumberedsubsubsec"><code>last-command</code> and <code>this-command</code></h4>
+
+<p>Normally, whenever a function is executed, Emacs sets the value of
+<code>this-command</code> to the function being executed (which in this case would
+be <code>copy-region-as-kill</code>).  At the same time, Emacs sets the value of
+<code>last-command</code> to the previous value of <code>this-command</code>.
+</p>
+<p>In the first part of the body of the <code>copy-region-as-kill</code> function, an
+<code>if</code> expression determines whether the value of <code>last-command</code> is
+<code>kill-region</code>.  If so, the then-part of the <code>if</code> expression is
+evaluated; it uses the <code>kill-append</code> function to concatenate the text
+copied at this call to the function with the text already in the first
+element (the <small>CAR</small>) of the kill ring.  On the other hand, if the value of
+<code>last-command</code> is not <code>kill-region</code>, then the
+<code>copy-region-as-kill</code> function attaches a new element to the kill ring
+using the <code>kill-new</code> function.
+</p>
+<p>The <code>if</code> expression reads as follows; it uses <code>eq</code>:
+</p>
+<div class="example">
+<pre class="example">  (if (eq last-command 'kill-region)
+      ;; <span class="roman">then-part</span>
+      (kill-append  (filter-buffer-substring beg end) (&lt; end beg))
+    ;; <span class="roman">else-part</span>
+    (kill-new  (filter-buffer-substring beg end)))
+</pre></div>
+
+<span id="index-filter_002dbuffer_002dsubstring"></span>
+<p>(The <code>filter-buffer-substring</code> function returns a filtered substring of
+the buffer, if any.  Optionally&mdash;the arguments are not here, so neither is
+done&mdash;the function may delete the initial text or return the text without
+its properties; this function is a replacement for the older
+<code>buffer-substring</code> function, which came before text properties were
+implemented.)
+</p>
+<span id="index-eq-_0028example-of-use_0029"></span>
+<p>The <code>eq</code> function tests whether its first argument is the same Lisp
+object as its second argument.  The <code>eq</code> function is similar to the
+<code>equal</code> function in that it is used to test for equality, but differs
+in that it determines whether two representations are actually the same
+object inside the computer, but with different names.  <code>equal</code>
+determines whether the structure and contents of two expressions are the
+same.
+</p>
+<p>If the previous command was <code>kill-region</code>, then the Emacs Lisp
+interpreter calls the <code>kill-append</code> function
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="kill_002dappend-function.html">The <code>kill-append</code> function</a>, Up: <a href="copy_002dregion_002das_002dkill-body.html">The Body of <code>copy-region-as-kill</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

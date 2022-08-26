@@ -1,0 +1,176 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>the-the (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="the-the (プログラミングEmacs Lisp)">
+<meta name="keywords" content="the-the (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="index.html" rel="up" title="Top">
+<link href="Kill-Ring.html" rel="next" title="Kill Ring">
+<link href="Conclusion.html" rel="prev" title="Conclusion">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="appendix" id="the_002dthe">
+<div class="header">
+<p>
+Next: <a href="Kill-Ring.html" accesskey="n" rel="next">Handling the Kill Ring</a>, Previous: <a href="Conclusion.html" accesskey="p" rel="prev">Conclusion</a>, Up: <a href="index.html" accesskey="u" rel="up">Emacs Lispプログラミング入門</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-the_002dthe-Function"></span><h2 class="appendix">Appendix A The <code>the-the</code> Function</h2>
+<span id="index-the_002dthe"></span>
+<span id="index-Duplicated-words-function"></span>
+<span id="index-Words_002c-duplicated"></span>
+
+<p>Sometimes when you you write text, you duplicate words&mdash;as with &ldquo;you you&rdquo;
+near the beginning of this sentence.  I find that most frequently, I
+duplicate &ldquo;the&rdquo;; hence, I call the function for detecting duplicated
+words, <code>the-the</code>.
+</p>
+<p>As a first step, you could use the following regular expression to search
+for duplicates:
+</p>
+<div class="example">
+<pre class="example">\\(\\w+[ \t\n]+\\)\\1
+</pre></div>
+
+<p>This regexp matches one or more word-constituent characters followed by one
+or more spaces, tabs, or newlines.  However, it does not detect duplicated
+words on different lines, since the ending of the first word, the end of the
+line, is different from the ending of the second word, a space.  (For more
+information about regular expressions, see <a href="Regexp-Search.html">Regular
+Expression Searches</a>, as well as <a data-manual="emacs" href="https://www.gnu.org/software/emacs/manual/html_node/emacs/Regexps.html#Regexps">Syntax of Regular
+Expressions</a> in <cite>The GNU Emacs Manual</cite>, and <a data-manual="elisp" href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Regular-Expressions.html#Regular-Expressions">Regular Expressions</a> in <cite>The GNU Emacs Lisp Reference Manual</cite>.)
+</p>
+<p>You might try searching just for duplicated word-constituent characters but
+that does not work since the pattern detects doubles such as the two
+occurrences of &ldquo;th&rdquo; in &ldquo;with the&rdquo;.
+</p>
+<p>Another possible regexp searches for word-constituent characters followed by
+non-word-constituent characters, reduplicated.  Here, &lsquo;<samp>\\w+</samp>&rsquo;<!-- /@w -->
+matches one or more word-constituent characters and &lsquo;<samp>\\W*</samp>&rsquo;<!-- /@w --> matches
+zero or more non-word-constituent characters.
+</p>
+<div class="example">
+<pre class="example">\\(\\(\\w+\\)\\W*\\)\\1
+</pre></div>
+
+<p>Again, not useful.
+</p>
+<p>Here is the pattern that I use.  It is not perfect, but good enough.
+&lsquo;<samp>\\b</samp>&rsquo;<!-- /@w --> matches the empty string, provided it is at the beginning or
+end of a word; &lsquo;<samp>[^@&nbsp;\n\t]+</samp>&rsquo;<!-- /@w --> matches one or more occurrences of any
+characters that are <em>not</em> an @-sign, space, newline, or tab.
+</p>
+<div class="example">
+<pre class="example">\\b\\([^@ \n\t]+\\)[ \n\t]+\\1\\b
+</pre></div>
+
+<p>One can write more complicated expressions, but I found that this expression
+is good enough, so I use it.
+</p>
+<p>Here is the <code>the-the</code> function, as I include it in my <samp>.emacs</samp>
+file, along with a handy global key binding:
+</p>
+<div class="example">
+<pre class="example">(defun the-the ()
+  &quot;Search forward for for a duplicated word.&quot;
+  (interactive)
+  (message &quot;Searching for for duplicated words ...&quot;)
+  (push-mark)
+</pre><pre class="example">  ;; This regexp is not perfect
+  ;; but is fairly good over all:
+  (if (re-search-forward
+       &quot;\\b\\([^@ \n\t]+\\)[ \n\t]+\\1\\b&quot; nil 'move)
+      (message &quot;Found duplicated word.&quot;)
+    (message &quot;End of buffer&quot;)))
+</pre><pre class="example">
+
+</pre><pre class="example">;; Bind 'the-the' to  C-c \
+(global-set-key &quot;\C-c\\&quot; 'the-the)
+</pre></div>
+
+<br>
+<p>Here is test text:
+</p>
+<div class="example">
+<pre class="example">one two two three four five
+five six seven
+</pre></div>
+
+<p>You can substitute the other regular expressions shown above in the function
+definition and try each of them on this list.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Kill-Ring.html">Handling the Kill Ring</a>, Previous: <a href="Conclusion.html">Conclusion</a>, Up: <a href="index.html">Emacs Lispプログラミング入門</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>beginning-of-buffer complete (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="beginning-of-buffer complete (プログラミングEmacs Lisp)">
+<meta name="keywords" content="beginning-of-buffer complete (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="beginning_002dof_002dbuffer.html" rel="up" title="beginning-of-buffer">
+<link href="beginning_002dof_002dbuffer-opt-arg.html" rel="prev" title="beginning-of-buffer opt arg">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="subsection" id="beginning_002dof_002dbuffer-complete">
+<div class="header">
+<p>
+Previous: <a href="beginning_002dof_002dbuffer-opt-arg.html" accesskey="p" rel="prev"><code>beginning-of-buffer</code> with an Argument</a>, Up: <a href="beginning_002dof_002dbuffer.html" accesskey="u" rel="up">Complete Definition of <code>beginning-of-buffer</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-Complete-beginning_002dof_002dbuffer"></span><h4 class="subsection">5.3.3 The Complete <code>beginning-of-buffer</code></h4>
+
+<p>Here is the complete text of the <code>beginning-of-buffer</code> function:
+</p><br>
+
+<div class="example">
+<pre class="example">(defun beginning-of-buffer (&amp;optional arg)
+  &quot;Move point to the beginning of the buffer;
+leave mark at previous position.
+With \\[universal-argument] prefix,
+do not set mark at previous position.
+With numeric arg N,
+put point N/10 of the way from the beginning.
+
+If the buffer is narrowed,
+this command uses the beginning and size
+of the accessible part of the buffer.
+</pre><pre class="example">
+
+</pre><pre class="example">Don't use this command in Lisp programs!
+\(goto-char (point-min)) is faster
+and avoids clobbering the mark.&quot;
+  (interactive &quot;P&quot;)
+  (or (consp arg)
+      (and transient-mark-mode mark-active)
+      (push-mark))
+</pre><pre class="example">  (let ((size (- (point-max) (point-min))))
+    (goto-char (if (and arg (not (consp arg)))
+                   (+ (point-min)
+                      (if (&gt; size 10000)
+                          ;; Avoid overflow for large buffer sizes!
+                          (* (prefix-numeric-value arg)
+                             (/ size 10))
+                        (/ (+ 10 (* size (prefix-numeric-value arg)))
+                           10)))
+                 (point-min))))
+  (if (and arg (not (consp arg))) (forward-line 1)))
+</pre></div>
+
+
+<p>Except for two small points, the previous discussion shows how this function
+works.  The first point deals with a detail in the documentation string, and
+the second point concerns the last line of the function.
+</p>
+<p>In the documentation string, there is reference to an expression:
+</p>
+<div class="example">
+<pre class="example">\\[universal-argument]
+</pre></div>
+
+<p>A &lsquo;<samp>\\</samp>&rsquo; is used before the first square bracket of this expression.
+This &lsquo;<samp>\\</samp>&rsquo; tells the Lisp interpreter to substitute whatever key is
+currently bound to the &lsquo;<samp>[&hellip;]</samp>&rsquo;.  In the case of
+<code>universal-argument</code>, that is usually <kbd>C-u</kbd>, but it might be
+different.  (See <a data-manual="elisp" href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Documentation-Tips.html#Documentation-Tips">Tips for Documentation Strings</a> in <cite>The GNU Emacs Lisp Reference Manual</cite>, for more information.)
+</p>
+<p>Finally, the last line of the <code>beginning-of-buffer</code> command says to
+move point to the beginning of the next line if the command is invoked with
+an argument:
+</p>
+<div class="example">
+<pre class="example">(if (and arg (not (consp arg))) (forward-line 1))
+</pre></div>
+
+<p>This puts the cursor at the beginning of the first line after the
+appropriate tenths position in the buffer.  This is a flourish that means
+that the cursor is always located <em>at least</em> the requested tenths of
+the way through the buffer, which is a nicety that is, perhaps, not
+necessary, but which, if it did not occur, would be sure to draw
+complaints.  (The <code>(not (consp arg))</code> portion is so that if you specify
+the command with a <kbd>C-u</kbd>, but without a number, that is to say, if the
+raw prefix argument is simply a cons cell, the command does not put you at
+the beginning of the second line.)
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Previous: <a href="beginning_002dof_002dbuffer-opt-arg.html"><code>beginning-of-buffer</code> with an Argument</a>, Up: <a href="beginning_002dof_002dbuffer.html">Complete Definition of <code>beginning-of-buffer</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

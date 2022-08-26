@@ -1,0 +1,277 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Whitespace Bug (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Whitespace Bug (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Whitespace Bug (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="count_002dwords_002dexample.html" rel="up" title="count-words-example">
+<link href="Design-count_002dwords_002dexample.html" rel="prev" title="Design count-words-example">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="subsection" id="Whitespace-Bug">
+<div class="header">
+<p>
+Previous: <a href="Design-count_002dwords_002dexample.html" accesskey="p" rel="prev">Designing <code>count-words-example</code></a>, Up: <a href="count_002dwords_002dexample.html" accesskey="u" rel="up">The <code>count-words-example</code> Function</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-Whitespace-Bug-in-count_002dwords_002dexample"></span><h4 class="subsection">13.1.1 The Whitespace Bug in <code>count-words-example</code></h4>
+
+<p>The <code>count-words-example</code> command described in the preceding section
+has two bugs, or rather, one bug with two manifestations.  First, if you
+mark a region containing only whitespace in the middle of some text, the
+<code>count-words-example</code> command tells you that the region contains one
+word! Second, if you mark a region containing only whitespace at the end of
+the buffer or the accessible portion of a narrowed buffer, the command
+displays an error message that looks like this:
+</p>
+<div class="example">
+<pre class="example">Search failed: &quot;\\w+\\W*&quot;
+</pre></div>
+
+<p>If you are reading this in Info in GNU Emacs, you can test for these bugs
+yourself.
+</p>
+<p>First, evaluate the function in the usual manner to install it.
+</p>
+<p>If you wish, you can also install this keybinding by evaluating it:
+</p>
+<div class="example">
+<pre class="example">(global-set-key &quot;\C-c=&quot; 'count-words-example)
+</pre></div>
+
+<p>To conduct the first test, set mark and point to the beginning and end of
+the following line and then type <kbd>C-c =</kbd> (or <kbd>M-x
+count-words-example</kbd> if you have not bound <kbd>C-c =</kbd>):
+</p>
+<div class="example">
+<pre class="example">    one   two  three
+</pre></div>
+
+<p>Emacs will tell you, correctly, that the region has three words.
+</p>
+<p>Repeat the test, but place mark at the beginning of the line and place point
+just <em>before</em> the word &lsquo;<samp>one</samp>&rsquo;.  Again type the command <kbd>C-c =</kbd>
+(or <kbd>M-x count-words-example</kbd>).  Emacs should tell you that the region
+has no words, since it is composed only of the whitespace at the beginning
+of the line.  But instead Emacs tells you that the region has one word!
+</p>
+<p>For the third test, copy the sample line to the end of the <samp>*scratch*</samp>
+buffer and then type several spaces at the end of the line.  Place mark
+right after the word &lsquo;<samp>three</samp>&rsquo; and point at the end of line.  (The end of
+the line will be the end of the buffer.)  Type <kbd>C-c =</kbd> (or <kbd>M-x
+count-words-example</kbd>) as you did before.  Again, Emacs should tell you that
+the region has no words, since it is composed only of the whitespace at the
+end of the line.  Instead, Emacs displays an error message saying
+&lsquo;<samp>Search failed</samp>&rsquo;.
+</p>
+<p>The two bugs stem from the same problem.
+</p>
+<p>Consider the first manifestation of the bug, in which the command tells you
+that the whitespace at the beginning of the line contains one word.  What
+happens is this: The <code>M-x count-words-example</code> command moves point to
+the beginning of the region.  The <code>while</code> tests whether the value of
+point is smaller than the value of <code>end</code>, which it is.  Consequently,
+the regular expression search looks for and finds the first word.  It leaves
+point after the word.  <code>count</code> is set to one.  The <code>while</code> loop
+repeats; but this time the value of point is larger than the value of
+<code>end</code>, the loop is exited; and the function displays a message saying
+the number of words in the region is one.  In brief, the regular expression
+search looks for and finds the word even though it is outside the marked
+region.
+</p>
+<p>In the second manifestation of the bug, the region is whitespace at the end
+of the buffer.  Emacs says &lsquo;<samp>Search failed</samp>&rsquo;.  What happens is that the
+true-or-false-test in the <code>while</code> loop tests true, so the search
+expression is executed.  But since there are no more words in the buffer,
+the search fails.
+</p>
+<p>In both manifestations of the bug, the search extends or attempts to extend
+outside of the region.
+</p>
+<p>The solution is to limit the search to the region&mdash;this is a fairly simple
+action, but as you may have come to expect, it is not quite as simple as you
+might think.
+</p>
+<p>As we have seen, the <code>re-search-forward</code> function takes a search
+pattern as its first argument.  But in addition to this first, mandatory
+argument, it accepts three optional arguments.  The optional second argument
+bounds the search.  The optional third argument, if <code>t</code>, causes the
+function to return <code>nil</code> rather than signal an error if the search
+fails.  The optional fourth argument is a repeat count.  (In Emacs, you can
+see a function&rsquo;s documentation by typing <kbd>C-h f</kbd>, the name of the
+function, and then <tt class="key">RET</tt>.)
+</p>
+<p>In the <code>count-words-example</code> definition, the value of the end of the
+region is held by the variable <code>end</code> which is passed as an argument to
+the function.  Thus, we can add <code>end</code> as an argument to the regular
+expression search expression:
+</p>
+<div class="example">
+<pre class="example">(re-search-forward &quot;\\w+\\W*&quot; end)
+</pre></div>
+
+<p>However, if you make only this change to the <code>count-words-example</code>
+definition and then test the new version of the definition on a stretch of
+whitespace, you will receive an error message saying &lsquo;<samp>Search failed</samp>&rsquo;.
+</p>
+<p>What happens is this: the search is limited to the region, and fails as you
+expect because there are no word-constituent characters in the region.
+Since it fails, we receive an error message.  But we do not want to receive
+an error message in this case; we want to receive the message &ldquo;The region
+does NOT have any words.&rdquo;
+</p>
+<p>The solution to this problem is to provide <code>re-search-forward</code> with a
+third argument of <code>t</code>, which causes the function to return <code>nil</code>
+rather than signal an error if the search fails.
+</p>
+<p>However, if you make this change and try it, you will see the message
+&ldquo;Counting words in region ... &rdquo; and &hellip; you will keep on seeing that
+message &hellip;, until you type <kbd>C-g</kbd> (<code>keyboard-quit</code>).
+</p>
+<p>Here is what happens: the search is limited to the region, as before, and it
+fails because there are no word-constituent characters in the region, as
+expected.  Consequently, the <code>re-search-forward</code> expression returns
+<code>nil</code>.  It does nothing else.  In particular, it does not move point,
+which it does as a side effect if it finds the search target.  After the
+<code>re-search-forward</code> expression returns <code>nil</code>, the next expression
+in the <code>while</code> loop is evaluated.  This expression increments the
+count.  Then the loop repeats.  The true-or-false-test tests true because
+the value of point is still less than the value of end, since the
+<code>re-search-forward</code> expression did not move point. &hellip; and the
+cycle repeats &hellip;
+</p>
+<p>The <code>count-words-example</code> definition requires yet another modification,
+to cause the true-or-false-test of the <code>while</code> loop to test false if
+the search fails.  Put another way, there are two conditions that must be
+satisfied in the true-or-false-test before the word count variable is
+incremented: point must still be within the region and the search expression
+must have found a word to count.
+</p>
+<p>Since both the first condition and the second condition must be true
+together, the two expressions, the region test and the search expression,
+can be joined with an <code>and</code> special form and embedded in the
+<code>while</code> loop as the true-or-false-test, like this:
+</p>
+<div class="example">
+<pre class="example">(and (&lt; (point) end) (re-search-forward &quot;\\w+\\W*&quot; end t))
+</pre></div>
+
+
+<p>The <code>re-search-forward</code> expression returns <code>t</code> if the search
+succeeds and as a side effect moves point.  Consequently, as words are
+found, point is moved through the region.  When the search expression fails
+to find another word, or when point reaches the end of the region, the
+true-or-false-test tests false, the <code>while</code> loop exits, and the
+<code>count-words-example</code> function displays one or other of its messages.
+</p>
+<p>After incorporating these final changes, the <code>count-words-example</code>
+works without bugs (or at least, without bugs that I have found!).  Here is
+what it looks like:
+</p>
+<div class="example">
+<pre class="example">;;; <span class="roman">Final version:</span> <code>while</code>
+(defun count-words-example (beginning end)
+  &quot;Print number of words in the region.&quot;
+  (interactive &quot;r&quot;)
+  (message &quot;Counting words in region ... &quot;)
+</pre><pre class="example">
+
+</pre><pre class="example">;;; <span class="roman">1. Set up appropriate conditions.</span>
+  (save-excursion
+    (let ((count 0))
+      (goto-char beginning)
+</pre><pre class="example">
+
+</pre><pre class="example">;;; <span class="roman">2. Run the</span> while <span class="roman">loop.</span>
+      (while (and (&lt; (point) end)
+                  (re-search-forward &quot;\\w+\\W*&quot; end t))
+        (setq count (1+ count)))
+</pre><pre class="example">
+
+</pre><pre class="example">;;; <span class="roman">3. Send a message to the user.</span>
+      (cond ((zerop count)
+             (message
+              &quot;The region does NOT have any words.&quot;))
+            ((= 1 count)
+             (message
+              &quot;The region has 1 word.&quot;))
+            (t
+             (message
+              &quot;The region has %d words.&quot; count))))))
+</pre></div>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Previous: <a href="Design-count_002dwords_002dexample.html">Designing <code>count-words-example</code></a>, Up: <a href="count_002dwords_002dexample.html">The <code>count-words-example</code> Function</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

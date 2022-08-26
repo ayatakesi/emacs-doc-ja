@@ -1,0 +1,212 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Digression into C (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Digression into C (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Digression into C (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Cutting-_0026-Storing-Text.html" rel="up" title="Cutting &amp; Storing Text">
+<link href="defvar.html" rel="next" title="defvar">
+<link href="copy_002dregion_002das_002dkill.html" rel="prev" title="copy-region-as-kill">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="section" id="Digression-into-C">
+<div class="header">
+<p>
+Next: <a href="defvar.html" accesskey="n" rel="next">Initializing a Variable with <code>defvar</code></a>, Previous: <a href="copy_002dregion_002das_002dkill.html" accesskey="p" rel="prev"><code>copy-region-as-kill</code></a>, Up: <a href="Cutting-_0026-Storing-Text.html" accesskey="u" rel="up">Cutting and Storing Text</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Digression-into-C-1"></span><h3 class="section">8.4 Digression into C</h3>
+<span id="index-delete_002dand_002dextract_002dregion"></span>
+<span id="index-C_002c-a-digression-into"></span>
+<span id="index-Digression-into-C"></span>
+
+<p>The <code>copy-region-as-kill</code> function (see <a href="copy_002dregion_002das_002dkill.html"><code>copy-region-as-kill</code></a>) uses the <code>filter-buffer-substring</code>
+function, which in turn uses the <code>delete-and-extract-region</code> function.
+It removes the contents of a region and you cannot get them back.
+</p>
+<p>Unlike the other code discussed here, the <code>delete-and-extract-region</code>
+function is not written in Emacs Lisp; it is written in C and is one of the
+primitives of the GNU Emacs system.  Since it is very simple, I will digress
+briefly from Lisp and describe it here.
+</p>
+<p>Like many of the other Emacs primitives, <code>delete-and-extract-region</code> is
+written as an instance of a C macro, a macro being a template for code.  The
+complete macro looks like this:
+</p>
+<div class="example">
+<pre class="example">DEFUN (&quot;delete-and-extract-region&quot;, Fdelete_and_extract_region,
+       Sdelete_and_extract_region, 2, 2, 0,
+       doc: /* Delete the text between START and END and return it.  */)
+  (Lisp_Object start, Lisp_Object end)
+{
+  validate_region (&amp;start, &amp;end);
+  if (XFIXNUM (start) == XFIXNUM (end))
+    return empty_unibyte_string;
+  return del_range_1 (XFIXNUM (start), XFIXNUM (end), 1, 1);
+}
+</pre></div>
+
+<p>Without going into the details of the macro writing process, let me point
+out that this macro starts with the word <code>DEFUN</code>.  The word
+<code>DEFUN</code> was chosen since the code serves the same purpose as
+<code>defun</code> does in Lisp.  (The <code>DEFUN</code> C macro is defined in
+<samp>emacs/src/lisp.h</samp>.)
+</p>
+<p>The word <code>DEFUN</code> is followed by seven parts inside of parentheses:
+</p>
+<ul>
+<li> The first part is the name given to the function in Lisp,
+<code>delete-and-extract-region</code>.
+
+</li><li> The second part is the name of the function in C,
+<code>Fdelete_and_extract_region</code>.  By convention, it starts with &lsquo;<samp>F</samp>&rsquo;.
+Since C does not use hyphens in names, underscores are used instead.
+
+</li><li> The third part is the name for the C constant structure that records
+information on this function for internal use.  It is the name of the
+function in C but begins with an &lsquo;<samp>S</samp>&rsquo; instead of an &lsquo;<samp>F</samp>&rsquo;.
+
+</li><li> The fourth and fifth parts specify the minimum and maximum number of
+arguments the function can have.  This function demands exactly 2 arguments.
+
+</li><li> The sixth part is nearly like the argument that follows the
+<code>interactive</code> declaration in a function written in Lisp: a letter
+followed, perhaps, by a prompt.  The only difference from Lisp is when the
+macro is called with no arguments.  Then you write a <code>0</code> (which is a
+null string), as in this macro.
+
+<p>If you were to specify arguments, you would place them between quotation
+marks.  The C macro for <code>goto-char</code> includes <code>&quot;NGoto char: &quot;</code> in
+this position to indicate that the function expects a raw prefix, in this
+case, a numerical location in a buffer, and provides a prompt.
+</p>
+</li><li> The seventh part is a documentation string, just like the one for a function
+written in Emacs Lisp.  This is written as a C comment.  (When you build
+Emacs, the program <code>lib-src/make-docfile</code> extracts these comments
+and uses them to make the documentation.)
+</li></ul>
+
+<p>In a C macro, the formal parameters come next, with a statement of what kind
+of object they are, followed by the body of the macro.  For
+<code>delete-and-extract-region</code> the body consists of the following four
+lines:
+</p>
+<div class="example">
+<pre class="example">validate_region (&amp;start, &amp;end);
+if (XFIXNUM (start) == XFIXNUM (end))
+  return empty_unibyte_string;
+return del_range_1 (XFIXNUM (start), XFIXNUM (end), 1, 1);
+</pre></div>
+
+<p>The <code>validate_region</code> function checks whether the values passed as the
+beginning and end of the region are the proper type and are within range.
+If the beginning and end positions are the same, then return an empty
+string.
+</p>
+<p>The <code>del_range_1</code> function actually deletes the text.  It is a complex
+function we will not look into.  It updates the buffer and does other
+things.  However, it is worth looking at the two arguments passed to
+<code>del_range_1</code>.  These are <code>XFIXNUM&nbsp;(start)</code><!-- /@w --> and
+<code>XFIXNUM&nbsp;(end)</code><!-- /@w -->.
+</p>
+<p>As far as the C language is concerned, <code>start</code> and <code>end</code> are two
+opaque values that mark the beginning and end of the region to be deleted.
+More precisely, and requiring more expert knowledge to understand, the two
+values are of type <code>Lisp_Object</code>, which might be a C pointer, a C
+integer, or a C <code>struct</code>; C code ordinarily should not care how
+<code>Lisp_Object</code> is implemented.
+</p>
+<p><code>Lisp_Object</code> widths depend on the machine, and are typically 32 or 64
+bits.  A few of the bits are used to specify the type of information; the
+remaining bits are used as content.
+</p>
+<p>&lsquo;<samp>XFIXNUM</samp>&rsquo; is a C macro that extracts the relevant integer from the
+longer collection of bits; the type bits are discarded.
+</p>
+<p>The command in <code>delete-and-extract-region</code> looks like this:
+</p>
+<div class="example">
+<pre class="example">del_range_1 (XFIXNUM (start), XFIXNUM (end), 1, 1);
+</pre></div>
+
+<p>It deletes the region between the beginning position, <code>start</code>, and the
+ending position, <code>end</code>.
+</p>
+<p>From the point of view of the person writing Lisp, Emacs is all very simple;
+but hidden underneath is a great deal of complexity to make it all work.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="defvar.html">Initializing a Variable with <code>defvar</code></a>, Previous: <a href="copy_002dregion_002das_002dkill.html"><code>copy-region-as-kill</code></a>, Up: <a href="Cutting-_0026-Storing-Text.html">Cutting and Storing Text</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

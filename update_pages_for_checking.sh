@@ -16,6 +16,13 @@ texi2any --html \
 	 -c PRE_BODY_CLOSE="This page has generated for branch:${GITHUB_REF_NAME}, commit:${GITHUB_SHA} to check Japanese translation." elisp-ja.texi
 cd -;
 
+cd lispintr/japanese_texis/;
+texi2any --html \
+	 --output=html/ \
+	 -c DATE_IN_HEADER=1 \
+	 -c PRE_BODY_CLOSE="This page has generated for branch:${GITHUB_REF_NAME}, commit:${GITHUB_SHA} to check Japanese translation." emacs-lisp-intro-ja.texi
+cd -;
+
 git config --global user.email "ayanokoji.takesi@gmail.com"
 git config --global user.name "ayatakesi"
 
@@ -29,7 +36,13 @@ rm -fr ayatakesi.github.io/lispref/translation_HEAD/;
 mkdir -p ayatakesi.github.io/lispref/translation_HEAD/;
 cp -pr lispref/japanese_texis/html/ ayatakesi.github.io/lispref/translation_HEAD/;
 
+rm -fr ayatakesi.github.io/lispref/translation_HEAD/;
+mkdir -p ayatakesi.github.io/lispintro/translation_HEAD/;
+cp -pr lispintro/japanese_texis/html/ ayatakesi.github.io/lispintro/translation_HEAD/;
+
 git -C ayatakesi.github.io/ add emacs/translation_HEAD/;
 git -C ayatakesi.github.io/ add lispref/translation_HEAD/;
+git -C ayatakesi.github.io/ add lispintro/translation_HEAD/;
+
 git -C ayatakesi.github.io/ commit -m "Generate pages for branch:${GITHUB_REF_NAME}, commit:${GITHUB_SHA} to check Japanese translation.";
 git -C ayatakesi.github.io/ push --quiet https://${API_GITHUB_TOKEN}@github.com/ayatakesi/ayatakesi.github.io.git;

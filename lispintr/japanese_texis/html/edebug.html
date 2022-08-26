@@ -1,0 +1,212 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>edebug (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="edebug (プログラミングEmacs Lisp)">
+<meta name="keywords" content="edebug (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Debugging.html" rel="up" title="Debugging">
+<link href="Debugging-Exercises.html" rel="next" title="Debugging Exercises">
+<link href="debug_002don_002dquit.html" rel="prev" title="debug-on-quit">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="section" id="edebug">
+<div class="header">
+<p>
+Next: <a href="Debugging-Exercises.html" accesskey="n" rel="next">Debugging Exercises</a>, Previous: <a href="debug_002don_002dquit.html" accesskey="p" rel="prev"><code>debug-on-quit</code> and <code>(debug)</code></a>, Up: <a href="Debugging.html" accesskey="u" rel="up">Debugging</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-edebug-Source-Level-Debugger"></span><h3 class="section">17.4 The <code>edebug</code> Source Level Debugger</h3>
+<span id="index-Source-level-debugger"></span>
+<span id="index-edebug"></span>
+
+<p>Edebug is a source level debugger.  Edebug normally displays the source of
+the code you are debugging, with an arrow at the left that shows which line
+you are currently executing.
+</p>
+<p>You can walk through the execution of a function, line by line, or run
+quickly until reaching a <em>breakpoint</em> where execution stops.
+</p>
+<p>Edebug is described in <a data-manual="elisp" href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Edebug.html#Edebug">Edebug</a> in <cite>The GNU Emacs Lisp Reference
+Manual</cite>.
+</p>
+<p>Here is a bugged function definition for <code>triangle-recursively</code>.
+See <a href="Recursive-triangle-function.html">Recursion in place of a counter</a>, for a
+review of it.
+</p>
+<div class="example">
+<pre class="example">(defun triangle-recursively-bugged (number)
+  &quot;Return sum of numbers 1 through NUMBER inclusive.
+Uses recursion.&quot;
+  (if (= number 1)
+      1
+    (+ number
+       (triangle-recursively-bugged
+        (1= number)))))               ; <span class="roman">Error here.</span>
+</pre></div>
+
+<p>Normally, you would install this definition by positioning your cursor after
+the function&rsquo;s closing parenthesis and typing <kbd>C-x C-e</kbd>
+(<code>eval-last-sexp</code>) or else by positioning your cursor within the
+definition and typing <kbd>C-M-x</kbd> (<code>eval-defun</code>).  (By default, the
+<code>eval-defun</code> command works only in Emacs Lisp mode or in Lisp
+Interaction mode.)
+</p>
+<p>However, to prepare this function definition for Edebug, you must first
+<em>instrument</em> the code using a different command.  You can do this by
+positioning your cursor within or just after the definition and typing
+</p>
+<div class="example">
+<pre class="example">M-x edebug-defun <span class="key">RET</span>
+</pre></div>
+
+<p>This will cause Emacs to load Edebug automatically if it is not already
+loaded, and properly instrument the function.
+</p>
+<p>After instrumenting the function, place your cursor after the following
+expression and type <kbd>C-x C-e</kbd> (<code>eval-last-sexp</code>):
+</p>
+<div class="example">
+<pre class="example">(triangle-recursively-bugged 3)
+</pre></div>
+
+<p>You will be jumped back to the source for <code>triangle-recursively-bugged</code>
+and the cursor positioned at the beginning of the <code>if</code> line of the
+function.  Also, you will see an arrowhead at the left hand side of that
+line.  The arrowhead marks the line where the function is executing.  (In
+the following examples, we show the arrowhead with &lsquo;<samp>=&gt;</samp>&rsquo;; in a windowing
+system, you may see the arrowhead as a solid triangle in the window fringe.)
+</p>
+<div class="example">
+<pre class="example">=&gt;&lowast;(if (= number 1)
+</pre></div>
+
+<p>In the example, the location of point is displayed as &lsquo;<samp>&lowast;</samp>&rsquo; (in a
+printed book, it is displayed with a five pointed star).
+</p>
+<p>If you now press <tt class="key">SPC</tt>, point will move to the next expression to be
+executed; the line will look like this:
+</p>
+<div class="example">
+<pre class="example">=&gt;(if &lowast;(= number 1)
+</pre></div>
+
+<p>As you continue to press <tt class="key">SPC</tt>, point will move from expression to
+expression.  At the same time, whenever an expression returns a value, that
+value will be displayed in the echo area.  For example, after you move point
+past <code>number</code>, you will see the following:
+</p>
+<div class="example">
+<pre class="example">Result: 3 (#o3, #x3, ?\C-c)
+</pre></div>
+
+<p>This means the value of <code>number</code> is 3, which is octal three,
+hexadecimal three, and <small>ASCII</small> Control-C (the third letter of the
+alphabet, in case you need to know this information).
+</p>
+<p>You can continue moving through the code until you reach the line with the
+error.  Before evaluation, that line looks like this:
+</p>
+<div class="example">
+<pre class="example">=&gt;        &lowast;(1= number)))))               ; <span class="roman">Error here.</span>
+</pre></div>
+
+<p>When you press <tt class="key">SPC</tt> once again, you will produce an error message that
+says:
+</p>
+<div class="example">
+<pre class="example">Symbol's function definition is void: 1=
+</pre></div>
+
+<p>This is the bug.
+</p>
+<p>Press <kbd>q</kbd> to quit Edebug.
+</p>
+<p>To remove instrumentation from a function definition, simply re-evaluate it
+with a command that does not instrument it.  For example, you could place
+your cursor after the definition&rsquo;s closing parenthesis and type <kbd>C-x
+C-e</kbd>.
+</p>
+<p>Edebug does a great deal more than walk with you through a function.  You
+can set it so it races through on its own, stopping only at an error or at
+specified stopping points; you can cause it to display the changing values
+of various expressions; you can find out how many times a function is
+called, and more.
+</p>
+<p>Edebug is described in <a data-manual="elisp" href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Edebug.html#Edebug">Edebug</a> in <cite>The GNU Emacs Lisp Reference
+Manual</cite>.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Debugging-Exercises.html">Debugging Exercises</a>, Previous: <a href="debug_002don_002dquit.html"><code>debug-on-quit</code> and <code>(debug)</code></a>, Up: <a href="Debugging.html">Debugging</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

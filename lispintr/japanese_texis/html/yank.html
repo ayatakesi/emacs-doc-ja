@@ -1,0 +1,162 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>yank (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="yank (プログラミングEmacs Lisp)">
+<meta name="keywords" content="yank (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Kill-Ring.html" rel="up" title="Kill Ring">
+<link href="yank_002dpop.html" rel="next" title="yank-pop">
+<link href="current_002dkill.html" rel="prev" title="current-kill">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="appendixsec" id="yank">
+<div class="header">
+<p>
+Next: <a href="yank_002dpop.html" accesskey="n" rel="next"><code>yank-pop</code></a>, Previous: <a href="current_002dkill.html" accesskey="p" rel="prev">The <code>current-kill</code> Function</a>, Up: <a href="Kill-Ring.html" accesskey="u" rel="up">Handling the Kill Ring</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="yank-1"></span><h3 class="appendixsec">B.2 <code>yank</code></h3>
+<span id="index-yank-1"></span>
+
+<p>After learning about <code>current-kill</code>, the code for the <code>yank</code>
+function is almost easy.
+</p>
+<p>The <code>yank</code> function does not use the <code>kill-ring-yank-pointer</code>
+variable directly.  It calls <code>insert-for-yank</code> which calls
+<code>current-kill</code> which sets the <code>kill-ring-yank-pointer</code> variable.
+</p>
+<p>The code looks like this:
+</p>
+<div class="example">
+<pre class="example">(defun yank (&amp;optional arg)
+  &quot;Reinsert (\&quot;paste\&quot;) the last stretch of killed text.
+More precisely, reinsert the stretch of killed text most recently
+killed OR yanked.  Put point at end, and set mark at beginning.
+With just \\[universal-argument] as argument, same but put point at beginning (and mark at end).
+With argument N, reinsert the Nth most recently killed stretch of killed
+text.
+
+When this command inserts killed text into the buffer, it honors
+`yank-excluded-properties' and `yank-handler' as described in the
+doc string for `insert-for-yank-1', which see.
+
+See also the command `yank-pop' (\\[yank-pop]).&quot;
+</pre><pre class="example">  (interactive &quot;*P&quot;)
+  (setq yank-window-start (window-start))
+  ;; If we don't get all the way thru, make last-command indicate that
+  ;; for the following command.
+  (setq this-command t)
+  (push-mark (point))
+</pre><pre class="example">  (insert-for-yank (current-kill (cond
+                                  ((listp arg) 0)
+                                  ((eq arg '-) -2)
+                                  (t (1- arg)))))
+  (if (consp arg)
+      ;; This is like exchange-point-and-mark, but doesn't activate the mark.
+      ;; It is cleaner to avoid activation, even though the command
+      ;; loop would deactivate the mark because we inserted text.
+      (goto-char (prog1 (mark t)
+                   (set-marker (mark-marker) (point) (current-buffer)))))
+</pre><pre class="example">  ;; If we do get all the way thru, make this-command indicate that.
+  (if (eq this-command t)
+      (setq this-command 'yank))
+  nil)
+</pre></div>
+
+<p>The key expression is <code>insert-for-yank</code>, which inserts the string
+returned by <code>current-kill</code>, but removes some text properties from it.
+</p>
+<p>However, before getting to that expression, the function sets the value of
+<code>yank-window-start</code> to the position returned by the
+<code>(window-start)</code> expression, the position at which the display
+currently starts.  The <code>yank</code> function also sets <code>this-command</code>
+and pushes the mark.
+</p>
+<p>After it yanks the appropriate element, if the optional argument is a
+<small>CONS</small> rather than a number or nothing, it puts point at beginning of the
+yanked text and mark at its end.
+</p>
+<p>(The <code>prog1</code> function is like <code>progn</code> but returns the value of its
+first argument rather than the value of its last argument.  Its first
+argument is forced to return the buffer&rsquo;s mark as an integer.  You can see
+the documentation for these functions by placing point over them in this
+buffer and then typing <kbd>C-h f</kbd> (<code>describe-function</code>) followed by a
+<kbd>RET</kbd>; the default is the function.)
+</p>
+<p>The last part of the function tells what to do when it succeeds.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="yank_002dpop.html"><code>yank-pop</code></a>, Previous: <a href="current_002dkill.html">The <code>current-kill</code> Function</a>, Up: <a href="Kill-Ring.html">Handling the Kill Ring</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

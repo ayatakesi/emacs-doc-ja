@@ -1,0 +1,215 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>lengths-list-file (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="lengths-list-file (プログラミングEmacs Lisp)">
+<meta name="keywords" content="lengths-list-file (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Words-in-a-defun.html" rel="up" title="Words in a defun">
+<link href="Several-files.html" rel="next" title="Several files">
+<link href="Find-a-File.html" rel="prev" title="Find a File">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="section" id="lengths_002dlist_002dfile">
+<div class="header">
+<p>
+Next: <a href="Several-files.html" accesskey="n" rel="next">Count Words in <code>defuns</code> in Different Files</a>, Previous: <a href="Find-a-File.html" accesskey="p" rel="prev">Find a File</a>, Up: <a href="Words-in-a-defun.html" accesskey="u" rel="up">Counting Words in a <code>defun</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="lengths_002dlist_002dfile-in-Detail"></span><h3 class="section">14.6 <code>lengths-list-file</code> in Detail</h3>
+
+<p>The core of the <code>lengths-list-file</code> function is a <code>while</code> loop
+containing a function to move point forward defun by defun, and a function
+to count the number of words and symbols in each defun.  This core must be
+surrounded by functions that do various other tasks, including finding the
+file, and ensuring that point starts out at the beginning of the file.  The
+function definition looks like this:
+<span id="index-lengths_002dlist_002dfile"></span>
+</p>
+<div class="example">
+<pre class="example">(defun lengths-list-file (filename)
+  &quot;Return list of definitions' lengths within FILE.
+The returned list is a list of numbers.
+Each number is the number of words or
+symbols in one function definition.&quot;
+</pre><pre class="example">  (message &quot;Working on `%s' ... &quot; filename)
+  (save-excursion
+    (let ((buffer (find-file-noselect filename))
+          (lengths-list))
+      (set-buffer buffer)
+      (setq buffer-read-only t)
+      (widen)
+      (goto-char (point-min))
+      (while (re-search-forward &quot;^(defun&quot; nil t)
+        (setq lengths-list
+              (cons (count-words-in-defun) lengths-list)))
+      (kill-buffer buffer)
+      lengths-list)))
+</pre></div>
+
+<p>The function is passed one argument, the name of the file on which it will
+work.  It has four lines of documentation, but no interactive
+specification.  Since people worry that a computer is broken if they don&rsquo;t
+see anything going on, the first line of the body is a message.
+</p>
+<p>The next line contains a <code>save-excursion</code> that returns Emacs&rsquo;s
+attention to the current buffer when the function completes.  This is useful
+in case you embed this function in another function that presumes point is
+restored to the original buffer.
+</p>
+<p>In the varlist of the <code>let</code> expression, Emacs finds the file and binds
+the local variable <code>buffer</code> to the buffer containing the file.  At the
+same time, Emacs creates <code>lengths-list</code> as a local variable.
+</p>
+<p>Next, Emacs switches its attention to the buffer.
+</p>
+<p>In the following line, Emacs makes the buffer read-only.  Ideally, this line
+is not necessary.  None of the functions for counting words and symbols in a
+function definition should change the buffer.  Besides, the buffer is not
+going to be saved, even if it were changed.  This line is entirely the
+consequence of great, perhaps excessive, caution.  The reason for the
+caution is that this function and those it calls work on the sources for
+Emacs and it is inconvenient if they are inadvertently modified.  It goes
+without saying that I did not realize a need for this line until an
+experiment went awry and started to modify my Emacs source files &hellip;
+</p>
+<p>Next comes a call to widen the buffer if it is narrowed.  This function is
+usually not needed&mdash;Emacs creates a fresh buffer if none already exists;
+but if a buffer visiting the file already exists Emacs returns that one.  In
+this case, the buffer may be narrowed and must be widened.  If we wanted to
+be fully user-friendly, we would arrange to save the restriction and the
+location of point, but we won&rsquo;t.
+</p>
+<p>The <code>(goto-char (point-min))</code> expression moves point to the beginning
+of the buffer.
+</p>
+<p>Then comes a <code>while</code> loop in which the work of the function is carried
+out.  In the loop, Emacs determines the length of each definition and
+constructs a lengths&rsquo; list containing the information.
+</p>
+<p>Emacs kills the buffer after working through it.  This is to save space
+inside of Emacs.  My version of GNU Emacs 19 contained over 300 source files
+of interest; GNU Emacs 22 contains over a thousand source files.  Another
+function will apply <code>lengths-list-file</code> to each of the files.
+</p>
+<p>Finally, the last expression within the <code>let</code> expression is the
+<code>lengths-list</code> variable; its value is returned as the value of the
+whole function.
+</p>
+<p>You can try this function by installing it in the usual fashion.  Then place
+your cursor after the following expression and type <kbd>C-x C-e</kbd>
+(<code>eval-last-sexp</code>).
+</p>
+<div class="example">
+<pre class="example">(lengths-list-file
+ &quot;/usr/local/share/emacs/22.1/lisp/emacs-lisp/debug.el&quot;)
+</pre></div>
+
+<p>You may need to change the pathname of the file; the one here is for GNU
+Emacs version 22.1.  To change the expression, copy it to the
+<samp>*scratch*</samp> buffer and edit it.
+</p>
+<p>Also, to see the full length of the list, rather than a truncated version,
+you may have to evaluate the following:
+</p>
+<div class="example">
+<pre class="example">(custom-set-variables '(eval-expression-print-length nil))
+</pre></div>
+
+<p>(See <a href="defcustom.html">Specifying Variables using <code>defcustom</code></a>.  Then
+evaluate the <code>lengths-list-file</code> expression.)
+</p>
+<p>The lengths&rsquo; list for <samp>debug.el</samp> takes less than a second to produce
+and looks like this in GNU Emacs 22:
+</p>
+<div class="example">
+<pre class="example">(83 113 105 144 289 22 30 97 48 89 25 52 52 88 28 29 77 49 43 290 232 587)
+</pre></div>
+
+<p>(Using my old machine, the version 19 lengths&rsquo; list for <samp>debug.el</samp> took
+seven seconds to produce and looked like this:
+</p>
+<div class="example">
+<pre class="example">(75 41 80 62 20 45 44 68 45 12 34 235)
+</pre></div>
+
+<p>The newer version of <samp>debug.el</samp> contains more defuns than the earlier
+one; and my new machine is much faster than the old one.)
+</p>
+<p>Note that the length of the last definition in the file is first in the
+list.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Several-files.html">Count Words in <code>defuns</code> in Different Files</a>, Previous: <a href="Find-a-File.html">Find a File</a>, Up: <a href="Words-in-a-defun.html">Counting Words in a <code>defun</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

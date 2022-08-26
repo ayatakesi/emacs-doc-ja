@@ -1,0 +1,227 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>defun (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="defun (プログラミングEmacs Lisp)">
+<meta name="keywords" content="defun (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Writing-Defuns.html" rel="up" title="Writing Defuns">
+<link href="Install.html" rel="next" title="Install">
+<link href="Primitive-Functions.html" rel="prev" title="Primitive Functions">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="section" id="defun">
+<div class="header">
+<p>
+Next: <a href="Install.html" accesskey="n" rel="next">Install a Function Definition</a>, Previous: <a href="Primitive-Functions.html" accesskey="p" rel="prev">An Aside about Primitive Functions</a>, Up: <a href="Writing-Defuns.html" accesskey="u" rel="up">How To Write Function Definitions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-defun-Macro"></span><h3 class="section">3.1 The <code>defun</code> Macro</h3>
+<span id="index-defun"></span>
+
+<span id="index-function-definition-defined"></span>
+<p>In Lisp, a symbol such as <code>mark-whole-buffer</code> has code attached to it
+that tells the computer what to do when the function is called.  This code
+is called the <em>function definition</em> and is created by evaluating a Lisp
+expression that starts with the symbol <code>defun</code> (which is an
+abbreviation for <em>define function</em>).
+</p>
+<p>In subsequent sections, we will look at function definitions from the Emacs
+source code, such as <code>mark-whole-buffer</code>.  In this section, we will
+describe a simple function definition so you can see how it looks.  This
+function definition uses arithmetic because it makes for a simple example.
+Some people dislike examples using arithmetic; however, if you are such a
+person, do not despair.  Hardly any of the code we will study in the
+remainder of this introduction involves arithmetic or mathematics.  The
+examples mostly involve text in one way or another.
+</p>
+<p>A function definition has up to five parts following the word <code>defun</code>:
+</p>
+<ol>
+<li> The name of the symbol to which the function definition should be attached.
+
+</li><li> A list of the arguments that will be passed to the function.  If no
+arguments will be passed to the function, this is an empty list, <code>()</code>.
+
+</li><li> Documentation describing the function.  (Technically optional, but strongly
+recommended.)
+
+</li><li> Optionally, an expression to make the function interactive so you can use it
+by typing <kbd>M-x</kbd> and then the name of the function; or by typing an
+appropriate key or keychord.
+
+</li><li> <span id="index-body-defined"></span>
+The code that instructs the computer what to do: the <em>body</em> of the
+function definition.
+</li></ol>
+
+<p>It is helpful to think of the five parts of a function definition as being
+organized in a template, with slots for each part:
+</p>
+<div class="example">
+<pre class="example">(defun <var>function-name</var> (<var>arguments</var>&hellip;)
+  &quot;<var>optional-documentation</var>&hellip;&quot;
+  (interactive <var>argument-passing-info</var>)     ; <span class="roman">optional</span>
+  <var>body</var>&hellip;)
+</pre></div>
+
+<p>As an example, here is the code for a function that multiplies its argument
+by 7.  (This example is not interactive.  See <a href="Interactive.html">Making a
+Function Interactive</a>, for that information.)
+</p>
+<div class="example">
+<pre class="example">(defun multiply-by-seven (number)
+  &quot;Multiply NUMBER by seven.&quot;
+  (* 7 number))
+</pre></div>
+
+<p>This definition begins with a parenthesis and the symbol <code>defun</code>,
+followed by the name of the function.
+</p>
+<span id="index-argument-list-defined"></span>
+<p>The name of the function is followed by a list that contains the arguments
+that will be passed to the function.  This list is called the <em>argument
+list</em>.  In this example, the list has only one element, the symbol,
+<code>number</code>.  When the function is used, the symbol will be bound to the
+value that is used as the argument to the function.
+</p>
+<p>Instead of choosing the word <code>number</code> for the name of the argument, I
+could have picked any other name.  For example, I could have chosen the word
+<code>multiplicand</code>.  I picked the word &ldquo;number&rdquo; because it tells what
+kind of value is intended for this slot; but I could just as well have
+chosen the word &ldquo;multiplicand&rdquo; to indicate the role that the value placed
+in this slot will play in the workings of the function.  I could have called
+it <code>foogle</code>, but that would have been a bad choice because it would not
+tell humans what it means.  The choice of name is up to the programmer and
+should be chosen to make the meaning of the function clear.
+</p>
+<p>Indeed, you can choose any name you wish for a symbol in an argument list,
+even the name of a symbol used in some other function: the name you use in
+an argument list is private to that particular definition.  In that
+definition, the name refers to a different entity than any use of the same
+name outside the function definition.  Suppose you have a nick-name
+&ldquo;Shorty&rdquo; in your family; when your family members refer to &ldquo;Shorty&rdquo;,
+they mean you.  But outside your family, in a movie, for example, the name
+&ldquo;Shorty&rdquo; refers to someone else.  Because a name in an argument list is
+private to the function definition, you can change the value of such a
+symbol inside the body of a function without changing its value outside the
+function.  The effect is similar to that produced by a <code>let</code>
+expression.  (See <a href="let.html"><code>let</code></a>.)
+</p>
+
+<p>The argument list is followed by the documentation string that describes the
+function.  This is what you see when you type <kbd><span class="nolinebreak">C-h</span>&nbsp;f</kbd><!-- /@w --> and the name
+of a function.  Incidentally, when you write a documentation string like
+this, you should make the first line a complete sentence since some
+commands, such as <code>apropos</code>, print only the first line of a multi-line
+documentation string.  Also, you should not indent the second line of a
+documentation string, if you have one, because that looks odd when you use
+<kbd>C-h f</kbd> (<code>describe-function</code>).  The documentation string is
+optional, but it is so useful, it should be included in almost every
+function you write.
+</p>
+<span id="index-_002a-_0028multiplication_0029"></span>
+<p>The third line of the example consists of the body of the function
+definition.  (Most functions&rsquo; definitions, of course, are longer than this.)
+In this function, the body is the list, <code>(* 7 number)</code>, which says to
+multiply the value of <var>number</var> by 7.  (In Emacs Lisp, <code>*</code> is the
+function for multiplication, just as <code>+</code> is the function for addition.)
+</p>
+<p>When you use the <code>multiply-by-seven</code> function, the argument
+<code>number</code> evaluates to the actual number you want used.  Here is an
+example that shows how <code>multiply-by-seven</code> is used; but don&rsquo;t try to
+evaluate this yet!
+</p>
+<div class="example">
+<pre class="example">(multiply-by-seven 3)
+</pre></div>
+
+<p>The symbol <code>number</code>, specified in the function definition in the next
+section, is bound to the value 3 in the actual use of the function.  Note
+that although <code>number</code> was inside parentheses in the function
+definition, the argument passed to the <code>multiply-by-seven</code> function is
+not in parentheses.  The parentheses are written in the function definition
+so the computer can figure out where the argument list ends and the rest of
+the function definition begins.
+</p>
+<p>If you evaluate this example, you are likely to get an error message.  (Go
+ahead, try it!)  This is because we have written the function definition,
+but not yet told the computer about the definition&mdash;we have not yet loaded
+the function definition in Emacs.  Installing a function is the process that
+tells the Lisp interpreter the definition of the function.  Installation is
+described in the next section.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Install.html">Install a Function Definition</a>, Previous: <a href="Primitive-Functions.html">An Aside about Primitive Functions</a>, Up: <a href="Writing-Defuns.html">How To Write Function Definitions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

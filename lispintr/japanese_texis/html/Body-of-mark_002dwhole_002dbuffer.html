@@ -1,0 +1,152 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- これはプログラマー以外の人を対象としたEmacs Lispプログラミング入門です。
+
+
+Distributed with Emacs version 27.2.50.
+
+Copyright (C) 1990-1995, 1997, 2001-2022 Free Software
+Foundation, Inc.
+
+
+
+Printed copies available from https://shop.fsf.org/. Published by:
+
+GNU Press,                        https://www.fsf.org/licensing/gnu-press/
+a division of the                 email: sales@fsf.org
+Free Software Foundation, Inc.    Tel: +1 (617) 542-5942
+51 Franklin Street, Fifth Floor   Fax: +1 (617) 542-2652
+Boston, MA 02110-1301 USA
+
+
+ISBN 1-882114-43-4
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free Documentation License, Version 1.3 or any later
+version published by the Free Software Foundation; there being no Invariant
+Section, with the Front-Cover Texts being "A GNU Manual", and with the
+Back-Cover Texts as in (a) below.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+(a) The FSF's Back-Cover Text is: "You have the freedom to copy and modify
+this GNU manual.  Buying copies from the FSF supports it in developing GNU
+and promoting software freedom." -->
+<title>Body of mark-whole-buffer (プログラミングEmacs Lisp)</title>
+
+<meta name="description" content="Body of mark-whole-buffer (プログラミングEmacs Lisp)">
+<meta name="keywords" content="Body of mark-whole-buffer (プログラミングEmacs Lisp)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="mark_002dwhole_002dbuffer.html" rel="up" title="mark-whole-buffer">
+<link href="mark_002dwhole_002dbuffer-overview.html" rel="prev" title="mark-whole-buffer overview">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="ja">
+<div class="subsection" id="Body-of-mark_002dwhole_002dbuffer">
+<div class="header">
+<p>
+Previous: <a href="mark_002dwhole_002dbuffer-overview.html" accesskey="p" rel="prev">An overview of <code>mark-whole-buffer</code></a>, Up: <a href="mark_002dwhole_002dbuffer.html" accesskey="u" rel="up">The Definition of <code>mark-whole-buffer</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Body-of-mark_002dwhole_002dbuffer-1"></span><h4 class="subsection">4.3.1 Body of <code>mark-whole-buffer</code></h4>
+
+<p>The body of the <code>mark-whole-buffer</code> function consists of three lines of
+code:
+</p>
+<div class="example">
+<pre class="example">(push-mark (point))
+(push-mark (point-max) nil t)
+(goto-char (point-min))
+</pre></div>
+
+<p>The first of these lines is the expression, <code>(push-mark (point))</code>.
+</p>
+<p>This line does exactly the same job as the first line of the body of the
+<code>simplified-beginning-of-buffer</code> function, which is written
+<code>(push-mark)</code>.  In both cases, the Lisp interpreter sets a mark at the
+current position of the cursor.
+</p>
+<p>I don&rsquo;t know why the expression in <code>mark-whole-buffer</code> is written
+<code>(push-mark (point))</code> and the expression in <code>beginning-of-buffer</code>
+is written <code>(push-mark)</code>.  Perhaps whoever wrote the code did not know
+that the arguments for <code>push-mark</code> are optional and that if
+<code>push-mark</code> is not passed an argument, the function automatically sets
+mark at the location of point by default.  Or perhaps the expression was
+written so as to parallel the structure of the next line.  In any case, the
+line causes Emacs to determine the position of point and set a mark there.
+</p>
+<p>In earlier versions of GNU Emacs, the next line of <code>mark-whole-buffer</code>
+was <code>(push-mark (point-max))</code>.  This expression sets a mark at the
+point in the buffer that has the highest number.  This will be the end of
+the buffer (or, if the buffer is narrowed, the end of the accessible portion
+of the buffer.  See <a href="Narrowing-_0026-Widening.html">Narrowing and Widening</a>, for
+more about narrowing.)  After this mark has been set, the previous mark, the
+one set at point, is no longer set, but Emacs remembers its position, just
+as all other recent marks are always remembered.  This means that you can,
+if you wish, go back to that position by typing <kbd>C-u C-<span class="key">SPC</span></kbd> twice.
+</p>
+<p>In GNU Emacs 22, the <code>(point-max)</code> is slightly more complicated.  The
+line reads
+</p>
+<div class="example">
+<pre class="example">(push-mark (point-max) nil t)
+</pre></div>
+
+<p>The expression works nearly the same as before.  It sets a mark at the
+highest numbered place in the buffer that it can.  However, in this version,
+<code>push-mark</code> has two additional arguments.  The second argument to
+<code>push-mark</code> is <code>nil</code>.  This tells the function it <em>should</em>
+display a message that says &ldquo;Mark set&rdquo; when it pushes the mark.  The third
+argument is <code>t</code>.  This tells <code>push-mark</code> to activate the mark when
+Transient Mark mode is turned on.  Transient Mark mode highlights the
+currently active region.  It is often turned off.
+</p>
+<p>Finally, the last line of the function is <code>(goto-char (point-min)))</code>.
+This is written exactly the same way as it is written in
+<code>beginning-of-buffer</code>.  The expression moves the cursor to the minimum
+point in the buffer, that is, to the beginning of the buffer (or to the
+beginning of the accessible portion of the buffer).  As a result of this,
+point is placed at the beginning of the buffer and mark is set at the end of
+the buffer.  The whole buffer is, therefore, the region.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Previous: <a href="mark_002dwhole_002dbuffer-overview.html">An overview of <code>mark-whole-buffer</code></a>, Up: <a href="mark_002dwhole_002dbuffer.html">The Definition of <code>mark-whole-buffer</code></a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>
