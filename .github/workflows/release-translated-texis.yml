@@ -10,16 +10,24 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Create translated Texinfo files
+      - name: Prepare build environment
         run: |
+          sudo apt-get install -y perl 
           sudo apt-get install -y gettext
           sudo apt-get install -y po4a
           sudo apt-get install -y libintl-perl
           sudo apt-get install -y coreutils
           sudo apt-get install -y texinfo
+          sudo apt-get install -y texlive-full
+          VERSION_STR=${GITHUB_REF##*/}
+          VERSION_DIR=$(echo ${VERSION_STR}|perl -pe 's/-\d+$//;s/^emacs-//;')
+      - name: Create translated Texinfo files
+        run: |
           make all
-          tar cvfz ${GITHUB_REF##*/}.tar.gz */japanese_texis/*.texi */japanese_texis/texinfo.tex
-          zip -r ${GITHUB_REF##*/}.zip  */japanese_texis/*.texi */japanese_texis/texinfo.tex
+      - name: Archive translated Texinfo files
+        run: |          
+          tar cvfz ${VERSION-STR}.tar.gz */japanese_texis/*.texi */japanese_texis/texinfo.tex
+          zip -r ${VERSION_STR}.zip  */japanese_texis/*.texi */japanese_texis/texinfo.tex
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -37,8 +45,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ github.ref }}.tar.gz
-          asset_name: ${{ github.ref }}.tar.gz
+          asset_path: ./${VERSION_STR}.tar.gz
+          asset_name: ${VERSION_STR}.tar.gz
           asset_content_type: application/gzip
       - name: Upload zip
         id: upload-release-asset-02
@@ -47,7 +55,27 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ github.ref }}.zip
-          asset_name: ${{ github.ref }}.zip
-          asset_content_type: application/zip
-          
+          asset_path: ./${VERSION_STR}.zip
+          asset_name: ${VERSION_STR}.zip
+          asset_content_type: application/zip          
+      - name: Generated translated documents
+        run: |
+          make -C emacs/japanese_texis -f Makefile.example info single-html multi-html pdf
+          make -C lispref/japanese_texis -f Makefile.example info single-html multi-html pdf
+      - name: Deploy github-pages
+        run: |
+          git clone https://github.com/ayatakesi/ayatakesi.github.io
+          mkdir -p emacs/${VERSION_DIR}
+          cp -pfr emacs/japanese_texis/emacs-ja.html ayatakesi.github.io/emacs/${VERSION_DIR}
+          cp -pfr emacs/japanese_texis/html/ ayatakesi.github.io/emacs/${VERSION_DIR}
+          cp -pfr emacs/japanese_texis/emacs-ja.info ayatakesi.github.io/emacs/${VERSION_DIR}
+          cp -pfr emacs/japanese_texis/emacs-ja.pdf ayatakesi.github.io/emacs/${VERSION_DIR}
+          git -C ayatakesi.github.io/ add emacs/${VERSION_DIR}
+          mkdir -p lispref/${VERSION_DIR}
+          cp -pfr emacs/japanese_texis/elisp-ja.html ayatakesi.github.io/emacs/${VERSION_DIR}
+          cp -pfr emacs/japanese_texis/html/ ayatakesi.github.io/emacs/${VERSION_DIR}
+          cp -pfr emacs/japanese_texis/elisp-ja.info ayatakesi.github.io/emacs/${VERSION_DIR}
+          cp -pfr emacs/japanese_texis/elisp-ja.pdf ayatakesi.github.io/emacs/${VERSION_DIR}
+          git -C ayatakesi.github.io/ add lispref/${VERSION_DIR}
+          git -C ayatakesi.github.io/ commit -m "Generate pages for ${VERSION_STR}"
+          git -C ayatakesi.github.io/ push --quiet https://${GITHUB_TOKEN}@github.com/ayatakesi/ayatakesi.github.io.git;
