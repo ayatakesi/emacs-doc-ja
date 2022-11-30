@@ -159,7 +159,7 @@ while (<>) {
 EOT
     grep -E '^@((chapter)|((sub)*(section))|(appendix)(sub)*(sec)?)' ${EN_TEXI0} |
 	sed -r "s/'/\\\'/g" |
-	sed -r "s|(.+)$|\t\(\$en, \$ja\) = \(quotemeta\('&'\), __ '&'\); s/\$en/\$ja/;|" >>${PERL};
+	sed -r "s|(.+)$|\t\(\$en, \$ja\) = \(quotemeta\('&'\), __ '&'\); s/^\$en\$/\$ja/;|" >>${PERL};
     printf "\tprint;\n}" >>${PERL};
     RM_FILES+=" ${PERL}";
 
