@@ -138,6 +138,14 @@ of environment variable settings; each element should be a string of
 the form @code{"@var{envvarname}=@var{value}"}.  These environment
 variable settings override the usual ones.
 
+@vindex compilation-max-output-line-length
+  Displaying extremely long lines in compilation output can slow Emacs
+down.  Lines that are longer than
+@code{compilation-max-output-line-length} will have the portion that's
+exceeds that limit hidden behind a button that can be clicked on to
+reveal the hidden portion.  Set this variable to @code{nil} to never
+hide anything.
+
 @node Compilation Mode
 @section Compilation Mode
 
@@ -170,7 +178,9 @@ list of customization variables and faces.
   If you change the variable
 @code{compilation-auto-jump-to-first-error} to a non-@code{nil} value,
 Emacs automatically visits the locus of the first error message that
-appears in the @file{*compilation*} buffer.
+appears in the @file{*compilation*} buffer.  (This variable can also
+have the values @code{if-location-known} and @code{first-known}, which
+modify the conditions for automatically visiting the error locus.)
 
   Compilation mode provides the following additional commands.  These
 commands can also be used in @file{*grep*} buffers, where the
@@ -278,6 +288,19 @@ the variable to an integer value @var{n}, these commands scroll the
 window so that the current error message is @var{n} lines from the
 top, whether or not there is a fringe; the default value, @code{nil},
 gives the behavior described above.
+
+@vindex compilation-hidden-output
+  Compilation output can sometimes be very verbose, and much of it isn't
+of particular interest to a user.  The
+@code{compilation-hidden-output} user option should either be a regexp
+or a list of regexps, and output that matches will be made invisible.
+For instance, to hide the verbose output from recursive makefiles, you
+can say something like:
+
+@lisp
+(setq compilation-hidden-output
+      '("^make[^\n]+\n"))
+@end lisp
 
 @vindex compilation-error-regexp-alist
 @vindex grep-regexp-alist
@@ -514,10 +537,13 @@ C/C++ files this is usually the C compiler.  Flymake can also use
 build tools such as @code{make} for checking complicated projects.
 
   To enable Flymake mode, type @kbd{M-x flymake-mode}.  You can jump
-to the errors that it finds by using @kbd{M-x flymake-goto-next-error}
-and @kbd{M-x flymake-goto-prev-error}.  To display any error messages
-associated with the current line, type @kbd{M-x
-flymake-display-err-menu-for-current-line}.
+to the errors that it finds by using @w{@kbd{M-x
+flymake-goto-next-error}} and @w{@kbd{M-x flymake-goto-prev-error}}.
+To display a detailed overview of the diagnostics for the current
+buffer, use the command @w{@kbd{M-x flymake-show-buffer-diagnostics}};
+to display a similar overview of diagnostics for the entire project
+(@pxref{Projects}), use @w{@kbd{M-x
+flymake-show-project-diagnostics}}.
 
   For more details about using Flymake,
 @ifnottex
@@ -1733,6 +1759,10 @@ are larger than it from being displayed as characters.
 which is provided for evaluating Emacs Lisp expressions interactively.
 Its major mode is Lisp Interaction mode.  You can also enable Lisp
 Interaction mode by typing @kbd{M-x lisp-interaction-mode}.
+
+@findex scratch-buffer
+  If you kill the @file{*scratch*} buffer, you can recreate it with
+the @kbd{M-x scratch-buffer} command.
 
 @findex eval-print-last-sexp
 @kindex C-j @r{(Lisp Interaction mode)}

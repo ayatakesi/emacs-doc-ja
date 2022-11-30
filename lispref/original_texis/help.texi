@@ -158,6 +158,13 @@ the function definition has no documentation string.  In that case,
 @code{documentation} returns @code{nil}.
 @end defun
 
+@defun function-documentation function
+Generic function used by @code{documentation} to extract the raw
+docstring from a function object.  You can specify how to get the
+docstring of a specific function type by adding a corresponding method
+to it.
+@end defun
+
 @defun face-documentation face
 This function returns the documentation string of @var{face} as a
 face.
@@ -338,7 +345,10 @@ stands for a key sequence @var{KEYSEQ}, which will use the same face
 as a command substitution.  This should be used only when a key
 sequence has no corresponding command, for example when it is read
 directly with @code{read-key-sequence}.  It must be a valid key
-sequence according to @code{key-valid-p}.
+sequence according to @code{key-valid-p}.  It can also be used with
+command names, like @samp{\`M-x foo'}, where you want this to be
+fontified like a keyboard sequence, but you want to inhibit
+translating it into a key sequence like @samp{\[foo]} does.
 
 @item `
 (grave accent) stands for a left quote.
@@ -355,31 +365,16 @@ depending on the value of @code{text-quoting-style}.
 quotes the following character and is discarded; thus, @samp{\=`} puts
 @samp{`} into the output, @samp{\=\[} puts @samp{\[} into the output,
 and @samp{\=\=} puts @samp{\=} into the output.
+
+@item \+
+This indicates that the symbol directly following should not be marked
+as link in the @file{*Help*} buffer.
 @end table
 
 @strong{Please note:} Each @samp{\} must be doubled when written in a
 string in Emacs Lisp.
 
-@defopt text-quoting-style
-@cindex curved quotes
-@cindex curly quotes
-The value of this variable is a symbol that specifies the style Emacs
-should use for single quotes in the wording of help and messages.  If
-the variable's value is @code{curve}, the style is @t{‘like this’}
-with curved single quotes.  If the value is @code{straight}, the style
-is @t{'like this'} with straight apostrophes.  If the value is
-@code{grave}, quotes are not translated and the style is @t{`like
-this'} with grave accent and apostrophe, the standard style before
-Emacs version 25.  The default value @code{nil} acts like @code{curve}
-if curved single quotes seem to be displayable, and like @code{grave}
-otherwise.
-
-This option is useful on platforms that have problems with curved
-quotes.  You can customize it freely according to your personal
-preference.
-@end defopt
-
-@defun substitute-command-keys string &optional no-face
+@defun substitute-command-keys string &optional no-face include-menus
 @vindex help-key-binding@r{ (face)}
 This function scans @var{string} for the above special sequences and
 replaces them by what they stand for, returning the result as a string.
@@ -388,6 +383,11 @@ user's own customized key bindings.  By default, the key bindings are
 given a special face @code{help-key-binding}, but if the optional
 argument @var{no-face} is non-@code{nil}, the function doesn't add
 this face to the produced string.
+
+@defun substitute-quotes string
+This function works like @code{substitute-command-keys}, but only
+replaces quote characters.
+@end defun
 
 @cindex advertised binding
 If a command has multiple bindings, this function normally uses the
@@ -428,6 +428,9 @@ C-j             minibuffer-complete-and-exit
 RET             minibuffer-complete-and-exit
 C-g             abort-recursive-edit
 "
+
+The keymap description will normally exclude menu items, but if
+@var{include-menus} is non-@code{nil}, include them.
 
 @group
 (substitute-command-keys
@@ -487,6 +490,13 @@ This option is useful on platforms that have problems with curved
 quotes.  You can customize it freely according to your personal
 preference.
 @end defopt
+
+@defun text-quoting-style
+You should not read the value of the variable
+@code{text-quoting-style} directly.  Instead, use this function with
+the same name to dynamically compute the correct quoting style on the
+current terminal in the @code{nil} case described above.
+@end defun
 
 @node Describing Characters
 @section Describing Characters for Help Messages
@@ -817,7 +827,7 @@ if the user types the help character again.
 
 Emacs can list functions based on various groupings.  For instance,
 @code{string-trim} and @code{mapconcat} are ``string'' functions, so
-@kbd{M-x shortdoc-display-group RET string RET} will give an overview
+@kbd{M-x shortdoc RET string RET} will give an overview
 of functions that operate on strings.
 
 The documentation groups are created with the
@@ -970,8 +980,8 @@ In addition to function descriptions, the list can also have string
 elements, which are used to divide a documentation group into
 sections.
 
-@defun shortdoc-add-function shortdoc-add-function group section elem
-Lisp packages can add functions to groups with this command.  Each
+@defun shortdoc-add-function group section elem
+Lisp packages can add functions to groups with this function.  Each
 @var{elem} should be a function description, as described above.
 @var{group} is the function group, and @var{section} is what section
 in the function group to insert the function into.

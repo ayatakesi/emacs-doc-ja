@@ -554,12 +554,17 @@ trigger another garbage collection.  You can use the result returned by
 object type; space allocated to the contents of buffers does not count.
 
 The initial threshold value is @code{GC_DEFAULT_THRESHOLD}, defined in
-@file{alloc.c}.  Since it's defined in @code{word_size} units, the value
-is 400,000 for the default 32-bit configuration and 800,000 for the 64-bit
-one.  If you specify a larger value, garbage collection will happen less
-often.  This reduces the amount of time spent garbage collecting, but
-increases total memory use.  You may want to do this when running a program
-that creates lots of Lisp data.
+@file{alloc.c}.  Since it's defined in @code{word_size} units, the
+value is 400,000 for the default 32-bit configuration and 800,000 for
+the 64-bit one.  If you specify a larger value, garbage collection
+will happen less often.  This reduces the amount of time spent garbage
+collecting, but increases total memory use.  You may want to do this
+when running a program that creates lots of Lisp data.  However, we
+recommend against increasing the threshold for prolonged periods of
+time, and advise that you never set it higher than needed for the
+program to run in reasonable time.  Using thresholds higher than
+necessary could potentially cause system-wide memory pressure, and
+should therefore be avoided.
 
 You can make collections more frequent by specifying a smaller value, down
 to 1/10th of @code{GC_DEFAULT_THRESHOLD}.  A value less than this minimum
@@ -576,6 +581,9 @@ garbage collection occurs only when both criteria are satisfied.
 As the heap size increases, the time to perform a garbage collection
 increases.  Thus, it can be desirable to do them less frequently in
 proportion.
+
+As with @code{gc-cons-threshold}, do not enlarge this more than
+necessary, and never for prolonged periods of time.
 @end defopt
 
   Control over the garbage collector via @code{gc-cons-threshold} and
@@ -614,6 +622,9 @@ a certain kind of object.  See the documentation string for details.
 @defun memory-info
 This functions returns an amount of total system memory and how much
 of it is free.  On an unsupported system, the value may be @code{nil}.
+
+If @code{default-directory} points to a remote host, memory
+information of that host is returned.
 @end defun
 
 @defvar gcs-done
@@ -1637,7 +1648,7 @@ This function returns the value of a Lisp float specified by
 @var{arg}, as a C @code{double} value.
 @end deftypefn
 
-@deftypefn Function struct timespec extract_time (emacs_env *@var{env}, emacs_value @var{arg})
+@deftypefn Function {struct timespec} extract_time (emacs_env *@var{env}, emacs_value @var{arg})
 This function, which is available since Emacs 27, interprets @var{arg}
 as an Emacs Lisp time value and returns the corresponding @code{struct
 timespec}.  @xref{Time of Day}.  @code{struct timespec} represents a
@@ -1942,7 +1953,7 @@ garbage-collected.  Don't run any expensive code in a finalizer,
 because GC must finish quickly to keep Emacs responsive.
 @end deftypefn
 
-@deftypefn Function void *get_user_ptr (emacs_env *@var{env}, emacs_value @var{arg})
+@deftypefn Function {void *}get_user_ptr (emacs_env *@var{env}, emacs_value @var{arg})
 This function extracts the C pointer from the Lisp object represented
 by @var{arg}.
 @end deftypefn
@@ -2060,7 +2071,7 @@ to quit, use the following function, which is available since Emacs
 27.1.
 
 @anchor{process_input}
-@deftypefn Function enum emacs_process_input_result process_input (emacs_env *@var{env})
+@deftypefn Function {enum emacs_process_input_result} process_input (emacs_env *@var{env})
 This function processes pending input events.  It returns
 @code{emacs_process_input_quit} if the user wants to quit or an error
 occurred while processing signals.  In that case, we recommend that
@@ -2135,7 +2146,7 @@ Therefore, we recommend that your module functions check for nonlocal
 exit conditions and recover from them, using the functions described
 below.
 
-@deftypefn Function enum emacs_funcall_exit non_local_exit_check (emacs_env *@var{env})
+@deftypefn Function {enum emacs_funcall_exit} non_local_exit_check (emacs_env *@var{env})
 This function returns the kind of nonlocal exit condition stored in
 @var{env}.  The possible values are:
 
@@ -2150,7 +2161,7 @@ The last @acronym{API} function exited via @code{throw}.
 @end vtable
 @end deftypefn
 
-@deftypefn Function enum emacs_funcall_exit non_local_exit_get (emacs_env *@var{env}, emacs_value *@var{symbol}, emacs_value *@var{data})
+@deftypefn Function {enum emacs_funcall_exit} non_local_exit_get (emacs_env *@var{env}, emacs_value *@var{symbol}, emacs_value *@var{data})
 This function returns the kind of nonlocal exit condition stored in
 @var{env}, like @code{non_local_exit_check} does, but it also returns
 the full information about the nonlocal exit, if any.  If the return
@@ -3004,8 +3015,8 @@ Using @code{bool} can make programs easier to read and a bit faster than
 using @code{int}.  Although it is also OK to use @code{int}, @code{0}
 and @code{1}, this older style is gradually being phased out.  When
 using @code{bool}, respect the limitations of the replacement
-implementation of @code{bool}, as documented in the source file
-@file{lib/stdbool.in.h}.  In particular, boolean bitfields should be of type
+implementation of @code{bool}.  In particular,
+boolean bitfields should be of type
 @code{bool_bf}, not @code{bool}, so that they work correctly even when
 compiling Objective C with standard GCC.
 

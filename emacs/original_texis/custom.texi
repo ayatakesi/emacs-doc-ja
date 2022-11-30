@@ -511,6 +511,9 @@ Set up a customization buffer for just one user option, @var{option}.
 @item M-x customize-face @key{RET} @var{face} @key{RET}
 Set up a customization buffer for just one face, @var{face}.
 
+@item M-x customize-icon @key{RET} @var{face} @key{RET}
+Set up a customization buffer for just one icon, @var{icon}.
+
 @item M-x customize-group @key{RET} @var{group} @key{RET}
 Set up a customization buffer for just one group, @var{group}.
 
@@ -664,6 +667,16 @@ type @kbd{M-x disable-theme}.
 the @file{*Custom Themes*} buffer; or type @kbd{M-x describe-theme}
 anywhere in Emacs and enter the theme name.
 
+@findex theme-choose-variant
+Some themes have variants (most often just two: light and dark).  You
+can switch to another variant using @kbd{M-x theme-choose-variant}.
+If the currently active theme has only one other variant, it will be
+selected; if there are more variants, the command will prompt you
+which one to switch to.
+
+Note that @code{theme-choose-variant} only works if a single theme
+is active.
+
 @node Creating Custom Themes
 @subsection Creating Custom Themes
 @cindex custom themes, creating
@@ -792,12 +805,12 @@ C-h v fill-column @key{RET}
 displays something like this:
 
 @example
-fill-column is a variable defined in ‘C source code’.
+fill-column is a variable defined in @quoteleft{}C source code@quoteright{}.
 Its value is 70
 
   Automatically becomes buffer-local when set.
   This variable is safe as a file local variable if its value
-  satisfies the predicate ‘integerp’.
+  satisfies the predicate @quoteleft{}integerp@quoteright{}.
   Probably introduced at or before Emacs version 18.
 
 Documentation:
@@ -843,6 +856,21 @@ expression, and then type @kbd{C-j} (@pxref{Lisp Interaction}).
 otherwise stated, affects only the current Emacs session.  The only
 way to alter the variable in future sessions is to put something in
 your initialization file (@pxref{Init File}).
+
+  If you're setting a customizable variable in your initialization
+file, and you don't want to use the Customize interface, you can use
+the @code{setopt} macro.  For instance:
+
+@findex setopt
+@example
+(setopt fill-column 75)
+@end example
+
+This works the same as @code{setq}, but if the variable has any
+special setter functions, they will be run automatically when using
+@code{setopt}.  You can also use @code{setopt} on other,
+non-customizable variables, but this is less efficient than using
+@code{setq}.
 
 @node Hooks
 @subsection Hooks
@@ -1217,11 +1245,33 @@ Manual}.
 These four keywords are not really variables; setting them in any
 other context has no special meaning.
 
+  If you're editing a file across Emacs versions, and a new mode has
+been introduced to handle a file in a newer Emacs version, you can use
+several @code{mode} entries to use the new mode (called
+@code{my-new-mode}) in the new Emacs, and fall back to the old mode
+(called @code{my-old-mode}) in older Emacs versions.  If you're
+enabling the modes in the first line of the file, can say:
+
+@example
+-*- mode: my-old; mode: my-new -*-
+@end example
+
+  Emacs will use the final defined mode it finds, so in older Emacs
+versions it will ignore @code{my-new-mode}, while in Emacs versions
+where @code{my-new-mode} is defined, it'll ignore @code{my-old-mode}.
+Similarly, in a local variable block at the end of the file:
+
+@example
+Local variables:
+mode: my-old
+mode: my-new
+@end example
+
   Do not use the @code{mode} keyword for minor modes.  To enable or
 disable a minor mode in a local variables list, use the @code{eval}
 keyword with a Lisp expression that runs the mode command
 (@pxref{Minor Modes}).  For example, the following local variables
-list enables ElDoc mode (@pxref{Lisp Doc}) by calling
+list enables ElDoc mode (@pxref{Programming Language Doc}) by calling
 @code{eldoc-mode} with no argument (calling it with an argument of 1
 would do the same), and disables Font Lock mode (@pxref{Font Lock}) by
 calling @code{font-lock-mode} with an argument of @minus{}1.
@@ -1609,7 +1659,7 @@ events.
 or lower case; @acronym{ASCII} or non-@acronym{ASCII}) are reserved
 for users.  Emacs itself will never bind those key sequences, and
 Emacs extensions should avoid binding them.  In other words, users can
-bind key sequences like @kbd{C-c a} or @kbd{C-c ç} and rely on these
+bind key sequences like @kbd{C-c a} or @kbd{C-c @,{c}} and rely on these
 never being shadowed by other Emacs bindings.
 
 @node Prefix Keymaps
@@ -2219,6 +2269,22 @@ is included in the message displayed when the command is used:
      "It's better to use `kill-region' instead.\n")
 @end example
 
+@findex command-query
+  As a less heavy-handed alternative to disabling commands, you may
+want to be queried before executing a command.  For instance, to be
+queried before executing the @kbd{M->} (@code{end-of-buffer})
+command, you could put something like the following in your init file:
+
+@example
+(command-query
+ 'end-of-buffer
+ "Do you really want to go to the end of the buffer?")
+@end example
+
+By default, you'll be queried with a @kbd{y}/@kbd{n} question, but if
+you give a non-@code{nil} value to the third, optional argument,
+you'll be queried with @kbd{yes}/@kbd{no} instead.
+
 @findex disable-command
 @findex enable-command
   You can make a command disabled either by editing the initialization
@@ -2247,6 +2313,8 @@ as a function from Lisp programs.
 @cindex startup (init file)
 @cindex XDG_CONFIG_HOME
 
+@c When updating this, also update ``Setting up a customization file''
+@c in efaq.texi.
   When Emacs is started, it normally tries to load a Lisp program from
 an @dfn{initialization file}, or @dfn{init file} for short.  This
 file, if it exists, specifies how to initialize Emacs for you.
@@ -2338,8 +2406,8 @@ mode when you set them with Customize, but ordinary @code{setq} won't
 do that; to enable the mode in your init file, call the minor mode
 command.  Finally, a few customizable user options are initialized in
 complex ways, and these have to be set either via the customize
-interface (@pxref{Customization}) or by using
-@code{customize-set-variable} (@pxref{Examining}).
+interface (@pxref{Customization}), or by using
+@code{customize-set-variable}/@code{setopt} (@pxref{Examining}).
 
   The second argument to @code{setq} is an expression for the new
 value of the variable.  This can be a constant, a variable, or a
@@ -2395,6 +2463,9 @@ keys which send non-@acronym{ASCII} characters.
 @cindex Lisp object syntax
 Write a single-quote (@code{'}) followed by the Lisp object you want.
 @end table
+
+  For more information on the Emacs Lisp syntax, @pxref{Introduction,,,
+elisp, The Emacs Lisp Reference Manual}.
 
 @node Init Examples
 @subsection Init File Examples
@@ -2492,7 +2563,7 @@ Change the coding system used when using the clipboard
 (@pxref{Communication Coding}).
 
 @example
-(customize-set-variable 'selection-coding-system 'utf-8)
+(setopt selection-coding-system 'utf-8)
 @end example
 
 @item
@@ -2749,6 +2820,24 @@ file which use such strings, possibly leading Emacs to decode those
 strings incorrectly.  You should then avoid adding Emacs Lisp code
 that modifies the coding system in other ways, such as calls to
 @code{set-language-environment}.
+
+  An alternative to using non-@acronym{ASCII} characters directly is
+to use one of the character escape syntaxes described in
+@pxref{General Escape Syntax,,, elisp, The Emacs Lisp Reference
+Manual}, as they allow all Unicode codepoints to be specified using
+only @acronym{ASCII} characters.
+
+  To bind non-@acronym{ASCII} keys, you must use a vector (@pxref{Init
+Rebinding}).  The string syntax cannot be used, since the
+non-@acronym{ASCII} characters will be interpreted as meta keys.  For
+instance:
+
+@example
+(global-set-key [?@var{char}] 'some-function)
+@end example
+
+@noindent
+Type @kbd{C-q}, followed by the key you want to bind, to insert @var{char}.
 
 @node Early Init File
 @subsection The Early Init File
