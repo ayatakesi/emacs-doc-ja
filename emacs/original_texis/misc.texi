@@ -1,5 +1,6 @@
 @c This is part of the Emacs manual.
-@c Copyright (C) 1985--2022 Free Software Foundation, Inc.
+@c Copyright (C) 1985--1987, 1993--1995, 1997, 2000--2023 Free Software
+@c Foundation, Inc.
 @c See file emacs.texi for copying conditions.
 @iftex
 @chapter Miscellaneous Commands
@@ -454,27 +455,20 @@ servers the user has connected to.  If this variable is @code{t},
 @cindex PostScript file
 @cindex OpenDocument file
 @cindex Microsoft Office file
-@cindex EPUB file
-@cindex CBZ file
-@cindex FB2 file
-@cindex XPS file
-@cindex OXPS file
 @cindex DocView mode
 @cindex mode, DocView
 @cindex document viewer (DocView)
 @findex doc-view-mode
 
   DocView mode is a major mode for viewing DVI, PostScript (PS), PDF,
-OpenDocument, Microsoft Office, EPUB, CBZ, FB2, XPS and OXPS
-documents.  It provides features such as slicing, zooming, and
-searching inside documents.  It works by converting the document to a
-set of images using the @command{gs} (GhostScript) or
-@command{pdfdraw}/@command{mutool draw} (MuPDF) commands and other
-external tools @footnote{PostScript files require GhostScript, DVI
-files require @code{dvipdf} or @code{dvipdfm}, OpenDocument and
-Microsoft Office documents require the @code{unoconv} tool, and EPUB,
-CBZ, FB2, XPS and OXPS files require @code{mutool} to be available.},
-and displaying those images.
+OpenDocument, and Microsoft Office documents.  It provides features
+such as slicing, zooming, and searching inside documents.  It works by
+converting the document to a set of images using the @command{gs}
+(GhostScript) or @command{mudraw}/@command{pdfdraw} (MuPDF) commands
+and other external tools @footnote{For PostScript files, GhostScript
+is a hard requirement.  For DVI files, @code{dvipdf} or @code{dvipdfm}
+is needed.  For OpenDocument and Microsoft Office documents, the
+@code{unoconv} tool is needed.}, and displaying those images.
 
 @findex doc-view-toggle-display
 @findex doc-view-minor-mode
@@ -583,18 +577,6 @@ you instead want the image to be re-rendered at the new size, set
 @code{doc-view-scale-internally} to @code{nil}.  To specify the
 default size for DocView, customize the variable
 @code{doc-view-resolution}.
-
-@vindex doc-view-imenu-enabled
-@vindex doc-view-imenu-flatten
-@vindex doc-view-imenu-format
-  When the @command{mutool} program is available, DocView will use it
-to generate entries for an outline menu, making it accessible via the
-@code{imenu} facility (@pxref{Imenu}).  To disable this functionality
-even when @command{mutool} can be found on your system, customize the
-variable @code{doc-view-imenu-enabled} to the @code{nil} value.  You
-can further customize how @code{imenu} items are formatted and
-displayed using the variables @code{doc-view-imenu-format} and
-@code{doc-view-flatten}.
 
 @node DocView Searching
 @subsection DocView Searching
@@ -867,9 +849,6 @@ Restores the position of point as it was before inserting the
 shell-command output.
 @end table
 
-In case the output buffer is not the current buffer, shell command
-output is appended at the end of this buffer.
-
 @node Interactive Shell
 @subsection Interactive Subshell
 
@@ -906,19 +885,6 @@ buffer name, and create (or reuse) a subshell in that buffer.  You can
 also rename the @file{*shell*} buffer using @kbd{M-x rename-uniquely},
 then create a new @file{*shell*} buffer using plain @kbd{M-x shell}.
 Subshells in different buffers run independently and in parallel.
-
-  Emacs attempts to keep track of what the current directory is by
-looking at the commands you enter, looking for @samp{cd} commands and
-the like.  This is an error-prone solution, since there are many ways
-to change the current directory, so Emacs also looks for special
-@acronym{OSC} (Operating System Commands) escape codes that are
-designed to convey this information in a more reliable fashion.  You
-should arrange for your shell to print the appropriate escape sequence
-at each prompt, for instance with the following command:
-
-@example
-printf "\e]7;file://%s%s\e\\" "$HOSTNAME" "$PWD"
-@end example
 
 @vindex explicit-shell-file-name
 @cindex environment variables for subshells
@@ -1531,20 +1497,14 @@ directory stack if they are not already on it
 underlying shell, of course.
 
 @vindex comint-terminfo-terminal
-@vindex system-uses-terminfo
 @vindex TERM@r{, environment variable, in sub-shell}
 Comint mode sets the @env{TERM} environment variable to a safe default
 value, but this value disables some useful features.  For example,
 color is disabled in applications that use @env{TERM} to determine if
 color is supported.  Therefore, Emacs provides an option
-@code{comint-terminfo-terminal} to let you choose a terminal with more
-advanced features, as defined in your system's terminfo database.
-Emacs will use this option as the value for @env{TERM} so long as
-@code{system-uses-terminfo} is non-@code{nil}.
-
-Both @code{comint-terminfo-terminal} and @code{system-uses-terminfo}
-can be declared as connection-local variables to adjust these options
-to match what a remote system expects (@pxref{Connection Variables}).
+@code{comint-terminfo-terminal}, which you can set to a terminal that
+is present in your system's terminfo database, in order to take
+advantage of advanced features of that terminal.
 
 @node Terminal emulator
 @subsection Emacs Terminal Emulator
@@ -1654,11 +1614,11 @@ interface is similar to the @code{more} program.
 @cindex remote host
 @cindex connecting to remote host
 @cindex Telnet
-@cindex SSH
+@cindex Rlogin
 
   You can login to a remote computer, using whatever commands you
-would from a regular terminal (e.g., the @command{ssh} command), from
-a Term window.
+would from a regular terminal (e.g., using the @command{ssh} or
+@command{telnet} or @code{rlogin} commands), from a Term window.
 
   A program that asks you for a password will normally suppress
 echoing of the password, so the password will not show up in the
@@ -1737,11 +1697,6 @@ options.  @xref{Initial Options}.  When Emacs is started this way, it
 calls @code{server-start} after initialization and does not open an
 initial frame.  It then waits for edit requests from clients.
 
-@item
-Run the command @code{emacsclient} with the @samp{--alternate-editor=""}
-command-line option.  This starts an Emacs daemon only if no Emacs daemon
-is already running.
-
 @cindex systemd unit file
 @item
 If your operating system uses @command{systemd} to manage startup,
@@ -1807,32 +1762,6 @@ you can give each daemon its own server name like this:
 @example
   emacs --daemon=foo
 @end example
-
-@findex server-stop-automatically
-  The Emacs server can optionally be stopped automatically when
-certain conditions are met.  To do this, call the function
-@code{server-stop-automatically} in your init file (@pxref{Init
-File}), with one of the following arguments:
-
-@itemize
-@item
-With the argument @code{empty}, the server is stopped when it has no
-clients, no unsaved file-visiting buffers and no running processes
-anymore.
-
-@item
-With the argument @code{delete-frame}, when the last client frame is
-being closed, you are asked whether each unsaved file-visiting buffer
-must be saved and each unfinished process can be stopped, and if so,
-the server is stopped.
-
-@item
-With the argument @code{kill-terminal}, when the last client frame is
-being closed with @kbd{C-x C-c} (@code{save-buffers-kill-terminal}),
-you are asked whether each unsaved file-visiting buffer must be saved
-and each unfinished process can be stopped, and if so, the server is
-stopped.
-@end itemize
 
 @findex server-eval-at
   If you have defined a server by a unique server name, it is possible
@@ -2057,11 +1986,6 @@ the new frame displays the @file{*scratch*} buffer by default.  You
 can customize this behavior with the variable @code{initial-buffer-choice}
 (@pxref{Entering Emacs}).
 
-@item -r
-@itemx --reuse-frame
-Create a new graphical client frame if none exists, otherwise use an
-existing Emacs frame.
-
 @item -F @var{alist}
 @itemx --frame-parameters=@var{alist}
 Set the parameters for a newly-created graphical frame
@@ -2100,13 +2024,6 @@ Let @command{emacsclient} exit immediately, instead of waiting until
 all server buffers are finished.  You can take as long as you like to
 edit the server buffers within Emacs, and they are @emph{not} killed
 when you type @kbd{C-x #} in them.
-
-@item -w
-@itemx --timeout=@var{N}
-Wait for a response from Emacs for @var{N} seconds before giving up.
-If there is no response within that time, @command{emacsclient} will
-display a warning and exit.  The default is @samp{0}, which means to
-wait forever.
 
 @item --parent-id=@var{id}
 Open an @command{emacsclient} frame as a client frame in the parent X
@@ -2801,12 +2718,7 @@ will by default ask you whether to use the locked desktop file.  You
 can avoid the question by customizing the variable
 @code{desktop-load-locked-desktop} to either @code{nil}, which means
 never load the desktop in this case, or @code{t}, which means load the
-desktop without asking.  Finally, the @code{check-pid} value means to
-load the file if the Emacs process that has locked the desktop is not
-running on the local machine.  This should not be used in
-circumstances where the locking Emacs might still be running on
-another machine.  This could be the case in multi-user environments
-where your home directory is mounted remotely using NFS or similar.
+desktop without asking.
 
 @cindex desktop restore in daemon mode
   When Emacs starts in daemon mode, it cannot ask you any questions,
@@ -2888,6 +2800,99 @@ new major mode which provides a command to switch back.  These
 approaches give you more flexibility to go back to unfinished tasks in
 the order you choose.
 
+@ignore
+@c Apart from edt and viper, this is all obsolete.
+@c (Can't believe we were saying "most other editors" into 2014!)
+@c There seems no point having a node just for those, which both have
+@c their own manuals.
+@node Emulation
+@section Emulation
+@cindex emulating other editors
+@cindex other editors
+@cindex EDT
+@cindex vi
+@cindex WordStar
+
+  GNU Emacs can be programmed to emulate (more or less) most other
+editors.  Standard facilities can emulate these:
+
+@table @asis
+@item CRiSP/Brief (PC editor)
+@findex crisp-mode
+@vindex crisp-override-meta-x
+@findex scroll-all-mode
+@cindex CRiSP mode
+@cindex Brief emulation
+@cindex emulation of Brief
+@cindex mode, CRiSP
+@kbd{M-x crisp-mode} enables key bindings to emulate the CRiSP/Brief
+editor.  Note that this rebinds @kbd{M-x} to exit Emacs unless you set
+the variable @code{crisp-override-meta-x}.  You can also use the
+command @kbd{M-x scroll-all-mode} or set the variable
+@code{crisp-load-scroll-all} to emulate CRiSP's scroll-all feature
+(scrolling all windows together).
+
+@item EDT (DEC VMS editor)
+@findex edt-emulation-on
+@findex edt-emulation-off
+Turn on EDT emulation with @kbd{M-x edt-emulation-on}; restore normal
+command bindings with @kbd{M-x edt-emulation-off}.
+
+Most of the EDT emulation commands are keypad keys, and most standard
+Emacs key bindings are still available.  The EDT emulation rebindings
+are done in the global keymap, so there is no problem switching
+buffers or major modes while in EDT emulation.
+
+@item TPU (DEC VMS editor)
+@findex tpu-edt-on
+@cindex TPU
+@kbd{M-x tpu-edt-on} turns on emulation of the TPU editor emulating EDT.
+
+@item vi (Berkeley editor)
+@findex viper-mode
+Viper is an emulator for vi.  It implements several levels of
+emulation; level 1 is closest to vi itself, while level 5 departs
+somewhat from strict emulation to take advantage of the capabilities of
+Emacs.  To invoke Viper, type @kbd{M-x viper-mode}; it will guide you
+the rest of the way and ask for the emulation level.  @inforef{Top,
+Viper, viper}.
+
+@item vi (another emulator)
+@findex vi-mode
+@kbd{M-x vi-mode} enters a major mode that replaces the previously
+established major mode.  All of the vi commands that, in real vi, enter
+input mode are programmed instead to return to the previous major
+mode.  Thus, ordinary Emacs serves as vi's input mode.
+
+Because vi emulation works through major modes, it does not work
+to switch buffers during emulation.  Return to normal Emacs first.
+
+If you plan to use vi emulation much, you probably want to bind a key
+to the @code{vi-mode} command.
+
+@item vi (alternate emulator)
+@findex vip-mode
+@kbd{M-x vip-mode} invokes another vi emulator, said to resemble real vi
+more thoroughly than @kbd{M-x vi-mode}.  Input mode in this emulator
+is changed from ordinary Emacs so you can use @key{ESC} to go back to
+emulated vi command mode.  To get from emulated vi command mode back to
+ordinary Emacs, type @kbd{C-z}.
+
+This emulation does not work through major modes, and it is possible
+to switch buffers in various ways within the emulator.  It is not
+so necessary to assign a key to the command @code{vip-mode} as
+it is with @code{vi-mode} because terminating insert mode does
+not use it.
+
+@inforef{Top, VIP, vip}, for full information.
+
+@item WordStar (old wordprocessor)
+@findex wordstar-mode
+@kbd{M-x wordstar-mode} provides a major mode with WordStar-like
+key bindings.
+@end table
+@end ignore
+
 
 @node Hyperlinking
 @section Hyperlinking and Web Navigation Features
@@ -2936,41 +2941,6 @@ the specified URL@.  The buffer is put in the Xwidget-WebKit mode
 one-key commands for scrolling the widget, changing its size, and
 reloading it.  Type @w{@kbd{C-h b}} in that buffer to see the key
 bindings.
-
-@findex xwidget-webkit-edit-mode
-@cindex xwidget-webkit-edit-mode
-  By default, typing a self-inserting character inside an xwidget
-webkit buffer will do nothing, or trigger some special action.  To
-make those characters and other common editing keys insert themselves
-when pressed, you can enable @code{xwidget-webkit-edit-mode}, which
-redefines them to be passed through to the WebKit xwidget.
-
-You can also enable @code{xwidget-webkit-edit-mode} by typing @kbd{e}
-inside the xwidget webkit buffer.
-
-@findex xwidget-webkit-isearch-mode
-@cindex searching in webkit buffers
-  @code{xwidget-webkit-isearch-mode} is a minor mode that behaves
-similarly to incremental search (@pxref{Incremental Search}), but
-operates on the contents of a WebKit widget instead of the current
-buffer.  It is bound to @kbd{C-s} and @kbd{C-r} inside xwidget-webkit
-buffers.  When it is invoked by @kbd{C-r}, the initial search will be
-performed in reverse direction.
-
-Typing any self-inserting character will cause the character to be
-inserted into the current search query.  Typing @kbd{C-s} will cause
-the WebKit widget to display the next search result, while typing
-@kbd{C-r} will cause it to display the previous one.
-
-To leave incremental search, you can type @kbd{C-g}.
-
-@findex xwidget-webkit-browse-history
-@cindex history of webkit buffers
-  The command @code{xwidget-webkit-browse-history} displays a buffer
-containing a list of pages previously loaded by the current WebKit
-buffer, and lets you navigate to those pages by hitting @kbd{RET}.
-
-It is bound to @kbd{H}.
 
 @node Browse-URL
 @subsection  Following URLs

@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990--1995, 1998--1999, 2001--2022 Free Software
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2023 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Searching and Matching
@@ -548,12 +548,12 @@ can act.  It is poor practice to depend on this behavior; quote the
 special character anyway, regardless of where it appears.
 
 As a @samp{\} is not special inside a character alternative, it can
-never remove the special meaning of @samp{-}, @samp{^} or @samp{]}.
-You should not quote these characters when they have no special
-meaning.  This would not clarify anything, since backslashes
-can legitimately precede these characters where they @emph{have}
-special meaning, as in @samp{[^\]} (@code{"[^\\]"} for Lisp string
-syntax), which matches any single character except a backslash.
+never remove the special meaning of @samp{-} or @samp{]}.  So you
+should not quote these characters when they have no special meaning
+either.  This would not clarify anything, since backslashes can
+legitimately precede these characters where they @emph{have} special
+meaning, as in @samp{[^\]} (@code{"[^\\]"} for Lisp string syntax),
+which matches any single character except a backslash.
 
 In practice, most @samp{]} that occur in regular expressions close a
 character alternative and hence are special.  However, occasionally a
@@ -832,22 +832,21 @@ the characters that stand for them.
 matches any character whose syntax is not @var{code}.
 
 @cindex category, regexp search for
-@item \c@var{code}
-matches any character whose category is @var{code}.  Here @var{code}
-is a character that represents a category: for example, in the standard
-category table, @samp{c} stands for Chinese characters and @samp{g}
-stands for Greek characters.  You can see the list of all the
-currently defined categories with @w{@kbd{M-x describe-categories
-@key{RET}}}.  You can also define your own categories in addition to
-the standard ones using the @code{define-category} function
-(@pxref{Categories}).
+@item \c@var{c}
+matches any character whose category is @var{c}.  Here @var{c} is a
+character that represents a category: thus, @samp{c} for Chinese
+characters or @samp{g} for Greek characters in the standard category
+table.  You can see the list of all the currently defined categories
+with @kbd{M-x describe-categories @key{RET}}.  You can also define
+your own categories in addition to the standard ones using the
+@code{define-category} function (@pxref{Categories}).
 
-@item \C@var{code}
-matches any character whose category is not @var{code}.
+@item \C@var{c}
+matches any character whose category is not @var{c}.
 @end table
 
   The following regular expression constructs match the empty string---that is,
-they don't consume any characters---but whether they match depends on the
+they don't use up any characters---but whether they match depends on the
 context.  For all, the beginning and end of the accessible portion of
 the buffer are treated as if they were the actual beginning and end of
 the buffer.
@@ -1061,15 +1060,11 @@ customization.
 @subsubsection Constructs in @code{rx} regexps
 
 The various forms in @code{rx} regexps are described below.  The
-shorthand @var{rx} represents any @code{rx} form.  @var{rx}@dots{}
-means zero or more @code{rx} forms and, unless stated otherwise,
-matches these forms in sequence as if wrapped in a @code{(seq @dots{})}
-subform.
-
-These are all valid arguments to the @code{rx} macro.  All forms are
-defined by their described semantics; the corresponding string regexps
-are provided for ease of understanding only.  @var{A}, @var{B}, @dots{}
-denote (suitably bracketed) string regexp subexpressions therein.
+shorthand @var{rx} represents any @code{rx} form, and @var{rx}@dots{}
+means zero or more @code{rx} forms.  These are all valid arguments to
+the @code{rx} macro.  Where the corresponding string
+regexp syntax is given, @var{A}, @var{B}, @dots{} are string regexp
+subexpressions.
 
 @subsubheading Literals
 
@@ -1303,12 +1298,12 @@ Match any character that has whitespace syntax
 
 @item @code{lower}, @code{lower-case}
 Match anything lower-case, as determined by the current case table.
-If @code{case-fold-search} is non-@code{nil}, this also matches any
+If @code{case-fold-search} is non-nil, this also matches any
 upper-case letter.
 
 @item @code{upper}, @code{upper-case}
 Match anything upper-case, as determined by the current case table.
-If @code{case-fold-search} is non-@code{nil}, this also matches any
+If @code{case-fold-search} is non-nil, this also matches any
 lower-case letter.
 
 @item @code{graph}, @code{graphic}
@@ -2059,7 +2054,7 @@ feature for matching regular expressions from end to beginning.  It's
 not worth the trouble of implementing that.
 @end deffn
 
-@defun string-match regexp string &optional start inhibit-modify
+@defun string-match regexp string &optional start
 This function returns the index of the start of the first match for
 the regular expression @var{regexp} in @var{string}, or @code{nil} if
 there is no match.  If @var{start} is non-@code{nil}, the search starts
@@ -2084,10 +2079,8 @@ For example,
 The index of the first character of the
 string is 0, the index of the second character is 1, and so on.
 
-By default, if this function finds a match, the index of the first
-character beyond the match is available as @code{(match-end 0)}.
-@xref{Match Data}.  If @var{inhibit-modify} is non-@code{nil}, the
-match data isn't modified.
+If this function finds a match, the index of the first character beyond
+the match is available as @code{(match-end 0)}.  @xref{Match Data}.
 
 @example
 @group
@@ -2108,18 +2101,16 @@ This predicate function does what @code{string-match} does, but it
 avoids modifying the match data.
 @end defun
 
-@defun looking-at regexp &optional inhibit-modify
+@defun looking-at regexp
 This function determines whether the text in the current buffer directly
 following point matches the regular expression @var{regexp}.  ``Directly
 following'' means precisely that: the search is ``anchored'' and it can
 succeed only starting with the first character following point.  The
 result is @code{t} if so, @code{nil} otherwise.
 
-This function does not move point, but it does update the match data
-(if @var{inhibit-modify} is @code{nil} or missing, which is the
-default).  @xref{Match Data}.  As a convenience, instead of using the
-@var{inhibit-modify} argument, you can use @code{looking-at-p},
-described below.
+This function does not move point, but it does update the match data.
+@xref{Match Data}.  If you need to test for a match without modifying
+the match data, use @code{looking-at-p}, described below.
 
 In this example, point is located directly before the @samp{T}.  If it
 were anywhere else, the result would be @code{nil}.
@@ -2226,13 +2217,13 @@ backtracking specified by the POSIX standard for regular expression
 matching.
 @end deffn
 
-@defun posix-looking-at regexp &optional inhibit-modify
+@defun posix-looking-at regexp
 This is like @code{looking-at} except that it performs the full
 backtracking specified by the POSIX standard for regular expression
 matching.
 @end defun
 
-@defun posix-string-match regexp string &optional start inhibit-modify
+@defun posix-string-match regexp string &optional start
 This is like @code{string-match} except that it performs the full
 backtracking specified by the POSIX standard for regular expression
 matching.
@@ -2868,7 +2859,7 @@ Display some help, then ask again.
 
 @defvar multi-query-replace-map
 This variable holds a keymap that extends @code{query-replace-map} by
-providing additional key bindings that are useful in multi-buffer
+providing additional keybindings that are useful in multi-buffer
 replacements.  The additional bindings are:
 
 @table @code
