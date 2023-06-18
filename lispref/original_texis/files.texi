@@ -581,9 +581,12 @@ contents of the file.  This is better than simply deleting the buffer
 contents and inserting the whole file, because (1) it preserves some
 marker positions and (2) it puts less data in the undo list.
 
-It is possible to read a special file (such as a FIFO or an I/O device)
-with @code{insert-file-contents}, as long as @var{replace} and
-@var{visit} are @code{nil}.
+It is possible to read a special file (such as a FIFO or an I/O
+device) with @code{insert-file-contents}, as long as @var{replace},
+and @var{visit} and @var{beg} are @code{nil}.  However, you should
+normally use an @var{end} argument for these files to avoid inserting
+(potentially) unlimited data into the buffer (for instance, when
+inserting data from @file{/dev/urandom}).
 @end defun
 
 @defun insert-file-contents-literally filename &optional visit beg end replace
@@ -892,10 +895,20 @@ permissions of the file itself.)
 If the file does not exist, or if there was trouble determining
 whether the file exists, this function returns @code{nil}.
 
-Directories are files, so @code{file-exists-p} can return @code{t} when
-given a directory.  However, because @code{file-exists-p} follows
-symbolic links, it returns @code{t} for a symbolic link
-name only if the target file exists.
+@cindex empty file name, and @code{file-exists-p}
+Since a file name that is an empty string is interpreted relative to
+the current buffer's default directory (@pxref{Relative File Names}),
+calling @code{file-exists-p} with an argument that is an empty string
+will report about the buffer's default directory.
+
+@cindex dangling symlinks, testing for existence
+Directories are files, so @code{file-exists-p} can return @code{t}
+when given a directory.  However, because @code{file-exists-p} follows
+symbolic links, it returns @code{t} for a symbolic link name only if
+the target of the link exists; if your Lisp program needs to consider
+@dfn{dangling symlinks} whose target doesn't exist as existing files,
+use @code{file-attributes} (@pxref{File Attributes}) instead of
+@code{file-exists-p}.
 @end defun
 
 @defun file-readable-p filename
@@ -1306,6 +1319,20 @@ on the 19th, @file{aug-20} was written on the 20th, and the file
 @end example
 @end defun
 
+@defun file-has-changed-p filename tag
+This function returns non-@code{nil} if the time stamp of
+@var{filename} has changed since the last call.  When called for the
+first time for some @var{filename}, it records the last modification
+time and size of the file, and returns non-@code{nil} when
+@var{filename} exists.  Thereafter, when called for the same
+@var{filename}, it compares the current time stamp and size with the
+recorded ones, and returns non-@code{nil} only if either the time
+stamp or the size (or both) are different.  This is useful when a Lisp
+program wants to re-read a file whenever it changes.  With an optional
+argument @var{tag}, which must be a symbol, the size and modification
+time comparisons are limited to calls with the same tag.
+@end defun
+
 @defun file-attributes filename &optional id-format
 @anchor{Definition of file-attributes}
 This function returns a list of attributes of file @var{filename}.  If
@@ -1387,13 +1414,16 @@ The file's inode number (@code{file-attribute-inode-number}),
 a nonnegative integer.
 
 @item
-The filesystem number of the device that the file is on
-@code{file-attribute-device-number}), an integer.
-This element and the file's inode number
-together give enough information to distinguish any two files on the
-system---no two files can have the same values for both of these
-numbers.
+The filesystem's identifier of the device that the file is on
+(@code{file-attribute-device-number}), an integer or a cons cell of
+two integers.  The latter is sometimes used by remote files, in order
+to distinguish remote filesystems from local ones.
 @end enumerate
+
+The file's inode and device together give enough information
+to distinguish any two files on the system---no two files can have the
+same values for both of these attributes.  This tuple that uniquely
+identifies the file is returned by @code{file-attribute-file-identifier}.
 
 For example, here are the file attributes for @file{files.texi}:
 
@@ -1428,13 +1458,19 @@ is owned by the user with name @samp{lh}.
 is in the group with name @samp{users}.
 
 @item (20614 64019 50040 152000)
-was last accessed on October 23, 2012, at 20:12:03.050040152 UTC.
+was last accessed on October 23, 2012, at 20:12:03.050040152 UTC@.
+(This timestamp is @code{(1351023123050040152 . 1000000000)}
+if @code{current-time-list} is @code{nil}.)
 
 @item (20000 23 0 0)
-was last modified on July 15, 2001, at 08:53:43 UTC.
+was last modified on July 15, 2001, at 08:53:43.000000000 UTC@.
+(This timestamp is @code{(1310720023000000000 . 1000000000)}
+if @code{current-time-list} is @code{nil}.)
 
 @item (20614 64555 902289 872000)
-last had its status changed on October 23, 2012, at 20:20:59.902289872 UTC.
+last had its status changed on October 23, 2012, at 20:20:59.902289872 UTC@.
+(This timestamp is @code{(1351023659902289872 . 1000000000)}
+if @code{current-time-list} is @code{nil}.)
 
 @item 122295
 is 122295 bytes long.  (It may not contain 122295 characters, though,
@@ -1949,7 +1985,11 @@ all.
 
 @defun file-modes-number-to-symbolic modes
 This function converts a numeric file mode specification in
-@var{modes} into the equivalent symbolic form.
+@var{modes} into the equivalent string form.  The string which this
+function returns is in the same format produced by the shell command
+@kbd{ls -l} and by @code{file-attributes}, @emph{not} the symbolic
+form accepted by @code{file-modes-symbolic-to-number} and the
+@command{chmod} shell command.
 @end defun
 
 @defun set-file-times filename &optional time flag
@@ -2075,6 +2115,9 @@ directory.  Therefore, Emacs considers a file name as having two main
 parts: the @dfn{directory name} part, and the @dfn{nondirectory} part
 (or @dfn{file name within the directory}).  Either part may be empty.
 Concatenating these two parts reproduces the original file name.
+@footnote{Emacs follows the GNU convention to use the term @emph{file name}
+instead of the term @emph{pathname}.  We use the term @emph{path} only for
+search paths, which are lists of directory names.}
 
   On most systems, the directory part is everything up to and including
 the last slash (backslash is also allowed in input on MS-DOS or
@@ -2219,6 +2262,19 @@ and @code{file-name-nondirectory}.  For example,
 @end example
 @end defun
 
+@defun file-name-split filename
+This function splits a file name into its components, and can be
+thought of as the inverse of @code{string-join} with the appropriate
+directory separator.  For example,
+
+@example
+(file-name-split "/tmp/foo.txt")
+    @result{} ("" "tmp" "foo.txt")
+(string-join (file-name-split "/tmp/foo.txt") "/")
+    @result{} "/tmp/foo.txt"
+@end example
+@end defun
+
 @node Relative File Names
 @subsection Absolute and Relative File Names
 @cindex absolute file name
@@ -2291,6 +2347,10 @@ form.
      @result{} "../foo/bar"
 @end example
 @end defun
+
+@cindex empty file name
+  A file name that is an empty string stands for the current buffer's
+default directory.
 
 @node Directory Names
 @subsection Directory Names
@@ -2398,6 +2458,15 @@ You can use this function for directory names and for file names,
 because it recognizes abbreviations even as part of the name.
 @end defun
 
+@defun file-name-parent-directory filename
+This function returns the directory name of the parent directory of
+@var{filename}.  If @var{filename} is at the root directory of the
+filesystem, it returns @code{nil}.  A relative @var{filename} is
+assumed to be relative to @code{default-directory}, and the return
+value will also be relative in that case.  If the return value is
+non-@code{nil}, it ends in a slash.
+@end defun
+
 @node File Name Expansion
 @subsection Functions that Expand Filenames
 @cindex expansion of file names
@@ -2472,6 +2541,7 @@ This is for the sake of filesystems that have the concept of a
 superroot above the root directory @file{/}.  On other filesystems,
 @file{/../} is interpreted exactly the same as @file{/}.
 
+@cindex empty file names, and @code{expand-file-name}
 Expanding @file{.} or the empty string returns the default directory:
 
 @example
@@ -3079,9 +3149,15 @@ except those two.  It is useful as the @var{match-regexp} argument to
 returns @code{nil}, if directory @samp{/foo} is empty.
 @end defvr
 
-@defun file-expand-wildcards pattern &optional full
+@defun file-expand-wildcards pattern &optional full regexp
 This function expands the wildcard pattern @var{pattern}, returning
 a list of file names that match it.
+
+@var{pattern} is, by default, a ``glob''/wildcard string, e.g.,
+@samp{"/tmp/*.png"} or @samp{"/*/*/foo.png"}, but can also be a
+regular expression if the optional @var{regexp} parameter is non-@code{nil}.
+In any case, the matches are applied per sub-directory, so a match
+can't span a parent/sub directory.
 
 If @var{pattern} is written as an absolute file name,
 the values are absolute also.
@@ -3148,6 +3224,9 @@ This command creates a directory named @var{dirname}.  If
 @var{parents} is non-@code{nil}, as is always the case in an
 interactive call, that means to create the parent directories first,
 if they don't already exist.
+As a function, @code{make-directory} returns non-@code{nil} if @var{dirname}
+already exists as a directory and @var{parents} is non-@code{nil},
+and returns @code{nil} if it successfully created @var{dirname}.
 @code{mkdir} is an alias for this.
 @end deffn
 
@@ -3281,8 +3360,8 @@ first, before handlers for jobs such as remote file access.
 
 @ifnottex
 @noindent
-@code{access-file}, @code{add-name-to-file},
-@code{byte-compiler-base-file-name},@*
+@code{abbreviate-file-name}, @code{access-file},
+@code{add-name-to-file}, @code{byte-compiler-base-file-name},@*
 @code{copy-directory}, @code{copy-file},
 @code{delete-directory}, @code{delete-file},
 @code{diff-latest-backup-file},
@@ -3317,15 +3396,15 @@ first, before handlers for jobs such as remote file access.
 @code{get-file-buffer},
 @code{insert-directory},
 @code{insert-file-contents},@*
+@code{list-system-processes},
 @code{load}, @code{lock-file},
 @code{make-auto-save-file-name},
 @code{make-directory},
-@code{make-directory-internal},
 @code{make-lock-file-name},
 @code{make-nearby-temp-file},
 @code{make-process},
 @code{make-symbolic-link},@*
-@code{process-file},
+@code{memory-info}, @code{process-attributes}, @code{process-file},
 @code{rename-file}, @code{set-file-acl}, @code{set-file-modes},
 @code{set-file-selinux-context}, @code{set-file-times},
 @code{set-visited-file-modtime}, @code{shell-command},
@@ -3341,7 +3420,8 @@ first, before handlers for jobs such as remote file access.
 @iftex
 @noindent
 @flushleft
-@code{access-file}, @code{add-name-to-file},
+@code{abbreviate-file-name}, @code{access-file},
+@code{add-name-to-file},
 @code{byte-com@discretionary{}{}{}piler-base-file-name},
 @code{copy-directory}, @code{copy-file},
 @code{delete-directory}, @code{delete-file},
@@ -3377,15 +3457,15 @@ first, before handlers for jobs such as remote file access.
 @code{get-file-buffer},
 @code{insert-directory},
 @code{insert-file-contents},
+@code{list-system-processes},
 @code{load}, @code{lock-file},
 @code{make-auto-save-file-name},
 @code{make-direc@discretionary{}{}{}tory},
-@code{make-direc@discretionary{}{}{}tory-internal},
 @code{make-lock-file-name},
 @code{make-nearby-temp-file},
 @code{make-process},
 @code{make-symbolic-link},
-@code{process-file},
+@code{memory-info}, @code{process-attributes}, @code{process-file},
 @code{rename-file}, @code{set-file-acl}, @code{set-file-modes},
 @code{set-file-selinux-context}, @code{set-file-times},
 @code{set-visited-file-modtime}, @code{shell-command},
