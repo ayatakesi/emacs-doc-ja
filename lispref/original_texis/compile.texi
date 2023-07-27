@@ -61,7 +61,7 @@ Here is an example:
 
 @group
 (silly-loop 50000000)
-@result{} 10.235304117202759
+@result{} 5.200886011123657
 @end group
 
 @group
@@ -71,12 +71,12 @@ Here is an example:
 
 @group
 (silly-loop 50000000)
-@result{} 3.705854892730713
+@result{} 0.6239290237426758
 @end group
 @end example
 
-  In this example, the interpreted code required 10 seconds to run,
-whereas the byte-compiled code required less than 4 seconds.  These
+  In this example, the interpreted code required more than 5 seconds to run,
+whereas the byte-compiled code required less than 1 second.  These
 results are representative, but actual results may vary.
 
 @node Compilation Functions
@@ -135,10 +135,10 @@ definition of @var{symbol} (@pxref{Byte-Code Objects}).
 @group
 (byte-compile 'factorial)
 @result{}
-#[(integer)
-  "^H\301U\203^H^@@\301\207\302^H\303^HS!\"\207"
-  [integer 1 * factorial]
-  4 "Compute factorial of INTEGER."]
+#[257
+  "\211\300U\203^H^@@\300\207\211\301^BS!_\207"
+  [1 factorial] 4
+  "Compute factorial of INTEGER.\n\n(fn INTEGER)"]
 @end group
 @end example
 
@@ -516,7 +516,7 @@ using the @code{with-suppressed-warnings} macro:
 @defspec with-suppressed-warnings warnings body@dots{}
 In execution, this is equivalent to @code{(progn @var{body}...)}, but
 the compiler does not issue warnings for the specified conditions in
-@var{body}.  @var{warnings} is an associative list of warning symbols
+@var{body}.  @var{warnings} is an association list of warning symbols
 and function/variable symbols they apply to.  For instance, if you
 wish to call an obsolete function called @code{foo}, but want to
 suppress the compilation warning, say:
@@ -688,11 +688,11 @@ Lisp source; these do not appear in the output of @code{disassemble}.
 (disassemble 'factorial)
      @print{} byte-code for factorial:
  doc: Compute factorial of an integer.
- args: (integer)
+ args: (arg1)
 @end group
 
 @group
-0   varref   integer      ; @r{Get the value of @code{integer} and}
+0   dup                   ; @r{Get the value of @code{integer} and}
                           ;   @r{push it onto the stack.}
 1   constant 1            ; @r{Push 1 onto stack.}
 @end group
@@ -707,9 +707,9 @@ Lisp source; these do not appear in the output of @code{disassemble}.
 7   return                ; @r{Return the top element of the stack.}
 @end group
 @group
-8:1 varref   integer      ; @r{Push value of @code{integer} onto stack.}
+8:1 dup                   ; @r{Push value of @code{integer} onto stack.}
 9   constant factorial    ; @r{Push @code{factorial} onto stack.}
-10  varref   integer      ; @r{Push value of @code{integer} onto stack.}
+10  stack-ref 2           ; @r{Push value of @code{integer} onto stack.}
 11  sub1                  ; @r{Pop @code{integer}, decrement value,}
                           ;   @r{push new value onto stack.}
 12  call     1            ; @r{Call function @code{factorial} using first}
@@ -717,9 +717,9 @@ Lisp source; these do not appear in the output of @code{disassemble}.
                           ;   @r{push returned value onto stack.}
 @end group
 @group
-13 mult                   ; @r{Pop top two values off stack, multiply}
+13  mult                  ; @r{Pop top two values off stack, multiply}
                           ;   @r{them, and push result onto stack.}
-14 return                 ; @r{Return the top element of the stack.}
+14  return                ; @r{Return the top element of the stack.}
 @end group
 @end example
 
@@ -740,7 +740,7 @@ The @code{silly-loop} function is somewhat more complex:
 (disassemble 'silly-loop)
      @print{} byte-code for silly-loop:
  doc: Return time before and after N iterations of a loop.
- args: (n)
+ args: (arg1)
 @end group
 
 @group
@@ -749,24 +749,21 @@ The @code{silly-loop} function is somewhat more complex:
 @end group
 @group
 1   call     0            ; @r{Call @code{current-time-string} with no}
-                          ;   @r{argument, push result onto stack.}
+                          ;   @r{argument, push result onto stack as @code{t1}.}
 @end group
 @group
-2   varbind  t1           ; @r{Pop stack and bind @code{t1} to popped value.}
-@end group
-@group
-3:1 varref   n            ; @r{Get value of @code{n} from the environment}
+2:1 stack-ref 1           ; @r{Get value of the argument @code{n}}
                           ;   @r{and push the value on the stack.}
-4   sub1                  ; @r{Subtract 1 from top of stack.}
+3   sub1                  ; @r{Subtract 1 from top of stack.}
 @end group
 @group
-5   dup                   ; @r{Duplicate top of stack; i.e., copy the top}
+4   dup                   ; @r{Duplicate top of stack; i.e., copy the top}
                           ;   @r{of the stack and push copy onto stack.}
-6   varset   n            ; @r{Pop the top of the stack,}
-                          ;   @r{and bind @code{n} to the value.}
+5   stack-set 3           ; @r{Pop the top of the stack,}
+                          ;   @r{and set @code{n} to the value.}
 
-;; @r{(In effect, the sequence @code{dup varset} copies the top of the stack}
-;; @r{into the value of @code{n} without popping it.)}
+;; @r{(In effect, the sequence @code{dup stack-set} copies the top of}
+;; @r{the stack into the value of @code{n} without popping it.)}
 @end group
 
 @group
@@ -781,16 +778,15 @@ The @code{silly-loop} function is somewhat more complex:
                           ;   @r{else continue.}
 @end group
 @group
-12  varref   t1           ; @r{Push value of @code{t1} onto stack.}
+12  dup                   ; @r{Push value of @code{t1} onto stack.}
 13  constant current-time-string  ; @r{Push @code{current-time-string}}
                                   ;   @r{onto the top of the stack.}
 14  call     0            ; @r{Call @code{current-time-string} again.}
 @end group
 @group
-15  unbind   1            ; @r{Unbind @code{t1} in local environment.}
-16  list2                 ; @r{Pop top two elements off stack, create a}
+15  list2                 ; @r{Pop top two elements off stack, create a}
                           ;   @r{list of them, and push it onto stack.}
-17  return                ; @r{Return value of the top of stack.}
+16  return                ; @r{Return value of the top of stack.}
 @end group
 @end example
 
@@ -853,7 +849,15 @@ from writing its results, the @file{*.eln} files, into a subdirectory
 of @code{user-emacs-directory} (@pxref{Init File}).  You can do that
 by either changing the value of @code{native-comp-eln-load-path}
 (@pxref{Native-Compilation Variables}) or by temporarily pointing the
-@env{HOME} environment variable to a non-existing directory.
+@env{HOME} environment variable to a non-existing directory.  Note
+that the latter technique might still produce a small number of
+@file{*.eln} files if Emacs needs to generate @dfn{trampolines}, which
+are used if Lisp primitives are advised or redefined in your Lisp code
+that is being natively compiled.  @xref{Native-Compilation Variables,
+trampolines}.  Alternatively, you can specify that the @file{*.eln}
+files are written to a non-default directory using the
+@code{startup-redirect-eln-cache} function; @pxref{Native-Compilation
+Functions}.
 
 @menu
 * Native-Compilation Functions::  Functions to natively-compile Lisp.
@@ -934,7 +938,7 @@ used by Emacs to natively-compile any Lisp file or byte-compiled Lisp
 file that is loaded into Emacs, when no natively-compiled file for it
 is available.  Note that because of this use of a subprocess, native
 compilation may produce warning and errors which byte-compilation does
-not, and lisp code may thus need to be modified to work correctly.  See
+not, and Lisp code may thus need to be modified to work correctly.  See
 @code{native-comp-async-report-warnings-errors} in @pxref{Native-Compilation
 Variables} for more details.
 
@@ -976,6 +980,22 @@ the native-compilation support compiled into it.  On systems that load
 @file{libgccjit} dynamically, it also makes sure that library is
 available and can be loaded.  Lisp programs that need to know up front
 whether native-compilation is available should use this predicate.
+@end defun
+
+  By default, asynchronous native compilation writes the @file{*.eln}
+files it produces to a subdirectory of the first writable directory
+specified by the @code{native-comp-eln-load-path} variable
+(@pxref{Native-Compilation Variables}).  You can change this by using
+the following function in your startup files:
+
+@defun startup-redirect-eln-cache cache-directory
+This function arranges for the asynchronous native compilation to
+write the produced @file{*.eln} files to @var{cache-directory}, which
+must be a single directory, a string.  It also destructively modifies
+@code{native-comp-eln-load-path} such that its first element is
+@var{cache-directory}.  If @var{cache-directory} is not an absolute
+file name, it is interpreted relative to @code{user-emacs-directory}
+(@pxref{Init File}).
 @end defun
 
 @node Native-Compilation Variables
@@ -1063,7 +1083,7 @@ pristine environment, that may not be true for the subprocess.
 @end defopt
 
 @defopt native-comp-async-query-on-exit
-If this variable's value is non-nil, Emacs will query upon exiting
+If this variable's value is non-@code{nil}, Emacs will query upon exiting
 whether to exit and kill any asynchronous native-compilation
 subprocesses that are still running, thus preventing the corresponding
 @file{.eln} files from being written.  If the value is @code{nil}, the
@@ -1079,3 +1099,66 @@ The directories in this list are also used for writing the
 specifically, Emacs will write these files into the first writable
 directory in the list.  Thus, you can control where native-compilation
 stores the results by changing the value of this variable.
+
+@cindex disable asynchronous native compilation
+@cindex inhibit asynchronous native compilation
+@cindex asynchronous native compilation, disable
+@defvar native-comp-jit-compilation
+This variable, if non-@code{nil}, enables asynchronous (a.k.a.@:
+@dfn{just-in-time}, or @acronym{JIT}) native compilation of the
+@file{*.elc} files loaded by Emacs for which the corresponding
+@file{*.eln} files do not already exist.  This JIT compilation uses
+separate Emacs sub-processes running in batch mode, according to the
+value of @code{native-comp-async-jobs-number}.  When the JIT
+compilation of a Lisp file finishes successfully, the resulting
+@file{.eln} file is loaded and its code replaces the definition of
+functions provided by the @file{.elc} file.
+@end defvar
+
+@cindex trampolines, in native compilation
+  Setting the value of @code{native-comp-jit-compilation} to@code{nil}
+disables JIT native compilation.  However, even when JIT native
+compilation is disabled, Emacs might still need to start asynchronous
+native compilation subprocesses to produce @dfn{trampolines}.  To
+control this, use a separate variable, described below.
+
+@defvar native-comp-enable-subr-trampolines
+This variable controls generation of trampolines.  A trampoline is a
+small piece of native code required to allow calling Lisp primitives,
+which were advised or redefined, from Lisp code that was
+natively-compiled with @code{native-comp-speed} set to 2 or greater.
+Emacs stores the generated trampolines on separate @file{*.eln} files.
+By default, this variable's value is @code{t}, which enables the
+generation of trampoline files; setting it to @code{nil} disables the
+generation of trampolines.  Note that if a trampoline needed for
+advising or redefining a primitive is not available and cannot be
+generated, calls to that primitive from natively-compiled Lisp will
+ignore redefinitions and advices, and will behave as if the primitive
+was called directly from C.  Therefore, we don't recommend disabling
+the trampoline generation, unless you know that all the trampolines
+needed by your Lisp programs are already compiled and accessible to
+Emacs.
+
+The value of this variable can also be a string, in which case it
+specifies the name of a directory in which to store the generated
+trampoline @file{*.eln} files, overriding the directories in
+@code{native-comp-eln-load-path}.  This is useful if you want the
+trampolines to be generated as needed, but don't want to store them
+under the user's @env{HOME} directory or in the other public
+directories where @file{*.eln} files are kept.  However, unlike with
+directories in @code{native-comp-eln-load-path}, the trampolines will
+be stored in the directory given by the value of this variable, not in
+its version-specific subdirectory.  If the name of this directory is
+not absolute, it is interpreted relative to
+@code{invocation-directory} (@pxref{System Environment})
+
+If this variable is non-@code{nil}, and Emacs needs to produce a
+trampoline, but it cannot find any writable directory to store the
+trampoline, it will store it inside @code{temporary-file-directory}
+(@pxref{Unique File Names}).
+
+Trampolines produced when no writable directory is found to store
+them, or when this variable is a string, will only be available for
+the duration of the current Emacs session, because Emacs doesn't look
+for trampolines in either of these places.
+@end defvar

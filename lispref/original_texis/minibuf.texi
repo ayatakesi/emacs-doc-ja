@@ -244,6 +244,13 @@ This function works by calling the
     value))
 @end group
 @end smallexample
+
+@findex read-string-from-buffer
+If you have a long string (for instance, one that is several lines
+long) that you wish to edit, using @code{read-string} may not be
+ideal.  In that case, popping to a new, normal buffer where the user
+can edit the string may be more convenient, and you can use the
+@code{read-string-from-buffer} function to do that.
 @end defun
 
 @defun read-regexp prompt &optional defaults history
@@ -302,6 +309,22 @@ The optional argument @var{history}, if non-@code{nil}, is a symbol
 specifying a minibuffer history list to use (@pxref{Minibuffer
 History}).  If it is omitted or @code{nil}, the history list defaults
 to @code{regexp-history}.
+
+@cindex @code{case-fold}, text property
+@findex read-regexp-case-fold-search
+The user can use the @kbd{M-s c} command to indicate whether case
+folding should be on or off.  If the user has used this command, the
+returned string will have the text property @code{case-fold} set to
+either @code{fold} or @code{inhibit-fold}.  It is up to the caller of
+@code{read-regexp} to actually use this value, and the convenience
+function @code{read-regexp-case-fold-search} is provided for that.  A
+typical usage pattern here might look like:
+
+@lisp
+(let* ((regexp (read-regexp "Search for: "))
+       (case-fold-search (read-regexp-case-fold-search regexp)))
+  (re-search-forward regexp))
+@end lisp
 @end defun
 
 @defopt read-regexp-defaults-function
@@ -467,6 +490,9 @@ If @var{default} is @code{nil}, there is no default value, and
 therefore no ``default value'' string is included in the result value.
 If @var{default} is a non-@code{nil} list, the first element of the
 list is used in the prompt.
+
+Both @var{prompt} and @code{minibuffer-default-prompt-format} are run
+through @code{substitute-command-keys} (@pxref{Keys in Documentation}).
 @end defun
 
 @defvar read-minibuffer-restore-windows
@@ -1113,6 +1139,11 @@ but is asked for confirmation if the preceding command was a
 completion command (i.e., one of the commands in
 @code{minibuffer-confirm-exit-commands}) and the resulting input is
 not an element of @var{collection}.  @xref{Completion Commands}.
+
+@item
+If a function, it is called with the input as the only argument.  The
+function should return a non-@code{nil} value if the input is
+acceptable.
 
 @item
 Any other value of @var{require-match} behaves like @code{t}, except
@@ -2143,13 +2174,14 @@ will not have serious consequences.  @code{yes-or-no-p} is suitable for
 more momentous questions, since it requires three or four characters to
 answer.
 
-   If either of these functions is called in a command that was invoked
-using the mouse---more precisely, if @code{last-nonmenu-event}
-(@pxref{Command Loop Info}) is either @code{nil} or a list---then it
-uses a dialog box or pop-up menu to ask the question.  Otherwise, it
-uses keyboard input.  You can force use either of the mouse or of keyboard
-input by binding @code{last-nonmenu-event} to a suitable value around
-the call.
+   If either of these functions is called in a command that was
+invoked using the mouse or some other window-system gesture, or in a
+command invoked via a menu, then they use a dialog box or pop-up menu
+to ask the question if dialog boxes are supported.  Otherwise, they
+use keyboard input.  You can force use either of the mouse or of
+keyboard input by binding @code{last-nonmenu-event} to a suitable
+value around the call---bind it to @code{t} to force keyboard
+interaction, and to a list to force dialog boxes.
 
   Both @code{yes-or-no-p} and @code{y-or-n-p} use the minibuffer.
 
@@ -2214,7 +2246,7 @@ Here is an example:
 
 @smallexample
 @group
-(yes-or-no-p "Do you really want to remove everything?")
+(yes-or-no-p "Do you really want to remove everything? ")
 
 ;; @r{After evaluation of the preceding expression,}
 ;;   @r{the following prompt appears,}
@@ -2347,13 +2379,14 @@ Normally, @code{map-y-or-n-p} binds @code{cursor-in-echo-area} while
 prompting.  But if @var{no-cursor-in-echo-area} is non-@code{nil}, it
 does not do that.
 
-If @code{map-y-or-n-p} is called in a command that was invoked using the
-mouse---more precisely, if @code{last-nonmenu-event} (@pxref{Command
-Loop Info}) is either @code{nil} or a list---then it uses a dialog box
-or pop-up menu to ask the question.  In this case, it does not use
-keyboard input or the echo area.  You can force use either of the mouse or
-of keyboard input by binding @code{last-nonmenu-event} to a suitable
-value around the call.
+If @code{map-y-or-n-p} is called in a command that was invoked using
+the mouse or some other window-system gesture, or a command invoked
+via a menu, then it uses a dialog box or pop-up menu to ask the
+question if dialog boxes are supported.  In this case, it does not use
+keyboard input or the echo area.  You can force use either of the
+mouse or of keyboard input by binding @code{last-nonmenu-event} to a
+suitable value around the call---bind it to @code{t} to force keyboard
+interaction, and to a list to force dialog boxes.
 
 The return value of @code{map-y-or-n-p} is the number of objects acted on.
 @end defun
@@ -2714,7 +2747,7 @@ Here's a typical use case:
 If @code{my-client-handling-function} ends up calling something that
 asks the user for something (via @code{y-or-n-p} or
 @code{read-from-minibuffer} or the like), an
-@code{inhibited-interaction} error is signalled instead.  The server
+@code{inhibited-interaction} error is signaled instead.  The server
 code then catches that error and reports it to the client.
 
 @node Minibuffer Misc
