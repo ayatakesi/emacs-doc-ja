@@ -1,0 +1,58 @@
+name: temporary-deploying
+on:
+  push:
+    tags:
+      - 'emacs-*'
+  workflow_dispatch:
+jobs:
+  main:
+    name: Create Release
+    runs-on: ubuntu-latest
+    env:
+      ARCHIVE_NAME: ${{ github.event.release.tag_name }}    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Prepare build environment
+        run: |
+          sudo apt-get install -y perl 
+          sudo apt-get install -y gettext
+          sudo apt-get install -y po4a
+          sudo apt-get install -y libintl-perl
+          sudo apt-get install -y coreutils
+          sudo apt-get install -y texinfo
+          sudo apt-get install -y texlive-full
+      - name: Create translated Texinfo files
+        run: |
+          make all
+      - name: Archive translated Texinfo files
+        run: |          
+          tar cvfz emacs-doc-ja.tar.gz */japanese_texis/*.texi */japanese_texis/texinfo.tex
+          zip -r emacs-doc-ja.zip  */japanese_texis/*.texi */japanese_texis/texinfo.tex
+      - name: Generated translated documents
+        run: |
+          make -C emacs/japanese_texis -f Makefile.example info single-html multi-html pdf
+          make -C lispref/japanese_texis -f Makefile.example info single-html multi-html pdf
+      - name: Deploy github-pages
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          git config --global user.email "ayanokoji.takesi@gmail.com"
+          git config --global user.name "ayatakesi"
+          git clone https://github.com/ayatakesi/ayatakesi.github.io
+          VERSION_STR=$(basename ${GITHUB_REF})
+          VERSION_DIR=$(echo ${VERSION_STR}|perl -pe 's/-\d+$//;s/^emacs-//;')
+          mkdir -p ayatakesi.github.io/emacs/${VERSION_DIR}
+          cp -pfr emacs/japanese_texis/emacs-ja.html ayatakesi.github.io/emacs/${VERSION_DIR}
+          cp -pfr emacs/japanese_texis/html/ ayatakesi.github.io/emacs/${VERSION_DIR}
+          cp -pfr emacs/japanese_texis/emacs-ja.info ayatakesi.github.io/emacs/${VERSION_DIR}
+          cp -pfr emacs/japanese_texis/emacs-ja.pdf ayatakesi.github.io/emacs/${VERSION_DIR}
+          git -C ayatakesi.github.io/ add emacs/${VERSION_DIR}
+          mkdir -p ayatakesi.github.io/lispref/${VERSION_DIR}
+          cp -pfr lispref/japanese_texis/elisp-ja.html ayatakesi.github.io/lispref/${VERSION_DIR}
+          cp -pfr lispref/japanese_texis/html/ ayatakesi.github.io/lispref/${VERSION_DIR}
+          cp -pfr lispref/japanese_texis/elisp-ja.info ayatakesi.github.io/lispref/${VERSION_DIR}
+          cp -pfr lispref/japanese_texis/elisp-ja.pdf ayatakesi.github.io/lispref/${VERSION_DIR}
+          git -C ayatakesi.github.io/ add lispref/${VERSION_DIR}
+          git -C ayatakesi.github.io/ commit -m "Generate pages for ${VERSION_STR}"
+          git -C ayatakesi.github.io/ push https://${GH_PAT}@github.com/ayatakesi/ayatakesi.github.io.git
