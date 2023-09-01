@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990--1995, 1998--1999, 2001--2022 Free Software
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2023 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Files
@@ -582,11 +582,12 @@ contents and inserting the whole file, because (1) it preserves some
 marker positions and (2) it puts less data in the undo list.
 
 It is possible to read a special file (such as a FIFO or an I/O
-device) with @code{insert-file-contents}, as long as @var{replace},
-and @var{visit} and @var{beg} are @code{nil}.  However, you should
-normally use an @var{end} argument for these files to avoid inserting
-(potentially) unlimited data into the buffer (for instance, when
-inserting data from @file{/dev/urandom}).
+device) with @code{insert-file-contents}, as long as @var{replace} is
+@code{nil} or @code{if-regular}, and @var{visit} and @var{beg} are
+@code{nil}.  However, you should normally use an @var{end} argument
+for these files to avoid inserting (potentially) unlimited data into
+the buffer (for instance, when inserting data from
+@file{/dev/urandom}).
 @end defun
 
 @defun insert-file-contents-literally filename &optional visit beg end replace
@@ -692,11 +693,9 @@ files that the user does not need to know about.
 
 @defvar write-region-inhibit-fsync
 If this variable's value is @code{nil}, @code{write-region} uses the
-@code{fsync} system call after writing a file.  Although this slows
-Emacs down, it lessens the risk of data loss after power failure.  If
-the value is @code{t}, Emacs does not use @code{fsync}.  The default
-value is @code{nil} when Emacs is interactive, and @code{t} when Emacs
-runs in batch mode.  @xref{Files and Storage}.
+@code{fsync} system call after writing a file.  If the value is
+@code{t}, Emacs does not use @code{fsync}.  The default value is
+@code{t}.  @xref{Files and Storage}.
 @end defvar
 
 @defmac with-temp-file file body@dots{}
@@ -895,10 +894,20 @@ permissions of the file itself.)
 If the file does not exist, or if there was trouble determining
 whether the file exists, this function returns @code{nil}.
 
-Directories are files, so @code{file-exists-p} can return @code{t} when
-given a directory.  However, because @code{file-exists-p} follows
-symbolic links, it returns @code{t} for a symbolic link
-name only if the target file exists.
+@cindex empty file name, and @code{file-exists-p}
+Since a file name that is an empty string is interpreted relative to
+the current buffer's default directory (@pxref{Relative File Names}),
+calling @code{file-exists-p} with an argument that is an empty string
+will report about the buffer's default directory.
+
+@cindex dangling symlinks, testing for existence
+Directories are files, so @code{file-exists-p} can return @code{t}
+when given a directory.  However, because @code{file-exists-p} follows
+symbolic links, it returns @code{t} for a symbolic link name only if
+the target of the link exists; if your Lisp program needs to consider
+@dfn{dangling symlinks} whose target doesn't exist as existing files,
+use @code{file-attributes} (@pxref{File Attributes}) instead of
+@code{file-exists-p}.
 @end defun
 
 @defun file-readable-p filename
@@ -961,9 +970,16 @@ guaranteed to be writable.
 @end defmac
 
 @defun access-file filename string
+@vindex remote-file-name-access-timeout
 If you can read @var{filename} this function returns @code{nil};
 otherwise it signals an error
 using @var{string} as the error message text.
+
+If the user option @code{remote-file-name-access-timeout} is a
+positive number, the function signals an error when it doesn't finish
+after that time (in seconds).  This applies only to remote files, and
+only when there is no additional time spent while reading passwords or
+alike.
 @end defun
 
 @defun file-ownership-preserved-p filename &optional group
@@ -1869,6 +1885,11 @@ no prefix argument is given, and @code{nil} otherwise.
 See also @code{delete-directory} in @ref{Create/Delete Dirs}.
 @end deffn
 
+@defopt remote-file-name-inhibit-delete-by-moving-to-trash
+If this variable is non-@code{nil}, remote files are never moved to
+the Trash.  They are deleted instead.
+@end defopt
+
 @cindex file permissions, setting
 @cindex permissions, file
 @cindex file modes, setting
@@ -1975,7 +1996,11 @@ all.
 
 @defun file-modes-number-to-symbolic modes
 This function converts a numeric file mode specification in
-@var{modes} into the equivalent symbolic form.
+@var{modes} into the equivalent string form.  The string which this
+function returns is in the same format produced by the shell command
+@kbd{ls -l} and by @code{file-attributes}, @emph{not} the symbolic
+form accepted by @code{file-modes-symbolic-to-number} and the
+@command{chmod} shell command.
 @end defun
 
 @defun set-file-times filename &optional time flag
@@ -2034,16 +2059,27 @@ data already stored elsewhere on secondary storage until one file or
 the other is later modified; this will lose both files if the only
 copy on secondary storage is lost due to media failure.  Second, the
 operating system might not write data to secondary storage
-immediately, which will lose the data if power is lost.
+immediately, which will lose the data if power is lost
+or if there is a media failure.
 
 @findex write-region
 Although both sorts of failures can largely be avoided by a suitably
-configured file system, such systems are typically more expensive or
-less efficient.  In more-typical systems, to survive media failure you
+configured system, such systems are typically more expensive or
+less efficient.  In lower-end systems, to survive media failure you
 can copy the file to a different device, and to survive a power
-failure you can use the @code{write-region} function with the
+failure (or be immediately notified of a media failure) you can use
+the @code{write-region} function with the
 @code{write-region-inhibit-fsync} variable set to @code{nil}.
+Although this variable is ordinarily @code{t} because that can
+significantly improve performance, it may make sense to temporarily
+bind it to @code{nil} if using Emacs to implement database-like
+transactions that survive power failure on lower-end systems.
 @xref{Writing to Files}.
+
+On some platforms when Emacs changes a file other processes might not
+be notified of the change immediately.  Setting
+@code{write-region-inhibit-fsync} to @code{nil} may improve
+notification speed in this case, though there are no guarantees.
 
 @node File Names
 @section File Names
@@ -2334,6 +2370,10 @@ form.
 @end example
 @end defun
 
+@cindex empty file name
+  A file name that is an empty string stands for the current buffer's
+default directory.
+
 @node Directory Names
 @subsection Directory Names
 @cindex directory name
@@ -2523,6 +2563,7 @@ This is for the sake of filesystems that have the concept of a
 superroot above the root directory @file{/}.  On other filesystems,
 @file{/../} is interpreted exactly the same as @file{/}.
 
+@cindex empty file names, and @code{expand-file-name}
 Expanding @file{.} or the empty string returns the default directory:
 
 @example
@@ -3205,6 +3246,9 @@ This command creates a directory named @var{dirname}.  If
 @var{parents} is non-@code{nil}, as is always the case in an
 interactive call, that means to create the parent directories first,
 if they don't already exist.
+As a function, @code{make-directory} returns non-@code{nil} if @var{dirname}
+already exists as a directory and @var{parents} is non-@code{nil},
+and returns @code{nil} if it successfully created @var{dirname}.
 @code{mkdir} is an alias for this.
 @end deffn
 
@@ -3354,7 +3398,7 @@ first, before handlers for jobs such as remote file access.
 @code{file-directory-p},
 @code{file-equal-p},
 @code{file-executable-p}, @code{file-exists-p},
-@code{file-in-directory-p},
+@code{file-group-gid}, @code{file-in-directory-p},
 @code{file-local-copy}, @code{file-locked-p},
 @code{file-modes}, @code{file-name-all-completions},
 @code{file-name-as-directory},
@@ -3369,7 +3413,8 @@ first, before handlers for jobs such as remote file access.
 @code{file-readable-p}, @code{file-regular-p},
 @code{file-remote-p}, @code{file-selinux-context},
 @code{file-symlink-p}, @code{file-system-info},
-@code{file-truename}, @code{file-writable-p},
+@code{file-truename}, @code{file-user-uid},
+@code{file-writable-p},
 @code{find-backup-file-name},@*
 @code{get-file-buffer},
 @code{insert-directory},
@@ -3378,7 +3423,6 @@ first, before handlers for jobs such as remote file access.
 @code{load}, @code{lock-file},
 @code{make-auto-save-file-name},
 @code{make-directory},
-@code{make-directory-internal},
 @code{make-lock-file-name},
 @code{make-nearby-temp-file},
 @code{make-process},
@@ -3416,7 +3460,7 @@ first, before handlers for jobs such as remote file access.
 @code{file-direc@discretionary{}{}{}tory-p},
 @code{file-equal-p},
 @code{file-executable-p}, @code{file-exists-p},
-@code{file-in-directory-p},
+@code{file-group-gid}, @code{file-in-directory-p},
 @code{file-local-copy}, @code{file-locked-p},
 @code{file-modes}, @code{file-name-all-completions},
 @code{file-name-as-directory},
@@ -3431,7 +3475,8 @@ first, before handlers for jobs such as remote file access.
 @code{file-readable-p}, @code{file-regular-p},
 @code{file-remote-p}, @code{file-selinux-context},
 @code{file-symlink-p}, @code{file-system-info},
-@code{file-truename}, @code{file-writable-p},
+@code{file-truename}, @code{file-user-uid},
+@code{file-writable-p},
 @code{find-backup-file-name},
 @code{get-file-buffer},
 @code{insert-directory},
@@ -3440,7 +3485,6 @@ first, before handlers for jobs such as remote file access.
 @code{load}, @code{lock-file},
 @code{make-auto-save-file-name},
 @code{make-direc@discretionary{}{}{}tory},
-@code{make-direc@discretionary{}{}{}tory-internal},
 @code{make-lock-file-name},
 @code{make-nearby-temp-file},
 @code{make-process},
@@ -3587,7 +3631,11 @@ be @code{root}.
 If @var{connected} is non-@code{nil}, this function returns @code{nil}
 even if @var{filename} is remote, if Emacs has no network connection
 to its host.  This is useful when you want to avoid the delay of
-making connections when they don't exist.
+making connections when they don't exist.  If @var{connected} is
+@code{never}, @emph{never} use an existing connection to return the
+identification, even if one is already present (this is otherwise like
+a value of @code{nil}).  This lets you prevent any connection-specific
+logic, such as expanding the local part of the file name.
 @end defun
 
 @defun unhandled-file-name-directory filename
@@ -3650,6 +3698,17 @@ between consecutive checks.  For example:
                 (file-chase-links file)))))))
 @end example
 @end defopt
+
+@defmac without-remote-files body@dots{}
+The @code{without-remote-files} macro evaluates the @var{body} forms
+with deactivated file name handlers for remote files.  Those file
+names would be handled literally.
+
+The macro should be used only in forms where it is obvious, that
+remote files cannot appear or where it is intended not to handle
+remote file names.  It also reduces checks with
+@code{file-name-handler-alist}, resulting in more performant code.
+@end defmac
 
 @node Format Conversion
 @section File Format Conversion

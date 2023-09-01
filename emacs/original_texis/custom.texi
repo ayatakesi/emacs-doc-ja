@@ -1,6 +1,6 @@
 @c -*- coding: utf-8 -*-
 @c This is part of the Emacs manual.
-@c Copyright (C) 1985--1987, 1993--1995, 1997, 2000--2022 Free Software
+@c Copyright (C) 1985--1987, 1993--1995, 1997, 2000--2023 Free Software
 @c Foundation, Inc.
 @c See file emacs.texi for copying conditions.
 @node Customization
@@ -1245,6 +1245,7 @@ Manual}.
 These four keywords are not really variables; setting them in any
 other context has no special meaning.
 
+@cindex fallback modes
   If you're editing a file across Emacs versions, and a new mode has
 been introduced to handle a file in a newer Emacs version, you can use
 several @code{mode} entries to use the new mode (called
@@ -1327,6 +1328,15 @@ pairs in the file, by typing @kbd{i} at the confirmation prompt --
 these pairs will thereafter be ignored in this file and in all other
 files.
 
+  When Emacs asks for confirmation for setting directory-local
+variables (@pxref{Directory Variables}), typing @kbd{+} at the
+confirmation prompt will set all the variables, and also add the
+directory to the list in @code{safe-local-variable-directories}
+(described below), which will cause Emacs to consider this directory
+as safe for loading any directory-local variables in the future.  The
+@kbd{+} response should only be used for directories whose contents
+you trust.
+
 @vindex safe-local-variable-values
 @vindex ignored-local-variable-values
 @cindex risky variable
@@ -1343,14 +1353,26 @@ record safe values for risky variables, do it directly by customizing
 Similarly, if you want to record values of risky variables that should
 be permanently ignored, customize @code{ignored-local-variable-values}.
 
+@vindex safe-local-variable-directories
+  Sometimes it is helpful to always trust directory-variables in
+certain directories, and skip the confirmation prompt when local
+variables are loaded from those directories, even if the variables are
+risky.  The variable @code{safe-local-variable-directories} holds the
+list of such directories.  The names of the directories in this list
+must be full absolute file names.  If the variable
+@code{enable-remote-dir-locals} has a non-@code{nil} value, the list
+can include remote directories as well (@pxref{Remote Files}).
+
 @vindex enable-local-variables
   The variable @code{enable-local-variables} allows you to change the
 way Emacs processes local variables.  Its default value is @code{t},
 which specifies the behavior described above.  If it is @code{nil},
 Emacs simply ignores all file local variables.  @code{:safe} means use
-only the safe values and ignore the rest.  Any other value says to
-query you about each file that has local variables, without trying to
-determine whether the values are known to be safe.
+only the safe values and ignore the rest.  @code{:all} instructs Emacs
+to set all file local variables regardless of whether their value is
+safe or not (we advise not to use this permanently).  Any other value
+says to query you about each file that has local variables, without
+trying to determine whether the values are known to be safe.
 
 @vindex enable-local-eval
 @vindex safe-local-eval-forms
@@ -1887,23 +1909,31 @@ command is less work to invoke when you really want to.
 you can specify them in your initialization file by writing Lisp code.
 @xref{Init File}, for a description of the initialization file.
 
-@findex kbd
-  There are several ways to write a key binding using Lisp.  The
-simplest is to use the @code{kbd} function, which converts a textual
-representation of a key sequence---similar to how we have written key
-sequences in this manual---into a form that can be passed as an
-argument to @code{keymap-global-set}.  For example, here's how to bind
-@kbd{C-z} to the @code{shell} command (@pxref{Interactive Shell}):
+@findex keymap-global-set
+  The recommended way to write a key binding using Lisp is to use
+either the @code{keymap-global-set} or the @code{keymap-set}
+functions.  For example, here's how to bind @kbd{C-z} to the
+@code{shell} command in the global keymap (@pxref{Interactive Shell}):
 
 @example
 (keymap-global-set "C-z" 'shell)
 @end example
 
+@cindex key sequence syntax
 @noindent
-The single-quote before the command name, @code{shell}, marks it as a
+The first argument to @code{keymap-global-set} describes the key
+sequence.  It is a string made of a series of characters separated
+by spaces, with each character corresponding to a key.  Keys with
+modifiers can be specified by prepending the modifier, such as
+@samp{C-} for Control, or @samp{M-} for Meta.  Special keys, such as
+@key{TAB} and @key{RET}, can be specified within angle brackets as in
+@kbd{@key{TAB}} and @kbd{@key{RET}}.
+
+  The single-quote before the command name that is being bound to the
+key sequence, @code{shell} in the above example, marks it as a
 constant symbol rather than a variable.  If you omit the quote, Emacs
-would try to evaluate @code{shell} as a variable.  This probably
-causes an error; it certainly isn't what you want.
+would try to evaluate @code{shell} as a variable.  This will probably
+cause an error; it certainly isn't what you want.
 
   Here are some additional examples, including binding function keys
 and mouse events:
@@ -1919,6 +1949,27 @@ and mouse events:
 
   Language and coding systems may cause problems with key bindings for
 non-@acronym{ASCII} characters.  @xref{Init Non-ASCII}.
+
+@findex global-set-key
+@findex define-key
+  Alternatively, you can use the low level functions @code{define-key}
+and @code{global-set-key}.  For example, to bind @kbd{C-z} to the
+@code{shell} command, as in the above example, using these low-level
+functions, use:
+
+@example
+(global-set-key (kbd "C-z") 'shell)
+@end example
+
+@findex kbd
+@noindent
+There are various ways to specify the key sequence but the simplest is
+to use the function @code{kbd} as shown in the example above.
+@code{kbd} takes a single string argument that is a textual
+representation of a key sequence, and converts it into a form suitable
+for low-level functions such as @code{global-set-key}.  For more
+details about binding keys using Lisp, @pxref{Keymaps,,, elisp, The
+Emacs Lisp Reference Manual}.
 
 @findex keymap-set
 @findex keymap-unset
@@ -1990,13 +2041,17 @@ to assign meanings to key bindings that use these modifiers.  The
 modifier bits are labeled as @samp{s-}, @samp{H-} and @samp{A-}
 respectively.
 
+@cindex modifier keys unsupported by keyboard
   Even if your keyboard lacks these additional modifier keys, you can
-enter it using @kbd{C-x @@}: @kbd{C-x @@ h} adds the Hyper flag to
+enter them using @kbd{C-x @@}: @kbd{C-x @@ h} adds the Hyper flag to
 the next character, @kbd{C-x @@ s} adds the Super flag, and
 @kbd{C-x @@ a} adds the Alt flag.  For instance, @kbd{C-x @@ h
 C-a} is a way to enter @kbd{Hyper-Control-a}.  (Unfortunately, there
 is no way to add two modifiers by using @kbd{C-x @@} twice for the
 same character, because the first one goes to work on the @kbd{C-x}.)
+You can similarly enter the Shift, Control, and Meta modifiers by
+using @kbd{C-x @ S}, @kbd{C-x @ c}, and @kbd{C-x @ m}, respectively,
+although this is rarely needed.
 
 @node Function Keys
 @subsection Rebinding Function Keys
@@ -2697,6 +2752,28 @@ function is not defined.
 
 A @code{setq} on a variable which does not exist is generally
 harmless, so those do not need a conditional.
+
+@item
+Using @code{use-package} to automatically load and configure a
+package.
+
+@example
+(use-package hi-lock
+  :defer t
+  :init (add-hook 'some-hook 'hi-lock-mode)
+  :config (use-package my-hi-lock)
+  :bind (("M-o l" . highlight-lines-matching-regexp)
+         ("M-o r" . highlight-regexp)
+         ("M-o w" . highlight-phrase)))
+@end example
+
+@noindent
+This will load @code{hi-lock} when some of its commands or variables
+are first used, bind 3 keys to its commands, and additionally load the
+@code{my-hi-lock} package (presumably further customizing
+@code{hi-lock}) after loading @code{hi-lock}.  The @code{use-package}
+facility is fully documented in its own manual, @pxref{Top,,,
+use-package, use-package User manual}.
 @end itemize
 
 @node Terminal Init
@@ -2746,7 +2823,12 @@ library.  @xref{Hooks}.
 @subsection How Emacs Finds Your Init File
 
   Emacs normally finds your init file in a location under your home
-directory.  @xref{Init File}.
+directory@footnote{
+On MS-Windows, there's no single directory considered by all programs
+as ``the home directory'' of the user.  Emacs uses one of the
+pertinent directories as the equivalent of your home directory; see
+@ref{Windows HOME}, for the details.
+}.  @xref{Init File}.
 
   Emacs looks for your init file using the filenames @file{~/.emacs.el},
 @file{~/.emacs}, or @file{~/.emacs.d/init.el} in that order; you can

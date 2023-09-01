@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990--1995, 1998--1999, 2001--2022 Free Software
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2023 Free Software
 @c Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Frames
@@ -104,9 +104,11 @@ window of another Emacs frame.  @xref{Child Frames}.
 * Mouse Tracking::              Getting events that say when the mouse moves.
 * Mouse Position::              Asking where the mouse is, or moving it.
 * Pop-Up Menus::                Displaying a menu for the user to select from.
+* On-Screen Keyboards::		Displaying the virtual keyboard.
 * Dialog Boxes::                Displaying a box to ask yes or no.
 * Pointer Shape::               Specifying the shape of the mouse pointer.
 * Window System Selections::    Transferring text to and from other X clients.
+* Accessing Selections::        The multiple different kinds of selections.
 * Yanking Media::               Yanking things that aren't plain text.
 * Drag and Drop::               Internals of Drag-and-Drop implementation.
 * Color Names::                 Getting the definitions of color names.
@@ -187,9 +189,13 @@ selected frame.
 @end defvar
 
 @defopt server-after-make-frame-hook
-A normal hook run when the Emacs server creates a client frame.  When
-this hook is called, the created frame is the selected one.
-@xref{Emacs Server,,, emacs, The GNU Emacs Manual}.
+A normal hook run when the Emacs server starts using a client frame.
+When this hook is called, the client frame is the selected one.  Note
+that, depending on how @command{emacsclient} was invoked
+(@pxref{Invoking emacsclient,,, emacs, The GNU Emacs Manual}), this
+client frame could be a new frame created for the client, or it could
+be an existing frame that the server reused for handling the client
+commands.  @xref{Emacs Server,,, emacs, The GNU Emacs Manual}.
 @end defopt
 
 
@@ -523,7 +529,8 @@ Height |  | | Height                           | |  | Height
      | |  | |<--+--- Inner Frame Width ------->| |  | |
      | |  | |   |                              | |  | |
      | |  | |___v______________________________| |  | |
-     | |  |___________ Internal Border __________|  | v
+     | |  |___________ Internal Border __________|  | |
+     | | (4)__________ Bottom Tool Bar __________|  | v
      v |___________ External/Outer Border __________|
            <-------- Native Frame Width -------->
 
@@ -695,7 +702,7 @@ The position of the top left corner of the native frame specifies the
 indicate that position for the various builds:
 
 @itemize @w{}
-@item (1) non-toolkit, Haiku, and terminal frames
+@item (1) non-toolkit, Android, Haiku, and terminal frames
 
 @item (2) Lucid, Motif, and MS-Windows frames
 
@@ -706,6 +713,10 @@ Accordingly, the native height of a frame may include the height of the
 tool bar but not that of the menu bar (Lucid, Motif, MS-Windows) or
 those of the menu bar and the tool bar (non-toolkit and text terminal
 frames).
+
+If the native position would otherwise be (2), but the tool bar is
+placed at the bottom of the frame as depicted in (4), the native
+position of the frame becomes that of the tab bar.
 
 The native position of a frame is the reference position for functions
 that set or return the current position of the mouse (@pxref{Mouse
@@ -844,8 +855,11 @@ native frame of @var{frame}).
 
 @item tool-bar-position
 This tells on which side the tool bar on @var{frame} is and can be one
-of @code{left}, @code{top}, @code{right} or @code{bottom}.  The only
-toolkit that currently supports a value other than @code{top} is GTK+.
+of @code{left}, @code{top}, @code{right} or @code{bottom}.
+
+The values @code{left} and @code{right} are only supported on builds
+using the GTK+ toolkit; @code{bottom} is supported on all builds other
+than NS, and @code{top} is supported everywhere.
 
 @item tool-bar-size
 A cons of the width and height of the tool bar of @var{frame}.
@@ -1474,19 +1488,24 @@ in this frame.  Its value is @code{color}, @code{grayscale} or
 
 @vindex title@r{, a frame parameter}
 @item title
-If a frame has a non-@code{nil} title, it appears in the window
+If a frame has a non-@code{nil} title, that title appears in the window
 system's title bar at the top of the frame, and also in the mode line
 of windows in that frame if @code{mode-line-frame-identification} uses
 @samp{%F} (@pxref{%-Constructs}).  This is normally the case when
 Emacs is not using a window system, and can only display one frame at
-a time.  @xref{Frame Titles}.
+a time.  When Emacs is using a window system, this parameter, if
+non-@code{nil}, overrides the title determined by the @code{name}
+parameter and the implicit title calculated according to
+@code{frame-title-format}.  It also overrides the title determined by
+@code{icon-title-format} for iconified frames.  @xref{Frame Titles}.
 
 @vindex name@r{, a frame parameter}
 @item name
-The name of the frame.  The frame name serves as a default for the frame
-title, if the @code{title} parameter is unspecified or @code{nil}.  If
-you don't specify a name, Emacs sets the frame name automatically
-(@pxref{Frame Titles}).
+The name of the frame.  If you don't specify a name via this
+parameter, Emacs sets the frame name automatically, as specified by
+@code{frame-title-format} and @code{icon-title-format}, and that is
+the frame's title that will appear on display when Emacs uses a window
+system (unless the @code{title} parameter overrides it).
 
 If you specify the frame name explicitly when you create the frame, the
 name is also used (instead of the name of the Emacs executable) when
@@ -1900,9 +1919,11 @@ whenever the tool bar wraps (@pxref{Frame Layout}).
 
 @vindex tool-bar-position@r{, a frame parameter}
 @item tool-bar-position
-The position of the tool bar when Emacs was built with GTK+.  Its value
-can be one of @code{top}, @code{bottom} @code{left}, @code{right}.  The
-default is @code{top}.
+The position of the tool bar.  Its value can be one of @code{top},
+@code{bottom} @code{left}, @code{right}.  The default is @code{top}.
+
+It can be set to @code{bottom} on Emacs built with any toolkit other
+than Nextstep, and @code{left} or @code{right} on builds using GTK+.
 
 @vindex tab-bar-lines@r{, a frame parameter}
 @item tab-bar-lines
@@ -2389,6 +2410,7 @@ engine), and @code{harfbuzz} (font driver for OTF and TTF fonts with
 HarfBuzz text shaping) (@pxref{Windows Fonts,,, emacs, The GNU Emacs
 Manual}).  The @code{harfbuzz} driver is similarly recommended.  On
 Haiku, there can be several font drivers (@pxref{Haiku Fonts,,, emacs,
+The GNU Emacs Manual}), as on Android (@pxref{Android Fonts,,, emacs,
 The GNU Emacs Manual}).
 
 On other systems, there is only one available font backend, so it does
@@ -2630,17 +2652,27 @@ frame name automatically based on a template stored in the variable
 frame is redisplayed.
 
 @defvar frame-title-format
-This variable specifies how to compute a name for a frame when you have
-not explicitly specified one.  The variable's value is actually a mode
+This variable specifies how to compute a name for a frame when you
+have not explicitly specified one (via the frame's parameters;
+@pxref{Basic Parameters}).  The variable's value is actually a mode
 line construct, just like @code{mode-line-format}, except that the
-@samp{%c}, @samp{%C}, and @samp{%l} constructs are ignored.  @xref{Mode Line
-Data}.
+@samp{%c}, @samp{%C}, and @samp{%l} constructs are ignored.
+@xref{Mode Line Data}.
 @end defvar
 
 @defvar icon-title-format
-This variable specifies how to compute the name for an iconified frame,
-when you have not explicitly specified the frame title.  This title
-appears in the icon itself.
+This variable specifies how to compute the name for an iconified frame
+when you have not explicitly specified the frame's name via the
+frame's parameters.  The resulting title appears in the frame's icon
+itself.  If the value is a string, is should be a mode line construct
+like that of @code{frame-title-format}.  The value can also be
+@code{t}, which means to use @code{frame-title-format} instead; this
+avoids problems with some window managers and desktop environments,
+where a change in a frame's title (when a frame is iconified) is
+interpreted as a request to raise the frame and/or give it input
+focus.  It is also useful if you want the frame's title to be the same
+no matter if the frame is iconified or not.  The default value is a
+string identical to the default value of @code{frame-title-format}.
 @end defvar
 
 @defvar multiple-frames
@@ -2854,9 +2886,17 @@ The plural ``frames'' in the previous paragraph is deliberate: while
 Emacs itself has only one selected frame, Emacs can have frames on
 many different terminals (recall that a connection to a window system
 counts as a terminal), and each terminal has its own idea of which
-frame has input focus.  When you set the input focus to a frame, you
-set the focus for that frame's terminal, but frames on other terminals
+frame has input focus.  Under the X Window System, where user input is
+organized into individual ``seats'' of input, each seat in turn can
+have its own specific input focus.  When you set the input focus to a
+frame, you set the focus for that frame's terminal on the last seat
+which interacted with Emacs, but frames on other terminals and seats
 may still remain focused.
+
+If the input focus is set before any user interaction has occurred on
+the specified terminal, then the X server picks a random seat
+(normally the one with the lowest number) and sets the input focus
+there.
 
 Lisp programs can switch frames temporarily by calling the function
 @code{select-frame}.  This does not alter the window system's concept
@@ -3554,7 +3594,7 @@ the mouse position list will be @code{nil} if the value is
 @code{drag-source}.  This is useful to determine if a frame is not
 directly visible underneath the mouse pointer.
 
-The @code{track-mouse} form causes Emacs to generate mouse motion
+The @code{track-mouse} macro causes Emacs to generate mouse motion
 events by binding the variable @code{track-mouse} to a
 non-@code{nil} value.  If that variable has the special value
 @code{dragging}, it additionally instructs the display engine to
@@ -3716,9 +3756,9 @@ This function displays a pop-up menu and returns an indication of
 what selection the user makes.
 
 The argument @var{position} specifies where on the screen to put the
-top left corner of the menu.  It can be either a mouse button event
-(which says to put the menu where the user actuated the button) or a
-list of this form:
+top left corner of the menu.  It can be either a mouse button or
+@code{touchscreen-begin} event (which says to put the menu where the
+user actuated the button) or a list of this form:
 
 @example
 ((@var{xoffset} @var{yoffset}) @var{window})
@@ -3802,6 +3842,30 @@ either directly by calling @code{x-popup-menu}, or through a menu
 keymap.  It won't be called if @code{x-popup-menu} returns for some
 other reason without displaying a pop-up menu.
 @end defvar
+
+@node On-Screen Keyboards
+@section On-Screen Keyboards
+
+  An on-screen keyboard is a special kind of pop up provided by the
+system, with rows of clickable buttons that act as a real keyboard.
+
+  On certain systems (@pxref{On-Screen Keyboards,,,emacs, The Emacs
+Manual}), Emacs is supposed to display and hide the on screen keyboard
+depending on whether or not the user is about to type something.
+
+@defun frame-toggle-on-screen-keyboard frame hide
+This function displays or hides the on-screen keyboard on behalf of
+the frame @var{frame}.  If @var{hide} is non-@code{nil}, then the
+on-screen keyboard is hidden; otherwise, it is displayed.
+
+It returns whether or not the on screen keyboard @strong{may} have
+been displayed, which should be used to determine whether or not to
+hide the on-screen keyboard later.
+
+This has no effect if the system automatically detects when to display
+the on-screen keyboard, or when it does not provide any on-screen
+keyboard.
+@end defun
 
 @node Dialog Boxes
 @section Dialog Boxes
@@ -4010,6 +4074,542 @@ For backward compatibility, there are obsolete aliases
 names of @code{gui-get-selection} and @code{gui-set-selection} before
 Emacs 25.1.
 
+@node Accessing Selections
+@section Accessing Selections
+
+  @code{gui-get-selection} is able to retrieve multiple different
+kinds of selection data from any number of selections.  However, the
+data types and selections that Emacs understands is not precisely
+specified and differs depending on the window system on which Emacs is
+running.
+
+  At the same time, @code{gui-set-selection} hides a great deal of
+complexity behind its back, at least on some systems: its @var{data}
+argument need not be a string, but is actually given verbatim to
+system specific code.
+
+  Emacs's implementation of selections is most complete on the X
+Window System.  This is both an artifact of history (X was the first
+window system supported by Emacs) and one of technical reasons:
+instead of using selections only to transfer text and multimedia
+content between clients, X uses selections as a general inter-client
+communication system, leading to a great proliferation of selection
+data types.
+
+  Even more confusingly, X also supports another inter-client
+communication mechanism: the Inter-Client Exchange.  However, ICE is
+only used by Emacs to communicate with session managers, and is a
+separate topic.
+
+@menu
+* X Selections::        Selection data types (and more) on X.
+* Other Selections::    How they work on other window systems.
+@end menu
+
+@node X Selections
+@subsection X Selections
+
+  X refrains from defining fixed data types for selection data, or a
+fixed number of selections.  Selections are instead identified by X
+``atoms'', which are unique 29-bit identifiers issued by the X server
+for a corresponding name.  In Emacs, you can simply write a symbol
+with the name of the atom, and Emacs will transparently request these
+identifiers where necessary.
+
+  When a program ``sets'' a selection under X, it actually makes
+itself the ``owner'' of the selection---the X server will then deliver
+selection requests to the program, which is obliged to respond to the
+requesting client with the selection data.
+
+  Similarly, a program does not ``get'' selection data from the X
+server.  Instead, its selection requests are sent to the client with
+the window which last took ownership over the selection, which then
+replies with the requested data.
+
+  Each selection request contains three parameters:
+
+@itemize @bullet
+@item
+The window which requested the selection; this is used to identify the
+@c Not a typo: X spells ``requestor'' with an o.
+requesting program, otherwise known as the @dfn{requestor}.
+
+@item
+An atom identifying the ``target'' to which the owner should convert
+the selection.  It is easiest to think of the conversion target as the
+kind of data that the requestor wants: in selection requests made by
+Emacs, the target is determined by the @dfn{type} argument to
+@code{gui-get-selection}.
+
+@item
+A 32-bit timestamp containing the X server time at which the requestor
+last obtained input.
+@end itemize
+
+  The selection owner responds by tranferring to the requestor a
+series of bytes, 16 bit words, or 32 bit words, along with another
+atom identifying the type of those words.  After requesting a
+selection, Emacs then applies its own interpretation of the data
+format and data type to convert the data transferred by the selection
+owner to a Lisp representation, which @code{gui-get-selection}
+returns.
+
+  By default, Emacs converts selection data consisting of any series
+of bytes to a unibyte string containing those bytes, selection data
+consisting of a single 16-bit or 32-bit word as an unsigned number,
+and selection data consisting of multiple such words as a vector of
+unsigned numbers.  However, Emacs applies special treatment for
+several selection data types:
+
+@table @code
+@item INTEGER
+16-bit or 32-bit words of this type are treated as signed integers,
+instead of unsigned ones.  If there are multiple words in the
+selection data, a vector is returned; otherwise, the integer is
+returned by itself.
+
+@item ATOM
+32-bit words of this type are treated as X atoms, and returned (either
+alone or as vectors) as Lisp symbols containing the names they
+identify.  Invalid atoms are returned as @code{nil}.
+
+@item COMPOUND_TEXT
+@item UTF8_STRING
+@item STRING
+Unibyte strings returned for these data types will have a single
+@code{foreign-selection} text property set to a symbol with the type
+of the selection data.
+@end table
+
+  Each selection owner must return at least two selection targets:
+@code{TARGETS}, which returns a number of atoms describing the
+selection targets that the owner supports, and @code{MULTIPLE}, used
+for internal purposes by X clients.  A selection owner may support any
+number of other targets, some of which may be standardized by the X
+Consortium's
+@url{http://x.org/releases/X11R7.6/doc/xorg-docs/specs/ICCCM/icccm.html,
+Inter-Client Communication Conventions Manual}, while others, such as
+@code{UTF8_STRING}, were supposed to be standardized by the XFree86
+Project, which unfortunately did not happen.
+
+  Requests for a given selection target may, by convention, return
+data in a specific type, or it may return data in one of several
+types, whichever is most convenient for the selection owner; the
+latter type of selection target is dubbed a @dfn{polymorphic target}.
+A selection target may also return no data at all: by convention, the
+selection owner performs some action a side effect upon responding to
+a selection request with that target, and as such these targets are
+referred to as @dfn{side-effect targets}.
+
+  Here are some selection targets which behave in a reasonably
+standard manner when used with the @code{CLIPBOARD}, @code{PRIMARY},
+or @code{SECONDARY} selections.
+
+@table @code
+@item ADOBE_PORTABLE_DOCUMENT_FORMAT
+This target returns data in Adobe System's ``Portable Document
+Format'' format, as a string.
+
+@item APPLE_PICT
+This target returns data in the ``PICT'' image format used on
+Macintosh computers, as a string.
+
+@item BACKGROUND
+@item BITMAP
+@item COLORMAP
+@item FOREGROUND
+Together, these four targets return integer data necessary to make use
+of a bitmap image stored on the X server: the pixel value of the
+bitmap's background color, the X identifier of the bitmap, the
+colormap inside which the background and foreground are allocated, and
+the pixel value of the bitmap's foreground color.
+
+@item CHARACTER_POSITION
+This target returns two unsigned 32-bit integers of type @code{SPAN}
+describing the start and end positions of the selection data in the
+text field containing it, in bytes.
+
+@item COMPOUND_TEXT
+This target returns a string of type @code{COMPOUND_TEXT} in the X
+Consortium's multi-byte text encoding system.
+
+@item DELETE
+This target returns nothing, but as a side-effect deletes the
+selection contents from any text field containing them.
+
+@item DRAWABLE
+@item PIXMAP
+This target returns a list of unsigned 32-bit integers, each of which
+corresponds to an X server drawable or pixmap.
+
+@item ENCAPSULATED_POSTSCRIPT
+@item _ADOBE_EPS
+This target returns a string containing encapsulated Postscript code.
+
+@item FILE_NAME
+This target returns a string containing one or more file names,
+separated by NULL characters.
+
+@item HOST_NAME
+This target returns a string containing the fully-qualified domain
+name of the machine on which the selection owner is running.
+
+@item USER
+This target returns a string containing the user name of the machine
+on which the selection owner is running.
+
+@item LENGTH
+This target returns an unsigned 32-bit or 16-bit integer containing
+the length of the selection data.
+
+@item LINE_NUMBER
+This target returns two unsigned 32-bit integers of type @code{SPAN}
+describing the line numbers corresponding to the start and end
+positions of the selection data in the text field containing it.
+
+@item MODULE
+This target returns the name of any function containing the selection
+data.  It is mainly used by text editors.
+
+@item STRING
+This target returns the selection data as a string of type
+@code{STRING}, encoded in ISO Latin-1 format, with Unix newline
+characters.
+
+@item C_STRING
+This target returns the selection data as a ``C string''.  This has
+been interpreted as meaning the raw selection data in whatever
+encoding used by the owner, either terminated with a NULL byte or not
+at all, or an ASCII string which may or may not be terminated.
+
+@item UTF8_STRING
+This returns the selection data as a string of type
+@code{UTF8_STRING}, encoded in UTF-8, with unspecified EOL format.
+
+@item TIMESTAMP
+This target returns the X server time at which the selection owner
+took ownership over the selection as a 16-bit or 32-bit word of type
+@code{CARDINAL}.
+
+@item TEXT
+This polymorphic target returns selection data as a string, either
+@code{COMPOUND_TEXT}, @code{STRING}, @code{C_STRING}, or
+@code{UTF8_STRING}, whichever data type is convenient for the
+selection owner.
+@end table
+
+  When a request for the targets @code{STRING}, @code{COMPOUND_TEXT},
+or @code{UTF8_STRING} is made using the function
+@code{gui-get-selection}, and neither @code{selection-coding-system}
+nor @code{next-selection-coding-system} are set, the returned strings
+are additionally decoded using the appropriate coding system for those
+data types: @code{iso-8859-1}, @code{compound-text-with-extensions}
+and @code{utf-8} respectively.
+
+  In addition to the targets specified above (and the many targets
+used by various programs for their own purposes), several popular
+programs and toolkits have decided to define selection data types of
+their own, without consulting the appropriate X standards bodies.
+These targets are usually named after MIME types, such as
+@code{text/html} or @code{image/jpeg}, and have been known to contain:
+
+@itemize @bullet
+@item
+Unterminated, newline terminated, or NULL character terminated file
+names of an image or text file.
+
+@item
+Image or text data in the appropriate format.
+
+@item
+@code{file://} URIs (or possibly newline or NUL terminated lists of
+URIs) leading to files in the appropriate format.
+@end itemize
+
+  These selection targets were first used by Netscape, but are now
+found in all kinds of programs, especially those based on recent
+versions of the GTK+ or Qt toolkits.
+
+  Emacs is also capable of acting as a selection owner.  When
+@code{gui-set-selection} is called, the selection data specified is
+not transferred to the X server; instead, Emacs records it internally
+and obtains ownership of the selection.
+
+@defvar selection-converter-alist
+  Alist of selection targets to ``selection converter'' functions.
+When a selection request is received, Emacs looks up the selection
+converter associated with the requested selection target.
+
+  The selection converter is called with three arguments: the symbol
+corresponding to the atom identifying the selection being requested,
+the selection target that is being requested, and the value set with
+@code{gui-set-selection}.  The value which it returns is either a cons
+of a symbol specifying the data type and a number, symbol, or a vector
+of numbers or symbols, or its cdr by itself.
+
+  If the value is the special symbol @code{NULL}, the data type is set
+to @code{NULL}, and no data is returned to the requestor.
+
+  If the value is a string, it must be a unibyte string; should no
+data type be explicitly specified, the data is transferred to the
+requestor with the type @code{STRING}.
+
+  If the value is a symbol, its ``atom'' is retrieved, and it is
+transferred to the requestor as a 32-bit value---if no data type was
+specified, its type is @code{ATOM}.
+
+  If the value is a number between @code{-32769} and @code{32768}, it
+is transferred to the requestor as a 16 bit value---if no data type
+was specified, its type is @code{INTEGER}.
+
+  If the value is any other number, it is returned as a 32 bit value.
+Even if the number returned is unsigned, the requestor will treat
+words of type @code{INTEGER} as signed.  To return an unsigned value,
+specify the type @code{CARDINAL} instead.
+
+  If the value is a vector of symbols or numbers, it is returned as a
+list of multiple atoms or numbers.  The data type returned by default
+is determined by that of its first element.
+@end defvar
+
+  By default, Emacs is configured with selection converters for the
+following selection targets:
+
+@table @code
+@item TEXT
+This selection converter returns selection data as:
+
+@itemize @bullet
+@item
+A string of type @code{C_STRING}, if the selection contents contain no
+multibyte characters, or contains 8-bit characters with all 8 bits
+set.
+
+@item
+A string of type @code{STRING}, if the selection contents can be
+represented as ISO-Latin-1 text.
+
+@item
+A string of type @code{COMPOUND_TEXT}, if the selection contents can
+be encoded in the X Consortium's Compound Text Encoding, and
+@code{selection-coding-system} or @code{next-selection-coding-system}
+is set to a coding system whose @code{:mime-charset} property is
+@code{x-ctext}.
+
+@item
+A string of type @code{UTF8_STRING} otherwise.
+@end itemize
+
+@item COMPOUND_TEXT
+This selection converter returns selection data as a string of type
+@code{COMPOUND_TEXT}.
+
+@item STRING
+This selection converter returns selection data as a string of type
+@code{STRING}, encoded in ISO-Latin-1 format.
+
+@item UTF8_STRING
+This selection converter returns selection data in UTF-8 format.
+
+@item text/plain
+@item text/plain;charset=utf-8
+@item text/uri-list
+@item text/x-xdnd-username
+@item XmTRANSFER_SUCCESS
+@item XmTRANSFER_FAILURE
+@item FILE
+@item _DT_NETFILE
+These selection converters are used for internal purposes during
+drag-and-drop operations and are not available for selections other
+than @code{XdndSelection}.
+
+@item TARGETS
+This selection converter returns a list of atoms, one for each
+selection target understood by Emacs.
+
+@item MULTIPLE
+This selection converter is implemented in C code and is used to
+implement efficient transfer of selection requests which specify
+multiple selection targets at the same time.
+
+@item LENGTH
+This selection converter returns the length of the selection data, in
+bytes.
+
+@item DELETE
+This selection converter is used for internal purposes during
+drag-and-drop operations.
+
+@item FILE_NAME
+This selection converter returns the file name of the buffer
+containing the selection data.
+
+@item CHARACTER_POSITION
+This selection converter returns the character positions of each end
+of the selection in the buffer containing the selection data.
+
+@item LINE_NUMBER
+@item COLUMN_NUMBER
+This selection converter returns the line and column numbers of each
+end of the selection in the buffer containing the selection data.
+
+@item OWNER_OS
+This selection converter returns the name of the operating system on
+which Emacs is running.
+
+@item HOST_NAME
+This selection converter returns the fully-qualified domain name of
+the machine on which Emacs is running.
+
+@item USER
+This selection converter returns the username of the user account
+under which Emacs is running.
+
+@item CLASS
+@item NAME
+These selection converters return the resource class and name used by
+Emacs.
+
+@item INTEGER
+This selection converter returns an integer value verbatim.
+
+@item SAVE_TARGETS
+@item _EMACS_INTERNAL
+These selection converters are used for internal purposes.
+@end table
+
+  With the exception of @code{INTEGER}, all selection converters
+expect the value given to @code{gui-set-selection} to be one of the
+following:
+
+@itemize @bullet
+@item
+A string.
+
+@item
+A list of the form @w{@code{(@var{beg} @var{end} @var{buf})}}, where
+@var{beg} and @var{end} are two markers or overlays describing the
+bounds of the selection data in the buffer @var{buf}.
+@end itemize
+
+@node Other Selections
+@subsection Other Selections
+
+  Window systems such as MS-Windows, Nextstep, Haiku and Android do
+not provide selections corresponding to the X semantics.  Each window
+system provides its own ad-hoc emulation of selections, none of which
+make use of the ``selection converter'' mechanism described above.  In
+addition, only the @code{PRIMARY}, @code{CLIPBOARD}, and
+@code{SECONDARY} selections are typically supported, alongside the
+@code{XdndSelection} used for drag-and-drop operations.
+
+  GTK itself exposes emulations of X selections to applications, but
+those emulations are of varying completeness.  While Emacs built with
+PGTK will use the same selection interface as Emacs built with X, many
+selection targets will not be useful.
+
+  On MS-Windows, @code{gui-get-selection} accepts a single target,
+@code{STRING}.  The value returned is the selection data decoded
+using @code{selection-coding-system}.
+
+  @code{gui-set-selection} also only accepts strings, encodes them
+in the selection coding system, and saves them to the clipboard.
+
+  On Nextstep, Emacs only supports saving strings to selections.
+However, requests for the following targets are accepted:
+
+@c FIXME: how is the text coding system determined, and do image/* or
+@c application/* return image data or file names?
+@itemize @bullet
+@item text/plain
+@item image/png
+@item text/html
+@item application/pdf
+@item application/rtf
+@item application/rtfd
+@item STRING
+@item text/plain
+@item image/tiff
+@end itemize
+
+  On Haiku, Emacs supports the same selection values as on X.  In
+addition, Emacs fully implements the primary and secondary selections.
+However, instead of taking ownership over the selection data, Emacs
+transfers the selection data to the window server when
+@code{gui-set-selection} is called.  The Haiku window server expects
+selection data to be provided in the form of a ``message'', containing
+associations between data types and selection data.
+
+@defvar haiku-normal-selection-encoders
+List of functions which act as selection encoders.  When
+@code{gui-set-selection} is called, each function in this list is
+successively called with its @var{selection} and @var{value}
+arguments.  If the function returns non-@code{nil}, it should return a
+list of the form @w{@code{(@var{key} @var{type} @var{value})}}, where
+@var{key} is the name of the data type being transferred, @var{type}
+is either a number identifying a data type (in which case @var{value}
+should be a unibyte string that is directly transferred to the window
+server), or a symbol identifying both a data type and how @var{value}
+should be interpreted.
+@end defvar
+
+  Here are the meaningful values of @var{type}, and what they will
+cause Emacs to interpret @var{value} as:
+
+@table @code
+@item string
+A unibyte string.  The string is NULL-terminated after being placed in
+the message.
+
+@item ref
+A file name.  The file is looked up and file system information
+identifying the file is placed in the message.
+
+@item short
+A 16-bit integer value.
+
+@item long
+A 32-bit integer value.
+
+@item llong
+A 64-bit integer value.
+
+@item byte
+@item char
+An unsigned byte between 0 and 255.
+
+@item size_t
+A number between 0 and 1 minus two to the power of the word size of
+the computer Emacs is running on.
+
+@item ssize_t
+A number which fits in the C type @code{ssize_t}.
+
+@item point
+A cons of two floats, specifying a coordinate on-screen.
+
+@item float
+@item double
+A single or double-precision floating point number in an unspecified
+format.
+
+@item (haiku-numeric-enum MIME)
+A unibyte string containing data in a certain MIME type.
+@end table
+
+  Under Haiku, @code{gui-get-selection} accepts either the targets
+@code{TARGETS} and @code{TIMESTAMP}, where the former returns a vector
+containing supported data types (much like on X), and the latter
+returns the number of times the selection has been set, the targets
+@code{STRING} and @code{UTF8_STRING}, which return text in ISO-Latin-1
+and UTF-8 format, or a MIME type, in which the data is returned
+undecoded as a unibyte string.
+
+  Under Android, @code{gui-get-selection} is restricted to returning
+UTF-8 string data of the type @code{STRING}, or image and application
+data associated with a MIME type.  @code{gui-set-selection} will only
+set string data, as on MS-Windows.
+
 @node Yanking Media
 @section Yanking Media
 
@@ -4089,7 +4689,7 @@ has the same meaning as the @var{action} argument to
   Emacs implements receiving text and URLs individually for each
 window system, and does not by default support receiving other kinds
 of data as drops.  To support receiving other kinds of data, use the
-X-specific interface described below:
+X-specific interface described below.
 
 @vindex x-dnd-test-function
 @vindex x-dnd-known-types
@@ -4118,29 +4718,71 @@ depending on the specific drag-and-drop protocol being used.  For
 example, the data type used for plain text may be either
 @code{"STRING"} or @code{"text/plain"}.
 
+@cindex XDS
+@cindex direct save protocol
 @vindex x-dnd-direct-save-function
-@c FIXME: This description is overly-complicated and confusing.  In
-@c particular, the two calls to the function basically sound
-@c identical, so it is unclear how should the function distinguish
-@c between the first and the second one.  The description of who asks
-@c whom to do what is also very hard to understand.  Needs rewording,
-@c and needs shorter sentences.  Perhaps examples could help.
-  However, @code{x-dnd-types-alist} does not handle a special kind of
-drop sent by a program that wants Emacs to tell it where to save a
-file in a specific location determined by the user.  These drops are
-instead handled by a function that is the value of the variable
-@code{x-dnd-direct-save-function}.  This function should accept two arguments.
-If the first argument is non-@code{nil}, then the second argument is a
-file name to save (with leading directories) that the other
-program recommends, and the
-function should return the full file name under which it should be
-saved.  After the function completes, Emacs will ask the other program
-to save the file under the name that was returned, and if the file was
-successfully saved, call the function again with the first argument
-set to a non-@code{nil} value and the second argument set to the file
-name that was returned.  The function should then perform whatever
-action is appropriate (i.e., opening the file or refreshing a
-directory listing.)
+  When Emacs runs on X window system, it supports the X Direct Save
+(@acronym{XDS}) protocol, which allows users to save a file by
+dragging and dropping it onto an Emacs window, such as a Dired window.
+To comply with the unique requirements of @acronym{XDS}, these
+drag-and-drop requests are processed specially: instead of being
+handled according to @code{x-dnd-types-alist}, they are handled by the
+@dfn{direct-save function} that is the value of the variable
+@code{x-dnd-direct-save-function}.  The value should be a function of
+two arguments, @var{need-name} and @var{filename}.  The @acronym{XDS}
+protocol uses a two-step procedure for dragging files:
+
+@enumerate 1
+@item
+The application from which the file is dragged asks Emacs to provide
+the full file name under which to save the file.  For this purpose,
+the direct-save function is called with its first argument
+@var{need-name} non-@code{nil}, and the second argument @var{filename}
+set to the basename of the file to be saved.  It should return the
+fully-expanded absolute file name under which to save the file.  For
+example, if a file is dragged to a Dired window, the natural directory
+for the file is the directory of the file shown at location of the
+drop.  If saving the file is not possible for some reason, the
+function should return @code{nil}, which will cancel the drag-and-drop
+operation.
+
+@item
+The application from which the file is dragged saves the file under
+the name returned by the first call to the direct-save function.  If
+it succeeds in saving the file, the direct-save function is called
+again, this time with the first argument @var{need-name} set to
+@code{nil} and the second argument @var{filename} set to the full
+absolute name of the saved file.  The function is then expected to do
+whatever is needed given the fact that file was saved.  For example,
+Dired should update the directory on display by showing the new file
+there.
+@end enumerate
+
+The default value of @code{x-dnd-direct-save-function} is
+@code{x-dnd-save-direct}.
+
+@defun x-dnd-save-direct need-name filename
+When called with the @var{need-name} argument non-@code{nil}, this
+function prompts the user for the absolute file name under which it
+should be saved.  If the specified file already exists, it
+additionally asks the user whether to overwrite it, and returns the
+absolute file name only if the user confirms the overwriting.
+
+When called with the @var{need-name} argument @code{nil}, it reverts
+the Dired listing if the current buffer is in Dired mode or one of its
+descendants, and otherwise visits the file by calling @code{find-file}
+(@pxref{Visiting Functions}).
+@end defun
+
+@defun x-dnd-save-direct-immediately need-name filename
+This function works like @code{x-dnd-save-direct}, but when called
+with its @var{need-name} argument non-@code{nil}, it doesn't prompt
+the user for the full name of the file to be saved; instead, it
+returns its argument @var{filename} expanded against the current
+buffer's default directory (@pxref{File Name Expansion}).  (It still
+asks for confirmation if a file by that name already exists in the
+default directory.)
+@end defun
 
 @cindex initiating drag-and-drop
   On capable window systems, Emacs also supports dragging contents
@@ -4382,20 +5024,12 @@ really supports that color.  When using X, you can ask for any defined
 color on any kind of display, and you will get some result---typically,
 the closest it can do.  To determine whether a frame can really display
 a certain color, use @code{color-supported-p} (see below).
-
-@findex x-color-defined-p
-This function used to be called @code{x-color-defined-p},
-and that name is still supported as an alias.
 @end defun
 
 @defun defined-colors &optional frame
 This function returns a list of the color names that are defined
 and supported on frame @var{frame} (default, the selected frame).
 If @var{frame} does not support colors, the value is @code{nil}.
-
-@findex x-defined-colors
-This function used to be called @code{x-defined-colors},
-and that name is still supported as an alias.
 @end defun
 
 @defun color-supported-p color &optional frame background-p
@@ -4447,10 +5081,20 @@ The color values are returned for @var{frame}'s display.  If
 @var{frame} is omitted or @code{nil}, the information is returned for
 the selected frame's display.  If the frame cannot display colors, the
 value is @code{nil}.
+@end defun
 
-@findex x-color-values
-This function used to be called @code{x-color-values},
-and that name is still supported as an alias.
+@defun color-name-to-rgb color &optional frame
+This function does the same as @code{color-values}, but it returns
+color values as floating-point numbers between 0.0 and 1.0 inclusive.
+@end defun
+
+@defun color-dark-p rgb
+This function returns non-@code{nil} if the color described by its RGB
+triplet @var{rgb} is more readable against white background than
+against dark background.  The argument @var{rgb} should be a list of
+the form @w{@code{(@var{r} @var{g} @var{b})}}, with each component a
+floating-point number in the range 0.0 to 1.0 inclusive.  You can use
+@code{color-name-to-rgb} to convert a color's name to such a list.
 @end defun
 
 @node Text Terminal Colors
@@ -4621,10 +5265,7 @@ This function returns @code{t} if @var{display} has a mouse available,
 @end defun
 
 @defun display-color-p &optional display
-@findex x-display-color-p
 This function returns @code{t} if the screen is a color screen.
-It used to be called @code{x-display-color-p}, and that name
-is still supported as an alias.
 @end defun
 
 @defun display-grayscale-p &optional display

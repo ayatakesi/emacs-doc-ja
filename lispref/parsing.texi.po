@@ -1,0 +1,3573 @@
+# SOME DESCRIPTIVE TITLE
+# Copyright (C) YEAR Free Software Foundation, Inc.
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"POT-Creation-Date: 2023-07-27 19:47+0900\n"
+"PO-Revision-Date: 2023-08-13 18:21+0900\n"
+"Last-Translator: ayatakesi <ayamokoji.takesi@gmail.com>\n"
+"Language-Team: ja <https://emacs-jp.slack.com/>\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. type: chapter
+#: original_texis/parsing.texi:5 original_texis/parsing.texi:6
+#, no-wrap
+msgid "Parsing Program Source"
+msgstr "Parsing Program Source"
+
+#. type: cindex
+#: original_texis/parsing.texi:8
+#, no-wrap
+msgid "syntax tree, from parsing program source"
+msgstr "syntax tree, from parsing program source"
+
+#. type: Plain text
+#: original_texis/parsing.texi:15
+msgid "Emacs provides various ways to parse program source text and produce a @dfn{syntax tree}.  In a syntax tree, text is no longer considered a one-dimensional stream of characters, but a structured tree of nodes, where each node represents a piece of text.  Thus, a syntax tree can enable interesting features like precise fontification, indentation, navigation, structured editing, etc."
+msgstr "Emacsではプログラムソースのテキストのパース(parse: 解析)や@dfn{構文ツリーまたは構文木(syntax tree)}を生成するためにさまざまな方法が提供されています。構文ツリーにおけるテキストはもはや1次元の文字ストリームではなく、ノードというそれぞれがテキストの一部を表現するようなものを構造化したツリーとみなされます。つまり構文ツリーによって正確なフォント表示(fontification)、インデント、ナビゲーション、構造化された編集等といった興味深い機能を有効にできるのです。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:19
+msgid "Emacs has a simple facility for parsing balanced expressions (@pxref{Parsing Expressions}).  There is also the SMIE library for generic navigation and indentation (@pxref{SMIE})."
+msgstr "Emacsには釣り合いのとれた式をパースするシンプルな機能があります(@ref{Parsing Expressions}を参照)。一般的なナビゲーションとインデントにたいするSMIEというライブラリーもあります(@ref{SMIE}を参照)。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:25
+msgid "In addition to those, Emacs also provides integration with @uref{https://tree-sitter.github.io/tree-sitter, the tree-sitter library} if support for it was compiled in.  The tree-sitter library implements an incremental parser and has support for a wide range of programming languages."
+msgstr "これらに加えて@uref{https://tree-sitter.github.io/tree-sitter, tree-sitterライブラリー}にたいするサポートがコンパイルされていれば、Emacsはtree-sitterとの統合も提供します。tree-sitterライブラリーはインクリメンタルパーサー(incremental parser: 増分解析ライブラリー)であり、幅広いプログラミング言語をサポートしています。"
+
+#. type: defun
+#: original_texis/parsing.texi:26
+#, no-wrap
+msgid "treesit-available-p"
+msgstr "treesit-available-p"
+
+#. type: defun
+#: original_texis/parsing.texi:29
+msgid "This function returns non-@code{nil} if tree-sitter features are available for the current Emacs session."
+msgstr "この関数はカレントのEmacsセッションにおいてtree-sitter機能が利用可能なら非@code{nil}をリターンする。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:40
+msgid "To be able to parse the program source using the tree-sitter library and access the syntax tree of the program, a Lisp program needs to load a language grammar library, and create a parser for that language and the current buffer.  After that, the Lisp program can query the parser about specific nodes of the syntax tree.  Then, it can access various kinds of information about each node, and search for nodes using a powerful pattern-matching syntax.  This chapter explains how to do all this, and also how a Lisp program can work with source files that mix multiple programming languages."
+msgstr "tree-sitterライブラリーを用いたプログラムソースのパースとプログラムの構文ツリーへのアクセスを可能にするためには、Lispプログラムがその言語のグラマーライブラリーをロードするとともにその言語とカレントバッファーにたいするパーサーを作成する必要があります。Lispプログラムがこれを行った後に、構文ツリーの特定のノードに関してパーサーへの問い合わせを行うことができるのです。その後はそれぞれのノードに関するさまざまな種類の情報にアクセスして、強力なパターンマッチングを用いたノードの検索が可能になります。このチャプターではこれらすべてをどのように行うのか、そして複数のプログラミング言語がミックスされているソースファイルにたいしてLispプログラムが処理する方法についても説明します。"
+
+#. type: node
+#: original_texis/parsing.texi:50 original_texis/parsing.texi:52
+#, no-wrap
+msgid "Language Grammar"
+msgstr "Language Grammar"
+
+#. type: menuentry
+#: original_texis/parsing.texi:50
+msgid "Loading tree-sitter language grammar."
+msgstr "tree-sitter言語グラマーのロード。"
+
+#. type: node
+#: original_texis/parsing.texi:50 original_texis/parsing.texi:386
+#, no-wrap
+msgid "Using Parser"
+msgstr "Using Parser"
+
+#. type: menuentry
+#: original_texis/parsing.texi:50
+msgid "Introduction to parsers."
+msgstr "パーサー入門。"
+
+#. type: section
+#: original_texis/parsing.texi:50 original_texis/parsing.texi:532
+#: original_texis/parsing.texi:533
+#, no-wrap
+msgid "Retrieving Nodes"
+msgstr "Retrieving Nodes"
+
+#. type: menuentry
+#: original_texis/parsing.texi:50
+msgid "Retrieving nodes from a syntax tree."
+msgstr "構文ツリーからのノードの取得。"
+
+#. type: section
+#: original_texis/parsing.texi:50 original_texis/parsing.texi:891
+#: original_texis/parsing.texi:892
+#, no-wrap
+msgid "Accessing Node Information"
+msgstr "Accessing Node Information"
+
+#. type: menuentry
+#: original_texis/parsing.texi:50
+msgid "Accessing node information."
+msgstr "ノード情報へのアクセス。"
+
+#. type: node
+#: original_texis/parsing.texi:50 original_texis/parsing.texi:1028
+#, no-wrap
+msgid "Pattern Matching"
+msgstr "Pattern Matching"
+
+#. type: menuentry
+#: original_texis/parsing.texi:50
+msgid "Pattern matching with query patterns."
+msgstr "パターン問い合わせによるパターンマッチング。"
+
+#. type: node
+#: original_texis/parsing.texi:50 original_texis/parsing.texi:1433
+#, no-wrap
+msgid "Multiple Languages"
+msgstr "Multiple Languages"
+
+#. type: menuentry
+#: original_texis/parsing.texi:50
+msgid "Parse text written in multiple languages."
+msgstr "複数言語で記述されたテキストのパース。"
+
+#. type: node
+#: original_texis/parsing.texi:50 original_texis/parsing.texi:1696
+#, no-wrap
+msgid "Tree-sitter Major Modes"
+msgstr "Tree-sitter Major Modes"
+
+#. type: menuentry
+#: original_texis/parsing.texi:50
+msgid "Develop major modes using tree-sitter."
+msgstr "tree-sitterを使用するメジャーモードの開発。"
+
+#. type: node
+#: original_texis/parsing.texi:50 original_texis/parsing.texi:1837
+#, no-wrap
+msgid "Tree-sitter C API"
+msgstr "Tree-sitter C API"
+
+#. type: menuentry
+#: original_texis/parsing.texi:50
+msgid "Compare the C API and the ELisp API."
+msgstr "C用APIとELisp用APIの比較。"
+
+#. type: section
+#: original_texis/parsing.texi:53
+#, no-wrap
+msgid "Tree-sitter Language Grammar"
+msgstr "Tree-sitter Language Grammar"
+
+#. type: cindex
+#: original_texis/parsing.texi:54
+#, no-wrap
+msgid "language grammar, for tree-sitter"
+msgstr "language grammar, for tree-sitter"
+
+#. type: heading
+#: original_texis/parsing.texi:56
+#, no-wrap
+msgid "Loading a language grammar"
+msgstr "言語グラマーのロード"
+
+#. type: cindex
+#: original_texis/parsing.texi:57
+#, no-wrap
+msgid "loading language grammar for tree-sitter"
+msgstr "loading language grammar for tree-sitter"
+
+#. type: cindex
+#: original_texis/parsing.texi:59
+#, no-wrap
+msgid "language argument, for tree-sitter"
+msgstr "language argument, for tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:65
+msgid "Tree-sitter relies on language grammar to parse text in that language.  In Emacs, a language grammar is represented by a symbol.  For example, the C language grammar is represented as the symbol @code{c}, and @code{c} can be passed to tree-sitter functions as the @var{language} argument."
+msgstr "ある言語で記述されたテキストをパースするために、tree-sitterはその言語のグラマー(grammar: 文法)に依存します。Emacsにおける言語グラマーはシンボルによって表現されます。たとえばC言語のグラマーはシンボル@code{c}として表現されます。この@code{c}というシンボルはtree-sitter関数の@var{language}引数として渡すことができます。"
+
+#. type: vindex
+#: original_texis/parsing.texi:66
+#, no-wrap
+msgid "treesit-extra-load-path"
+msgstr "treesit-extra-load-path"
+
+#. type: vindex
+#: original_texis/parsing.texi:67
+#, no-wrap
+msgid "treesit-load-language-error"
+msgstr "treesit-load-language-error"
+
+#. type: Plain text
+#: original_texis/parsing.texi:72
+msgid "Tree-sitter language grammars are distributed as dynamic libraries.  In order to use a language grammar in Emacs, you need to make sure that the dynamic library is installed on the system.  Emacs looks for language grammars in several places, in the following order:"
+msgstr "tree-sitterの言語グラマーはダイナミックライブラリーとして配布されています。ある言語のグラマーをEmacsで使用するためには、そのダイナミックライブラリーがシステム上にインストール済みかを確認する必要があります。Emacsは以下の順序で複数の場所から言語グラマーを探します:"
+
+#. type: itemize
+#: original_texis/parsing.texi:77
+msgid "first, in the list of directories specified by the variable @code{treesit-extra-load-path};"
+msgstr "まず変数@code{treesit-extra-load-path}で指定されたディレクトリーのリストから;"
+
+#. type: itemize
+#: original_texis/parsing.texi:80
+msgid "then, in the @file{tree-sitter} subdirectory of the directory specified by @code{user-emacs-directory} (@pxref{Init File});"
+msgstr "それから@code{user-emacs-directory}で指定されるディレクトリーのサブディレクトリー@file{tree-sitter}から(@ref{Init File}を参照);"
+
+#. type: itemize
+#: original_texis/parsing.texi:82
+msgid "and finally, in the system's default locations for dynamic libraries."
+msgstr "最後にシステムのダイナミックライブラリー用のデフォルト位置。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:86
+msgid "In each of these directories, Emacs looks for a file with file-name extensions specified by the variable @code{dynamic-library-suffixes}."
+msgstr "これらのディレクトリーそれぞれにおいて、Emacsは変数@code{dynamic-library-suffixes}が指定するファイル名拡張子をもつファイルを探すのです。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:90
+msgid "If Emacs cannot find the library or has problems loading it, Emacs signals the @code{treesit-load-language-error} error.  The data of that signal could be one of the following:"
+msgstr "Emacsがライブラリーを見つけられなかったりロードに問題がある場合には、Emacsが@code{treesit-load-language-error}エラーをシグナルします。このシグナルのデータは以下のいずれかです:"
+
+#. type: item
+#: original_texis/parsing.texi:92
+#, no-wrap
+msgid "(not-found @var{error-msg} @dots{})"
+msgstr "(not-found @var{error-msg} @dots{})"
+
+#. type: table
+#: original_texis/parsing.texi:94
+msgid "This means that Emacs could not find the language grammar library."
+msgstr "その言語のグラマーライブラリーをEmacsが見つけられなかったという意味。"
+
+#. type: item
+#: original_texis/parsing.texi:94
+#, no-wrap
+msgid "(symbol-error @var{error-msg})"
+msgstr "(symbol-error @var{error-msg})"
+
+#. type: table
+#: original_texis/parsing.texi:97
+msgid "This means that Emacs could not find in the library the expected function that every language grammar library should export."
+msgstr "すべての言語のグラマーライブラリーでエクスポートされているべき関数を、そのライブラリーではEmacsが見つけられなかったという意味。"
+
+#. type: item
+#: original_texis/parsing.texi:97
+#, no-wrap
+msgid "(version-mismatch @var{error-msg})"
+msgstr "(version-mismatch @var{error-msg})"
+
+#. type: table
+#: original_texis/parsing.texi:100
+msgid "This means that the version of the language grammar library is incompatible with that of the tree-sitter library."
+msgstr "その言語のグラマーライブラリーとtree-sitterライブラリーのバージョンに互換性がないという意味。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:105
+msgid "In all of these cases, @var{error-msg} might provide additional details about the failure."
+msgstr "上記すべてのケースにおいて、@var{error-msg}により失敗に関する追加の詳細が提供されるかもしれません。"
+
+#. type: defun
+#: original_texis/parsing.texi:106
+#, no-wrap
+msgid "treesit-language-available-p language &optional detail"
+msgstr "treesit-language-available-p language &optional detail"
+
+#. type: defun
+#: original_texis/parsing.texi:109
+msgid "This function returns non-@code{nil} if the language grammar for @var{language} exists and can be loaded."
+msgstr "この関数は@var{language}にたいする言語グラマーが存在して、それがロード可能であれば非@code{nil}をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:114
+msgid "If @var{detail} is non-@code{nil}, return @code{(t . nil)} when @var{language} is available, and @code{(nil . @var{data})} when it's unavailable.  @var{data} is the signal data of @code{treesit-load-language-error}."
+msgstr "@var{detail}が非@code{nil}の場合には、@var{language}が利用可能なら@code{(t . nil)}、利用不可なら@code{(nil . @var{data})}をリターンする。@var{data}は@code{treesit-load-language-error}のシグナルデータ。"
+
+#. type: vindex
+#: original_texis/parsing.texi:116
+#, no-wrap
+msgid "treesit-load-name-override-list"
+msgstr "treesit-load-name-override-list"
+
+#. type: Plain text
+#: original_texis/parsing.texi:123
+msgid "By convention, the file name of the dynamic library for @var{language} is @file{libtree-sitter-@var{language}.@var{ext}}, where @var{ext} is the system-specific extension for dynamic libraries.  Also by convention, the function provided by that library is named @code{tree_sitter_@var{language}}.  If a language grammar library doesn't follow this convention, you should add an entry"
+msgstr "慣例により@var{language}用ダイナミックライブラリーのファイル名は@file{libtree-sitter-@var{language}.@var{ext}}です。ここで@var{ext}はダイナミックライブラリー用のシステム固有な拡張子です。同じく慣例により、そのライブラリーが提供する関数の名前は@code{tree_sitter_@var{language}}です。この慣例にしたがっていない言語グラマーライブラリーの場合には、"
+
+#. type: example
+#: original_texis/parsing.texi:126
+#, no-wrap
+msgid "(@var{language} @var{library-base-name} @var{function-name})\n"
+msgstr "(@var{language} @var{library-base-name} @var{function-name})\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:133
+msgid "to the list in the variable @code{treesit-load-name-override-list}, where @var{library-base-name} is the basename of the dynamic library's file name (usually, @file{libtree-sitter-@var{language}}), and @var{function-name} is the function provided by the library (usually, @code{tree_sitter_@var{language}}).  For example,"
+msgstr "上記エントリーを変数@code{treesit-load-name-override-list}のリストに追加する必要があります。ここで@var{library-base-name}はダイナミックライブラリーのファイル名のベースネーム(basename: 先行するディレクトリー部分を除外したファイル名のことで、通常だと@file{libtree-sitter-@var{language}})、@var{function-name}はそのライブラリーが提供する関数(通常だと@code{tree_sitter_@var{language}})です。たとえば、"
+
+#. type: example
+#: original_texis/parsing.texi:136
+#, no-wrap
+msgid "(cool-lang \"libtree-sitter-coool\" \"tree_sitter_cooool\")\n"
+msgstr "(cool-lang \"libtree-sitter-coool\" \"tree_sitter_cooool\")\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:141
+msgid "for a language that considers itself too ``cool'' to abide by conventions."
+msgstr "これは慣例に屈するには自分があまりにも``cool''に過ぎると考える言語の例です。"
+
+#. type: cindex
+#: original_texis/parsing.texi:142
+#, no-wrap
+msgid "language grammar version, compatibility"
+msgstr "language grammar version, compatibility"
+
+#. type: defun
+#: original_texis/parsing.texi:143
+#, no-wrap
+msgid "treesit-library-abi-version &optional min-compatible"
+msgstr "treesit-library-abi-version &optional min-compatible"
+
+#. type: defun
+#: original_texis/parsing.texi:153
+msgid "This function returns the version of the language grammar Application Binary Interface (@acronym{ABI}) supported by the tree-sitter library.  By default, it returns the latest ABI version supported by the library, but if @var{min-compatible} is non-@code{nil}, it returns the oldest ABI version which the library still can support.  Language grammar libraries must be built for ABI versions between the oldest and the latest versions supported by the tree-sitter library, otherwise the library will be unable to load them."
+msgstr "この関数はtree-sitterライブラリーがサポートしている言語グラマーの@acronym{ABI} (Application Binary Interface: アプリケーションバイナリーインターフェイス)のバージョンをリターンする。デフォルトではそのライブラリーがサポートする最新のABIバージョンをリターンするが、@var{min-compatible}が非@code{nil}の場合にはそのライブラリーでまだサポートできる最古のABIバージョンをリターンする。言語グラマーライブラリーはtree-sitterライブラリーがサポートする最古と最新の間にあるABIバージョンにたいしてビルドしなければ、tree-sitterライブラリーがそれらをロードできなくなる。"
+
+#. type: defun
+#: original_texis/parsing.texi:155
+#, no-wrap
+msgid "treesit-language-abi-version language"
+msgstr "treesit-language-abi-version language"
+
+#. type: defun
+#: original_texis/parsing.texi:159
+msgid "This function returns the @acronym{ABI} version of the language grammar library loaded by Emacs for @var{language}.  If @var{language} is unavailable, this function returns @code{nil}."
+msgstr "この関数はEmacsがロードした@var{language}用の言語グラマーライブラリーの@acronym{ABI}バージョンをリターンする。@var{language}が利用できなければ@code{nil}をリターンする。"
+
+#. type: heading
+#: original_texis/parsing.texi:161
+#, no-wrap
+msgid "Concrete syntax tree"
+msgstr "構文ツリーの具体例"
+
+#. type: cindex
+#: original_texis/parsing.texi:162
+#, no-wrap
+msgid "syntax tree, concrete"
+msgstr "syntax tree, concrete"
+
+#. type: Plain text
+#: original_texis/parsing.texi:167
+msgid "A syntax tree is what a parser generates.  In a syntax tree, each node represents a piece of text, and is connected to each other by a parent-child relationship.  For example, if the source text is"
+msgstr "構文ツリーはパーサーによって生成されます。構文ツリーにおけるノードはそれぞれがテキストのある部分を表し、お互いが親子関係というリレーションシップによって接続されています。たとえば以下のようなソーステキストがあるとします"
+
+#. type: example
+#: original_texis/parsing.texi:170
+#, no-wrap
+msgid "1 + 2\n"
+msgstr "1 + 2\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:174
+msgid "its syntax tree could be"
+msgstr "これは以下のような構文ツリーになるかもしれません"
+
+#. type: group
+#: original_texis/parsing.texi:188
+#, no-wrap
+msgid ""
+"                  +--------------+\n"
+"                  | root \"1 + 2\" |\n"
+"                  +--------------+\n"
+"                         |\n"
+"        +--------------------------------+\n"
+"        |       expression \"1 + 2\"       |\n"
+"        +--------------------------------+\n"
+"           |             |            |\n"
+"+------------+   +--------------+   +------------+\n"
+"| number \"1\" |   | operator \"+\" |   | number \"2\" |\n"
+"+------------+   +--------------+   +------------+\n"
+msgstr ""
+"                  +--------------+\n"
+"                  | root \"1 + 2\" |\n"
+"                  +--------------+\n"
+"                         |\n"
+"        +--------------------------------+\n"
+"        |       expression \"1 + 2\"       |\n"
+"        +--------------------------------+\n"
+"           |             |            |\n"
+"+------------+   +--------------+   +------------+\n"
+"| number \"1\" |   | operator \"+\" |   | number \"2\" |\n"
+"+------------+   +--------------+   +------------+\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:192
+msgid "We can also represent it as an s-expression:"
+msgstr "これを以下のようにS式で表すことも可能です:"
+
+#. type: example
+#: original_texis/parsing.texi:195
+#, no-wrap
+msgid "(root (expression (number) (operator) (number)))\n"
+msgstr "(root (expression (number) (operator) (number)))\n"
+
+#. type: subheading
+#: original_texis/parsing.texi:197
+#, no-wrap
+msgid "Node types"
+msgstr "ノードタイプ"
+
+#. type: cindex
+#: original_texis/parsing.texi:198
+#, no-wrap
+msgid "node types, in a syntax tree"
+msgstr "node types, in a syntax tree"
+
+#. type: cindex
+#: original_texis/parsing.texi:200
+#, no-wrap
+msgid "type of node, tree-sitter"
+msgstr "type of node, tree-sitter"
+
+#. type: anchor{#1}
+#: original_texis/parsing.texi:202
+msgid "tree-sitter node type"
+msgstr "tree-sitter node type"
+
+#. type: cindex
+#: original_texis/parsing.texi:202
+#, no-wrap
+msgid "named node, tree-sitter"
+msgstr "named node, tree-sitter"
+
+#. type: anchor{#1}
+#: original_texis/parsing.texi:204
+msgid "tree-sitter named node"
+msgstr "tree-sitter named node"
+
+#. type: cindex
+#: original_texis/parsing.texi:204
+#, no-wrap
+msgid "anonymous node, tree-sitter"
+msgstr "anonymous node, tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:212
+msgid "Names like @code{root}, @code{expression}, @code{number}, and @code{operator} specify the @dfn{type} of the nodes.  However, not all nodes in a syntax tree have a type.  Nodes that don't have a type are known as @dfn{anonymous nodes}, and nodes with a type are @dfn{named nodes}.  Anonymous nodes are tokens with fixed spellings, including punctuation characters like bracket @samp{]}, and keywords like @code{return}."
+msgstr "@code{root}、@code{expression}、@code{number}、@code{operator}のような名前はノードの@dfn{タイプ(type: 型)}を指定します。ただし構文ツリーのすべてのノードがタイプをもつ訳ではありません。タイプをもっていないノードは@dfn{無名ノード(anonymous nodes)}、タイプをもつノードは@dfn{名前つきノード(named nodes)}と呼ばれています。無名ノードは角カッコ@samp{]}のような区切り文字や@code{return}のようなキーワードを含む、固定化された綴りのトークン(token: 字句単位)です。"
+
+#. type: subheading
+#: original_texis/parsing.texi:213
+#, no-wrap
+msgid "Field names"
+msgstr "フィールド名"
+
+#. type: cindex
+#: original_texis/parsing.texi:215
+#, no-wrap
+msgid "field name, tree-sitter"
+msgstr "field name, tree-sitter"
+
+#. type: anchor{#1}
+#: original_texis/parsing.texi:216 original_texis/parsing.texi:222
+#, no-wrap
+msgid "tree-sitter node field name"
+msgstr "tree-sitter node field name"
+
+#. type: Plain text
+#: original_texis/parsing.texi:222
+msgid "To make the syntax tree easier to analyze, many language grammar assign @dfn{field names} to child nodes.  For example, a @code{function_definition} node could have a @code{declarator} and a @code{body}:"
+msgstr "構文ツリーの分析を容易にするために、多くの言語グラマーは子ノードに@dfn{フィールド名(field names)}を割り当てています。たとえば@code{function_definition}ノードは@code{declarator}と@code{body}のフィールド名をもつかもしれません:"
+
+#. type: group
+#: original_texis/parsing.texi:228
+#, no-wrap
+msgid ""
+"(function_definition\n"
+" declarator: (declaration)\n"
+" body: (compound_statement))\n"
+msgstr ""
+"(function_definition\n"
+" declarator: (declaration)\n"
+" body: (compound_statement))\n"
+
+#. type: heading
+#: original_texis/parsing.texi:231
+#, no-wrap
+msgid "Exploring the syntax tree"
+msgstr "構文ツリーの調査"
+
+#. type: cindex
+#: original_texis/parsing.texi:232
+#, no-wrap
+msgid "explore tree-sitter syntax tree"
+msgstr "explore tree-sitter syntax tree"
+
+#. type: cindex
+#: original_texis/parsing.texi:233
+#, no-wrap
+msgid "inspection of tree-sitter parse tree nodes"
+msgstr "inspection of tree-sitter parse tree nodes"
+
+#. type: Plain text
+#: original_texis/parsing.texi:240
+msgid "To aid in understanding the syntax of a language and in debugging Lisp programs that use the syntax tree, Emacs provides an ``explore'' mode, which displays the syntax tree of the source in the current buffer in real time.  Emacs also comes with an ``inspect mode'', which displays information of the nodes at point in the mode-line."
+msgstr "言語の構文の理解、および構文ツリー割り当て使用するLispプログラムのデバッグ支援のために、Emacsはカレントバッファーのソースの構文ツリーをリアルタイムで表示する``explore''モードを提供しています。更にEmacsにはポイント位置にあるノードの情報をモードラインに表示する``inspect''モードも付属しています。"
+
+#. type: deffn
+#: original_texis/parsing.texi:241
+#, no-wrap
+msgid "Command treesit-explore-mode"
+msgstr "Command treesit-explore-mode"
+
+#. type: deffn
+#: original_texis/parsing.texi:247
+msgid "This mode pops up a window displaying the syntax tree of the source in the current buffer.  Selecting text in the source buffer highlights the corresponding nodes in the syntax tree display.  Clicking on nodes in the syntax tree highlights the corresponding text in the source buffer."
+msgstr "このモードはカレントバッファーのソースの構文ツリーを表示するウィンドウをポップアップする。ソースバッファーでテキストを選択することによって、表示されている構文ツリーの対応する部分がハイライトされる。構文ツリーでノードをクリックすれば、ソースバッファーの対応するテキストがハイライトされる。"
+
+#. type: deffn
+#: original_texis/parsing.texi:249
+#, no-wrap
+msgid "Command treesit-inspect-mode"
+msgstr "Command treesit-inspect-mode"
+
+#. type: deffn
+#: original_texis/parsing.texi:252
+msgid "This minor mode displays on the mode-line the node that @emph{starts} at point.  For example, the mode-line can display"
+msgstr "このマイナーモードはポイント位置で@emph{始まる}ノードをモードラインに表示する。たとえばモードラインに以下のように表示されるかもしれない"
+
+#. type: example
+#: original_texis/parsing.texi:255
+#, no-wrap
+msgid "@var{parent} @var{field}: (@var{node} (@var{child} (@dots{})))\n"
+msgstr "@var{parent} @var{field}: (@var{node} (@var{child} (@dots{})))\n"
+
+#. type: deffn
+#: original_texis/parsing.texi:262
+msgid "where @var{node}, @var{child}, etc., are nodes which begin at point.  @var{parent} is the parent of @var{node}.  @var{node} is displayed in a bold typeface.  @var{field-name}s are field names of @var{node} and of @var{child}, etc."
+msgstr "ここで@var{node}、@var{child}、...等はポイント位置で始まるノード、@var{parent}は@var{node}の親である。@var{node}はbold書体で表示される。@var{field-name}は@var{node}、@var{child}、...等のフィールド名である。"
+
+#. type: deffn
+#: original_texis/parsing.texi:266
+msgid "If no node starts at point, i.e., point is in the middle of a node, then the mode line displays the earliest node that spans point, and its immediate parent."
+msgstr "ポイント位置で始まるノードがない(ポイントがノードの中間にある)場合には、ポイントを跨ぐ(span)もっとも前のノード、およびそのノードの直近の親ノードがモードラインに表示される。"
+
+#. type: deffn
+#: original_texis/parsing.texi:269
+msgid "This minor mode doesn't create parsers on its own.  It uses the first parser in @code{(treesit-parser-list)} (@pxref{Using Parser})."
+msgstr "このマイナーモード自身はパーサーを作成せず、@code{(treesit-parser-list)}の最初のパーサーを使用する(@ref{Using Parser}を参照)。"
+
+#. type: heading
+#: original_texis/parsing.texi:271
+#, no-wrap
+msgid "Reading the grammar definition"
+msgstr "グラマー定義を読む"
+
+#. type: cindex
+#: original_texis/parsing.texi:272
+#, no-wrap
+msgid "reading grammar definition, tree-sitter"
+msgstr "reading grammar definition, tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:278
+msgid "Authors of language grammars define the @dfn{grammar} of a programming language, which determines how a parser constructs a concrete syntax tree out of the program text.  In order to use the syntax tree effectively, you need to consult the @dfn{grammar file}."
+msgstr "言語グラマーの製作者はプログラミング言語の@dfn{グラマー(grammar: 文法)}を定義します。パーサーがどのようにしてプログラムテキストから具体的な構文ツリーを構築するかを決めるのがグラマーです。構文ツリーを効果的に使用するためには、@dfn{グラマーファイル(grammar file)}を調べる必要があります。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:284
+msgid "The grammar file is usually @file{grammar.js} in a language grammar's project repository.  The link to a language grammar's home page can be found on @uref{https://tree-sitter.github.io/tree-sitter, tree-sitter's homepage}."
+msgstr "グラマーファイルは通常だと言語グラマーのプロジェクトレポジトリにある@file{grammar.js}です。言語グラマーのホームページへのリンクは@uref{https://tree-sitter.github.io/tree-sitter, tree-sitter's homepage}で見つけることができるでしょう。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:287
+msgid "The grammar definition is written in JavaScript.  For example, the rule matching a @code{function_definition} node may look like"
+msgstr "グラマー定義はJavaScriptによって記述されます。たとえば@code{function_definition}ノードにマッチするようなルールは以下のようなものかもしれません"
+
+#. type: group
+#: original_texis/parsing.texi:295
+#, no-wrap
+msgid ""
+"function_definition: $ => seq(\n"
+"  $.declaration_specifiers,\n"
+"  field('declarator', $.declaration),\n"
+"  field('body', $.compound_statement)\n"
+")\n"
+msgstr ""
+"function_definition: $ => seq(\n"
+"  $.declaration_specifiers,\n"
+"  field('declarator', $.declaration),\n"
+"  field('body', $.compound_statement)\n"
+")\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:305
+msgid "The rules are represented by functions that take a single argument @var{$}, representing the whole grammar.  The function itself is constructed by other functions: the @code{seq} function puts together a sequence of children; the @code{field} function annotates a child with a field name.  If we write the above definition in the so-called @dfn{Backus-Naur Form} (@acronym{BNF}) syntax, it would look like"
+msgstr "ルールは単一の引数@var{$}を受け取る関数によって表現されます。この関数がグラマー全体を表すのです。この関数自体は他の関数によって構築されています。一連の子ノードをまとめるのが@code{seq}関数、子ノードにフィールド名の注釈をつけるのが@code{field}関数です。上記の定義を俗に@acronym{BNF} (@dfn{Backus-Naur Form: バッカス・ナウア記法})と呼ばれる構文で表せば以下のようになるでしょう"
+
+#. type: group
+#: original_texis/parsing.texi:310
+#, no-wrap
+msgid ""
+"function_definition :=\n"
+"  <declaration_specifiers> <declaration> <compound_statement>\n"
+msgstr ""
+"function_definition :=\n"
+"  <declaration_specifiers> <declaration> <compound_statement>\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:315
+msgid "and the node returned by the parser would look like"
+msgstr "そしてパーサーがリターンするノードは以下のようになります"
+
+#. type: group
+#: original_texis/parsing.texi:322
+#, no-wrap
+msgid ""
+"(function_definition\n"
+"  (declaration_specifier)\n"
+"  declarator: (declaration)\n"
+"  body: (compound_statement))\n"
+msgstr ""
+"(function_definition\n"
+"  (declaration_specifier)\n"
+"  declarator: (declaration)\n"
+"  body: (compound_statement))\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:327
+msgid "Below is a list of functions that one can see in a grammar definition.  Each function takes other rules as arguments and returns a new rule."
+msgstr "以下はグラマー定義で目にするかもしれない関数のリストです。これらの関数はいずれも引数として他のルールを受け取り新たなルールをリターンします。"
+
+#. type: item
+#: original_texis/parsing.texi:329
+#, no-wrap
+msgid "seq(@var{rule1}, @var{rule2}, @dots{})"
+msgstr "seq(@var{rule1}, @var{rule2}, @dots{})"
+
+#. type: table
+#: original_texis/parsing.texi:331
+msgid "matches each rule one after another."
+msgstr "すべてのルールに逐一マッチする。"
+
+#. type: item
+#: original_texis/parsing.texi:331
+#, no-wrap
+msgid "choice(@var{rule1}, @var{rule2}, @dots{})"
+msgstr "choice(@var{rule1}, @var{rule2}, @dots{})"
+
+#. type: table
+#: original_texis/parsing.texi:333
+msgid "matches one of the rules in its arguments."
+msgstr "引数のルールいずれかにマッチする。"
+
+#. type: item
+#: original_texis/parsing.texi:333
+#, no-wrap
+msgid "repeat(@var{rule})"
+msgstr "repeat(@var{rule})"
+
+#. type: table
+#: original_texis/parsing.texi:336
+msgid "matches @var{rule} @emph{zero or more} times.  This is like the @samp{*} operator in regular expressions."
+msgstr "@var{rule}に@emph{0回以上}マッチする。正規表現の演算子@samp{*}に似ている。"
+
+#. type: item
+#: original_texis/parsing.texi:336
+#, no-wrap
+msgid "repeat1(@var{rule})"
+msgstr "repeat1(@var{rule})"
+
+#. type: table
+#: original_texis/parsing.texi:339
+msgid "matches @var{rule} @emph{one or more} times.  This is like the @samp{+} operator in regular expressions."
+msgstr "@var{rule}に@emph{1回以上}マッチする。正規表現の演算子@samp{+}に似ている。"
+
+#. type: item
+#: original_texis/parsing.texi:339
+#, no-wrap
+msgid "optional(@var{rule})"
+msgstr "optional(@var{rule})"
+
+#. type: table
+#: original_texis/parsing.texi:342
+msgid "matches @var{rule} @emph{zero or one} times.  This is like the @samp{?} operator in regular expressions."
+msgstr "@var{rule}に@emph{0回または1回}マッチする。正規表現の演算子@samp{?}に似ている。"
+
+#. type: item
+#: original_texis/parsing.texi:342
+#, no-wrap
+msgid "field(@var{name}, @var{rule})"
+msgstr "field(@var{name}, @var{rule})"
+
+#. type: table
+#: original_texis/parsing.texi:344
+msgid "assigns field name @var{name} to the child node matched by @var{rule}."
+msgstr "@var{rule}にマッチする子ノードにフィールド名@var{name}を割り当てる。"
+
+#. type: item
+#: original_texis/parsing.texi:344
+#, no-wrap
+msgid "alias(@var{rule}, @var{alias})"
+msgstr "alias(@var{rule}, @var{alias})"
+
+#. type: table
+#: original_texis/parsing.texi:347
+msgid "makes nodes matched by @var{rule} appear as @var{alias} in the syntax tree generated by the parser.  For example,"
+msgstr "@var{rule}にマッチしたノードをパーサーが生成する構文ツリーで@var{alias}として表示する。たとえば、"
+
+#. type: example
+#: original_texis/parsing.texi:350
+#, no-wrap
+msgid "alias(preprocessor_call_exp, call_expression)\n"
+msgstr "alias(preprocessor_call_exp, call_expression)\n"
+
+#. type: table
+#: original_texis/parsing.texi:355
+msgid "makes any node matched by @code{preprocessor_call_exp} appear as @code{call_expression}."
+msgstr "これにより@code{preprocessor_call_exp}がマッチしたノードが@code{call_expression}と表示される。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:359
+msgid "Below are grammar functions of lesser importance for reading a language grammar."
+msgstr "以下は言語グラマーを読むにあたってそれほど重要ではないグラマー関数です。"
+
+#. type: item
+#: original_texis/parsing.texi:361
+#, no-wrap
+msgid "token(@var{rule})"
+msgstr "token(@var{rule})"
+
+#. type: table
+#: original_texis/parsing.texi:366
+msgid "marks @var{rule} to produce a single leaf node.  That is, instead of generating a parent node with individual child nodes under it, everything is combined into a single leaf node.  @xref{Retrieving Nodes}."
+msgstr "単一の葉ノード(leaf node)として@var{rule}をマークする。つまり個別の子ノードをもつ親ノードではなく、その単一の葉ノードにすべてが収斂されるようなノードを生成する。@ref{Retrieving Nodes}を参照のこと。"
+
+#. type: item
+#: original_texis/parsing.texi:366
+#, no-wrap
+msgid "token.immediate(@var{rule})"
+msgstr "token.immediate(@var{rule})"
+
+#. type: table
+#: original_texis/parsing.texi:370
+msgid "Normally, grammar rules ignore preceding whitespace; this changes @var{rule} to match only when there is no preceding whitespace."
+msgstr "通常のグラマールールは先行する空白を無視するが、これは空白が前置されていない@var{rule}だけにマッチするよう変更する。"
+
+#. type: item
+#: original_texis/parsing.texi:370
+#, no-wrap
+msgid "prec(@var{n}, @var{rule})"
+msgstr "prec(@var{n}, @var{rule})"
+
+#. type: table
+#: original_texis/parsing.texi:372
+msgid "gives @var{rule} the level-@var{n} precedence."
+msgstr "@var{rule}にたいしてレベル@var{n}の優先度を与える。"
+
+#. type: item
+#: original_texis/parsing.texi:372
+#, no-wrap
+msgid "prec.left([@var{n},] @var{rule})"
+msgstr "prec.left([@var{n},] @var{rule})"
+
+#. type: table
+#: original_texis/parsing.texi:374
+msgid "marks @var{rule} as left-associative, optionally with level @var{n}."
+msgstr "@var{rule}にたいしてオプションとしてレベル@var{n}を付与して左結合(left-associative)とマークする。"
+
+#. type: item
+#: original_texis/parsing.texi:374
+#, no-wrap
+msgid "prec.right([@var{n},] @var{rule})"
+msgstr "prec.right([@var{n},] @var{rule})"
+
+#. type: table
+#: original_texis/parsing.texi:376
+msgid "marks @var{rule} as right-associative, optionally with level @var{n}."
+msgstr "@var{rule}にたいしてオプションとしてレベル@var{n}を付与して右結合(right-associative)とマークする。"
+
+#. type: item
+#: original_texis/parsing.texi:376
+#, no-wrap
+msgid "prec.dynamic(@var{n}, @var{rule})"
+msgstr "prec.dynamic(@var{n}, @var{rule})"
+
+#. type: table
+#: original_texis/parsing.texi:379
+msgid "this is like @code{prec}, but the precedence is applied at runtime instead."
+msgstr "@code{prec}と似ているが優先度は実行時に適用される。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:385
+msgid "The documentation of the tree-sitter project has @uref{https://tree-sitter.github.io/tree-sitter/creating-parsers, more about writing a grammar}.  Read especially ``The Grammar DSL'' section."
+msgstr "tree-sitterプロジェクトには@uref{https://tree-sitter.github.io/tree-sitter/creating-parsers, more about writing a grammar}というドキュメントがあります。特に``The Grammar DSL''というセクションを読んでください。"
+
+#. type: section
+#: original_texis/parsing.texi:387
+#, no-wrap
+msgid "Using Tree-sitter Parser"
+msgstr "Using Tree-sitter Parser"
+
+#. type: cindex
+#: original_texis/parsing.texi:388
+#, no-wrap
+msgid "tree-sitter parser, using"
+msgstr "tree-sitter parser, using"
+
+#. type: Plain text
+#: original_texis/parsing.texi:394
+msgid "This section describes how to create and configure a tree-sitter parser.  In Emacs, each tree-sitter parser is associated with a buffer.  As the user edits the buffer, the associated parser and syntax tree are automatically kept up-to-date."
+msgstr "このセクションではtree-sitterパーサーをどのようにして作成して構成するかについて説明します。Emacsにおけるtree-sitterパーサーはそれぞれバッファーに関連付けられます。ユーザーによるバッファーの編集にしたがって、関連付けられているパーサーと構文ツリーは自動的に最新に保たれるのです。"
+
+#. type: defvar
+#: original_texis/parsing.texi:395
+#, no-wrap
+msgid "treesit-max-buffer-size"
+msgstr "treesit-max-buffer-size"
+
+#. type: defvar
+#: original_texis/parsing.texi:399
+msgid "This variable contains the maximum size of buffers in which tree-sitter can be activated.  Major modes should check this value when deciding whether to enable tree-sitter features."
+msgstr "この変数にはtree-sitterをアクティブにし得るバッファーの最大サイズが含まれる。メジャーモードはtree-sitter機能を有効にするかどうかを判断する際にはこの変数をチェックすること。"
+
+#. type: cindex
+#: original_texis/parsing.texi:401
+#, no-wrap
+msgid "creating tree-sitter parsers"
+msgstr "creating tree-sitter parsers"
+
+#. type: cindex
+#: original_texis/parsing.texi:402
+#, no-wrap
+msgid "tree-sitter parser, creating"
+msgstr "tree-sitter parser, creating"
+
+#. type: defun
+#: original_texis/parsing.texi:403
+#, no-wrap
+msgid "treesit-parser-create language &optional buffer no-reuse"
+msgstr "treesit-parser-create language &optional buffer no-reuse"
+
+#. type: defun
+#: original_texis/parsing.texi:407
+msgid "Create a parser for the specified @var{buffer} and @var{language} (@pxref{Language Grammar}).  If @var{buffer} is omitted or @code{nil}, it stands for the current buffer."
+msgstr "指定された@var{buffer}および@var{language} (@ref{Language Grammar}を参照)にたいしてパーサーを作成する。バッファーが省略または@code{nil}の場合にはカレントバッファーを意味する。"
+
+#. type: defun
+#: original_texis/parsing.texi:411
+msgid "By default, this function reuses a parser if one already exists for @var{language} in @var{buffer}, but if @var{no-reuse} is non-@code{nil}, this function always creates a new parser."
+msgstr "この関数は@var{buffer}の@var{language}にたいするパーサーがすでに存在していれば、デフォルトではそれを再利用するが@var{no-reuse}が非@code{nil}の場合には常に新たなパーサーを作成する。"
+
+#. type: defun
+#: original_texis/parsing.texi:418
+msgid "If that buffer is an indirect buffer, its base buffer is used instead.  That is, indirect buffers use their base buffer's parsers.  If the base buffer is narrowed, an indirect buffer might not be able to retrieve information of the portion of the buffer text that is invisible in the base buffer.  Lisp programs should widen as necessary should they want to use a parser in an indirect buffer."
+msgstr "そのバッファーがインダイレクトバッファーなら、かわりにベースバッファーを使用する。つまりインダイレクトバッファーではそのベースバッファーのパーサーが使用される。ベースバッファーがナローイングされていると、インダイレクトバッファーがベースバッファーで不可視なバッファーテキスト部分の情報を取得できないかもしれない。Lispプログラムがインダイレクトバッファーでパーサーを使用するためには、必要に応じてwiden(訳注: カレントバッファーからナローイングによる制限を取り去る関数)する必要がある。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:421
+msgid "Given a parser, we can query information about it."
+msgstr "パーサーが与えられれば、それに関する情報を問い合わせることができます。"
+
+#. type: defun
+#: original_texis/parsing.texi:422
+#, no-wrap
+msgid "treesit-parser-buffer parser"
+msgstr "treesit-parser-buffer parser"
+
+#. type: defun
+#: original_texis/parsing.texi:424
+msgid "This function returns the buffer associated with @var{parser}."
+msgstr "この関数は@var{parser}に関連付けられているバッファーをリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:426
+#, no-wrap
+msgid "treesit-parser-language parser"
+msgstr "treesit-parser-language parser"
+
+#. type: defun
+#: original_texis/parsing.texi:428
+msgid "This function returns the language used by @var{parser}."
+msgstr "この関数は@var{parser}が使用する言語をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:430
+#, no-wrap
+msgid "treesit-parser-p object"
+msgstr "treesit-parser-p object"
+
+#. type: defun
+#: original_texis/parsing.texi:433
+msgid "This function checks if @var{object} is a tree-sitter parser, and returns non-@code{nil} if it is, and @code{nil} otherwise."
+msgstr "この関数は@var{object}をチェックしてtree-sitterパーサーなら非@code{nil}、そうでなければ@code{nil}をリターンする。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:441
+msgid "There is no need to explicitly parse a buffer, because parsing is done automatically and lazily.  A parser only parses when a Lisp program queries for a node in its syntax tree.  Therefore, when a parser is first created, it doesn't parse the buffer; it waits until the Lisp program queries for a node for the first time.  Similarly, when some change is made in the buffer, a parser doesn't re-parse immediately."
+msgstr "パースは自動的かつ遅延して行われるので、明示的にバッファーをパースする必要はありません。パーサーがパースを行うのは、Lispプログラムがパーサーの構文ツリーのノードにたいして問い合わせを行ったときだけです。したがって最初にパーサーが作成された際にはバッファーのパースは行われず、Lispプログラムがノードにたいする問い合わせを最初に行うまで待機します。同様に何らかの変更をバッファーに行った際にも、パーサーが即座に再パースする訳ではありません。"
+
+#. type: vindex
+#: original_texis/parsing.texi:442
+#, no-wrap
+msgid "treesit-buffer-too-large"
+msgstr "treesit-buffer-too-large"
+
+#. type: Plain text
+#: original_texis/parsing.texi:447
+msgid "When a parser does parse, it checks for the size of the buffer.  Tree-sitter can only handle buffers no larger than about 4GB@.  If the size exceeds that, Emacs signals the @code{treesit-buffer-too-large} error with signal data being the buffer size."
+msgstr "パーサーがパースを行う際にはバッファーのサイズをチェックします。tree-sitterが処理できるのはおよそ4GBまでです。サイズがそれを超えると、Emacsはそのバッファーサイズをシグナルデータとして@code{treesit-buffer-too-large}エラーをシグナルするでしょう。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:452
+msgid "Once a parser is created, Emacs automatically adds it to the internal parser list.  Every time a change is made to the buffer, Emacs updates parsers in this list so they can update their syntax tree incrementally."
+msgstr "一度パーサーを作成すると、Emacsが自動的にそれを内部のパーサーリストに追加します。バッファーにたいして変更が行われるたびに、パーサーがインクリメンタルに構文ツリーを更新できるように、Emacsがこのリストにあるパーサーを更新するのです。"
+
+#. type: defun
+#: original_texis/parsing.texi:453
+#, no-wrap
+msgid "treesit-parser-list &optional buffer"
+msgstr "treesit-parser-list &optional buffer"
+
+#. type: defun
+#: original_texis/parsing.texi:458
+msgid "This function returns the parser list of @var{buffer}.  If @var{buffer} is @code{nil} or omitted, it defaults to the current buffer.  If that buffer is an indirect buffer, its base buffer is used instead.  That is, indirect buffers use their base buffer's parsers."
+msgstr "この関数は@var{buffer}のパーサーリストをリターンする。@var{buffer}が@code{nil}または省略の場合のデフォルトはカレントバッファー。そのバッファーがインダイレクトバッファーなら、かわりにベースバッファーを使用する。つまりインダイレクトバッファーではそのベースバッファーのパーサーが使用される。"
+
+#. type: defun
+#: original_texis/parsing.texi:460
+#, no-wrap
+msgid "treesit-parser-delete parser"
+msgstr "treesit-parser-delete parser"
+
+#. type: defun
+#: original_texis/parsing.texi:462
+msgid "This function deletes @var{parser}."
+msgstr "この関数は@var{parser}を削除する。"
+
+#. type: anchor{#1}
+#: original_texis/parsing.texi:464 original_texis/parsing.texi:474
+#, no-wrap
+msgid "tree-sitter narrowing"
+msgstr "tree-sitter narrowing"
+
+#. type: Plain text
+#: original_texis/parsing.texi:474
+msgid "Normally, a parser ``sees'' the whole buffer, but when the buffer is narrowed (@pxref{Narrowing}), the parser will only see the accessible portion of the buffer.  As far as the parser can tell, the hidden region was deleted.  When the buffer is later widened, the parser thinks text is inserted at the beginning and at the end.  Although parsers respect narrowing, modes should not use narrowing as a means to handle a multi-language buffer; instead, set the ranges in which the parser should operate.  @xref{Multiple Languages}."
+msgstr "パーサーは通常はバッファー全体を``見ている''ものですが、バッファーがナローイング(@ref{Narrowing}を参照)されているとパーサーが見るのはバッファーのアクセス可能範囲だけになります。パーサーが見る限りでは、隠されているリージョンは削除されたことになります。後刻バッファーがワイドニングされた際には、先頭と終端にテキストが挿入されたとパーサーは考えるでしょう。パーサーがナローイングを尊重するにしても、複数言語のバッファーを処理するという意味合いでモードはナローイングを使用するべきではありません。そのかわりにパーサーが処理する必要がある範囲をセットするべきです。@ref{Multiple Languages}を参照してください。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:479
+msgid "Because a parser parses lazily, when the user or a Lisp program narrows the buffer, the parser is not affected immediately; as long as the mode doesn't query for a node while the buffer is narrowed, the parser is oblivious of the narrowing."
+msgstr "パーサーはパースを遅延させるので、ユーザーやLispプログラムがバッファーをナローイングしてもパーサーはすぐに影響を受けないのです。バッファーをナローイングしていても、モードがノードについて問い合わせをするまでパーサーはナローイングを認識しません。"
+
+#. type: cindex
+#: original_texis/parsing.texi:480
+#, no-wrap
+msgid "tree-sitter parse string"
+msgstr "tree-sitter parse string"
+
+#. type: cindex
+#: original_texis/parsing.texi:481
+#, no-wrap
+msgid "parse string, tree-sitter"
+msgstr "parse string, tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:485
+msgid "Besides creating a parser for a buffer, a Lisp program can also parse a string.  Unlike a buffer, parsing a string is a one-off operation, and there is no way to update the result."
+msgstr "バッファーにたいしてパーサーを作成するだけではなく、Lispプログラムが文字列のパースを行うことも可能です。バッファーと違い文字列のパースは一度かぎりの操作であり、結果を更新する手段はありません。"
+
+#. type: defun
+#: original_texis/parsing.texi:486
+#, no-wrap
+msgid "treesit-parse-string string language"
+msgstr "treesit-parse-string string language"
+
+#. type: defun
+#: original_texis/parsing.texi:489
+msgid "This function parses @var{string} using @var{language}, and returns the root node of the generated syntax tree."
+msgstr "この関数は@var{language}を使用して@var{string}のパースを行い、生成された構文ツリーのルートノードをリターンする。"
+
+#. type: heading
+#: original_texis/parsing.texi:491
+#, no-wrap
+msgid "Be notified by changes to the parse tree"
+msgstr "パースツリーへの変更による通知"
+
+#. type: cindex
+#: original_texis/parsing.texi:492
+#, no-wrap
+msgid "update callback, for tree-sitter parse-tree"
+msgstr "update callback, for tree-sitter parse-tree"
+
+#. type: cindex
+#: original_texis/parsing.texi:493
+#, no-wrap
+msgid "after-change notifier, for tree-sitter parse-tree"
+msgstr "after-change notifier, for tree-sitter parse-tree"
+
+#. type: cindex
+#: original_texis/parsing.texi:494
+#, no-wrap
+msgid "tree-sitter parse-tree, update and after-change callback"
+msgstr "tree-sitter parse-tree, update and after-change callback"
+
+#. type: cindex
+#: original_texis/parsing.texi:495
+#, no-wrap
+msgid "notifiers, tree-sitter"
+msgstr "notifiers, tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:502
+msgid "A Lisp program might want to be notified of text affected by incremental parsing.  For example, inserting a comment-closing token converts text before that token into a comment.  Even though the text is not directly edited, it is deemed to be ``changed'' nevertheless."
+msgstr "Lispプログラムはインクリメンタルなパースによって影響を受けるテキストにたいして通知してほしい場合があるかもしれません。たとえばコメントを閉じるtokenの挿入によって、そのtokenの手前にあるテキストを変換する場合です。たとえテキストが直接変更されなくても、それは``変更''とみなされるのです。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:509
+msgid "Emacs lets a Lisp program register callback functions (a.k.a.@: @dfn{notifiers}) for these kinds of changes.  A notifier function takes two arguments: @var{ranges} and @var{parser}.  @var{ranges} is a list of cons cells of the form @w{@code{(@var{start} . @var{end})}}, where @var{start} and @var{end} mark the start and the end positions of a range.  @var{parser} is the parser issuing the notification."
+msgstr "Emacsではこれらの類いの変更にたいして、Lispプログラムにコールバック関数(別名@dfn{notifier})を登録できます。notifier関数は@var{ranges}、@var{parser}という2つの引数を受け取ります。@var{ranges}は@w{@code{(@var{start} . @var{end})}}という形式をもつコンスセルのリストです。ここで@var{start}、@var{end}は範囲の開始と終了をマークします。@var{parser}は通知を発行するパーサーです。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:515
+msgid "Every time a parser reparses a buffer, it compares the old and new parse-tree, computes the ranges in which nodes have changed, and passes the ranges to notifier functions.  Note that the initial parse is also considered a ``change'', so notifier functions are called on the initial parse, with range being the whole buffer."
+msgstr "パーサーはバッファーを再パースするたびに構文ツリーの新旧を比較して、変更されたノード範囲の計算を行いその範囲をnotifier関数に引き渡します。最初のパースも``変更''とみなされるので、最初のパースではバッファー全体を範囲としてnotifier関数が呼び出されることに注意してください。"
+
+#. type: defun
+#: original_texis/parsing.texi:516
+#, no-wrap
+msgid "treesit-parser-add-notifier parser function"
+msgstr "treesit-parser-add-notifier parser function"
+
+#. type: defun
+#: original_texis/parsing.texi:520
+msgid "This function adds @var{function} to @var{parser}'s list of after-change notifier functions.  @var{function} must be a function symbol, not a lambda function (@pxref{Anonymous Functions})."
+msgstr "この関数は@var{parser}のnotifier関数のafter-changeリストに@var{function}を追加する。@var{function}はlambda関数ではなく、関数シンボルでなければならない(@ref{Anonymous Functions}を参照)。"
+
+#. type: defun
+#: original_texis/parsing.texi:522
+#, no-wrap
+msgid "treesit-parser-remove-notifier parser function"
+msgstr "treesit-parser-remove-notifier parser function"
+
+#. type: defun
+#: original_texis/parsing.texi:526
+msgid "This function removes @var{function} from the list of @var{parser}'s after-change notifier functions.  @var{function} must be a function symbol, rather than a lambda function."
+msgstr "この関数は@var{parser}のnotifier関数のafter-changeリストから@var{function}を削除する。@var{function}はlambda関数ではなく、関数シンボルでなければならない(@ref{Anonymous Functions}を参照)。"
+
+#. type: defun
+#: original_texis/parsing.texi:528
+#, no-wrap
+msgid "treesit-parser-notifiers parser"
+msgstr "treesit-parser-notifiers parser"
+
+#. type: defun
+#: original_texis/parsing.texi:530
+msgid "This function returns the list of @var{parser}'s notifier functions."
+msgstr "この関数は@var{parser}のnotifier関数のリストをリターンする。"
+
+#. type: cindex
+#: original_texis/parsing.texi:534
+#, no-wrap
+msgid "retrieve node, tree-sitter"
+msgstr "retrieve node, tree-sitter"
+
+#. type: cindex
+#: original_texis/parsing.texi:535
+#, no-wrap
+msgid "tree-sitter, find node"
+msgstr "tree-sitter, find node"
+
+#. type: cindex
+#: original_texis/parsing.texi:536
+#, no-wrap
+msgid "get node, tree-sitter"
+msgstr "get node, tree-sitter"
+
+#. type: cindex
+#: original_texis/parsing.texi:538
+#, no-wrap
+msgid "terminology, for tree-sitter functions"
+msgstr "terminology, for tree-sitter functions"
+
+#. type: Plain text
+#: original_texis/parsing.texi:541
+msgid "Here are some terms and conventions we use when documenting tree-sitter functions."
+msgstr "以下はわたしたちがtree-sitter関数を文書化する際に用いる用語と慣習についてです。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:551
+msgid "A node in a syntax tree spans some portion of the program text in the buffer.  We say that a node is ``smaller'' or ``larger'' than another if it spans, respectively, a smaller or larger portion of buffer text than the other node.  Since nodes that are deeper (``lower'') in the tree are children of the nodes that are ``higher'' in the tree, it follows that a lower node will always be smaller than a node that is higher in the node hierarchy.  A node that is higher up in the syntax tree contains one or more smaller nodes as its children, and therefore spans a larger portion of buffer text."
+msgstr "構文ツリーのノードは、バッファーのプログラムテキストのある部分に跨ります(span)。あるノードの跨ぐバッファーテキスト部分が、他のノードのそれより小さい(または大きい)場合には、わたしたちはそのノードが他のノードより``小さい''(または``大きい'')と表現します。ツリーにおいてより深い(``下位''の)ノードは、そのツリーのより``上位''ノードの子となるので、そのノード階層において下位のノードは常に上位のノードより小さくなります。構文ツリーの上位のノードには、その子として1つ以上の小さいノードが含まれており、したがってバッファーテキストのより大きい部分を跨ぐことになるのです。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:556
+msgid "When a function cannot find a node, it returns @code{nil}.  For convenience, all functions that take a node as argument and return a node, also accept the node argument of @code{nil} and in that case just return @code{nil}."
+msgstr "関数がノードを見つけられなかった場合には@code{nil}をリターンします。利便性のために、引数としてノードを受け取ってノードをリターンするすべての関数も@code{nil}の引数を許し、そのような場合には単に@code{nil}をリターンするようになっています。"
+
+#. type: vindex
+#: original_texis/parsing.texi:557
+#, no-wrap
+msgid "treesit-node-outdated"
+msgstr "treesit-node-outdated"
+
+#. type: Plain text
+#: original_texis/parsing.texi:561
+msgid "Nodes are not automatically updated when the associated buffer is modified, and there is no way to update a node once it is retrieved.  Using an outdated node signals the @code{treesit-node-outdated} error."
+msgstr "関連付けられているバッファーが更新された際にノードが自動的に更新されることはなく、一度取得したノードを更新する術は存在しません。古くなってしまったノードを使用すると@code{treesit-node-outdated}エラーがシグナルされるでしょう。"
+
+#. type: heading
+#: original_texis/parsing.texi:562
+#, no-wrap
+msgid "Retrieving nodes from syntax tree"
+msgstr "構文ツリーからのノードの取得"
+
+#. type: cindex
+#: original_texis/parsing.texi:563
+#, no-wrap
+msgid "retrieving tree-sitter nodes"
+msgstr "retrieving tree-sitter nodes"
+
+#. type: cindex
+#: original_texis/parsing.texi:564
+#, no-wrap
+msgid "syntax tree, retrieving nodes"
+msgstr "syntax tree, retrieving nodes"
+
+#. type: cindex
+#: original_texis/parsing.texi:566
+#, no-wrap
+msgid "leaf node, of tree-sitter parse tree"
+msgstr "leaf node, of tree-sitter parse tree"
+
+#. type: cindex
+#: original_texis/parsing.texi:567
+#, no-wrap
+msgid "tree-sitter parse tree, leaf node"
+msgstr "tree-sitter parse tree, leaf node"
+
+#. type: defun
+#: original_texis/parsing.texi:568
+#, no-wrap
+msgid "treesit-node-at pos &optional parser-or-lang named"
+msgstr "treesit-node-at pos &optional parser-or-lang named"
+
+#. type: defun
+#: original_texis/parsing.texi:571
+msgid "This function returns a @dfn{leaf} node at buffer position @var{pos}.  A leaf node is a node that doesn't have any child nodes."
+msgstr "この関数はバッファー位置@var{pos}にある@dfn{葉ノード(leaf node)}をリターンする。葉ノードとは子ノードを何ももたないノードのこと。"
+
+#. type: defun
+#: original_texis/parsing.texi:575
+msgid "This function tries to return a node whose span covers @var{pos}: the node's beginning position is less than or equal to @var{pos}, and the node's end position is greater than or equal to @var{pos}."
+msgstr "この関数は@var{pos}を跨がって覆う(cover)ようなノードのリターンを試みる。これは開始位置が@var{pos}以下、かつ終了位置が@var{pos}以上であるノードのこと。"
+
+#. type: defun
+#: original_texis/parsing.texi:579
+msgid "If no leaf node's span covers @var{pos} (e.g., @var{pos} is in the whitespace between two leaf nodes), this function returns the first leaf node after @var{pos}."
+msgstr "@var{pos}を跨いで覆うような葉ノードがない(たとえば@var{pos}が2つの葉ノードの間にある空白にある)場合には、この関数は@var{pos}の後にある最初の葉ノードをリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:582
+msgid "Finally, if there is no leaf node after @var{pos}, return the first leaf node before @var{pos}."
+msgstr "最後にもし@var{pos}の後に葉ノードがなければ、@var{pos}の前にある最初の葉ノードをリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:589
+msgid "If @var{parser-or-lang} is a parser object, this function uses that parser; if @var{parser-or-lang} is a language, this function uses the first parser for that language in the current buffer, or creates one if none exists; if @var{parser-or-lang} is @code{nil}, this function tries to guess the language at @var{pos} by calling @code{treesit-language-at} (@pxref{Multiple Languages})."
+msgstr "@var{parser-or-lang}がパーサーオブジェクトなら、この関数はそのパーサーを使用する。@var{parser-or-lang}が言語の場合には、この関数はカレントバッファーにおいてその言語用の最初のパーサー、もし存在しなければパーサーを作成してそれを使用する。@var{parser-or-lang}が@code{nil}なら、この関数は@code{treesit-language-at} (@ref{Multiple Languages}を参照)を呼び出して、@var{pos}の言語の推測を試みる。"
+
+#. type: defun
+#: original_texis/parsing.texi:592
+msgid "If this function cannot find a suitable node to return, it returns @code{nil}."
+msgstr "リターンする適切なノードが見つけられなかった場合には、この関数は@code{nil}をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:595
+msgid "If @var{named} is non-@code{nil}, this function looks only for named nodes (@pxref{tree-sitter named node, named node})."
+msgstr "@var{named}が非@code{nil}の場合には、この関数は名前つきのノードだけを探す(@ref{tree-sitter named node, named node}を参照)。"
+
+#. type: defun
+#: original_texis/parsing.texi:597 original_texis/parsing.texi:1488
+msgid "Example:"
+msgstr "例:"
+
+#. type: group
+#: original_texis/parsing.texi:603
+#, no-wrap
+msgid ""
+";; Find the node at point in a C parser's syntax tree.\n"
+"(treesit-node-at (point) 'c)\n"
+"  @result{} #<treesit-node (primitive_type) in 23-27>\n"
+msgstr ""
+";; Cパーサーの構文ツリーでポイント位置のノードを探す\n"
+"(treesit-node-at (point) 'c)\n"
+"  @result{} #<treesit-node (primitive_type) in 23-27>\n"
+
+#. type: defun
+#: original_texis/parsing.texi:607
+#, no-wrap
+msgid "treesit-node-on beg end &optional parser-or-lang named"
+msgstr "treesit-node-on beg end &optional parser-or-lang named"
+
+#. type: defun
+#: original_texis/parsing.texi:612
+msgid "This function returns the @emph{smallest} node that covers the region of buffer text between @var{beg} and @var{end}.  In other words, the start of the node is before or at @var{beg}, and the end of the node is at or after @var{end}."
+msgstr "この関数は@var{beg}と@var{end}の間にあるバッファーテキストのリージョンを覆うような、@emph{もっとも小さい}ノードをリターンする。言い換えると開始が@var{beg}以前、かつ終了が@var{end}以降であるようなノードのこと。"
+
+#. type: defun
+#: original_texis/parsing.texi:618
+msgid "@emph{Beware:} calling this function on an empty line that is not inside any top-level construct (function definition, etc.@:) most probably will give you the root node, because the root node is the smallest node that covers that empty line.  Most of the time, you want to use @code{treesit-node-at} instead."
+msgstr "@emph{注意せよ:} トップレベル構文(関数定義等)の内部ではない空行でこの関数を呼び出すと、恐らくルートノードが取得される場合がほとんどだろう。その空行を覆うもっとも小さいノードがルートノードだというのがその理由だが、あなたが使いたいと望んでいる機能は、ほとんどの場合は@code{treesit-node-at}のほうだろう。"
+
+#. type: defun
+#: original_texis/parsing.texi:625
+msgid "If @var{parser-or-lang} is a parser object, this function uses that parser; if @var{parser-or-lang} is a language, this function uses the first parser for that language in the current buffer, or creates one if none exists; if @var{parser-or-lang} is @code{nil}, this function tries to guess the language at @var{beg} by calling @code{treesit-language-at}."
+msgstr "@var{parser-or-lang}がパーサーオブジェクトなら、この関数はそのパーサーを使用する。@var{parser-or-lang}が言語の場合には、この関数はカレントバッファーにおいてその言語用の最初のパーサー、もし存在しなければパーサーを作成してそれを使用する。@var{parser-or-lang}が@code{nil}なら、この関数は@code{treesit-language-at} (@ref{Multiple Languages}を参照)を呼び出して、@var{beg}の言語の推測を試みる。"
+
+#. type: defun
+#: original_texis/parsing.texi:628
+msgid "If @var{named} is non-@code{nil}, this function looks for a named node only (@pxref{tree-sitter named node, named node})."
+msgstr "@var{named}が非@code{nil}の場合には、この関数は名前つきのノードだけを探す(@ref{tree-sitter named node, named node}を参照)。"
+
+#. type: defun
+#: original_texis/parsing.texi:630
+#, no-wrap
+msgid "treesit-parser-root-node parser"
+msgstr "treesit-parser-root-node parser"
+
+#. type: defun
+#: original_texis/parsing.texi:633
+msgid "This function returns the root node of the syntax tree generated by @var{parser}."
+msgstr "この関数は@var{parser}が生成した構文ツリーのルートノードをリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:635
+#, no-wrap
+msgid "treesit-buffer-root-node &optional language"
+msgstr "treesit-buffer-root-node &optional language"
+
+#. type: defun
+#: original_texis/parsing.texi:641
+msgid "This function finds the first parser for @var{language} in the current buffer, or creates one if none exists, and returns the root node generated by that parser.  If @var{language} is omitted, it uses the first parser in the parser list.  If it cannot find an appropriate parser, it returns @code{nil}."
+msgstr "この関数はカレントバッファーで@var{language}用の最初のパーサー、パーサーが存在しなければ作成して、そのパーサーが生成したルートノードをリターンする。@var{language}が省略された場合にはパーサーリストの最初のパーサーを使用する。適切なパーサーが見つからなければ@code{nil}をリターンする。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:645
+msgid "Given a node, a Lisp program can retrieve other nodes starting from it, or query for information about this node."
+msgstr "Lispプログラムはノードが与えられれば、そこから始まる他のノードを取得したり、そのノードに関する情報を問い合わせることができます。"
+
+#. type: heading
+#: original_texis/parsing.texi:646
+#, no-wrap
+msgid "Retrieving nodes from other nodes"
+msgstr "ノードからの他ノードの取得"
+
+#. type: cindex
+#: original_texis/parsing.texi:647
+#, no-wrap
+msgid "syntax tree nodes, retrieving from other nodes"
+msgstr "syntax tree nodes, retrieving from other nodes"
+
+#. type: subheading
+#: original_texis/parsing.texi:649
+#, no-wrap
+msgid "By kinship"
+msgstr "親族関係から"
+
+#. type: cindex
+#: original_texis/parsing.texi:650
+#, no-wrap
+msgid "kinship, syntax tree nodes"
+msgstr "kinship, syntax tree nodes"
+
+#. type: cindex
+#: original_texis/parsing.texi:651
+#, no-wrap
+msgid "nodes, by kinship"
+msgstr "nodes, by kinship"
+
+#. type: cindex
+#: original_texis/parsing.texi:652
+#, no-wrap
+msgid "syntax tree nodes, by kinship"
+msgstr "syntax tree nodes, by kinship"
+
+#. type: defun
+#: original_texis/parsing.texi:654
+#, no-wrap
+msgid "treesit-node-parent node"
+msgstr "treesit-node-parent node"
+
+#. type: defun
+#: original_texis/parsing.texi:656
+msgid "This function returns the immediate parent of @var{node}."
+msgstr "この関数は@var{node}の直近の親をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:660
+msgid "If @var{node} is more than 1000 levels deep in a parse tree, the return value is undefined.  Currently it returns @code{nil}, but that could change in the future."
+msgstr "パースツリー(parse tree: 解析木)において@var{node}が1000を超える深さのレベルにある場合のリターン値は未定義。現在のところ@code{nil}をリターンするが、将来変更されるかもしれない。"
+
+#. type: defun
+#: original_texis/parsing.texi:662
+#, no-wrap
+msgid "treesit-node-child node n &optional named"
+msgstr "treesit-node-child node n &optional named"
+
+#. type: defun
+#: original_texis/parsing.texi:666
+msgid "This function returns the @var{n}'th child of @var{node}.  If @var{named} is non-@code{nil}, it counts only named nodes (@pxref{tree-sitter named node, named node})."
+msgstr "この関数は@var{node}の@var{n}番目の子をリターンする。@var{named}が非@code{nil}なら名前つきのノードだけを考慮する(@ref{tree-sitter named node, named node}を参照)。"
+
+#. type: defun
+#: original_texis/parsing.texi:672
+msgid "For example, in a node that represents a string @code{\"text\"}, there are three children nodes: the opening quote @code{\"}, the string text @code{text}, and the closing quote @code{\"}.  Among these nodes, the first child is the opening quote @code{\"}, and the first named child is the string text."
+msgstr "たとえば文字列@code{\"text\"}を表すノードの場合には開クォート@code{\"}、文字列テキストの@code{text}、それに閉クォート@code{\"}という3つの子ノードが存在する。これら3つのノードの中で最初の子は開クォート@code{\"}、最初の名前つきの子は文字列テキストとなる。"
+
+#. type: defun
+#: original_texis/parsing.texi:675
+msgid "This function returns @code{nil} if there is no @var{n}'th child.  @var{n} could be negative, e.g., @minus{}1 represents the last child."
+msgstr "この関数は@var{n}番目の子が存在しなければ@code{nil}をリターンする。@var{n}は負でも可(@minus{}1は最後の子を表す)。"
+
+#. type: defun
+#: original_texis/parsing.texi:677
+#, no-wrap
+msgid "treesit-node-children node &optional named"
+msgstr "treesit-node-children node &optional named"
+
+#. type: defun
+#: original_texis/parsing.texi:680
+msgid "This function returns all of @var{node}'s children as a list.  If @var{named} is non-@code{nil}, it retrieves only named nodes."
+msgstr "この関数は@var{node}のすべての子をリストでリターンする。@var{named}が非@code{nil}なら名前つきのノードだけを取得する。"
+
+#. type: defun
+#: original_texis/parsing.texi:682
+#, no-wrap
+msgid "treesit-node-next-sibling node &optional named"
+msgstr "treesit-node-next-sibling node &optional named"
+
+#. type: defun
+#: original_texis/parsing.texi:685
+msgid "This function finds the next sibling of @var{node}.  If @var{named} is non-@code{nil}, it finds the next named sibling."
+msgstr "この関数は@var{node}の次の兄弟を探す。@var{named}が非@code{nil}なら次の名前つきの兄弟を探す。"
+
+#. type: defun
+#: original_texis/parsing.texi:687
+#, no-wrap
+msgid "treesit-node-prev-sibling node &optional named"
+msgstr "treesit-node-prev-sibling node &optional named"
+
+#. type: defun
+#: original_texis/parsing.texi:690
+msgid "This function finds the previous sibling of @var{node}.  If @var{named} is non-@code{nil}, it finds the previous named sibling."
+msgstr "この関数は@var{node}の前の兄弟を探す。@var{named}が非@code{nil}なら前の名前つきの兄弟を探す。"
+
+#. type: subheading
+#: original_texis/parsing.texi:692
+#, no-wrap
+msgid "By field name"
+msgstr "フィールド名から"
+
+#. type: cindex
+#: original_texis/parsing.texi:693
+#, no-wrap
+msgid "nodes, by field name"
+msgstr "nodes, by field name"
+
+#. type: cindex
+#: original_texis/parsing.texi:694
+#, no-wrap
+msgid "syntax tree nodes, by field name"
+msgstr "syntax tree nodes, by field name"
+
+#. type: Plain text
+#: original_texis/parsing.texi:700
+msgid "To make the syntax tree easier to analyze, many language grammars assign @dfn{field names} to child nodes (@pxref{tree-sitter node field name, field name}).  For example, a @code{function_definition} node could have a @code{declarator} node and a @code{body} node."
+msgstr "構文ツリーの分析をより容易にするために、多くの言語ではグラマーで子ノードに@dfn{フィールド名(field names)}を割り当てています(@ref{tree-sitter node field name, field name}を参照)。たとえば@code{function_definition}ノードには@code{declarator}や@code{body}というノードがあるかもしれません。"
+
+#. type: defun
+#: original_texis/parsing.texi:701
+#, no-wrap
+msgid "treesit-node-child-by-field-name node field-name"
+msgstr "treesit-node-child-by-field-name node field-name"
+
+#. type: defun
+#: original_texis/parsing.texi:704
+msgid "This function finds the child of @var{node} whose field name is @var{field-name}, a string."
+msgstr "この関数はフィールド名が@var{field-name}(文字列)であるような@var{node}の子を探す。"
+
+#. type: group
+#: original_texis/parsing.texi:710
+#, no-wrap
+msgid ""
+";; Get the child that has \"body\" as its field name.\n"
+"(treesit-node-child-by-field-name node \"body\")\n"
+"  @result{} #<treesit-node (compound_statement) in 45-89>\n"
+msgstr ""
+";; フィールド名が\"body\"という子を取得\n"
+"(treesit-node-child-by-field-name node \"body\")\n"
+"  @result{} #<treesit-node (compound_statement) in 45-89>\n"
+
+#. type: subheading
+#: original_texis/parsing.texi:714
+#, no-wrap
+msgid "By position"
+msgstr "位置から"
+
+#. type: cindex
+#: original_texis/parsing.texi:715
+#, no-wrap
+msgid "nodes, by position"
+msgstr "nodes, by position"
+
+#. type: cindex
+#: original_texis/parsing.texi:716
+#, no-wrap
+msgid "syntax tree nodes, by position"
+msgstr "syntax tree nodes, by position"
+
+#. type: defun
+#: original_texis/parsing.texi:718
+#, no-wrap
+msgid "treesit-node-first-child-for-pos node pos &optional named"
+msgstr "treesit-node-first-child-for-pos node pos &optional named"
+
+#. type: defun
+#: original_texis/parsing.texi:725
+msgid "This function finds the first child of @var{node} that extends beyond buffer position @var{pos}.  ``Extends beyond'' means the end of the child node is greater or equal to @var{pos}.  This function only looks for immediate children of @var{node}, and doesn't look in its grandchildren.  If @var{named} is non-@code{nil}, it looks for the first named child (@pxref{tree-sitter named node, named node})."
+msgstr "この関数はバッファー位置@var{pos}を超えて広がるような@var{node}の最初の子をリターンする。``超えて広がる(extends beyond)''とは子ノードの終端が@var{pos}以降であることを意味する。この関数は@var{node}の直接の子だけを調べる(孫は調べない)。@var{named}が非@code{nil}の場合には最初の名前つきの子を探す(@ref{tree-sitter named node, named node}を参照)。"
+
+#. type: defun
+#: original_texis/parsing.texi:727
+#, no-wrap
+msgid "treesit-node-descendant-for-range node beg end &optional named"
+msgstr "treesit-node-descendant-for-range node beg end &optional named"
+
+#. type: defun
+#: original_texis/parsing.texi:732
+msgid "This function finds the @emph{smallest} descendant node of @var{node} that spans the region of text between positions @var{beg} and @var{end}.  It is similar to @code{treesit-node-at}.  If @var{named} is non-@code{nil}, it looks for the smallest named child."
+msgstr "これは位置@var{beg}と@var{end}の間にあるテキストリージョンを跨ぐような、@emph{もっとも小さい}@var{node}の子孫ノードを探す、@code{treesit-node-at}と似た関数。@var{named}が非@code{nil}の場合には、もっとも小さい名前つきの子を探す。"
+
+#. type: heading
+#: original_texis/parsing.texi:734
+#, no-wrap
+msgid "Searching for node"
+msgstr "ノードの検索"
+
+#. type: defun
+#: original_texis/parsing.texi:736
+#, no-wrap
+msgid "treesit-search-subtree node predicate &optional backward all depth"
+msgstr "treesit-search-subtree node predicate &optional backward all depth"
+
+#. type: defun
+#: original_texis/parsing.texi:743
+msgid "This function traverses the subtree of @var{node} (including @var{node} itself), looking for a node for which @var{predicate} returns non-@code{nil}.  @var{predicate} is a regexp that is matched against each node's type, or a predicate function that takes a node and returns non-@code{nil} if the node matches.  The function returns the first node that matches, or @code{nil} if none does."
+msgstr "この関数は@var{node}のサブツリー(@var{node}自体を含む)を横断(traverse)して、@var{predicate}が非@code{nil}をリターンするようなノードを探す。@var{predicate}はノードそれぞれのタイプにたいしてマッチさせるregexp、あるいはノードを受け取りそのノードがマッチしたら非@code{nil}をリターンするような述語関数。この関数はマッチした最初のノード、何もマッチしなければ@code{nil}をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:751
+msgid "By default, this function only traverses named nodes, but if @var{all} is non-@code{nil}, it traverses all the nodes.  If @var{backward} is non-@code{nil}, it traverses backwards (i.e., it visits the last child first when traversing down the tree).  If @var{depth} is non-@code{nil}, it must be a number that limits the tree traversal to that many levels down the tree.  If @var{depth} is @code{nil}, it defaults to 1000."
+msgstr "この関数が検索するのはデフォルトでは名前つきノードだけだが、@var{all}が非@code{nil}ならすべてのノードを横断して検索を行う。@var{backward}が非@code{nil}の場合には後方に横断して検索する(ツリーを下降して横断していく際に最後の子を最初に調べる)。@var{depth}が非@code{nil}なら、それはツリーを横断して下降できるレベル数を制限する数値でなければならない。@var{depth}が@code{nil}の場合のデフォルトは1000。"
+
+#. type: defun
+#: original_texis/parsing.texi:753
+#, no-wrap
+msgid "treesit-search-forward start predicate &optional backward all"
+msgstr "treesit-search-forward start predicate &optional backward all"
+
+#. type: defun
+#: original_texis/parsing.texi:759
+msgid "Like @code{treesit-search-subtree}, this function also traverses the parse tree and matches each node with @var{predicate} (except for @var{start}), where @var{predicate} can be a regexp or a function.  For a tree like the one below where @var{start} is marked @samp{S}, this function traverses as numbered from 1 to 12:"
+msgstr "この関数は(@var{start}を除けば)@code{treesit-search-subtree}と同じようにパースツリーを横断して、@var{predicate}によりそれぞれのノードをマッチする(@var{predicate}はregexpまたは関数)。以下のようなツリー(@samp{S}マークは@var{start})の場合には、この関数は1から12の順に横断していく:"
+
+#. type: group
+#: original_texis/parsing.texi:771
+#, no-wrap
+msgid ""
+"              12\n"
+"              |\n"
+"     S--------3----------11\n"
+"     |        |          |\n"
+"o--o-+--o  1--+--2    6--+-----10\n"
+"|  |                  |        |\n"
+"o  o                +-+-+   +--+--+\n"
+"                    |   |   |  |  |\n"
+"                    4   5   7  8  9\n"
+msgstr ""
+"              12\n"
+"              |\n"
+"     S--------3----------11\n"
+"     |        |          |\n"
+"o--o-+--o  1--+--2    6--+-----10\n"
+"|  |                  |        |\n"
+"o  o                +-+-+   +--+--+\n"
+"                    |   |   |  |  |\n"
+"                    4   5   7  8  9\n"
+
+#. type: defun
+#: original_texis/parsing.texi:776
+msgid "Note that this function doesn't traverse the subtree of @var{start}, and it always traverses leaf nodes first, before moving upwards."
+msgstr "この関数は@var{start}のサブツリーを横断せず、常に上方に移動する前にまず葉ノードを横断することに注意。"
+
+#. type: defun
+#: original_texis/parsing.texi:781
+msgid "Like @code{treesit-search-subtree}, this function only searches for named nodes by default, but if @var{all} is non-@code{nil}, it searches for all nodes.  If @var{backward} is non-@code{nil}, it searches backwards."
+msgstr "この関数が検索するのは@code{treesit-search-subtree}と同じようにデフォルトでは名前つきノードだけだが、@var{all}が非@code{nil}ならすべてのノードを検索する。@var{backward}が非@code{nil}の場合には後方に検索する。"
+
+#. type: defun
+#: original_texis/parsing.texi:786
+msgid "While @code{treesit-search-subtree} traverses the subtree of a node, this function starts with node @var{start} and traverses every node that comes after it in the buffer position order, i.e., nodes with start positions greater than the end position of @var{start}."
+msgstr "@code{treesit-search-subtree}はノードのサブツリーを横断するが、この関数はノード@var{start}から開始してバッファーの位置順でその後にあるすべてのノード(開始位置が@var{start}の終了位置より大きいノード)を横断する。"
+
+#. type: defun
+#: original_texis/parsing.texi:792
+msgid "In the tree shown above, @code{treesit-search-subtree} traverses node @samp{S} (@var{start}) and nodes marked with @code{o}, where this function traverses the nodes marked with numbers.  This function is useful for answering questions like ``what is the first node after @var{start} in the buffer that satisfies some condition?''"
+msgstr "上図で示すツリーにおいて、@code{treesit-search-subtree}はノード@samp{S} (@var{start})および@code{o}のマークがついたノードを横断するが、この関数は数字のマークがついたノードを横断する。この関数は``バッファーで@var{start}の後にあり何らかの条件を満足する最初のノードはどれ?''、のような問いの答えを求めるのに役に立つ。"
+
+#. type: defun
+#: original_texis/parsing.texi:794
+#, no-wrap
+msgid "treesit-search-forward-goto node predicate &optional start backward all"
+msgstr "treesit-search-forward-goto node predicate &optional start backward all"
+
+#. type: defun
+#: original_texis/parsing.texi:798
+msgid "This function moves point to the start or end of the next node after @var{node} in the buffer that matches @var{predicate}.  If @var{start} is non-@code{nil}, stop at the beginning rather than the end of a node."
+msgstr "この関数はバッファーで@var{node}の後にあり@var{predicate}にマッチする次のノードの開始または終了にポイントを移動する。@var{start}が非@code{nil}なら、ノードの終了ではなく開始で停止する。"
+
+#. type: defun
+#: original_texis/parsing.texi:802
+msgid "This function guarantees that the matched node it returns makes progress in terms of buffer position: the start/end position of the returned node is always greater than that of @var{node}."
+msgstr "この関数がリターンするマッチしたノードは、バッファー位置という点において進行方向にある(リターンされたノードの開始/終了は@var{node}のそれより常に大きい)ことが保証されている。"
+
+#. type: defun
+#: original_texis/parsing.texi:805
+msgid "Arguments @var{predicate}, @var{backward}, and @var{all} are the same as in @code{treesit-search-forward}."
+msgstr "引数@var{predicate}、@var{backward}、@var{all}は@code{treesit-search-forward}の場合と同じ。"
+
+#. type: defun
+#: original_texis/parsing.texi:807
+#, no-wrap
+msgid "treesit-induce-sparse-tree root predicate &optional process-fn depth"
+msgstr "treesit-induce-sparse-tree root predicate &optional process-fn depth"
+
+#. type: defun
+#: original_texis/parsing.texi:809
+msgid "This function creates a sparse tree from @var{root}'s subtree."
+msgstr "この関数は@var{root}のサブツリーからsparseツリー(疎らなツリー)を作成する。"
+
+#. type: defun
+#: original_texis/parsing.texi:815
+msgid "It takes the subtree under @var{root}, and combs it so only the nodes that match @var{predicate} are left.  Like previous functions, the @var{predicate} can be a regexp string that matches against each node's type, or a function that takes a node and returns non-@code{nil} if it matches."
+msgstr "この関数は@var{root}配下のサブツリーを受け取って、@var{predicate}にマッチするノードだけが残るように間引く。前の関数と同じように@var{predicate}はノードそれぞれのタイプにマッチさせるためのregexp文字列、またはノードを受け取ってマッチした場合には非@code{nil}をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:819
+msgid "For example, given the subtree on the left that consists of both numbers and letters, if @var{predicate} is ``letter only'', the returned tree is the one on the right."
+msgstr "たとえば数字と文字の両方で構成される左側のサブツリーが与えられた場合に、``文字のみ''という@var{predicate}でリターンされるのが右側のツリー。"
+
+#. type: group
+#: original_texis/parsing.texi:833
+#, no-wrap
+msgid ""
+"    a                 a              a\n"
+"    |                 |              |\n"
+"+---+---+         +---+---+      +---+---+\n"
+"|   |   |         |   |   |      |   |   |\n"
+"b   1   2         b   |   |      b   c   d\n"
+"    |   |     =>      |   |  =>      |\n"
+"    c   +--+          c   +          e\n"
+"    |   |  |          |   |\n"
+" +--+   d  4       +--+   d\n"
+" |  |              |\n"
+" e  5              e\n"
+msgstr ""
+"    a                 a              a\n"
+"    |                 |              |\n"
+"+---+---+         +---+---+      +---+---+\n"
+"|   |   |         |   |   |      |   |   |\n"
+"b   1   2         b   |   |      b   c   d\n"
+"    |   |     =>      |   |  =>      |\n"
+"    c   +--+          c   +          e\n"
+"    |   |  |          |   |\n"
+" +--+   d  4       +--+   d\n"
+" |  |              |\n"
+" e  5              e\n"
+
+#. type: defun
+#: original_texis/parsing.texi:841
+msgid "If @var{process-fn} is non-@code{nil}, instead of returning the matched nodes, this function passes each node to @var{process-fn} and uses the returned value instead.  If non-@code{nil}, @var{depth} limits the number of levels to go down from @var{root}.  If @var{depth} is @code{nil}, it defaults to 1000."
+msgstr "この関数は@var{process-fn}が非@code{nil}の場合には、マッチしたノードではなくノードをそれぞれ@var{process-fn}に渡してリターン値を使用する。@var{depth}が非@code{nil}なら、それは@var{root}から下降できるレベル数制限であること。@var{depth}が@code{nil}の場合のデフォルトは1000。"
+
+#. type: defun
+#: original_texis/parsing.texi:847
+msgid "Each node in the returned tree looks like @w{@code{(@var{tree-sitter-node} . (@var{child} @dots{}))}}.  The @var{tree-sitter-node} of the root of this tree will be @code{nil} if @var{root} doesn't match @var{predicate}.  If no node matches @var{predicate}, the function returns @code{nil}."
+msgstr "リターンされるツリーのノードはそれぞれ@w{@code{(@var{tree-sitter-node} . (@var{child} @dots{}))}}のようになる。このツリーのルートである@var{tree-sitter-node}は、@var{root}が@var{predicate}にマッチしなければ@code{nil}になる。@var{predicate}にマッチするノードがなければ、この関数は@code{nil}をリターンする。"
+
+#. type: heading
+#: original_texis/parsing.texi:849
+#, no-wrap
+msgid "More convenience functions"
+msgstr "より便利な関数"
+
+#. type: defun
+#: original_texis/parsing.texi:851
+#, no-wrap
+msgid "treesit-filter-child node predicate &optional named"
+msgstr "treesit-filter-child node predicate &optional named"
+
+#. type: defun
+#: original_texis/parsing.texi:854
+msgid "This function finds immediate children of @var{node} that satisfy @var{predicate}."
+msgstr "この関数は@var{predicate}を満足する@var{node}の直接の子を探す。"
+
+#. type: defun
+#: original_texis/parsing.texi:859
+msgid "The @var{predicate} function takes a node as argument and should return non-@code{nil} to indicate that the node should be kept.  If @var{named} is non-@code{nil}, this function only examines named nodes."
+msgstr "@var{predicate}は引数としてノードを受け取り、そのノードを候補に残すべきなら非@code{nil}をリターンする関数であること。@var{named}が非@code{nil}なら、この関数は名前つきのノードだけを調べる。"
+
+#. type: defun
+#: original_texis/parsing.texi:861
+#, no-wrap
+msgid "treesit-parent-until node predicate &optional include-node"
+msgstr "treesit-parent-until node predicate &optional include-node"
+
+#. type: defun
+#: original_texis/parsing.texi:866
+msgid "This function repeatedly finds the parents of @var{node}, and returns the parent that satisfies @var{pred}, a function that takes a node as argument and returns a boolean that indicates a match.  If no parent satisfies @var{pred}, this function returns @code{nil}."
+msgstr "この関数は@var{node}の親を順繰りに探して、@var{pred} (引数としてノードを受け取りマッチを示すブーリーン値をリターンする関数)を満足する親をリターンする。@var{pred}を満足する親がいなければ、この関数は@code{nil}をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:870
+msgid "Normally this function only looks at the parents of @var{node} but not @var{node} itself.  But if @var{include-node} is non-@code{nil}, this function returns @var{node} if @var{node} satisfies @var{pred}."
+msgstr "この関数は通常だと@var{node}自体ではなく@var{node}の親だけを調べる。しかし、@var{include-node}が非@code{nil}の場合には、@var{node}が@var{pred}を満足すれば@var{node}をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:872
+#, no-wrap
+msgid "treesit-parent-while node pred"
+msgstr "treesit-parent-while node pred"
+
+#. type: defun
+#: original_texis/parsing.texi:879
+msgid "This function goes up the tree starting from @var{node}, and keeps doing so as long as the nodes satisfy @var{pred}, a function that takes a node as argument.  That is, this function returns the highest parent of @var{node} that still satisfies @var{pred}.  Note that if @var{node} satisfies @var{pred} but its immediate parent doesn't, @var{node} itself is returned."
+msgstr "この関数は@var{node}を開始点としてノードが@var{pred} (引数としてノードを受け取る関数)を満足するかぎりツリーを上方に移動する。つまりこの関数は@var{pred}を満足するもっとも高位にある@var{node}の親をリターンする。@var{node}が@var{pred}を満足して、かつ直近の親は@var{pred}を満足しなければ、@var{node}自体がリターンされることに注意。"
+
+#. type: defun
+#: original_texis/parsing.texi:881
+#, no-wrap
+msgid "treesit-node-top-level node &optional type"
+msgstr "treesit-node-top-level node &optional type"
+
+#. type: defun
+#: original_texis/parsing.texi:886
+msgid "This function returns the highest parent of @var{node} that has the same type as @var{node}.  If no such parent exists, it returns @code{nil}.  Therefore this function is also useful for testing whether @var{node} is top-level."
+msgstr "この関数は@var{node}と同じタイプをもつ、もっとも高くにある親をリターンする。そのような親がいなければ@code{nil}をリターンする。したがってこの関数は@var{node}がトップレベルかどうかをテストするためにも役に立つ。"
+
+#. type: defun
+#: original_texis/parsing.texi:889
+msgid "If @var{type} is non-@code{nil}, this function matches each parent's type with @var{type} as a regexp, rather than using @var{node}'s type."
+msgstr "@var{type}が非@code{nil}の場合には、この関数は@var{node}のタイプではなく、regexpとして@var{type}を用いてそれぞれの親のタイプをマッチする。"
+
+#. type: cindex
+#: original_texis/parsing.texi:893
+#, no-wrap
+msgid "information of node, syntax trees"
+msgstr "information of node, syntax trees"
+
+#. type: cindex
+#: original_texis/parsing.texi:894
+#, no-wrap
+msgid "syntax trees, node information"
+msgstr "syntax trees, node information"
+
+#. type: heading
+#: original_texis/parsing.texi:896
+#, no-wrap
+msgid "Basic information of Node"
+msgstr "ノードの基本的な情報"
+
+#. type: Plain text
+#: original_texis/parsing.texi:900
+msgid "Every node is associated with a parser, and that parser is associated with a buffer.  The following functions retrieve them."
+msgstr "すべてのノードはパーサーに関連付けられていて、そのパーサーが関連付けられているのがバッファーです。以下はそれらを取得する関数です。"
+
+#. type: defun
+#: original_texis/parsing.texi:901
+#, no-wrap
+msgid "treesit-node-parser node"
+msgstr "treesit-node-parser node"
+
+#. type: defun
+#: original_texis/parsing.texi:903
+msgid "This function returns @var{node}'s associated parser."
+msgstr "この関数は@var{node}に関連付けられているパーサーをリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:905
+#, no-wrap
+msgid "treesit-node-buffer node"
+msgstr "treesit-node-buffer node"
+
+#. type: defun
+#: original_texis/parsing.texi:907
+msgid "This function returns @var{node}'s parser's associated buffer."
+msgstr "この関数は@var{node}のパーサーに関連付けられているバッファーをリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:909
+#, no-wrap
+msgid "treesit-node-language node"
+msgstr "treesit-node-language node"
+
+#. type: defun
+#: original_texis/parsing.texi:911
+msgid "This function returns @var{node}'s parser's associated language."
+msgstr "この関数は@var{node}に関連付けられている言語をリターンする。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:915
+msgid "Each node represents a portion of text in the buffer.  Functions below find relevant information about that text."
+msgstr "それぞれのノードはバッファー内のテキストのある範囲を表しています。そのテキストに関する情報を探すのが以下の関数です。"
+
+#. type: defun
+#: original_texis/parsing.texi:916
+#, no-wrap
+msgid "treesit-node-start node"
+msgstr "treesit-node-start node"
+
+#. type: defun
+#: original_texis/parsing.texi:918
+msgid "Return the start position of @var{node}."
+msgstr "@var{node}の開始位置をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:920
+#, no-wrap
+msgid "treesit-node-end node"
+msgstr "treesit-node-end node"
+
+#. type: defun
+#: original_texis/parsing.texi:922
+msgid "Return the end position of @var{node}."
+msgstr "@var{node}の終了位置をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:924
+#, no-wrap
+msgid "treesit-node-text node &optional object"
+msgstr "treesit-node-text node &optional object"
+
+#. type: defun
+#: original_texis/parsing.texi:928
+msgid "Return the buffer text that @var{node} represents, as a string.  (If @var{node} is retrieved from parsing a string, it will be the text from that string.)"
+msgstr "@var{node}が表しているバッファーテキストを文字列としてリターンする(@var{node}が文字列をパースすることによって取得されたものであれば、その文字列のテキストをリターンする)。"
+
+#. type: cindex
+#: original_texis/parsing.texi:930
+#, no-wrap
+msgid "predicates for syntax tree nodes"
+msgstr "predicates for syntax tree nodes"
+
+#. type: Plain text
+#: original_texis/parsing.texi:932
+msgid "Here are some predicates on tree-sitter nodes:"
+msgstr "以下はtree-sitterのノード用の述語の一部です:"
+
+#. type: defun
+#: original_texis/parsing.texi:933
+#, no-wrap
+msgid "treesit-node-p object"
+msgstr "treesit-node-p object"
+
+#. type: defun
+#: original_texis/parsing.texi:935
+msgid "Checks if @var{object} is a tree-sitter syntax node."
+msgstr "@var{object}がtree-sitterの構文ノードかをチェックする。"
+
+#. type: cindex
+#: original_texis/parsing.texi:937
+#, no-wrap
+msgid "compare tree-sitter syntax nodes"
+msgstr "compare tree-sitter syntax nodes"
+
+#. type: cindex
+#: original_texis/parsing.texi:938
+#, no-wrap
+msgid "tree-sitter nodes, comparing"
+msgstr "tree-sitter nodes, comparing"
+
+#. type: defun
+#: original_texis/parsing.texi:939
+#, no-wrap
+msgid "treesit-node-eq node1 node2"
+msgstr "treesit-node-eq node1 node2"
+
+#. type: defun
+#: original_texis/parsing.texi:944
+msgid "Checks if @var{node1} and @var{node2} refer to the same node in a tree-sitter syntax tree.  This function uses the same equivalence metric as @code{equal}.  You can also compare nodes using @code{equal} (@pxref{Equality Predicates})."
+msgstr "tree-sitterの構文ツリーにおいて@var{node1}と@var{node2}が同じノードを参照しているかをチェックする。この関数は@code{equal}と等価なメトリックを用いる。@code{equal}を使用してノードを比較することも可能(@ref{Equality Predicates}を参照)。"
+
+#. type: heading
+#: original_texis/parsing.texi:946
+#, no-wrap
+msgid "Property information"
+msgstr "プロパティ情報"
+
+#. type: Plain text
+#: original_texis/parsing.texi:952
+msgid "In general, nodes in a concrete syntax tree fall into two categories: @dfn{named nodes} and @dfn{anonymous nodes}.  Whether a node is named or anonymous is determined by the language grammar (@pxref{tree-sitter named node, named node})."
+msgstr "具体的な構文ツリーにおけるノードは一般的に@dfn{名前つきノード(named nodes)}と@dfn{無名ノード(anonymous nodes)}という2つのカテゴリーに大別されます。あるノードが名前つきか、それとも無名なのかは言語グラマーによって判断されます(@ref{tree-sitter named node, named node}を参照)。"
+
+#. type: cindex
+#: original_texis/parsing.texi:953
+#, no-wrap
+msgid "tree-sitter missing node"
+msgstr "tree-sitter missing node"
+
+#. type: cindex
+#: original_texis/parsing.texi:954
+#, no-wrap
+msgid "missing node, tree-sitter"
+msgstr "missing node, tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:961
+msgid "Apart from being named or anonymous, a node can have other properties.  A node can be ``missing'': such nodes are inserted by the parser in order to recover from certain kinds of syntax errors, i.e., something should probably be there according to the grammar, but is not there.  This can happen during editing of the program source, when the source is not yet in its final form."
+msgstr "ノードが名前つきか、あるいは無名かというプロパティに加えて、ノードは他のプロパティをもつことができます。ノードが``欠落(missing)''していることもあり得ます。このようなノードは特定の類の構文エラー(たとえばグラマーに照らせば恐らくそこにあるべき何らかが存在しない)から復帰するためにパーサーによって挿入されます。これはプログラムソースの編集中において、そのソースがまだ最終形になっていないときに発生し得るエラーです。"
+
+#. type: cindex
+#: original_texis/parsing.texi:962
+#, no-wrap
+msgid "tree-sitter extra node"
+msgstr "tree-sitter extra node"
+
+#. type: cindex
+#: original_texis/parsing.texi:963
+#, no-wrap
+msgid "extra node, tree-sitter"
+msgstr "extra node, tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:966
+msgid "A node can be ``extra'': such nodes represent things like comments, which can appear anywhere in the text."
+msgstr "``余分(extra)''というノードもあります。このようなノードはテキスト内の任意の場所に出現し得る、コメントのようなオブジェクトを表しています。"
+
+#. type: cindex
+#: original_texis/parsing.texi:967
+#, no-wrap
+msgid "tree-sitter outdated node"
+msgstr "tree-sitter outdated node"
+
+#. type: cindex
+#: original_texis/parsing.texi:968
+#, no-wrap
+msgid "outdated node, tree-sitter"
+msgstr "outdated node, tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:971
+msgid "A node can be ``outdated'', if its parser has reparsed at least once after the node was created."
+msgstr "パーサーがノードを作成した後に少なくとも1回再パースされた場合には、``期限切れ(outdated)''のノードになることがあります。"
+
+#. type: cindex
+#: original_texis/parsing.texi:972
+#, no-wrap
+msgid "tree-sitter node that has error"
+msgstr "tree-sitter node that has error"
+
+#. type: cindex
+#: original_texis/parsing.texi:973
+#, no-wrap
+msgid "has error, tree-sitter node"
+msgstr "has error, tree-sitter node"
+
+#. type: Plain text
+#: original_texis/parsing.texi:977
+msgid "A node ``has error'' if the text it spans contains a syntax error.  It can be that the node itself has an error, or one of its descendants has an error."
+msgstr "ノードが跨ぐテキストに構文エラーが含まれていれば、``エラーあり(has error)''のノードです。ノード自体にエラーがあったり、子孫のいずれかのノードにエラーがあるのかもしれません。"
+
+#. type: cindex
+#: original_texis/parsing.texi:978
+#, no-wrap
+msgid "tree-sitter, live parsing node"
+msgstr "tree-sitter, live parsing node"
+
+#. type: cindex
+#: original_texis/parsing.texi:979
+#, no-wrap
+msgid "live node, tree-sitter"
+msgstr "live node, tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:982
+msgid "A node is considered @dfn{live} if its parser is not deleted, and the buffer to which it belongs is a live buffer (@pxref{Killing Buffers})."
+msgstr "ノードはそのノードのパーサーが削除されておらず、更にそのノードが生きているバッファー(@ref{Killing Buffers}を参照)であれば@dfn{生きている(live)}とみなされます。"
+
+#. type: defun
+#: original_texis/parsing.texi:983
+#, no-wrap
+msgid "treesit-node-check node property"
+msgstr "treesit-node-check node property"
+
+#. type: defun
+#: original_texis/parsing.texi:987
+msgid "This function returns non-@code{nil} if @var{node} has the specified @var{property}.  @var{property} can be @code{named}, @code{missing}, @code{extra}, @code{outdated}, @code{has-error}, or @code{live}."
+msgstr "この関数は@var{node}が指定された@var{property}をもっていれば非@code{nil}をリターンする。@var{property}は@code{named}、@code{missing}、@code{extra}、@code{outdated}、@code{has-error}、@code{live}のいずれか。"
+
+#. type: defun
+#: original_texis/parsing.texi:989
+#, no-wrap
+msgid "treesit-node-type node"
+msgstr "treesit-node-type node"
+
+#. type: defun
+#: original_texis/parsing.texi:995
+msgid "Named nodes have ``types'' (@pxref{tree-sitter node type, node type}).  For example, a named node can be a @code{string_literal} node, where @code{string_literal} is its type.  The type of an anonymous node is just the text that the node represents; e.g., the type of a @samp{,} node is just @samp{,}."
+msgstr "名前つきノードは``タイプ(type)''をもつことができる(@ref{tree-sitter node type, node type}を参照)。たとえば名前つきノード@code{string_literal}のタイプを@code{string_literal}にすることができる。無名ノードは、単にそのノードが表すテキストがタイプとなる(たとえば@samp{,}ノードのタイプは単に@samp{,})。"
+
+#. type: defun
+#: original_texis/parsing.texi:997
+msgid "This function returns @var{node}'s type as a string."
+msgstr "この関数は@var{node}のタイプを文字列としてリターンする。"
+
+#. type: heading
+#: original_texis/parsing.texi:999
+#, no-wrap
+msgid "Information as a child or parent"
+msgstr "子や親としての情報"
+
+#. type: defun
+#: original_texis/parsing.texi:1001
+#, no-wrap
+msgid "treesit-node-index node &optional named"
+msgstr "treesit-node-index node &optional named"
+
+#. type: defun
+#: original_texis/parsing.texi:1005
+msgid "This function returns the index of @var{node} as a child node of its parent.  If @var{named} is non-@code{nil}, it only counts named nodes (@pxref{tree-sitter named node, named node})."
+msgstr "この関数は親から@var{node}を子ノードとして見た場合のインデックスをリターンする。@var{named}が非@code{nil}の場合には名前つきノードだけを考慮する(@ref{tree-sitter named node, named node}を参照)。"
+
+#. type: defun
+#: original_texis/parsing.texi:1007
+#, no-wrap
+msgid "treesit-node-field-name node"
+msgstr "treesit-node-field-name node"
+
+#. type: defun
+#: original_texis/parsing.texi:1011
+msgid "A child of a parent node could have a field name (@pxref{tree-sitter node field name, field name}).  This function returns the field name of @var{node} as a child of its parent."
+msgstr "親をもつ子ノードはフィールド名をもつことができる(@ref{tree-sitter node field name, field name}を参照)。この関数は親から@var{node}を子ノードとして見た場合のフィールド名をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:1013
+#, no-wrap
+msgid "treesit-node-field-name-for-child node n"
+msgstr "treesit-node-field-name-for-child node n"
+
+#. type: defun
+#: original_texis/parsing.texi:1017
+msgid "This function returns the field name of the @var{n}'th child of @var{node}.  It returns @code{nil} if there is no @var{n}'th child, or the @var{n}'th child doesn't have a field name."
+msgstr "この関数は@var{node}の@var{n}番目の子のフィールド名をリターンする。@var{n}番目の子がいない、または@var{n}番目の子にフィールド名がなければ@code{nil}をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:1020
+msgid "Note that @var{n} counts both named and anonymous children, and @var{n} can be negative, e.g., @minus{}1 represents the last child."
+msgstr "@var{n}は名前つきの子と無名の子の両方を考慮することに注意。また@var{n}は負でもよい(@minus{}1は最後の子を表す)。"
+
+#. type: defun
+#: original_texis/parsing.texi:1022
+#, no-wrap
+msgid "treesit-node-child-count node &optional named"
+msgstr "treesit-node-child-count node &optional named"
+
+#. type: defun
+#: original_texis/parsing.texi:1026
+msgid "This function returns the number of children of @var{node}.  If @var{named} is non-@code{nil}, it only counts named children (@pxref{tree-sitter named node, named node})."
+msgstr "この関数は@var{node}の子の数をリターンする。@var{named}が非@code{nil}の場合には名前つきの子だけを考慮する(@ref{tree-sitter named node, named node}を参照)。"
+
+#. type: section
+#: original_texis/parsing.texi:1029
+#, no-wrap
+msgid "Pattern Matching Tree-sitter Nodes"
+msgstr "tree-sitterノードにたいするパターンマッチング"
+
+#. type: cindex
+#: original_texis/parsing.texi:1030
+#, no-wrap
+msgid "pattern matching with tree-sitter nodes"
+msgstr "pattern matching with tree-sitter nodes"
+
+#. type: cindex
+#: original_texis/parsing.texi:1032
+#, no-wrap
+msgid "capturing, tree-sitter node"
+msgstr "capturing, tree-sitter node"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1038
+msgid "Tree-sitter lets Lisp programs match patterns using a small declarative language.  This pattern matching consists of two steps: first tree-sitter matches a @dfn{pattern} against nodes in the syntax tree, then it @dfn{captures} specific nodes that matched the pattern and returns the captured nodes."
+msgstr "tree-sitterでは小さな宣言型言語を用いてLispプログラムによるパターンのマッチングができます。このパターンマッチングは2つのステップから構成されています。まずtree-sitterが構文ツリーのノードにたいする@dfn{パターン(pattern)}のマッチを行い、その後にパターンにマッチした特定のノードを@dfn{キャプチャー(capture)}してそのノードをリターンするのです。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1042
+msgid "We describe first how to write the most basic query pattern and how to capture nodes in a pattern, then the pattern-matching function, and finally the more advanced pattern syntax."
+msgstr "まずはもっとも基本的なクエリーパターンを記述してパターン内のノードをキャプチャーする方法、それからパターンマッチング関数、そして最後により上級のパターン構文について説明していきます。"
+
+#. type: heading
+#: original_texis/parsing.texi:1043
+#, no-wrap
+msgid "Basic query syntax"
+msgstr "基本的なクエリー構文"
+
+#. type: cindex
+#: original_texis/parsing.texi:1045
+#, no-wrap
+msgid "tree-sitter query pattern syntax"
+msgstr "tree-sitter query pattern syntax"
+
+#. type: cindex
+#: original_texis/parsing.texi:1046
+#, no-wrap
+msgid "pattern syntax, tree-sitter query"
+msgstr "pattern syntax, tree-sitter query"
+
+#. type: cindex
+#: original_texis/parsing.texi:1047
+#, no-wrap
+msgid "query, tree-sitter"
+msgstr "query, tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1051
+msgid "A @dfn{query} consists of multiple @dfn{patterns}.  Each pattern is an s-expression that matches a certain node in the syntax node.  A pattern has the form @w{@code{(@var{type} (@var{child}@dots{}))}}."
+msgstr "@dfn{クエリー(query: 問い合わせ)}は複数の@dfn{パターン(patterns)}によって構成されます。パターンはそれぞれ構文ノード内の特定ノードにマッチするS式です。パターンは@w{@code{(@var{type} (@var{child}@dots{}))}}という形式をもっています。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1054
+msgid "For example, a pattern that matches a @code{binary_expression} node that contains @code{number_literal} child nodes would look like"
+msgstr "たとえば子ノードを含んだノード@code{binary_expression}にマッチするのは以下のようなパターンでしょう"
+
+#. type: example
+#: original_texis/parsing.texi:1057
+#, no-wrap
+msgid "(binary_expression (number_literal))\n"
+msgstr "(binary_expression (number_literal))\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1062
+msgid "To @dfn{capture} a node using the query pattern above, append @code{@@@var{capture-name}} after the node pattern you want to capture.  For example,"
+msgstr "上記のクエリーパターンを用いてノードを@dfn{キャプチャー(capture)}するためには、キャプチャーしたいノードパターンの後に@code{@@@var{capture-name}}を追加します。たとえば、"
+
+#. type: example
+#: original_texis/parsing.texi:1065
+#, no-wrap
+msgid "(binary_expression (number_literal) @@number-in-exp)\n"
+msgstr "(binary_expression (number_literal) @@number-in-exp)\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1071
+msgid "captures @code{number_literal} nodes that are inside a @code{binary_expression} node with the capture name @code{number-in-exp}."
+msgstr "これはノード@code{binary_expression}にあるノード@code{number_literal}をキャプチャー名でキャプチャーします。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1074
+msgid "We can capture the @code{binary_expression} node as well, with, for example, the capture name @code{biexp}:"
+msgstr "同じようにして、たとえばキャプチャー名@code{biexp}でノード@code{binary_expression}をキャプチャーできます:"
+
+#. type: example
+#: original_texis/parsing.texi:1078
+#, no-wrap
+msgid ""
+"(binary_expression\n"
+" (number_literal) @@number-in-exp) @@biexp\n"
+msgstr ""
+"(binary_expression\n"
+" (number_literal) @@number-in-exp) @@biexp\n"
+
+#. type: heading
+#: original_texis/parsing.texi:1080
+#, no-wrap
+msgid "Query function"
+msgstr "クエリー関数"
+
+#. type: cindex
+#: original_texis/parsing.texi:1082
+#, no-wrap
+msgid "query functions, tree-sitter"
+msgstr "query functions, tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1084
+msgid "Now we can introduce the @dfn{query functions}."
+msgstr "これで@dfn{クエリー関数(query functions)}を説明する準備ができました。"
+
+#. type: defun
+#: original_texis/parsing.texi:1085
+#, no-wrap
+msgid "treesit-query-capture node query &optional beg end node-only"
+msgstr "treesit-query-capture node query &optional beg end node-only"
+
+#. type: defun
+#: original_texis/parsing.texi:1091
+msgid "This function matches patterns in @var{query} within @var{node}.  The argument @var{query} can be either an s-expression, a string, or a compiled query object.  For now, we focus on the s-expression syntax; string syntax and compiled queries are described at the end of the section."
+msgstr "この関数は@var{query}のパターンを@var{node}とマッチする。引数@var{query}はS式、文字列、またはコンパイル済みクエリーオブジェクトのいずれか。ここではS式構文に焦点を当てる。文字列構文およびコンパイル済みクエリーについては、このセクションの最後で説明しよう。"
+
+#. type: defun
+#: original_texis/parsing.texi:1096
+msgid "The argument @var{node} can also be a parser or a language symbol.  A parser means use its root node, a language symbol means find or create a parser for that language in the current buffer, and use the root node."
+msgstr "引数@var{node}はパーサー、あるいは言語シンボルでもよい。パーサーの場合にはそのルートノードを、言語シンボルならまずカレントバッファーでその言語用のパーサーを探すか作成してそのルートノードを使用する。"
+
+#. type: defun
+#: original_texis/parsing.texi:1106
+msgid "The function returns all the captured nodes in an alist with elements of the form @w{@code{(@var{capture_name} . @var{node})}}.  If @var{node-only} is non-@code{nil}, it returns the list of @var{node}s instead.  By default the entire text of @var{node} is searched, but if @var{beg} and @var{end} are both non-@code{nil}, they specify the region of buffer text where this function should match nodes.  Any matching node whose span overlaps with the region between @var{beg} and @var{end} is captured; it doesn't have to be completely contained in the region."
+msgstr "この関数はキャプチャーしたすべてのノードを、@w{@code{(@var{capture_name} . @var{node})}}という要素をもつalistでリターンする。@var{node-only}が非@code{nil}の場合には、かわりに@var{node}のリストをリターンする。デフォルトでは@var{node}のテキスト全体を検索するが、@var{beg}と@var{end}がいずれも非@code{nil}であれば、それはこの関数がノードをマッチするべきバッファーテキストのリージョンを指定する。@var{beg}と@var{end}の間のリージョンを跨いで重なるようなノードがマッチすればすべてキャプチャーされる(完全にそのリージョンに含まれている必要はない)。"
+
+#. type: vindex
+#: original_texis/parsing.texi:1107
+#, no-wrap
+msgid "treesit-query-error"
+msgstr "treesit-query-error"
+
+#. type: findex
+#: original_texis/parsing.texi:1108
+#, no-wrap
+msgid "treesit-query-validate"
+msgstr "treesit-query-validate"
+
+#. type: defun
+#: original_texis/parsing.texi:1113 original_texis/parsing.texi:1413
+msgid "This function raises the @code{treesit-query-error} error if @var{query} is malformed.  The signal data contains a description of the specific error.  You can use @code{treesit-query-validate} to validate and debug the query."
+msgstr "この関数は@var{query}が不正な形式であれば@code{treesit-query-error}エラーraiseする。シグナルデータには、その特定。エラーに関する説明が含まれている。クエリーの検証とデバッグには@code{treesit-query-validate}を使うことができる。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1117
+msgid "For example, suppose @var{node}'s text is @code{1 + 2}, and @var{query} is"
+msgstr "たとえば@var{node}のテキストが@code{1 + 2}で、以下のクエリーを考えてみましょう"
+
+#. type: group
+#: original_texis/parsing.texi:1123
+#, no-wrap
+msgid ""
+"(setq query\n"
+"      '((binary_expression\n"
+"         (number_literal) @@number-in-exp) @@biexp)\n"
+msgstr ""
+"(setq query\n"
+"      '((binary_expression\n"
+"         (number_literal) @@number-in-exp) @@biexp)\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1127
+msgid "Matching that query would return"
+msgstr "このクエリーをマッチングすると以下がリターンされます"
+
+#. type: group
+#: original_texis/parsing.texi:1134
+#, no-wrap
+msgid ""
+"(treesit-query-capture node query)\n"
+"    @result{} ((biexp . @var{<node for \"1 + 2\">})\n"
+"       (number-in-exp . @var{<node for \"1\">})\n"
+"       (number-in-exp . @var{<node for \"2\">}))\n"
+msgstr ""
+"(treesit-query-capture node query)\n"
+"    @result{} ((biexp . @var{<node for \"1 + 2\">})\n"
+"       (number-in-exp . @var{<node for \"1\">})\n"
+"       (number-in-exp . @var{<node for \"2\">}))\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1139
+msgid "As mentioned earlier, @var{query} could contain multiple patterns.  For example, it could have two top-level patterns:"
+msgstr "前に言及したように、@var{query}に複数のパターンを含めることができます。たとえば以下のようにトップレベルのパターンを2つもつことができます:"
+
+#. type: group
+#: original_texis/parsing.texi:1145
+#, no-wrap
+msgid ""
+"(setq query\n"
+"      '((binary_expression) @@biexp\n"
+"        (number_literal) @@number @@biexp)\n"
+msgstr ""
+"(setq query\n"
+"      '((binary_expression) @@biexp\n"
+"        (number_literal) @@number @@biexp)\n"
+
+#. type: defun
+#: original_texis/parsing.texi:1148
+#, no-wrap
+msgid "treesit-query-string string query language"
+msgstr "treesit-query-string string query language"
+
+#. type: defun
+#: original_texis/parsing.texi:1151
+msgid "This function parses @var{string} as @var{language}, matches its root node with @var{query}, and returns the result."
+msgstr "この関数は@var{language}として@var{string}をパースして、そのルートノードにたいして@var{query}をマッチ、その結果をリターンする。"
+
+#. type: heading
+#: original_texis/parsing.texi:1153
+#, no-wrap
+msgid "More query syntax"
+msgstr "その他のクエリー構文"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1158
+msgid "Besides node type and capture name, tree-sitter's pattern syntax can express anonymous node, field name, wildcard, quantification, grouping, alternation, anchor, and predicate."
+msgstr "ノードのタイプとキャプチャー名以外にも、tree-sitterのパターン構文により無名ノード、フィールド名、ワイルドカード、量化、グルーピング、選択、アンカー、述語を表現することができます。"
+
+#. type: subheading
+#: original_texis/parsing.texi:1159
+#, no-wrap
+msgid "Anonymous node"
+msgstr "無名ノード"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1163
+msgid "An anonymous node is written verbatim, surrounded by quotes.  A pattern matching (and capturing) keyword @code{return} would be"
+msgstr "無名ノードはクォートで括ることで逐語的に記述されます。キーワード@code{return}にマッチ(してキャプチャー)するパターンは以下のようになるでしょう "
+
+#. type: example
+#: original_texis/parsing.texi:1166
+#, no-wrap
+msgid "\"return\" @@keyword\n"
+msgstr "\"return\" @@keyword\n"
+
+#. type: subheading
+#: original_texis/parsing.texi:1168
+#, no-wrap
+msgid "Wild card"
+msgstr "ワイルドカード"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1173
+msgid "In a pattern, @samp{(_)} matches any named node, and @samp{_} matches any named or anonymous node.  For example, to capture any named child of a @code{binary_expression} node, the pattern would be"
+msgstr "パターンにおいて@samp{(_)}は任意の名前つきノード、@samp{_}は名前つきノードや無名ノードのすべてにマッチします。たとえば@code{binary_expression}ノードの名前つきの子をすべてキャプチャーするパターンは以下のようになるでしょう"
+
+#. type: example
+#: original_texis/parsing.texi:1176
+#, no-wrap
+msgid "(binary_expression (_) @@in-biexp)\n"
+msgstr "(binary_expression (_) @@in-biexp)\n"
+
+#. type: subheading
+#: original_texis/parsing.texi:1178
+#, no-wrap
+msgid "Field name"
+msgstr "フィールド名"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1183
+msgid "It is possible to capture child nodes that have specific field names.  In the pattern below, @code{declarator} and @code{body} are field names, indicated by the colon following them."
+msgstr "特定のフィールド名をもつ子ノードをキャプチャーすることは可能です。以下のパターンでは、フィールド名であることを示すコロンが後置されている@code{declarator}と@code{body}がフィールド名です。"
+
+#. type: group
+#: original_texis/parsing.texi:1189
+#, no-wrap
+msgid ""
+"(function_definition\n"
+"  declarator: (_) @@func-declarator\n"
+"  body: (_) @@func-body)\n"
+msgstr ""
+"(function_definition\n"
+"  declarator: (_) @@func-declarator\n"
+"  body: (_) @@func-body)\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1194
+msgid "It is also possible to capture a node that doesn't have a certain field, say, a @code{function_definition} without a @code{body} field:"
+msgstr "特定のフィールドをもたないノード、たとえば@code{body}フィールドのない@code{function_definition}をキャプチャーすることも可能です:"
+
+#. type: example
+#: original_texis/parsing.texi:1197
+#, no-wrap
+msgid "(function_definition !body) @@func-no-body\n"
+msgstr "(function_definition !body) @@func-no-body\n"
+
+#. type: subheading
+#: original_texis/parsing.texi:1199
+#, no-wrap
+msgid "Quantify node"
+msgstr "ノードの量化"
+
+#. type: cindex
+#: original_texis/parsing.texi:1201
+#, no-wrap
+msgid "quantify node, tree-sitter"
+msgstr "quantify node, tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1206
+msgid "Tree-sitter recognizes quantification operators @samp{:*}, @samp{:+}, and @samp{:?}.  Their meanings are the same as in regular expressions: @samp{:*} matches the preceding pattern zero or more times, @samp{:+} matches one or more times, and @samp{:?} matches zero or one times."
+msgstr "tree-sitterは量化演算子(quantification operator)の@samp{:*}、@samp{:+},@samp{:?}を認識します。これらの演算子の意味は正規表現の場合と同じです。@samp{:*}と@samp{:+}はそれぞれ前にあるパターンの0個以またはは1個以上の繰り返し、@samp{:?}は前のパターンの0個または1個の繰り返しにマッチします。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1209
+msgid "For example, the following pattern matches @code{type_declaration} nodes that have @emph{zero or more} @code{long} keywords."
+msgstr "たとえば以下は@code{long}というキーワードの@emph{0個以上}の繰り返しにマッチするパターンです。"
+
+#. type: example
+#: original_texis/parsing.texi:1212
+#, no-wrap
+msgid "(type_declaration \"long\" :*) @@long-type\n"
+msgstr "(type_declaration \"long\" :*) @@long-type\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1216
+msgid "The following pattern matches a type declaration that may or may not have a @code{long} keyword:"
+msgstr "こちらは@code{long}というキーワードをもつか、あるいはもたないかというタイプ宣言用のパターンです:"
+
+#. type: example
+#: original_texis/parsing.texi:1219
+#, no-wrap
+msgid "(type_declaration \"long\" :?) @@long-type\n"
+msgstr "(type_declaration \"long\" :?) @@long-type\n"
+
+#. type: subheading
+#: original_texis/parsing.texi:1221
+#, no-wrap
+msgid "Grouping"
+msgstr "グルーピング"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1226
+msgid "Similar to groups in regular expressions, we can bundle patterns into groups and apply quantification operators to them.  For example, to express a comma-separated list of identifiers, one could write"
+msgstr "正規表現におけるグループと同じように、パターンをグループにまとめたり量化演算子を適用することができます。たとえばカンマで区切られた識別子を表現するには、以下のように記述できるでしょう"
+
+#. type: example
+#: original_texis/parsing.texi:1229
+#, no-wrap
+msgid "(identifier) (\",\" (identifier)) :*\n"
+msgstr "(identifier) (\",\" (identifier)) :*\n"
+
+#. type: subheading
+#: original_texis/parsing.texi:1231
+#, no-wrap
+msgid "Alternation"
+msgstr "選択"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1236
+msgid "Again, similar to regular expressions, we can express ``match any one of these patterns'' in a pattern.  The syntax is a vector of patterns.  For example, to capture some keywords in C, the pattern would be"
+msgstr "繰り返しになりますが正規表現と同じように、パターンにおいて``これらのパターンのいずれかにマッチ''と表現することができます。この構文はパターンのベクターです。たとえばCのいくつかのキーワードをキャプチャーするパターンは、以下のように記述できるでしょう"
+
+#. type: group
+#: original_texis/parsing.texi:1245
+#, no-wrap
+msgid ""
+"[\n"
+"  \"return\"\n"
+"  \"break\"\n"
+"  \"if\"\n"
+"  \"else\"\n"
+"] @@keyword\n"
+msgstr ""
+"[\n"
+"  \"return\"\n"
+"  \"break\"\n"
+"  \"if\"\n"
+"  \"else\"\n"
+"] @@keyword\n"
+
+#. type: subheading
+#: original_texis/parsing.texi:1248
+#, no-wrap
+msgid "Anchor"
+msgstr "アンカー"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1255
+msgid "The anchor operator @code{:anchor} can be used to enforce juxtaposition, i.e., to enforce two things to be directly next to each other.  The two ``things'' can be two nodes, or a child and the end of its parent.  For example, to capture the first child, the last child, or two adjacent children:"
+msgstr "たとえば2つのオブジェクトを隣接させるといったように、アンカー演算子@code{:anchor}を用いて並置させることができます。2つの``オブジェクト''には2つのノードや子ノードと最後の親などを指定できます。たとえば最初最後の子、あるいは2つの隣接した子をキャプチャーするには:"
+
+#. type: group
+#: original_texis/parsing.texi:1260
+#, no-wrap
+msgid ""
+";; Anchor the child with the end of its parent.\n"
+"(compound_expression (_) @@last-child :anchor)\n"
+msgstr ""
+";; 子と最後で親をアンカー\n"
+"(compound_expression (_) @@last-child :anchor)\n"
+
+#. type: group
+#: original_texis/parsing.texi:1265
+#, no-wrap
+msgid ""
+";; Anchor the child with the beginning of its parent.\n"
+"(compound_expression :anchor (_) @@first-child)\n"
+msgstr ""
+";; 子と最初の親をアンカー\n"
+"(compound_expression :anchor (_) @@first-child)\n"
+
+#. type: group
+#: original_texis/parsing.texi:1273
+#, no-wrap
+msgid ""
+";; Anchor two adjacent children.\n"
+"(compound_expression\n"
+" (_) @@prev-child\n"
+" :anchor\n"
+" (_) @@next-child)\n"
+msgstr ""
+";; 隣接する2つの子をアンカー\n"
+"(compound_expression\n"
+" (_) @@prev-child\n"
+" :anchor\n"
+" (_) @@next-child)\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1278
+msgid "Note that the enforcement of juxtaposition ignores any anonymous nodes."
+msgstr "並置させる際には無名ノードは無視されることに注意してください。"
+
+#. type: subheading
+#: original_texis/parsing.texi:1279
+#, no-wrap
+msgid "Predicate"
+msgstr "述語"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1283
+msgid "It is possible to add predicate constraints to a pattern.  For example, with the following pattern:"
+msgstr "パターンに述語による制約を追加することができます。たとえば以下のパターンでは:"
+
+#. type: group
+#: original_texis/parsing.texi:1290
+#, no-wrap
+msgid ""
+"(\n"
+" (array :anchor (_) @@first (_) @@last :anchor)\n"
+" (:equal @@first @@last)\n"
+")\n"
+msgstr ""
+"(\n"
+" (array :anchor (_) @@first (_) @@last :anchor)\n"
+" (:equal @@first @@last)\n"
+")\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1298
+msgid "tree-sitter only matches arrays where the first element is equal to the last element.  To attach a predicate to a pattern, we need to group them together.  Currently there are three predicates: @code{:equal}, @code{:match}, and @code{:pred}."
+msgstr "tree-sitterは配列の最初と最後の要素が等しい場合だけマッチします。パターンに述語を付加するためには、それらをグループにまとめる必要があります。現在のところ@code{:equal}、@code{:match}、@code{:pred}という3つの述語があります。"
+
+#. type: deffn
+#: original_texis/parsing.texi:1299
+#, no-wrap
+msgid "Predicate :equal arg1 arg2"
+msgstr "Predicate :equal arg1 arg2"
+
+#. type: deffn
+#: original_texis/parsing.texi:1303
+msgid "Matches if @var{arg1} is equal to @var{arg2}.  Arguments can be either strings or capture names.  Capture names represent the text that the captured node spans in the buffer."
+msgstr "@var{arg1}と@var{arg2}が等しければマッチ。引数は文字列またはキャプチャー名のいずれか。キャプチャー名とは、バッファーにおいてキャプチャーされたノードが跨ぐテキストを表す。"
+
+#. type: deffn
+#: original_texis/parsing.texi:1305
+#, no-wrap
+msgid "Predicate :match regexp capture-name"
+msgstr "Predicate :match regexp capture-name"
+
+#. type: deffn
+#: original_texis/parsing.texi:1309
+msgid "Matches if the text that @var{capture-name}'s node spans in the buffer matches regular expression @var{regexp}, given as a string literal.  Matching is case-sensitive."
+msgstr "バッファーにおいて@var{capture-name}のノードが跨ぐテキストと、文字列リテラルとして与えられた正規表現@var{regexp}がマッチすればマッチ。マッチは大文字小文字を区別する。"
+
+#. type: deffn
+#: original_texis/parsing.texi:1311
+#, no-wrap
+msgid "Predicate :pred fn &rest nodes"
+msgstr "Predicate :pred fn &rest nodes"
+
+#. type: deffn
+#: original_texis/parsing.texi:1314
+msgid "Matches if function @var{fn} returns non-@code{nil} when passed each node in @var{nodes} as arguments."
+msgstr "関数@var{fn}に@var{nodes}内のノードそれぞれを渡して非@code{nil}がリターンされたらマッチ。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1319
+msgid "Note that a predicate can only refer to capture names that appear in the same pattern.  Indeed, it makes little sense to refer to capture names in other patterns."
+msgstr "述語が参照できるのは、同じパターン内に出現するキャプチャー名だけであることに注意してください。実際問題として別のパターンからキャプチャー名を参照しても、意味はほとんどありません。"
+
+#. type: heading
+#: original_texis/parsing.texi:1320
+#, no-wrap
+msgid "String patterns"
+msgstr "文字列パターン"
+
+#. type: cindex
+#: original_texis/parsing.texi:1322
+#, no-wrap
+msgid "tree-sitter patterns as strings"
+msgstr "tree-sitter patterns as strings"
+
+#. type: cindex
+#: original_texis/parsing.texi:1323
+#, no-wrap
+msgid "patterns, tree-sitter, in string form"
+msgstr "patterns, tree-sitter, in string form"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1327
+msgid "Besides s-expressions, Emacs allows the tree-sitter's native query syntax to be used by writing them as strings.  It largely resembles the s-expression syntax.  For example, the following query"
+msgstr "S式の他にも、Emacsでは使用するtree-sitterのネイティブクエリー構文を文字列として記述することができます。これはS式の構文とよく似ています。たとえば以下のクエリーは"
+
+#. type: group
+#: original_texis/parsing.texi:1335
+#, no-wrap
+msgid ""
+"(treesit-query-capture\n"
+" node '((addition_expression\n"
+"         left: (_) @@left\n"
+"         \"+\" @@plus-sign\n"
+"         right: (_) @@right) @@addition\n"
+"\n"
+msgstr ""
+"(treesit-query-capture\n"
+" node '((addition_expression\n"
+"         left: (_) @@left\n"
+"         \"+\" @@plus-sign\n"
+"         right: (_) @@right) @@addition\n"
+"\n"
+
+#. type: group
+#: original_texis/parsing.texi:1337
+#, no-wrap
+msgid "         [\"return\" \"break\"] @@keyword))\n"
+msgstr "         [\"return\" \"break\"] @@keyword))\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1342
+msgid "is equivalent to"
+msgstr "以下と等価です"
+
+#. type: group
+#: original_texis/parsing.texi:1350
+#, no-wrap
+msgid ""
+"(treesit-query-capture\n"
+" node \"(addition_expression\n"
+"        left: (_) @@left\n"
+"        \\\"+\\\" @@plus-sign\n"
+"        right: (_) @@right) @@addition\n"
+"\n"
+msgstr ""
+"(treesit-query-capture\n"
+" node \"(addition_expression\n"
+"        left: (_) @@left\n"
+"        \\\"+\\\" @@plus-sign\n"
+"        right: (_) @@right) @@addition\n"
+"\n"
+
+#. type: group
+#: original_texis/parsing.texi:1352
+#, no-wrap
+msgid "        [\\\"return\\\" \\\"break\\\"] @@keyword\")\n"
+msgstr "        [\\\"return\\\" \\\"break\\\"] @@keyword\")\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1357
+msgid "Most patterns can be written directly as s-expressions inside a string.  Only a few of them need modification:"
+msgstr "ほとんどのパターンは文字列内部のS式として直接記述できます。変更が必要になるのはごく少数のパターンだけです:"
+
+#. type: itemize
+#: original_texis/parsing.texi:1361
+msgid "Anchor @code{:anchor} is written as @samp{.}."
+msgstr "アンカー@code{:anchor}は@samp{.}と記述。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1363
+msgid "@samp{:?} is written as @samp{?}."
+msgstr "@samp{:?}は@samp{?}と記述。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1365
+msgid "@samp{:*} is written as @samp{*}."
+msgstr "@samp{:*}は@samp{*}と記述。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1367
+msgid "@samp{:+} is written as @samp{+}."
+msgstr "@samp{:+}は@samp{+}と記述。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1371
+msgid "@code{:equal}, @code{:match} and @code{:pred} are written as @code{#equal}, @code{#match} and @code{#pred}, respectively.  In general, predicates change their @samp{:} to @samp{#}."
+msgstr "@code{:equal}、@code{:match}、@code{:pred}はそれぞれ@code{#equal}、@code{#match}、@code{#pred}と記述。一般的には述語の@samp{:}を@samp{#}に変更する。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1374
+msgid "For example,"
+msgstr "たとえば、"
+
+#. type: group
+#: original_texis/parsing.texi:1381
+#, no-wrap
+msgid ""
+"'((\n"
+"   (compound_expression :anchor (_) @@first (_) :* @@rest)\n"
+"   (:match \"love\" @@first)\n"
+"   ))\n"
+msgstr ""
+"'((\n"
+"   (compound_expression :anchor (_) @@first (_) :* @@rest)\n"
+"   (:match \"love\" @@first)\n"
+"   ))\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1386
+msgid "is written in string form as"
+msgstr "文字列形式では以下のように記述します"
+
+#. type: group
+#: original_texis/parsing.texi:1393
+#, no-wrap
+msgid ""
+"\"(\n"
+"  (compound_expression . (_) @@first (_)* @@rest)\n"
+"  (#match \\\"love\\\" @@first)\n"
+"  )\"\n"
+msgstr ""
+"\"(\n"
+"  (compound_expression . (_) @@first (_)* @@rest)\n"
+"  (#match \\\"love\\\" @@first)\n"
+"  )\"\n"
+
+#. type: heading
+#: original_texis/parsing.texi:1396
+#, no-wrap
+msgid "Compiling queries"
+msgstr "クエリーのコンパイル"
+
+#. type: cindex
+#: original_texis/parsing.texi:1398
+#, no-wrap
+msgid "compiling tree-sitter queries"
+msgstr "compiling tree-sitter queries"
+
+#. type: cindex
+#: original_texis/parsing.texi:1399
+#, no-wrap
+msgid "queries, compiling"
+msgstr "queries, compiling"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1404
+msgid "If a query is intended to be used repeatedly, especially in tight loops, it is important to compile that query, because a compiled query is much faster than an uncompiled one.  A compiled query can be used anywhere a query is accepted."
+msgstr "繰り返し使うことを意図したクエリー、とりわけタイトなループ(訳注 :少ない命令を含み多数回実行されるループ)では、クエリーのコンパイルが重要になります。なぜならコンパイル済みのクエリーは、コンパイルされていないものと比較して非常に高速だからです。クエリーの使用が許されている場所ならどこでもコンパイル済みクエリーを使うことができます。"
+
+#. type: defun
+#: original_texis/parsing.texi:1405
+#, no-wrap
+msgid "treesit-query-compile language query"
+msgstr "treesit-query-compile language query"
+
+#. type: defun
+#: original_texis/parsing.texi:1408
+msgid "This function compiles @var{query} for @var{language} into a compiled query object and returns it."
+msgstr "この関数は@var{language}の@var{query}をコンパイル済みクエリーオブジェクトにコンパイルして、それをリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:1415
+#, no-wrap
+msgid "treesit-query-language query"
+msgstr "treesit-query-language query"
+
+#. type: defun
+#: original_texis/parsing.texi:1417
+msgid "This function returns the language of @var{query}."
+msgstr "この関数は@var{query}の言語をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:1419
+#, no-wrap
+msgid "treesit-query-expand query"
+msgstr "treesit-query-expand query"
+
+#. type: defun
+#: original_texis/parsing.texi:1422
+msgid "This function converts the s-expression @var{query} into the string format."
+msgstr "この関数はS式の@var{query}を文字列フォーマットに変換する。"
+
+#. type: defun
+#: original_texis/parsing.texi:1424
+#, no-wrap
+msgid "treesit-pattern-expand pattern"
+msgstr "treesit-pattern-expand pattern"
+
+#. type: defun
+#: original_texis/parsing.texi:1427
+msgid "This function converts the s-expression @var{pattern} into the string format."
+msgstr "この関数はS式の@var{pattern}を文字列フォーマットに変換する。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1432
+msgid "For more details, read the tree-sitter project's documentation about pattern-matching, which can be found at @uref{https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries}."
+msgstr "パターンマッチングに関する詳細については、@uref{https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries}にあるtree-sitterプロジェクトのドキュメントを参照してください。"
+
+#. type: section
+#: original_texis/parsing.texi:1434
+#, no-wrap
+msgid "Parsing Text in Multiple Languages"
+msgstr "複数言語ののパース"
+
+#. type: cindex
+#: original_texis/parsing.texi:1435
+#, no-wrap
+msgid "multiple languages, parsing with tree-sitter"
+msgstr "multiple languages, parsing with tree-sitter"
+
+#. type: cindex
+#: original_texis/parsing.texi:1436
+#, no-wrap
+msgid "parsing multiple languages with tree-sitter"
+msgstr "parsing multiple languages with tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1446
+msgid "Sometimes, the source of a programming language could contain snippets of other languages; @acronym{HTML} + @acronym{CSS} + JavaScript is one example.  In that case, text segments written in different languages need to be assigned different parsers.  Traditionally, this is achieved by using narrowing.  While tree-sitter works with narrowing (@pxref{tree-sitter narrowing, narrowing}), the recommended way is instead to specify regions of buffer text (i.e., ranges) in which a parser will operate.  This section describes functions for setting and getting ranges for a parser."
+msgstr "プログラミング言語のソースの一部に他の言語のソースが含まれているときがあります。一例としては@acronym{HTML} + @acronym{CSS} + JavaScriptが挙げられます。このような場合には、別の言語によって記述されたテキストセグメントには別のパーサーを割り当てる必要があります。伝統的にこれはナローイングの使用によって達成されてきました。tree-sitterはナローイング(@ref{tree-sitter narrowing, narrowing}を参照)とともに機能しますが、推奨される方法はバッファーテキストのリージョン(範囲)にそれを操作するパーサーを指定する方法です。このセクションではパーサーにたいして範囲のセットや取得を行う関数について説明します。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1456
+msgid "Lisp programs should call @code{treesit-update-ranges} to make sure the ranges for each parser are correct before using parsers in a buffer, and call @code{treesit-language-at} to figure out the language responsible for the text at some position.  These two functions don't work by themselves, they need major modes to set @code{treesit-range-settings} and @code{treesit-language-at-point-function}, which do the actual work.  These functions and variables are explained in more detail towards the end of the section."
+msgstr "Lispプログラムがバッファーでパーサーを使う前には、@code{treesit-update-ranges}の呼び出しによってパーサーそれぞれにたいする範囲が正しいか確認して、その位置にあるテキストにたいして任を負うパーサーを解決する必要があります。この2つの関数自身は作業を行わず、実際に作業を行うにはメジャーモードが@code{treesit-language-at-point-function}および@code{treesit-language-at-point-function}をセットする必要があります。これらの関数および変数については、このセクションの終わり近くで詳細に説明しましょう。"
+
+#. type: heading
+#: original_texis/parsing.texi:1457
+#, no-wrap
+msgid "Getting and setting ranges"
+msgstr "範囲の取得とセット"
+
+#. type: defun
+#: original_texis/parsing.texi:1459
+#, no-wrap
+msgid "treesit-parser-set-included-ranges parser ranges"
+msgstr "treesit-parser-set-included-ranges parser ranges"
+
+#. type: defun
+#: original_texis/parsing.texi:1464
+msgid "This function sets up @var{parser} to operate on @var{ranges}.  The @var{parser} will only read the text of the specified ranges.  Each range in @var{ranges} is a pair of the form @w{@code{(@var{beg} . @var{end})}}."
+msgstr "この関数は@var{ranges}にたいして処理を行なうために@var{parser}をセットアップする。@var{parser}が読み込むのは指定された範囲のテキストのみ。@var{ranges}内の範囲はそれぞれ@w{@code{(@var{beg} . @var{end})}}という形式のペアーである。"
+
+#. type: defun
+#: original_texis/parsing.texi:1467
+msgid "The ranges in @var{ranges} must come in order and must not overlap.  That is, in pseudo code:"
+msgstr "@var{ranges}の範囲は、以下の疑似コードのように重複せず順番に並んでいなければならない。"
+
+#. type: group
+#: original_texis/parsing.texi:1475
+#, no-wrap
+msgid ""
+"(cl-loop for idx from 1 to (1- (length ranges))\n"
+"         for prev = (nth (1- idx) ranges)\n"
+"         for next = (nth idx ranges)\n"
+"         should (<= (car prev) (cdr prev)\n"
+"                    (car next) (cdr next)))\n"
+msgstr ""
+"(cl-loop for idx from 1 to (1- (length ranges))\n"
+"         for prev = (nth (1- idx) ranges)\n"
+"         for next = (nth idx ranges)\n"
+"         should (<= (car prev) (cdr prev)\n"
+"                    (car next) (cdr next)))\n"
+
+#. type: vindex
+#: original_texis/parsing.texi:1478
+#, no-wrap
+msgid "treesit-range-invalid"
+msgstr "treesit-range-invalid"
+
+#. type: defun
+#: original_texis/parsing.texi:1483
+msgid "If @var{ranges} violates this constraint, or something else went wrong, this function signals the @code{treesit-range-invalid} error.  The signal data contains a specific error message and the ranges we are trying to set."
+msgstr "@var{ranges}がこの制約に違反したり、何か他の問題が発生した場合には、この関数は@code{treesit-range-invalid}エラーをシグナルする。シグナルデータには特定のエラーメッセージ、セットを試みた範囲が含まれている。"
+
+#. type: defun
+#: original_texis/parsing.texi:1486
+msgid "This function can also be used for disabling ranges.  If @var{ranges} is @code{nil}, the parser is set to parse the whole buffer."
+msgstr "この関数は範囲を無効にするためにも使うことができる。@var{ranges}が@code{nil}の場合には、パーサーはバッファー全体をパースするようにセットされる。"
+
+#. type: group
+#: original_texis/parsing.texi:1493
+#, no-wrap
+msgid ""
+"(treesit-parser-set-included-ranges\n"
+" parser '((1 . 9) (16 . 24) (24 . 25)))\n"
+msgstr ""
+"(treesit-parser-set-included-ranges\n"
+" parser '((1 . 9) (16 . 24) (24 . 25)))\n"
+
+#. type: defun
+#: original_texis/parsing.texi:1497
+#, no-wrap
+msgid "treesit-parser-included-ranges parser"
+msgstr "treesit-parser-included-ranges parser"
+
+#. type: defun
+#: original_texis/parsing.texi:1503
+msgid "This function returns the ranges set for @var{parser}.  The return value is the same as the @var{ranges} argument of @code{treesit-parser-included-ranges}: a list of cons cells of the form @w{@code{(@var{beg} . @var{end})}}.  If @var{parser} doesn't have any ranges, the return value is @code{nil}."
+msgstr "この関数は@var{parser}にセットされている範囲をリターンする。リターン値は@code{treesit-parser-included-ranges}の@var{ranges}引数と同じく@w{@code{(@var{beg} . @var{end})}}という形式のコンスセルのリスト。@var{parser}が範囲を何ももっていなければリターン値は@code{nil}。"
+
+#. type: group
+#: original_texis/parsing.texi:1508
+#, no-wrap
+msgid ""
+"(treesit-parser-included-ranges parser)\n"
+"    @result{} ((1 . 9) (16 . 24) (24 . 25))\n"
+msgstr ""
+"(treesit-parser-included-ranges parser)\n"
+"    @result{} ((1 . 9) (16 . 24) (24 . 25))\n"
+
+#. type: defun
+#: original_texis/parsing.texi:1512
+#, no-wrap
+msgid "treesit-query-range source query &optional beg end"
+msgstr "treesit-query-range source query &optional beg end"
+
+#. type: defun
+#: original_texis/parsing.texi:1517
+msgid "This function matches @var{source} with @var{query} and returns the ranges of captured nodes.  The return value is a list of cons cells of the form @w{@code{(@var{beg} . @var{end})}}, where @var{beg} and @var{end} specify the beginning and the end of a region of text."
+msgstr "この関数は@var{source}を@var{query}でマッチングしてキャプチャーされたノードをリターンする。リターン値は@w{@code{(@var{beg} . @var{end})}}という形式のコンスセルのリスト。ここで@var{beg}と@var{end}はそれぞれテキスト範囲の開始と終了をする。"
+
+#. type: defun
+#: original_texis/parsing.texi:1523
+msgid "For convenience, @var{source} can be a language symbol, a parser, or a node.  If it's a language symbol, this function matches in the root node of the first parser using that language; if a parser, this function matches in the root node of that parser; if a node, this function matches in that node."
+msgstr "利便性のために@var{source}は言語シンボル、パーサー、あるいはノードでもよい。この関数はそれが言語シンボルならその言語を使用する最初のパーサーのルートノード、パーサーならそのパーサーのルートノード、ノードならそのノードでマッチを行なう。"
+
+#. type: defun
+#: original_texis/parsing.texi:1528
+msgid "The argument @var{query} is the query used to capture nodes (@pxref{Pattern Matching}).  The capture names don't matter.  The arguments @var{beg} and @var{end}, if both non-@code{nil}, limit the range in which this function queries."
+msgstr "引数@var{query}はノードのキャプチャーに用いるクエリー(@ref{Pattern Matching}を参照)。引数@var{beg}と@var{end}がどちらも非@code{nil}なら、それはこの関数がクエリーを行なう範囲を制限する。"
+
+#. type: defun
+#: original_texis/parsing.texi:1531
+msgid "Like other query functions, this function raises the @code{treesit-query-error} error if @var{query} is malformed."
+msgstr "他のクエリー関数と同じように、この関数は@var{query}が不正であれば@code{treesit-query-error}エラーをraiseする。"
+
+#. type: heading
+#: original_texis/parsing.texi:1533
+#, no-wrap
+msgid "Supporting multiple languages in Lisp programs"
+msgstr "Lispプログラムで複数言語をサポートするには"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1538
+msgid "It should suffice for general Lisp programs to call the following two functions in order to support program sources that mix multiple languages."
+msgstr "一般的なLispプログラムにおいて言語が複数ミックスされたプログラムをサポートするには、以下の2つの関数を呼び出すだけで十分です。"
+
+#. type: defun
+#: original_texis/parsing.texi:1539
+#, no-wrap
+msgid "treesit-update-ranges &optional beg end"
+msgstr "treesit-update-ranges &optional beg end"
+
+#. type: defun
+#: original_texis/parsing.texi:1545
+msgid "This function updates ranges for parsers in the buffer.  It makes sure the parsers' ranges are set correctly between @var{beg} and @var{end}, according to @code{treesit-range-settings}.  If omitted, @var{beg} defaults to the beginning of the buffer, and @var{end} defaults to the end of the buffer."
+msgstr "この関数はバッファーのパーサーの範囲を更新する。この関数はパーサーの範囲が@var{beg}と@var{end}の間に正しくセットされているかを@code{treesit-range-settings}に照らして確認する。省略された場合のデフォルトは@var{beg}がバッファー先頭、@var{end}がバッファー終端となる。"
+
+#. type: defun
+#: original_texis/parsing.texi:1548
+msgid "For example, fontification functions use this function before querying for nodes in a region."
+msgstr "たとえばフォント表示(fontification)を行なう関数は、リージョン内のノードにクエリーを行う前にこの関数を使用する。"
+
+#. type: defun
+#: original_texis/parsing.texi:1550
+#, no-wrap
+msgid "treesit-language-at pos"
+msgstr "treesit-language-at pos"
+
+#. type: defun
+#: original_texis/parsing.texi:1558
+msgid "This function returns the language of the text at buffer position @var{pos}.  Under the hood it calls @code{treesit-language-at-point-function} and returns its return value.  If @code{treesit-language-at-point-function} is @code{nil}, this function returns the language of the first parser in the returned value of @code{treesit-parser-list}.  If there is no parser in the buffer, it returns @code{nil}."
+msgstr "この関数はバッファー位置@var{pos}にあるテキストの言語をリターンする。その背後では@code{treesit-language-at-point-function}を呼び出して、そのリターンされた値をリターンしている。@code{treesit-language-at-point-function}が@code{nil}の場合には、この関数は@code{treesit-parser-list}のリターン値から最初のパーサーの言語をリターンする。バッファーにパーサーがなければ@code{nil}をリターンする。"
+
+#. type: heading
+#: original_texis/parsing.texi:1560
+#, no-wrap
+msgid "Supporting multiple languages in major modes"
+msgstr "メジャーモードで複数の言語をサポートするには"
+
+#. type: cindex
+#: original_texis/parsing.texi:1562
+#, no-wrap
+msgid "host language, tree-sitter"
+msgstr "host language, tree-sitter"
+
+#. type: cindex
+#: original_texis/parsing.texi:1563
+#, no-wrap
+msgid "tree-sitter host and embedded languages"
+msgstr "tree-sitter host and embedded languages"
+
+#. type: cindex
+#: original_texis/parsing.texi:1564
+#, no-wrap
+msgid "embedded language, tree-sitter"
+msgstr "embedded language, tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1571
+msgid "Normally, in a set of languages that can be mixed together, there is a @dfn{host language} and one or more @dfn{embedded languages}.  A Lisp program usually first parses the whole document with the host language's parser, retrieves some information, sets ranges for the embedded languages with that information, and then parses the embedded languages."
+msgstr "ミックスされているかもしれない一連の言語では、@dfn{ホスト言語(host language)}と1つ以上の@dfn{埋め込み言語(embedded languages)}が存在することが珍しくありません。Lispプログラムはまずホスト言語のパーサーでドキュメント全体をパースすることで情報を得てから、それを用いて埋め込み言語の範囲をセット、その後に埋め込み言語をパースするのです。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1579
+msgid "Take a buffer containing @acronym{HTML}, @acronym{CSS}, and JavaScript as an example.  A Lisp program will first parse the whole buffer with an @acronym{HTML} parser, then query the parser for @code{style_element} and @code{script_element} nodes, which correspond to @acronym{CSS} and JavaScript text, respectively.  Then it sets the range of the @acronym{CSS} and JavaScript parsers to the range which their corresponding nodes span."
+msgstr "@acronym{HTML}、@acronym{CSS}、それにJavaScriptを含むバッファーを例にとります。Lispプログラムはまず@acronym{HTML}パーサーでバッファー全体をパースして、それからパーサーに@acronym{CSS}とJavaScriptに相当する@code{style_element}と@code{script_element}のノードをクエリーするのです。その後に@acronym{CSS}とJavaScriptそれぞれにたいして、対応するノードが跨がる範囲をセットします。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1581
+msgid "Given a simple @acronym{HTML} document:"
+msgstr "シンプルな@acronym{HTML}ドキュメントが与えられると:"
+
+#. type: group
+#: original_texis/parsing.texi:1588
+#, no-wrap
+msgid ""
+"<html>\n"
+"  <script>1 + 2</script>\n"
+"  <style>body @{ color: \"blue\"; @}</style>\n"
+"</html>\n"
+msgstr ""
+"<html>\n"
+"  <script>1 + 2</script>\n"
+"  <style>body @{ color: \"blue\"; @}</style>\n"
+"</html>\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1594
+msgid "a Lisp program will first parse with a @acronym{HTML} parser, then set ranges for @acronym{CSS} and JavaScript parsers:"
+msgstr "Lispプログラムはまず@acronym{HTML}パーサーでパースを行い、それから@acronym{CSS}とJavaScriptそれぞれのパーサーにたいして範囲をセットします:"
+
+#. type: group
+#: original_texis/parsing.texi:1601
+#, no-wrap
+msgid ""
+";; Create parsers.\n"
+"(setq html (treesit-parser-create 'html))\n"
+"(setq css (treesit-parser-create 'css))\n"
+"(setq js (treesit-parser-create 'javascript))\n"
+msgstr ""
+";; パーサーの作成\n"
+"(setq html (treesit-parser-create 'html))\n"
+"(setq css (treesit-parser-create 'css))\n"
+"(setq js (treesit-parser-create 'javascript))\n"
+
+#. type: group
+#: original_texis/parsing.texi:1610
+#, no-wrap
+msgid ""
+";; Set CSS ranges.\n"
+"(setq css-range\n"
+"      (treesit-query-range\n"
+"       'html\n"
+"       '((style_element (raw_text) @@capture))))\n"
+"(treesit-parser-set-included-ranges css css-range)\n"
+msgstr ""
+";; CSSの範囲をセット\n"
+"(setq css-range\n"
+"      (treesit-query-range\n"
+"       'html\n"
+"       '((style_element (raw_text) @@capture))))\n"
+"(treesit-parser-set-included-ranges css css-range)\n"
+
+#. type: group
+#: original_texis/parsing.texi:1619
+#, no-wrap
+msgid ""
+";; Set JavaScript ranges.\n"
+"(setq js-range\n"
+"      (treesit-query-range\n"
+"       'html\n"
+"       '((script_element (raw_text) @@capture))))\n"
+"(treesit-parser-set-included-ranges js js-range)\n"
+msgstr ""
+";; JavaScriptの範囲をセット\n"
+"(setq js-range\n"
+"      (treesit-query-range\n"
+"       'html\n"
+"       '((script_element (raw_text) @@capture))))\n"
+"(treesit-parser-set-included-ranges js js-range)\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1629
+msgid "Emacs automates this process in @code{treesit-update-ranges}.  A multi-language major mode should set @code{treesit-range-settings} so that @code{treesit-update-ranges} knows how to perform this process automatically.  Major modes should use the helper function @code{treesit-range-rules} to generate a value that can be assigned to @code{treesit-range-settings}.  The settings in the following example directly translate into operations shown above."
+msgstr "@code{treesit-update-ranges}によってEmacsがこのプロセスを自動化します。@code{treesit-update-ranges}がプロセスを自動化する方法を解決するためには、複数言語のメジャーモードが@code{treesit-range-settings}をセットする必要があります。@code{treesit-range-settings}に割り当てられる値を生成するためには、メジャーモードがヘルパー関数@code{treesit-range-rules}を使う必要があります。この操作を直接コード化したのが以下のセッティング例になります。"
+
+#. type: group
+#: original_texis/parsing.texi:1637
+#, no-wrap
+msgid ""
+"(setq treesit-range-settings\n"
+"      (treesit-range-rules\n"
+"       :embed 'javascript\n"
+"       :host 'html\n"
+"       '((script_element (raw_text) @@capture))\n"
+msgstr ""
+"(setq treesit-range-settings\n"
+"      (treesit-range-rules\n"
+"       :embed 'javascript\n"
+"       :host 'html\n"
+"       '((script_element (raw_text) @@capture))\n"
+
+#. type: group
+#: original_texis/parsing.texi:1643
+#, no-wrap
+msgid ""
+"       :embed 'css\n"
+"       :host 'html\n"
+"       '((style_element (raw_text) @@capture))))\n"
+msgstr ""
+"       :embed 'css\n"
+"       :host 'html\n"
+"       '((style_element (raw_text) @@capture))))\n"
+
+#. type: defun
+#: original_texis/parsing.texi:1646
+#, no-wrap
+msgid "treesit-range-rules &rest query-specs"
+msgstr "treesit-range-rules &rest query-specs"
+
+#. type: defun
+#: original_texis/parsing.texi:1650
+msgid "This function is used to set @code{treesit-range-settings}.  It takes care of compiling queries and other post-processing, and outputs a value that @code{treesit-range-settings} can have."
+msgstr "この関数は@code{treesit-range-settings}をセットするために用いる。クエリーのコンパイルやその他の後処理に注意を払い、@code{treesit-range-settings}にセットできるような値を出力する。"
+
+#. type: defun
+#: original_texis/parsing.texi:1655
+msgid "It takes a series of @var{query-spec}s, where each @var{query-spec} is a @var{query} preceded by zero or more @var{keyword}/@var{value} pairs.  Each @var{query} is a tree-sitter query in either the string, s-expression, or compiled form, or a function."
+msgstr "この関数は引数として一連の@var{query-spec}を受け取る。ここで@var{query-spec}とは0個以上の@var{keyword}/@var{value}ペアーが前置された@var{query}のこと。@var{query}はそれぞれ文字列、S式、コンパイル済みフォーム、あるいは関数のいずれかによるtree-sitterクエリーである。"
+
+#. type: defun
+#: original_texis/parsing.texi:1660
+msgid "If @var{query} is a tree-sitter query, it should be preceded by two @var{keyword}/@var{value} pairs, where the @code{:embed} keyword specifies the embedded language, and the @code{:host} keyword specifies the host language."
+msgstr "@var{query}がtree-sitterクエリーなら@var{:keyword}/@var{value}のペアーを2つを前置すること(@var{:keyword}が@code{:embed}は埋め込み言語、@code{:host}はホスト言語)。"
+
+#. type: defun
+#: original_texis/parsing.texi:1666
+msgid "@code{treesit-update-ranges} uses @var{query} to figure out how to set the ranges for parsers for the embedded language.  It queries @var{query} in a host language parser, computes the ranges which the captured nodes span, and applies these ranges to embedded language parsers."
+msgstr "@code{treesit-update-ranges}は埋め込み言語用のパーサーにたいして範囲をセットする方法の解決に@var{query}を使用する。ホスト言語パーサーに@var{query}を問い合わせてキャプチャーされたノードが跨ぐ範囲を計算、それらの範囲を埋め込み言語パーサーに適用するのである。"
+
+#. type: defun
+#: original_texis/parsing.texi:1673
+msgid "If @var{query} is a function, it doesn't need any @var{keyword} and @var{value} pair.  It should be a function that takes 2 arguments, @var{start} and @var{end}, and sets the ranges for parsers in the current buffer in the region between @var{start} and @var{end}.  It is fine for this function to set ranges in a larger region that encompasses the region between @var{start} and @var{end}."
+msgstr "@var{query}が関数の場合には@var{keyword}と@var{value}のペアーは必要ない。関数の場合には@var{start}、@var{end}という2つの引数を受け取り、カレントバッファーで@var{start}と@var{end}の間にあるリージョンでパーサー用の範囲をセットすること。その関数が@var{start}と@var{end}の間のリージョンを包むような広いリージョンに範囲をセットしても問題はない。"
+
+#. type: defvar
+#: original_texis/parsing.texi:1675
+#, no-wrap
+msgid "treesit-range-settings"
+msgstr "treesit-range-settings"
+
+#. type: defvar
+#: original_texis/parsing.texi:1681
+msgid "This variable helps @code{treesit-update-ranges} in updating the ranges for parsers in the buffer.  It is a list of @var{setting}s where the exact format of a @var{setting} is considered internal.  You should use @code{treesit-range-rules} to generate a value that this variable can have."
+msgstr "これはバッファーで@code{treesit-update-ranges}がパーサーにたいする範囲を更新する際の助けとなる変数である。@var{setting}のリストであり、その正確なフォーマットは内部的な使用を意図している。この変数が保持できる値を生成するには@code{treesit-range-rules}を使うこと。"
+
+#. type: defvar
+#: original_texis/parsing.texi:1689
+#, no-wrap
+msgid "treesit-language-at-point-function"
+msgstr "treesit-language-at-point-function"
+
+#. type: defvar
+#: original_texis/parsing.texi:1694
+msgid "This variable's value should be a function that takes a single argument, @var{pos}, which is a buffer position, and returns the language of the buffer text at @var{pos}.  This variable is used by @code{treesit-language-at}."
+msgstr "この変数の値はバッファー位置@var{pos}を単一の引数として受け取り、@var{pos}にあるテキストの言語をリターンする関数であること。この変数は@code{treesit-language-at}により使用される。"
+
+#. type: section
+#: original_texis/parsing.texi:1697
+#, no-wrap
+msgid "Developing major modes with tree-sitter"
+msgstr "Developing major modes with tree-sitter"
+
+#. type: cindex
+#: original_texis/parsing.texi:1698
+#, no-wrap
+msgid "major mode, developing with tree-sitter"
+msgstr "major mode, developing with tree-sitter"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1702
+msgid "This section covers some general guidelines on developing tree-sitter integration for a major mode."
+msgstr "このセクションではメジャーモード用にtree-sitterを統合した開発における一般的なガイドラインの一部について説明します。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1705
+msgid "A major mode supporting tree-sitter features should roughly follow this pattern:"
+msgstr "tree-sitter機能をサポートするメジャーモードは、大枠では以下のようなパターンにしたがう必要があります:"
+
+#. type: group
+#: original_texis/parsing.texi:1714
+#, no-wrap
+msgid ""
+"(define-derived-mode woomy-mode prog-mode \"Woomy\"\n"
+"  \"A mode for Woomy programming language.\"\n"
+"  (when (treesit-ready-p 'woomy)\n"
+"    (setq-local treesit-variables ...)\n"
+"    ...\n"
+"    (treesit-major-mode-setup)))\n"
+msgstr ""
+"(define-derived-mode woomy-mode prog-mode \"Woomy\"\n"
+"  \"A mode for Woomy programming language.\"\n"
+"  (when (treesit-ready-p 'woomy)\n"
+"    (setq-local treesit-variables ...)\n"
+"    ...\n"
+"    (treesit-major-mode-setup)))\n"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1719
+msgid "@code{treesit-ready-p} automatically emits a warning if conditions for enabling tree-sitter aren't met."
+msgstr "@code{treesit-ready-p}はtree-sitterを有効にする条件が揃っていなければ、自動的に警告を発します。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1723
+msgid "If a tree-sitter major mode shares setup with its ``native'' counterpart, one can create a ``base mode'' that contains the common setup, like this:"
+msgstr "tree-sitterを使うメジャーモードは、その``ネイティブ''な相手先モードとセットアップを共有する場合には、以下のように共通のセットアップを含んだ``ベースモード''を作成することができます:"
+
+#. type: group
+#: original_texis/parsing.texi:1730
+#, no-wrap
+msgid ""
+"(define-derived-mode woomy--base-mode prog-mode \"Woomy\"\n"
+"  \"An internal mode for Woomy programming language.\"\n"
+"  (common-setup)\n"
+"  ...)\n"
+msgstr ""
+"(define-derived-mode woomy--base-mode prog-mode \"Woomy\"\n"
+"  \"An internal mode for Woomy programming language.\"\n"
+"  (common-setup)\n"
+"  ...)\n"
+
+#. type: group
+#: original_texis/parsing.texi:1737
+#, no-wrap
+msgid ""
+"(define-derived-mode woomy-mode woomy--base-mode \"Woomy\"\n"
+"  \"A mode for Woomy programming language.\"\n"
+"  (native-setup)\n"
+"  ...)\n"
+msgstr ""
+"(define-derived-mode woomy-mode woomy--base-mode \"Woomy\"\n"
+"  \"A mode for Woomy programming language.\"\n"
+"  (native-setup)\n"
+"  ...)\n"
+
+#. type: group
+#: original_texis/parsing.texi:1746
+#, no-wrap
+msgid ""
+"(define-derived-mode woomy-ts-mode woomy--base-mode \"Woomy\"\n"
+"  \"A mode for Woomy programming language.\"\n"
+"  (when (treesit-ready-p 'woomy)\n"
+"    (setq-local treesit-variables ...)\n"
+"    ...\n"
+"    (treesit-major-mode-setup)))\n"
+msgstr ""
+"(define-derived-mode woomy-ts-mode woomy--base-mode \"Woomy\"\n"
+"  \"A mode for Woomy programming language.\"\n"
+"  (when (treesit-ready-p 'woomy)\n"
+"    (setq-local treesit-variables ...)\n"
+"    ...\n"
+"    (treesit-major-mode-setup)))\n"
+
+#. type: defun
+#: original_texis/parsing.texi:1749
+#, no-wrap
+msgid "treesit-ready-p language &optional quiet"
+msgstr "treesit-ready-p language &optional quiet"
+
+#. type: defun
+#: original_texis/parsing.texi:1755
+msgid "This function checks for conditions for activating tree-sitter.  It checks whether Emacs was built with tree-sitter, whether the buffer's size is not too large for tree-sitter to handle, and whether the grammar for @var{language} is available on the system (@pxref{Language Grammar})."
+msgstr "この関数はtree-sitterをアクティブにするための条件をチェックする。tree-sitterとともにEmacsがビルドされているか、tree-sitterが処理するにあたってカレントバッファーのサイズが大き過ぎないか、そのシステムで@var{language}にたいするグラマー(@ref{Language Grammar}を参照)が利用できるかどうかをチェックする。"
+
+#. type: defun
+#: original_texis/parsing.texi:1759
+msgid "This function emits a warning if tree-sitter cannot be activated.  If @var{quiet} is @code{message}, the warning is turned into a message; if @var{quiet} is @code{t}, no warning or message is displayed."
+msgstr "この関数はtree-sitterをアクティブにできなければ警告を発する。@var{quiet}が@code{message}なら、警告をメッセージに変更する。@var{quiet}が@code{t}の場合には警告やメッセージは何も表示されない。"
+
+#. type: defun
+#: original_texis/parsing.texi:1762
+msgid "If all the necessary conditions are met, this function returns non-@code{nil}; otherwise it returns @code{nil}."
+msgstr "この関数は必要とされる条件すべてが適えば非@code{nil}、そうでなければ@code{nil}をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:1764
+#, no-wrap
+msgid "treesit-major-mode-setup"
+msgstr "treesit-major-mode-setup"
+
+#. type: defun
+#: original_texis/parsing.texi:1766
+msgid "This function activates some tree-sitter features for a major mode."
+msgstr "この関数はメジャーモードにたいしてtree-sitterに一部機能をアクティブにする。"
+
+#. type: defun
+#: original_texis/parsing.texi:1768
+msgid "Currently, it sets up the following features:"
+msgstr "現在のところ以下の機能のセットアップを行う:"
+
+#. type: itemize
+#: original_texis/parsing.texi:1772
+msgid "If @code{treesit-font-lock-settings} (@pxref{Parser-based Font Lock})  is non-@code{nil}, it sets up fontification."
+msgstr "@code{treesit-font-lock-settings} (@ref{Parser-based Font Lock}を参照)が非@code{nil}ならフォント表示(fontification)をセットアップ。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1776
+msgid "If @code{treesit-simple-indent-rules} (@pxref{Parser-based Indentation})  is non-@code{nil}, it sets up indentation."
+msgstr "@code{treesit-simple-indent-rules} (@ref{Parser-based Indentation}を参照)が非@code{nil}ならインデントをセットアップ。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1781
+msgid "If @code{treesit-defun-type-regexp} is non-@code{nil}, it sets up navigation functions for @code{beginning-of-defun} and @code{end-of-defun}."
+msgstr "@code{treesit-defun-type-regexp}が非@code{nil}なら、@code{beginning-of-defun}と@code{end-of-defun}にたいしてナビゲーション関数をセットアップ。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1785
+msgid "If @code{treesit-defun-name-function} is non-@code{nil}, it sets up add-log functions used by @code{add-log-current-defun}."
+msgstr "@code{treesit-defun-name-function}が非@code{nil}なら、@code{add-log-current-defun}によって使用されるadd-log関数をセットアップ。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1789
+msgid "If @code{treesit-simple-imenu-settings} (@pxref{Imenu}) is non-@code{nil}, it sets up Imenu."
+msgstr "@code{treesit-simple-imenu-settings}が非@code{nil}ならImenuをセットアップ。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1795
+msgid "For more information on these built-in tree-sitter features, @pxref{Parser-based Font Lock}, @pxref{Parser-based Indentation}, and @pxref{List Motion}."
+msgstr "これらtree-sitter組み込み機能の詳細については@ref{Parser-based Font Lock}、@ref{Parser-based Indentation}、@ref{List Motion}を参照してください。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1798
+msgid "For supporting mixing of multiple languages in a major mode, @pxref{Multiple Languages}."
+msgstr "メジャーモードにおける複数言語のミックスのサポートについては@ref{Multiple Languages}を参照してください。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1803
+msgid "Besides @code{beginning-of-defun} and @code{end-of-defun}, Emacs provides some additional functions for working with defuns: @code{treesit-defun-at-point} returns the defun node at point, and @code{treesit-defun-name} returns the name of a defun node."
+msgstr "@code{beginning-of-defun}や@code{end-of-defun}の他にも、Emacsはdefunにたいして処理を行う追加の関数をいくつか提供します。@code{treesit-defun-at-point}はポイント位置のdefunノード、@code{treesit-defun-name}はdefunノードの名前をリターンする関数です。"
+
+#. type: defun
+#: original_texis/parsing.texi:1806
+#, no-wrap
+msgid "treesit-defun-at-point"
+msgstr "treesit-defun-at-point"
+
+#. type: defun
+#: original_texis/parsing.texi:1811
+msgid "This function returns the defun node at point, or @code{nil} if none is found.  It respects @code{treesit-defun-tactic}: if its value is @code{top-level}, this function returns the top-level defun, and if its value is @code{nested}, it returns the immediate enclosing defun."
+msgstr "この関数はポイント位置のdefunノードを、defunが見つからなければ@code{nil}をリターンする。この関数は@code{treesit-defun-tactic}に注意を払う。この変数の値が@code{top-level}ならトップレベルのdefunを、値が@code{nested}ならすぐ外側のdefunをリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:1814
+msgid "This function requires @code{treesit-defun-type-regexp} to work.  If it is @code{nil}, this function simply returns @code{nil}."
+msgstr "この関数が機能するためには@code{treesit-defun-type-regexp}が必要となる。この変数の値が@code{nil}であれば、この関数は単に@code{nil}をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:1816
+#, no-wrap
+msgid "treesit-defun-name node"
+msgstr "treesit-defun-name node"
+
+#. type: defun
+#: original_texis/parsing.texi:1820
+msgid "This function returns the defun name of @var{node}.  It returns @code{nil} if there is no defun name for @var{node}, or if @var{node} is not a defun node, or if @var{node} is @code{nil}."
+msgstr "この関数は@var{node}のdefun名をリターンする。@var{node}にたいするdefun名が存在しない、@var{node}がdefunノードではない、あるいは@var{node}が@code{nil}の場合は@code{nil}をリターンする。"
+
+#. type: defun
+#: original_texis/parsing.texi:1823
+msgid "Depending on the language and major mode, the defun names are names like function name, class name, struct name, etc."
+msgstr "言語とメジャーモードに応じて関数、クラス、構造体等の名前がdefun名となる。"
+
+#. type: defun
+#: original_texis/parsing.texi:1826
+msgid "If @code{treesit-defun-name-function} is @code{nil}, this function always returns @code{nil}."
+msgstr "@code{treesit-defun-name-function}が@code{nil}の場合には、この関数は常に@code{nil}をリターンする。"
+
+#. type: defvar
+#: original_texis/parsing.texi:1828
+#, no-wrap
+msgid "treesit-defun-name-function"
+msgstr "treesit-defun-name-function"
+
+#. type: defvar
+#: original_texis/parsing.texi:1835
+msgid "If non-@code{nil}, this variable's value should be a function that is called with a node as its argument, and returns the defun name of the node.  The function should have the same semantics as @code{treesit-defun-name}: if the node is not a defun node, or the node is a defun node but doesn't have a name, or the node is @code{nil}, it should return @code{nil}."
+msgstr "この変数の値が非@code{nil}の場合には、ノードを引数として呼び出されてそのノードの名前をリターンする関数であること。この関数は意味合いとしては@code{treesit-defun-name}と同じである必要がある。つまりそのノードがdefunノードではない、defunノードだが名前がない、あるいはノードが@code{nil}の場合には@code{nil}をリターンすること。"
+
+#. type: section
+#: original_texis/parsing.texi:1838
+#, no-wrap
+msgid "Tree-sitter C API Correspondence"
+msgstr "Tree-sitter C API Correspondence"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1842
+msgid "Emacs' tree-sitter integration doesn't expose every feature provided by tree-sitter's C API@.  Missing features include:"
+msgstr "Emacsのtree-sitter統合では、tree-sitterのCのAPIによって提供されるすべての機能が公開されている訳ではありません。欠落している機能には以下が含まれます:"
+
+#. type: itemize
+#: original_texis/parsing.texi:1846
+msgid "Creating a tree cursor and navigating the syntax tree with it."
+msgstr "ツリーカーソル(tree cursor)の作成、およびそれを用いた構文ツリーのナビゲーション。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1848
+msgid "Setting timeout and cancellation flag for a parser."
+msgstr "パーサーにたいするタイムアウトおよびキャンセルのフラグのセッティング。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1850
+msgid "Setting the logger for a parser."
+msgstr "パーサー用のロガー(logger: ログ機能)のセッティング。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1852
+msgid "Printing a @acronym{DOT} graph of the syntax tree to a file."
+msgstr "@acronym{DOT}グラフによるファイルへの構文ツリーのプリント。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1855
+msgid "Copying and modifying a syntax tree.  (Emacs doesn't expose a tree object.)"
+msgstr "構文ツリーのコピーや変更(Emacsではツリーオブジェクトは非公開)。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1857
+msgid "Using (row, column) coordinates as position."
+msgstr "位置としての座標(行と列)の使用。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1860
+msgid "Updating a node with changes.  (In Emacs, retrieve a new node instead of updating the existing one.)"
+msgstr "変更によるノードの更新(Emacsでは既存ノードは更新せずに新たにノードを取得)。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1862
+msgid "Querying statics of a language grammar."
+msgstr "言語グラマーの統計問い合わせ。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1866
+msgid "In addition, Emacs makes some changes to the C API to make the API more convenient and idiomatic:"
+msgstr "更にEmacsでは、APIがより使いやすく慣れ親しんだ用語を用いるようにCのAPIの一部を変更しています:"
+
+#. type: itemize
+#: original_texis/parsing.texi:1871
+msgid "Instead of using byte positions, the Emacs Lisp API uses character positions."
+msgstr "Emacs LispのAPIではバイト位置ではなく文字位置を使用。"
+
+#. type: itemize
+#: original_texis/parsing.texi:1873
+msgid "Null nodes are converted to @code{nil}."
+msgstr "Nullノードを@code{nil}に変換。"
+
+#. type: Plain text
+#: original_texis/parsing.texi:1879
+msgid "Below is the correspondence between all C API functions and their ELisp counterparts.  Sometimes one ELisp function corresponds to multiple C functions, and many C functions don't have an ELisp counterpart."
+msgstr "CのすべてのAPIとELisp側での相方の対応を以下にまとめました。1つのElispがCの複数の関数に対応する場合もあるし、Elisp側の相方がいないC関数も沢山あります。"
+
+#. type: example
+#: original_texis/parsing.texi:1981
+#, no-wrap
+msgid ""
+"ts_parser_new                           treesit-parser-create\n"
+"ts_parser_delete\n"
+"ts_parser_set_language\n"
+"ts_parser_language                      treesit-parser-language\n"
+"ts_parser_set_included_ranges           treesit-parser-set-included-ranges\n"
+"ts_parser_included_ranges               treesit-parser-included-ranges\n"
+"ts_parser_parse\n"
+"ts_parser_parse_string                  treesit-parse-string\n"
+"ts_parser_parse_string_encoding\n"
+"ts_parser_reset\n"
+"ts_parser_set_timeout_micros\n"
+"ts_parser_timeout_micros\n"
+"ts_parser_set_cancellation_flag\n"
+"ts_parser_cancellation_flag\n"
+"ts_parser_set_logger\n"
+"ts_parser_logger\n"
+"ts_parser_print_dot_graphs\n"
+"ts_tree_copy\n"
+"ts_tree_delete\n"
+"ts_tree_root_node\n"
+"ts_tree_language\n"
+"ts_tree_edit\n"
+"ts_tree_get_changed_ranges\n"
+"ts_tree_print_dot_graph\n"
+"ts_node_type                            treesit-node-type\n"
+"ts_node_symbol\n"
+"ts_node_start_byte                      treesit-node-start\n"
+"ts_node_start_point\n"
+"ts_node_end_byte                        treesit-node-end\n"
+"ts_node_end_point\n"
+"ts_node_string                          treesit-node-string\n"
+"ts_node_is_null\n"
+"ts_node_is_named                        treesit-node-check\n"
+"ts_node_is_missing                      treesit-node-check\n"
+"ts_node_is_extra                        treesit-node-check\n"
+"ts_node_has_changes\n"
+"ts_node_has_error                       treesit-node-check\n"
+"ts_node_parent                          treesit-node-parent\n"
+"ts_node_child                           treesit-node-child\n"
+"ts_node_field_name_for_child            treesit-node-field-name-for-child\n"
+"ts_node_child_count                     treesit-node-child-count\n"
+"ts_node_named_child                     treesit-node-child\n"
+"ts_node_named_child_count               treesit-node-child-count\n"
+"ts_node_child_by_field_name             treesit-node-child-by-field-name\n"
+"ts_node_child_by_field_id\n"
+"ts_node_next_sibling                    treesit-node-next-sibling\n"
+"ts_node_prev_sibling                    treesit-node-prev-sibling\n"
+"ts_node_next_named_sibling              treesit-node-next-sibling\n"
+"ts_node_prev_named_sibling              treesit-node-prev-sibling\n"
+"ts_node_first_child_for_byte            treesit-node-first-child-for-pos\n"
+"ts_node_first_named_child_for_byte      treesit-node-first-child-for-pos\n"
+"ts_node_descendant_for_byte_range       treesit-node-descendant-for-range\n"
+"ts_node_descendant_for_point_range\n"
+"ts_node_named_descendant_for_byte_range treesit-node-descendant-for-range\n"
+"ts_node_named_descendant_for_point_range\n"
+"ts_node_edit\n"
+"ts_node_eq                              treesit-node-eq\n"
+"ts_tree_cursor_new\n"
+"ts_tree_cursor_delete\n"
+"ts_tree_cursor_reset\n"
+"ts_tree_cursor_current_node\n"
+"ts_tree_cursor_current_field_name\n"
+"ts_tree_cursor_current_field_id\n"
+"ts_tree_cursor_goto_parent\n"
+"ts_tree_cursor_goto_next_sibling\n"
+"ts_tree_cursor_goto_first_child\n"
+"ts_tree_cursor_goto_first_child_for_byte\n"
+"ts_tree_cursor_goto_first_child_for_point\n"
+"ts_tree_cursor_copy\n"
+"ts_query_new\n"
+"ts_query_delete\n"
+"ts_query_pattern_count\n"
+"ts_query_capture_count\n"
+"ts_query_string_count\n"
+"ts_query_start_byte_for_pattern\n"
+"ts_query_predicates_for_pattern\n"
+"ts_query_step_is_definite\n"
+"ts_query_capture_name_for_id\n"
+"ts_query_string_value_for_id\n"
+"ts_query_disable_capture\n"
+"ts_query_disable_pattern\n"
+"ts_query_cursor_new\n"
+"ts_query_cursor_delete\n"
+"ts_query_cursor_exec                    treesit-query-capture\n"
+"ts_query_cursor_did_exceed_match_limit\n"
+"ts_query_cursor_match_limit\n"
+"ts_query_cursor_set_match_limit\n"
+"ts_query_cursor_set_byte_range\n"
+"ts_query_cursor_set_point_range\n"
+"ts_query_cursor_next_match\n"
+"ts_query_cursor_remove_match\n"
+"ts_query_cursor_next_capture\n"
+"ts_language_symbol_count\n"
+"ts_language_symbol_name\n"
+"ts_language_symbol_for_name\n"
+"ts_language_field_count\n"
+"ts_language_field_name_for_id\n"
+"ts_language_field_id_for_name\n"
+"ts_language_symbol_type\n"
+"ts_language_version\n"
+msgstr ""
+"ts_parser_new                           treesit-parser-create\n"
+"ts_parser_delete\n"
+"ts_parser_set_language\n"
+"ts_parser_language                      treesit-parser-language\n"
+"ts_parser_set_included_ranges           treesit-parser-set-included-ranges\n"
+"ts_parser_included_ranges               treesit-parser-included-ranges\n"
+"ts_parser_parse\n"
+"ts_parser_parse_string                  treesit-parse-string\n"
+"ts_parser_parse_string_encoding\n"
+"ts_parser_reset\n"
+"ts_parser_set_timeout_micros\n"
+"ts_parser_timeout_micros\n"
+"ts_parser_set_cancellation_flag\n"
+"ts_parser_cancellation_flag\n"
+"ts_parser_set_logger\n"
+"ts_parser_logger\n"
+"ts_parser_print_dot_graphs\n"
+"ts_tree_copy\n"
+"ts_tree_delete\n"
+"ts_tree_root_node\n"
+"ts_tree_language\n"
+"ts_tree_edit\n"
+"ts_tree_get_changed_ranges\n"
+"ts_tree_print_dot_graph\n"
+"ts_node_type                            treesit-node-type\n"
+"ts_node_symbol\n"
+"ts_node_start_byte                      treesit-node-start\n"
+"ts_node_start_point\n"
+"ts_node_end_byte                        treesit-node-end\n"
+"ts_node_end_point\n"
+"ts_node_string                          treesit-node-string\n"
+"ts_node_is_null\n"
+"ts_node_is_named                        treesit-node-check\n"
+"ts_node_is_missing                      treesit-node-check\n"
+"ts_node_is_extra                        treesit-node-check\n"
+"ts_node_has_changes\n"
+"ts_node_has_error                       treesit-node-check\n"
+"ts_node_parent                          treesit-node-parent\n"
+"ts_node_child                           treesit-node-child\n"
+"ts_node_field_name_for_child            treesit-node-field-name-for-child\n"
+"ts_node_child_count                     treesit-node-child-count\n"
+"ts_node_named_child                     treesit-node-child\n"
+"ts_node_named_child_count               treesit-node-child-count\n"
+"ts_node_child_by_field_name             treesit-node-child-by-field-name\n"
+"ts_node_child_by_field_id\n"
+"ts_node_next_sibling                    treesit-node-next-sibling\n"
+"ts_node_prev_sibling                    treesit-node-prev-sibling\n"
+"ts_node_next_named_sibling              treesit-node-next-sibling\n"
+"ts_node_prev_named_sibling              treesit-node-prev-sibling\n"
+"ts_node_first_child_for_byte            treesit-node-first-child-for-pos\n"
+"ts_node_first_named_child_for_byte      treesit-node-first-child-for-pos\n"
+"ts_node_descendant_for_byte_range       treesit-node-descendant-for-range\n"
+"ts_node_descendant_for_point_range\n"
+"ts_node_named_descendant_for_byte_range treesit-node-descendant-for-range\n"
+"ts_node_named_descendant_for_point_range\n"
+"ts_node_edit\n"
+"ts_node_eq                              treesit-node-eq\n"
+"ts_tree_cursor_new\n"
+"ts_tree_cursor_delete\n"
+"ts_tree_cursor_reset\n"
+"ts_tree_cursor_current_node\n"
+"ts_tree_cursor_current_field_name\n"
+"ts_tree_cursor_current_field_id\n"
+"ts_tree_cursor_goto_parent\n"
+"ts_tree_cursor_goto_next_sibling\n"
+"ts_tree_cursor_goto_first_child\n"
+"ts_tree_cursor_goto_first_child_for_byte\n"
+"ts_tree_cursor_goto_first_child_for_point\n"
+"ts_tree_cursor_copy\n"
+"ts_query_new\n"
+"ts_query_delete\n"
+"ts_query_pattern_count\n"
+"ts_query_capture_count\n"
+"ts_query_string_count\n"
+"ts_query_start_byte_for_pattern\n"
+"ts_query_predicates_for_pattern\n"
+"ts_query_step_is_definite\n"
+"ts_query_capture_name_for_id\n"
+"ts_query_string_value_for_id\n"
+"ts_query_disable_capture\n"
+"ts_query_disable_pattern\n"
+"ts_query_cursor_new\n"
+"ts_query_cursor_delete\n"
+"ts_query_cursor_exec                    treesit-query-capture\n"
+"ts_query_cursor_did_exceed_match_limit\n"
+"ts_query_cursor_match_limit\n"
+"ts_query_cursor_set_match_limit\n"
+"ts_query_cursor_set_byte_range\n"
+"ts_query_cursor_set_point_range\n"
+"ts_query_cursor_next_match\n"
+"ts_query_cursor_remove_match\n"
+"ts_query_cursor_next_capture\n"
+"ts_language_symbol_count\n"
+"ts_language_symbol_name\n"
+"ts_language_symbol_for_name\n"
+"ts_language_field_count\n"
+"ts_language_field_name_for_id\n"
+"ts_language_field_id_for_name\n"
+"ts_language_symbol_type\n"
+"ts_language_version\n"

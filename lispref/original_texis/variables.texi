@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990--1995, 1998--2022 Free Software Foundation, Inc.
+@c Copyright (C) 1990--1995, 1998--2023 Free Software Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Variables
 @chapter Variables
@@ -188,15 +188,18 @@ It determines the value returned by evaluating the variable symbol,
 and it is the binding acted on by @code{setq}.
 
   For most purposes, you can think of the current binding as the
-innermost local binding, or the global binding if there is no
-local binding.  To be more precise, a rule called the @dfn{scoping
-rule} determines where in a program a local binding takes effect.  The
+innermost local binding, or the global binding if there is no local
+binding.  To be more precise, a rule called the @dfn{scoping rule}
+determines where in a program a local binding takes effect.  The
 default scoping rule in Emacs Lisp is called @dfn{dynamic scoping},
 which simply states that the current binding at any given point in the
 execution of a program is the most recently-created binding for that
 variable that still exists.  For details about dynamic scoping, and an
 alternative scoping rule called @dfn{lexical scoping}, @pxref{Variable
-Scoping}.
+Scoping}.  Lately Emacs is moving towards using lexical binding in
+more and more places, with the goal of eventually making lexical
+binding the default.  In particular, all Emacs Lisp source files and
+the @file{*scratch*} buffer use lexical scoping.
 
   The special forms @code{let} and @code{let*} exist to create local
 bindings:
@@ -266,6 +269,17 @@ Compare the following example with the example above for @code{let}.
      @result{} (1 1)
 @end group
 @end example
+
+@noindent
+Basically, the @code{let*} binding of @code{x} and @code{y} in the
+previous example is equivalent to using nested @code{let} bindings:
+
+@example
+(let ((y 1))
+  (let ((z y))
+    (list y z)))
+@end example
+
 @end defspec
 
 @defspec letrec (bindings@dots{}) forms@dots{}
@@ -336,6 +350,9 @@ variables.
 A function call is in the tail position if it's the very last thing
 done so that the value returned by the call is the value of @var{body}
 itself, as is the case in the recursive call to @code{sum} above.
+
+@code{named-let} can only be used when lexical-binding is enabled.
+@xref{Lexical Binding}.
 @end defspec
 
   Here is a complete list of the other facilities that create local
@@ -843,9 +860,10 @@ error is signaled.
 
 @defmac setopt [symbol form]@dots{}
 This is like @code{setq} (see above), but meant for user options.
-This macro uses the Customize machinery to set the variable(s).  In
-particular, @code{setopt} will run the setter function associated with
-the variable.  For instance, if you have:
+This macro uses the Customize machinery to set the variable(s)
+(@pxref{Variable Definitions}).  In particular, @code{setopt} will run
+the setter function associated with the variable.  For instance, if
+you have:
 
 @example
 @group
@@ -869,6 +887,12 @@ will also issue a message:
 @code{setopt} also checks whether the value is valid for the user
 option.  For instance, using @code{setopt} to set a user option
 defined with a @code{number} type to a string will signal an error.
+
+Unlike @code{defcustom} and related customization commands, such as
+@code{customize-variable}, @code{setopt} is meant for non-interactive
+use, in particular in the user init file.  For that reason, it doesn't
+record the standard, saved, and user-set values, and doesn't mark the
+variable as candidate for saving in the custom file.
 
 The @code{setopt} macro can be used on regular, non-user option
 variables, but is much less efficient than @code{setq}.  The main use
@@ -973,6 +997,11 @@ binding can also be accessed from the Lisp debugger.}.  It also has
 @dfn{indefinite extent}, meaning that under some circumstances the
 binding can live on even after the binding construct has finished
 executing, by means of special objects called @dfn{closures}.
+
+  The dynamic binding was (and still is) the default in Emacs for many
+years, but lately Emacs is moving towards using lexical binding in
+more and more places, with the goal of eventually making that the
+default.
 
   The following subsections describe dynamic binding and lexical
 binding in greater detail, and how to enable lexical binding in Emacs
@@ -1157,13 +1186,16 @@ wants the current value of a variable, it looks first in the lexical
 environment; if the variable is not specified in there, it looks in
 the symbol's value cell, where the dynamic value is stored.
 
-  (Internally, the lexical environment is an alist of symbol-value
-pairs, with the final element in the alist being the symbol @code{t}
-rather than a cons cell.  Such an alist can be passed as the second
-argument to the @code{eval} function, in order to specify a lexical
-environment in which to evaluate a form.  @xref{Eval}.  Most Emacs
-Lisp programs, however, should not interact directly with lexical
-environments in this way; only specialized programs like debuggers.)
+  (Internally, the lexical environment is a list whose members are
+usually cons cells that are symbol-value pairs, but some of its
+members can be symbols rather than cons cells.  A symbol in the list
+means the lexical environment declared that symbol's variable as
+locally considered to be dynamically bound.  This list can be passed
+as the second argument to the @code{eval} function, in order to
+specify a lexical environment in which to evaluate a form.
+@xref{Eval}.  Most Emacs Lisp programs, however, should not interact
+directly with lexical environments in this way; only specialized
+programs like debuggers.)
 
 @cindex closures, example of using
   Lexical bindings have indefinite extent.  Even after a binding
@@ -1948,6 +1980,16 @@ this can be controlled by using this variable, which is a list of
 symbols.
 @end defvar
 
+@defvar safe-local-variable-directories
+This is a list of directories where local variables are always
+enabled.  Directory-local variables loaded from these directories,
+such as the variables in @file{.dir-locals.el}, will be enabled even
+if they are risky.  The directories in this list must be
+fully-expanded absolute file names.  They may also be remote
+directories if the variable @code{enable-remote-dir-locals} is set
+non-@code{nil}.
+@end defvar
+
 @defun hack-local-variables &optional handle-mode
 This function parses, and binds or evaluates as appropriate, any local
 variables specified by the contents of the current buffer.  The variable
@@ -1997,6 +2039,7 @@ file-local variables stored in @code{file-local-variables-alist}.
 @end defvar
 
 @cindex safe local variable
+@cindex @code{safe-local-variable}, property of variable
   You can specify safe values for a variable with a
 @code{safe-local-variable} property.  The property has to be a
 function of one argument; any value is safe if the function returns
@@ -2531,6 +2574,9 @@ documentation as @var{base-variable} has, if any, unless
 the documentation of the variable at the end of the chain of aliases.
 
 This function returns @var{base-variable}.
+
+If the resulting variable definition chain would be circular, then
+Emacs will signal a @code{cyclic-variable-indirection} error.
 @end defun
 
   Variable aliases are convenient for replacing an old name for a
@@ -2556,7 +2602,7 @@ can be either @code{get} or @code{set}.
   You can make two variables synonyms and declare one obsolete at the
 same time using the macro @code{define-obsolete-variable-alias}.
 
-@defmac define-obsolete-variable-alias obsolete-name current-name &optional when docstring
+@defmac define-obsolete-variable-alias obsolete-name current-name when &optional docstring
 This macro marks the variable @var{obsolete-name} as obsolete and also
 makes it an alias for the variable @var{current-name}.  It is
 equivalent to the following:
@@ -2579,9 +2625,6 @@ look like:
 This function returns the variable at the end of the chain of aliases
 of @var{variable}.  If @var{variable} is not a symbol, or if @var{variable} is
 not defined as an alias, the function returns @var{variable}.
-
-This function signals a @code{cyclic-variable-indirection} error if
-there is a loop in the chain of symbols.
 @end defun
 
 @example
