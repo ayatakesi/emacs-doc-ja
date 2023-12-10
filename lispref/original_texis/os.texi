@@ -2127,6 +2127,14 @@ This function returns the number of days between the beginning of year
 The operating system limits the range of time and zone values.
 @end defun
 
+@defun days-to-time days
+This is not quite the inverse of the @code{time-to-days} function, as
+it uses the Emacs epoch (instead of the year 1) for historical
+reasons.  To get the inverse, subtract @code{(time-to-days 0)} from
+@var{days}, in which case @code{days-to-time} may return @code{nil} if
+@var{days} is negative.
+@end defun
+
 @defun time-to-day-in-year time-value
 This returns the day number within the year corresponding to @var{time-value},
 assuming the default time zone.
@@ -2751,6 +2759,35 @@ way to specify the programs to run is with @samp{-l @var{file}}, which
 loads the library named @var{file}, or @samp{-f @var{function}}, which
 calls @var{function} with no arguments, or @samp{--eval=@var{form}}.
 
+@defvar noninteractive
+This variable is non-@code{nil} when Emacs is running in batch mode.
+@end defvar
+
+  If the specified Lisp program signals an unhandled error in batch
+mode, Emacs exits with a non-zero exit status after invoking the Lisp
+debugger which shows the Lisp backtrace (@pxref{Invoking the
+Debugger}) on the standard error stream:
+
+@example
+$ emacs -Q --batch --eval '(error "foo")'; echo $?
+
+@group
+Error: error ("foo")
+mapbacktrace(#f(compiled-function (evald func args flags) #<bytecode -0x4f85c5
+7c45e2f81>))
+debug-early-backtrace()
+debug-early(error (error "foo"))
+signal(error ("foo"))
+error("foo")
+eval((error "foo") t)
+command-line-1(("--eval" "(error \"foo\")"))
+command-line()
+normal-top-level()
+@end group
+foo
+255
+@end example
+
   Any Lisp program output that would normally go to the echo area,
 either using @code{message}, or using @code{prin1}, etc., with
 @code{t} as the stream (@pxref{Output Streams}), goes instead to
@@ -2768,25 +2805,13 @@ if it is non-@code{nil}; this can be overridden by binding
 @code{coding-system-for-write} to a coding system of you choice
 (@pxref{Explicit Encoding}).
 
+@vindex gc-cons-percentage@r{, in batch mode}
 In batch mode, Emacs will enlarge the value of the
 @code{gc-cons-percentage} variable from the default of @samp{0.1} up to
 @samp{1.0}.  Batch jobs that are supposed to run for a long time
 should adjust the limit back down again, because this means that less
 garbage collection will be performed by default (and more memory
 consumed).
-
-@defvar noninteractive
-This variable is non-@code{nil} when Emacs is running in batch mode.
-@end defvar
-
-If Emacs exits due to signaling an error in batch mode, the exit
-status of the Emacs command is non-zero:
-
-@example
-$ emacs -Q --batch --eval '(error "foo")'; echo $?
-foo
-255
-@end example
 
 @node Session Management
 @section Session Management
@@ -3220,14 +3245,24 @@ These have the same meaning as they do when used in calls to
 @code{notifications-notify}.
 
 @item :urgency @var{urgency}
+The set of values for @var{urgency} is the same as with
+@code{notifications-notify}, but the urgency applies to all
+notifications displayed with the defined @var{group}, except under
+Android 7.1 and earlier.
+
 @item :group @var{group}
-These two parameters are ignored under Android 7.1 and earlier
-versions of the system.  The set of values for @var{urgency} is the
-same as with @code{notifications-notify}, but the urgency applies to
-all notifications displayed with the defined @var{group}.
+@var{group} is a string that designates a category to which the
+notification sent will belong.  This category is reproduced within the
+system's notification settings menus, but is ignored under Android 7.1
+and earlier.
 
 If @var{group} is nil or not present within @var{params}, it is
 replaced by the string @samp{"Desktop Notifications"}.
+
+Callers should provide one stable combination of @var{urgency} and
+@var{group} for each kind of notification they send, given that the
+system may elect to disregard @var{urgency} if it does not match that
+of any notification previously delivered to @var{group}.
 
 @item :icon @var{icon}
 This parameter controls the symbolic icon the notification will be
@@ -3345,7 +3380,8 @@ reliably report file attribute changes when watching a directory.
 The @code{stopped} event means that watching the file has been
 discontinued.  This could be because @code{file-notify-rm-watch} was
 called (see below), or because the file being watched was deleted, or
-due to another error reported from the underlying library which makes
+because the filesystem of the file being watched was unmounted, or due
+to another error reported from the underlying library which makes
 further watching impossible.
 
 @var{file} and @var{file1} are the name of the file(s) whose event is

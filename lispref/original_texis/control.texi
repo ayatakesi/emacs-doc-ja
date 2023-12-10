@@ -36,13 +36,14 @@ evaluated sequentially.  You can use macros to define your own control
 structure constructs (@pxref{Macros}).
 
 @menu
-* Sequencing::             Evaluation in textual order.
-* Conditionals::           @code{if}, @code{cond}, @code{when}, @code{unless}.
-* Combining Conditions::   @code{and}, @code{or}, @code{not}, and friends.
+* Sequencing::                  Evaluation in textual order.
+* Conditionals::                @code{if}, @code{cond}, @code{when}, @code{unless}.
+* Combining Conditions::        @code{and}, @code{or}, @code{not}, and friends.
 * Pattern-Matching Conditional::  How to use @code{pcase} and friends.
-* Iteration::              @code{while} loops.
-* Generators::             Generic sequences and coroutines.
-* Nonlocal Exits::         Jumping out of a sequence.
+* Iteration::                   @code{while} loops.
+* Generators::                  Generic sequences and coroutines.
+* Nonlocal Exits::              Jumping out of a sequence.
+* Conditional Compilation::     A facility like C's #if.
 @end menu
 
 @node Sequencing
@@ -596,6 +597,10 @@ Two symbols to avoid are @code{t}, which behaves like @code{_}
 (above) and is deprecated, and @code{nil}, which signals an error.
 Likewise, it makes no sense to bind keyword symbols
 (@pxref{Constant Variables}).
+
+@item `@var{qpat}
+A backquote-style pattern.  @xref{Backquote Patterns}, for the
+details.
 
 @item (cl-type @var{type})
 Matches if @var{expval} is of type @var{type}, which is a type
@@ -1235,7 +1240,8 @@ The first three clauses use backquote-style patterns.
 @code{`(add ,x ,y)} is a pattern that checks that @code{form}
 is a three-element list starting with the literal symbol @code{add},
 then extracts the second and third elements and binds them
-to symbols @code{x} and @code{y}, respectively.
+to symbols @code{x} and @code{y}, respectively.  This is known as
+@dfn{destructuring}, see @ref{Destructuring with pcase Patterns}.
 The clause body evaluates @code{x} and @code{y} and adds the results.
 Similarly, the @code{call} clause implements a function call,
 and the @code{fn} clause implements an anonymous function definition.
@@ -1280,11 +1286,11 @@ fail, @code{pcase} will immediately return @code{nil} without calling
 @code{message}.
 
 Extraction of multiple values stored in an object is known as
-@dfn{destructuring}.  Using @code{pcase} patterns allows to perform
-@dfn{destructuring binding}, which is similar to a local binding
-(@pxref{Local Variables}), but gives values to multiple elements of
-a variable by extracting those values from an object of compatible
-structure.
+@dfn{destructuring}.  Using @code{pcase} patterns allows you to
+perform @dfn{destructuring binding}, which is similar to a local
+binding (@pxref{Local Variables}), but gives values to multiple
+elements of a variable by extracting those values from an object of
+compatible structure.
 
 The macros described in this section use @code{pcase} patterns to
 perform destructuring binding.  The condition of the object to be of
@@ -1882,6 +1888,9 @@ verbatim, don't just write @code{(error @var{string})}.  If @var{string}
 @var{string} contains @samp{%}, @samp{`}, or @samp{'} it may be
 reformatted, with undesirable results.  Instead, use @code{(error "%s"
 @var{string})}.
+
+When @code{noninteractive} is non-@code{nil} (@pxref{Batch Mode}),
+this function kills Emacs if the signaled error has no handler.
 @end defun
 
 @defun signal error-symbol data
@@ -1915,6 +1924,9 @@ variable to a list of the form @code{(@var{error-symbol} .@:
 
 The function @code{signal} never returns.
 @c (though in older Emacs versions it sometimes could).
+If the error @var{error-symbol} has no handler, and
+@code{noninteractive} is non-@code{nil} (@pxref{Batch Mode}),
+this function eventually kills Emacs.
 
 @example
 @group
@@ -1979,11 +1991,14 @@ function which called the primitive that signaled the error.
 @end defvar
 
 @cindex @code{debug-on-error} use
-An error that has no explicit handler may call the Lisp debugger.  The
-debugger is enabled if the variable @code{debug-on-error} (@pxref{Error
-Debugging}) is non-@code{nil}.  Unlike error handlers, the debugger runs
-in the environment of the error, so that you can examine values of
-variables precisely as they were at the time of the error.
+An error that has no explicit handler may call the Lisp debugger
+(@pxref{Invoking the Debugger}).  The debugger is enabled if the
+variable @code{debug-on-error} (@pxref{Error Debugging}) is
+non-@code{nil}.  Unlike error handlers, the debugger runs in the
+environment of the error, so that you can examine values of variables
+precisely as they were at the time of the error.  In batch mode
+(@pxref{Batch Mode}), the Emacs process then normally exits with a
+non-zero exit status.
 
 @node Handling Errors
 @subsubsection Writing Code to Handle Errors
@@ -2467,3 +2482,47 @@ quit, and the quit happens immediately after the function
 @code{ftp-setup-buffer} returns but before the variable @code{process} is
 set, the process will not be killed.  There is no easy way to fix this bug,
 but at least it is very unlikely.
+
+@node Conditional Compilation
+@section Conditional Compilation
+
+  There will be times when you want certain code to be compiled only
+when a certain condition holds.  This is particularly the case when
+maintaining Emacs packages; to keep the package compatible with older
+versions of Emacs you may need to use a function or variable which has
+become obsolete in the current version of Emacs.
+
+  You could just use a conditional form to select the old or new form
+at run time, but this tends to output annoying warning messages about
+the obsolete function/variable.  For such situations, the macro
+@code{static-if} comes in handy.  It is patterned after the special
+form @code{if} (@pxref{Conditionals}).
+
+  To use this facility for an older version of Emacs, copy the source
+for @code{static-if} from the Emacs source file @file{lisp/subr.el}
+into your package.
+
+@defmac static-if condition then-form else-forms...
+Test @var{condition} at macro-expansion time.  If its value is
+non-@code{nil}, expand the macro to @var{then-form}, otherwise expand
+it to @var{else-forms} enclosed in a @code{progn}.  @var{else-forms}
+may be empty.
+
+Here is an example of its use from CC Mode, which prevents a
+@code{defadvice} form being compiled in newer versions of Emacs:
+@example
+@group
+(static-if (boundp 'comment-line-break-function)
+    (progn)
+  (defvar c-inside-line-break-advice nil)
+  (defadvice indent-new-comment-line (around c-line-break-advice
+                                             activate preactivate)
+    "Call `c-indent-new-comment-line' if in CC Mode."
+    (if (or c-inside-line-break-advice
+            (not c-buffer-is-cc-mode))
+        ad-do-it
+      (let ((c-inside-line-break-advice t))
+        (c-indent-new-comment-line (ad-get-arg 0))))))
+@end group
+@end example
+@end defmac
