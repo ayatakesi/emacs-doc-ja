@@ -1,0 +1,232 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 2012--2024 Free Software Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Threads
+@chapter スレッド
+@cindex threads
+@cindex concurrency
+
+  Emacs
+Lispは@dfn{スレッド(thread)}と呼ばれる限定的な並行性(concurrency)の形式を提供します。Emacsの与えられたインターフェース内のすべてのスレッドは同じメモリーを共有します。Emacs
+Lisp内の並行性は``概ね協調的(mostly
+cooperative)''であり、これはEmacsがスレッド間の実効を明確に定義された時間にだけ切り替えることを意味しています。しかしEmacsでのスレッドのサポートは将来よりきめの細かい並行性が可能な方法でデザインされており、正しいプログラムは協調的なスレッドに依存するべきではありません。
+
+  現在のところスレッドの切り替えはキーボード入力や非同期プロセスからの出力の待機中(つまり@code{accept-process-output}の間)、ミューテックスのロックや@code{thread-join}のようなスレッドに関連するブロッキング処理の間での、@code{thread-yield}を介した明示的な要求時に発生します。
+
+  Emacs Lispはスレッドの作成や制御、さらにスレッドの同期に有用なミューテックスや条件変数の作成や制御を行うプリミティブを提供します。
+
+  グローバル変数はEmacs
+Lispのすべてのスレッドの間で共有されますがローカル変数(@code{let}によるダイナミックなバインドはローカル)は異なります。スレッドはそれぞれ自身のカレントバッファー(@ref{Current
+Buffer}を参照)と自身のマッチデータ(@ref{Match Data}を参照)を所有します。
+
+  @code{let}によるバイディングはEmacs
+Lisp実装により特別に処理されることに注意してください。@code{let}の使う以外にこのunwind(巻き戻し)とrewind(巻き戻すための巻き取り)の振る舞いを複製する方法はありません。たとえば@code{unwind-protect}を使用して@code{let}の独自実装で記述しても変数値をスレッド固有にアレンジすることはできません。
+
+  レキシカルバインディング(@ref{Variable Scoping}を参照)の場合には他のEmacs
+Lispオブジェクト類似するものはクロージ(closure)です。クロージャ内のバインディングはクロージャを呼び出したすべてのスレッド間で共有されます。
+
+@menu
+* Basic Thread Functions::   基本的なスレッド関数。
+* Mutexes::                  データへの排他アクセスを可能にするミューテックス。
+* Condition Variables::      スレッド間のイベント。
+* The Thread List::          アクティブなスレッドの表示。
+@end menu
+
+@node Basic Thread Functions
+@section 基本的なスレッド関数
+
+  スレッドを作成したり待機することができます。スレッドを直接exitすることはできませんがカンレントスレッドは暗黙にexitでき、他のスレッドはシグナルを受け取ることができます。
+
+@defun make-thread function &optional name
+@var{function}を呼び出す新たなスレッドの実行を作成する。@var{function}のリターン時にスレッドはexitする。
+
+新たなスレッドは効力をもつローカル変数のバインディングが何もない状態で作成される。新たなスレッドのカレントバッファーはカレントスレッドから継承される。
+
+@var{name}でスレッドに名前を与えることができる。これはデバッグと情報的な用途だけに使用される名前であり、Emacsにとって意味はない。@var{name}を与える場合には文字列でなければならない。
+
+この関数は新たなスレッドをリターンする。
+@end defun
+
+@defun threadp object
+この関数は@var{object}がEmacsスレッドを表すなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun thread-join thread
+@var{thread}がexitするかカレントスレッドがシグナルされるまでブロックする。これは@var{thread}関数の結果をリターンする。@var{thread}がexit済みなら即座にリターンする。
+@end defun
+
+@defun thread-signal thread error-symbol data
+@code{signal} (@ref{Signaling
+Errors}を参照)と同様だがシグナルはスレッド@var{thread}に送信される。@var{thread}がカレントスレッドなら、即座に@code{signal}を呼び出す。それ以外なら@var{thread}がカレントになり次第、シグナルを受信する。@code{mutex-lock}、@code{condition-wait}、@code{thread-join}の呼び出しにより@var{thread}がブロックされていたら@code{thread-signal}がロックを解除する。
+
+@var{thread}がメインスレッドならシグナルは伝播されない。かわりにメインスレッド内のメッセージとして表れる。
+@end defun
+
+@defun thread-yield
+実行可能な次のスレッドに実行を譲り渡す。
+@end defun
+
+@defun thread-name thread
+@code{make-thread}で指定された@var{thread}の名前をリターンする。
+@end defun
+
+@defun thread-live-p thread
+@var{thread}が生きていれば@code{t}、それ以外は@code{nil}をリターンする。スレッドは自身の関数がまだ実行中なら生きている。
+@end defun
+
+@defun thread--blocker thread
+@var{thread}が待機中のオブジェクトをリターンする。これは主にデバッグを糸した関数であり、それを示すために``2重ハイフン''の名前を付与してある。
+
+@var{thread}が@code{thread-join}内でブロックされていたら待機対象のスレッドをリターンする。
+
+@var{thread}が@code{mutex-lock}内でブロックされていたらミューテックスをリターンする。
+
+@var{thread}が@code{condition-wait}内でブロックされていたら条件変数をリターンする。
+
+それ以外なら@code{nil}をリターンする。
+@end defun
+
+@defun current-thread
+カレントスレッドをリターンする。
+@end defun
+
+@defun all-threads
+すべての生きたスレッドオブジェクトのリストをリターンする。呼び出しそれぞれにたいして新たなリストをリターンする。
+@end defun
+
+@defvar main-thread
+この変数はEmacs実行中のメインスレッド、スレッドサポートなしでEmacsコンパイル時には@code{nil}を保持する。
+@end defvar
+
+スレッドが実行したコードがハンドルされないエラーをシグナルすると、そのスレッドはexitします。それ以外のスレッドは以下の関数を使用してスレッドのexitを誘発したエラーフォームにアクセスできます。
+
+@defun thread-last-error &optional cleanup
+この関数はエラーによりスレッドがexitした際に記録された最後のエラーフォームをリターンする。異常終了(abnormal
+exit)した各スレッドが、以前にスレッドエラーで格納されたフォームを新たな値に上書きするので、アクセスできるのは最後のフォームのみ。@var{cleanup}が非@code{nil}なら格納されたフォームを@code{nil}にリセットする。
+@end defun
+
+@node Mutexes
+@section ミューテックス
+
+  @dfn{ミューテックス(mutex)}は排他的なロックです。任意のタイミングにおいて0、または1つのスレッドがミューテックスを所有できます。スレッドがミューテックスの取得を試みたときに別スレッドがすでにそのミューテックスを所有していたら、ミューテックスが利用可能になるまで取得を試みたスレッドはブロックされます。
+
+  Emacs
+Lispのミューテックスは@dfn{再帰的(recursive)}と呼ばれるタイプです。これはスレッドがミューテックスを何回も再帰的に所有できることを意味します。ミューテックスは所有された回数を保持していて、それら所有のそれぞれがリリースとペアになっていなければなりません。スレッドによるミューテックスの最後のリリースによりミューテックスは他のスレッドが潜在的に所有可能である非所有な状態へとリバートされます。
+
+@defun mutexp object
+この関数は@var{object}がEmacsのミューテックスを表していれば@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun make-mutex &optional name
+新たなミューテックスを作成してリターンする。@var{name}が指定されたらミューテックスの名前として与えられる(文字列でなければならない)。これはデバッグにたいする用途のみの名前でありEmacsにとって意味はない。
+@end defun
+
+@defun mutex-name mutex
+@code{make-mutex}で指定された@var{mutex}の名前をリターンする。
+@end defun
+
+@defun mutex-lock mutex
+これはスレッドが@var{mutex}を所有するか、スレッドが@code{thread-signal}の使用によりシグナルされるまでブロックする。スレッドが@var{mutex}をすでに所有していたら単にリターンする。
+@end defun
+
+@defun mutex-unlock mutex
+@var{mutex}をリリースする。そのスレッドが@var{mutex}を所有していなければエラーをシグナルする。
+@end defun
+
+@defmac with-mutex mutex body@dots{}
+このマクロはもっともシンプルかつ安全にミューテックスを保持しつつフォームを評価する方法である。これは@var{mutex}を取得して@var{body}を呼び出してから@var{mutex}をリリースする。@var{body}の結果をリターンする。
+@end defmac
+
+@node Condition Variables
+@section 条件変数
+
+  @dfn{条件変数(condition
+variable)}は何らかのイベントが発生するまでスレッドをブロックするための手段です。スレッドは別のスレッドが条件を通知した際に目覚めるように条件変数を待機できます。
+
+  条件変数はミューテックス、および概念的に何らかの条件に関連付けられます。正しく操作するために、ミューテックスを所有してから待機スレッドはループして、条件のテストを行い条件変数を待機しなければなりません。たとえば:
+
+@example
+(with-mutex mutex
+  (while (not global-variable)
+    (condition-wait cond-var)))
+@end example
+
+  ミューテックスはアトミック操作のために、ループは堅牢性のためのものです。これは偽の通知があるかもしれないからです。
+
+  同様にミューテックスは条件の通知前に所持されていなければなりません。ミューテックスを所有して条件に関連する変更を行い、それを通知するのが典型的かつ最良なアプローチです:
+
+@example
+(with-mutex mutex
+  (setq global-variable (some-computation))
+  (condition-notify cond-var))
+@end example
+
+@defun make-condition-variable mutex &optional name
+@var{mutex}に関連付けられた条件変数を作成する。@var{name}が指定されたら条件変数の名前として与えられる(文字列でなければならない)。これはデバッグにたいする用途のみの名前でありEmacsにとって意味はない。
+@end defun
+
+@defun condition-variable-p object
+この関数は@var{object}が条件変数を表していれば@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun condition-wait cond
+他のスレッドによる条件変数@var{cond}の通知を待機する。この関数は条件変数の通知、または@code{thread-signal}の使用によりシグナルが送信されるまでブロックする。
+
+ミューテックスに関連付けられた条件を所持しない@code{condition-wait}の呼び出しはエラーとなる。
+
+@code{condition-wait}は待機中に関連付けられたミューテックスをリリースする。これは別スレッドによる条件通知するためのミューテックス所有を可能にする。
+@end defun
+
+@defun condition-notify cond &optional all
+@var{cond}を通知する。呼び出し前に@var{cond}に関連付けられるミューテックスを所有しなければならない。通常は@code{condition-notify}により単一の待機中スレッドが目覚めさせられる。しかし@var{all}が非@code{nil}なら@var{cond}を待機中のすべてのスレッドに通知される。
+
+@c why bother?
+@code{condition-notify}は関連付けられたミューテックスを待機中はリリースする。これによりスレッドが条件を待機するためにミューテックスを所有することが可能になる。
+@end defun
+
+@defun condition-name cond
+@code{make-condition-variable}に渡された@var{cond}の名前をリターンする。
+@end defun
+
+@defun condition-mutex cond
+@var{cond}に関連付けられたミューテックスをリターンする。関連付けられたミューテックスは変更できないことに注意。
+@end defun
+
+@node The Thread List
+@section スレッドリスト
+
+@cindex thread list
+@cindex list of threads
+@findex list-threads
+@code{list-threads}コマンドはカレントでアクティブなすべてのスレッドをリストします。その結果となるバッファー内では、それぞれのスレッドは@code{make-thread}
+(@ref{Basic Thread
+Functions}を参照)に渡された名前、または名前つきで作成されていなければ一意な内部識別子により識別される。バッファーの作成時(または最終更新時)の各スレッドの状態、さらにその時点でスレッドがブロックされていたらブロックしているオブジェクトが表示されます。
+
+@defvar thread-list-refresh-seconds
+@file{*Threads*}バッファーは自動的に毎秒2回更新される。この変数をカスタマイズしてリフレッシュ間隔を加減できる。
+@end defvar
+
+以下はレッドリストバッファーで利用できるコマンドです:
+
+@table @kbd
+
+@cindex backtrace of thread
+@cindex thread backtrace
+@item b
+ポイント位置のスレッドのバックトレースを表示する。これは@kbd{b}を押下した時点でスレッドが生成またはブロックされたコードを表示する。このバックトレースはスナップショットであることに注意。それ以降にスレッドが実行を再開して異なる状態になったりexitしているかもしれない。
+
+バックトレースバッファーは自動的に更新されないので、スレッドのバックトレースバッファーでは、更新されたバックトレースを取得するために@kbd{g}を使用できる。バックトレースおよびそれらに機能する他のコマンドの説明は@ref{Backtraces}を参照のこと。
+
+@item s
+ポイント位置のスレッドにシグナルを送信する。@kbd{s}の後に@kbd{q}をタイプするとquit、@kbd{e}をタイプするとエラーをシグナルする。スレッドはシグナルを処理するように実装されているかもしれないが、デフォルトではすべてのシグナルにたいしてexitする。したがってターゲットとなるスレッドの再開方法を理解している場合のみこのコマンドを使用すること(必要なスレッドがkillされるとEmacsセッションは不正に振る舞うかもしれない)。
+
+@item g
+スレッドのリストと状態を更新する。
+@end table

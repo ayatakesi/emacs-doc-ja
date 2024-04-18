@@ -1,0 +1,858 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2024 Free Software
+@c Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Syntax Tables
+@chapter 構文テーブル
+@cindex parsing buffer text
+@cindex syntax table
+@cindex text parsing
+
+  @dfn{構文テーブル(syntax
+table)}はバッファー内のそれぞれの文字にたいして構文的な役割を指定します。単語、シンボル、その他の構文要素の開始と終了の判定にこれを使用できます。この情報はFont
+Lockモード(@ref{Font Lock
+Mode}を参照)や、種々の複雑な移動コマンド(@ref{Motion}を参照)を含む多くのEmacs機能により使用されます。
+
+@menu
+* Basics: Syntax Basics.     構文テーブルの基本的概念。
+* Syntax Descriptors::       文字がクラス分けされる方法。
+* Syntax Table Functions::   構文テーブルを作成、調査、変更する方法。
+* Syntax Properties::        テキストプロパティによる構文テーブルのオーバーライド。
+* Motion and Syntax::        特定の構文による文字間の移動。
+* Parsing Expressions::      構文テーブル使用による釣り合いのとれた式の解析。
+* Syntax Table Internals::   構文テーブルの情報が格納される方法。
+* Categories::               文字構文をクラス分けする別の手段。
+@end menu
+
+@node Syntax Basics
+@section 構文テーブルの概念
+
+  構文テーブルは、それぞれの文字の@dfn{構文クラス(syntax
+class)}やその他の構文的プロパティを照合するために使用できるデータ構造です。構文テーブルはテキストを横断したスキャンや移動のためにLispプログラムから使用されます。
+
+  構文テーブルは内部的には文字テーブルです(@ref{Char-Tables}を参照)。インデックス@var{c}の要素はコード@var{c}の文字を記述します。値は該当する文字の構文を指定するコンスセルです。詳細は@ref{Syntax
+Table
+Internals}を参照してください。しかし構文テーブルの内容を変更や確認するために@code{aset}や@code{aref}を使用するかわりに、通常は高レベルな関数@code{char-syntax}や@code{modify-syntax-entry}を使用するべきです。これらについては@ref{Syntax
+Table Functions}で説明します。
+
+@defun syntax-table-p object
+この関数は@var{object}が構文テーブルなら@code{t}をリターンする。
+@end defun
+
+  バッファーはそれぞれ自身のメジャーモードをもち、それぞれのメジャーモードはさまざまな文字の構文クラスにたいして独自の考えをもっています。たとえばLisモードでは文字@samp{;}はコメントの開始ですが、Cモードでは命令文の終端になります。これらのバリエーションをサポートするために、構文テーブルはそれぞれのバッファーにたいしてローカルです。一般的に各メジャーモードは自身の構文テーブルをもち、そのモードを使用するすべてのバッファーにそれがインストールされます。たとえば変数@code{emacs-lisp-mode-syntax-table}はEmacsのLispモードが使用する構文テーブル、@code{c-mode-syntax-table}はCモードが使用する構文テーブルを保持します。あるメジャーモードの構文テーブルを変更すると、そのモードのバッファー、およびその後でそのモードに置かれるすべてのバッファーの構文も同様に変更されます。複数の類似するモードが1つの構文テーブルを共有することがときおりあります。構文テーブルをセットアップする方法の例は@ref{Example
+Major Modes}を参照してください。
+
+@cindex standard syntax table
+@cindex inheritance, syntax table
+  別の構文テーブルから構文テールを@dfn{継承(inherit)}できます。これを@dfn{親構文テーブル(parent syntax
+table)}と呼びます。構文テーブルは、ある文字にたいして構文クラス``inherit''を与えることにより、構文クラスを未指定にしておくことができます。そのような文字は親構文テーブルが指定する構文クラスを取得します(@ref{Syntax
+Class Table}を参照)。Emacsは@dfn{標準構文テーブル(standard syntax
+table)}を定義します。これはデフォルトとなる親構文テーブルであり、Fundamentalモードが使用する構文テーブルでもあります。
+
+@defun standard-syntax-table
+この関数は標準構文テーブルをリターンする。これはFundamentalモードが使用する構文テーブルである。
+@end defun
+
+  Emacs
+Lispリーダーは変更不可な独自のビルトイン構文ルールをもつので、構文テーブルは使用しません(いくつかのLispシステムはリード構文を再定義する手段を提供するが、わたしたちは単純化のためこの機能をEmacs
+Lisp外部に留める決定をした)。
+
+@node Syntax Descriptors
+@section 構文記述子
+@cindex syntax class
+
+  @dfn{構文クラス(syntax
+class)}の文字は、その文字の構文的な役割を記述します。各構文テーブルは、それぞれの文字の構文クラスを指定します。ある構文テーブルでの文字のクラスと、別のテーブルにおけるその文字のクラスとの間に関連性がある必要はありません。
+
+  構文テーブルはそれぞれニーモニック文字(mnemonic
+character)により選別され、クラスを指定する必要がある際にはそのクラスの名前としての役割を果たします。この指定子文字(designator
+character)は通常はそのクラスに割当てられることが多々あります。しかしその指定子としての意味は不変であり、その文字がカレントでもつ構文とは独立しています。つまりカレント構文テーブルにおいて実際に文字@samp{\}が構文をもつかどうかに関係なく、指定子文字としての@samp{\}は常にエスケープ文字(escape
+character)を意味します。
+@ifnottex
+構文クラスとそれらの指定子文字のリストは@ref{Syntax Class Table}を参照してください。
+@end ifnottex
+
+@cindex syntax descriptor
+  @dfn{構文記述子(syntax
+descriptor)}とは文字の構文クラスと、その他の構文的なプロパティを記述するLisp文字列です。ある文字の構文を変更したい際には、関数@code{modify-syntax-entry}を呼び出して引数に構文記述子を渡すことにより行います(@ref{Syntax
+Table Functions}を参照)。
+
+  構文記述子の1つ目の文字は構文クラスの指定子文字でなければなりません。2つ目の文字がもしあれば、マッチング文字を指定します(Lispでは@samp{(}にたいするマッチング文字は@samp{)})。スペースはマッチング文字が存在しないことを指定します。その後に続く文字は追加の構文プロパティを指定します(@ref{Syntax
+Flags}を参照)。
+
+  マッチング文字やフラグが必要なければ、(構文クラスを指定する)1つの文字だけで十分です。
+
+  たとえばCモードでの文字@samp{*}の構文記述子は@code{". 23"}
+(区切り記号、マッチング文字用スロットは未使用、コメント開始記号の2つ目の文字、コメント終了記号の1つ目の文字)、@samp{/}にたいするエントリーは@samp{@w{.
+14}} (区切り記号、マッチング文字用スロットは未使用、コメント開始記号の1つ目の文字、コメント終了記号の2つ目の文字)です。
+
+  Emacsは低レベルでの構文クラスを記述するために使用される@dfn{raw構文記述子(raw syntax
+descriptors)}も定義しています。@ref{Syntax Table Internals}を参照してください。
+
+@menu
+* Syntax Class Table::       構文クラスのテーブル。
+* Syntax Flags::             各文字が所有できる追加のフラグ。
+@end menu
+
+@node Syntax Class Table
+@subsection 構文クラスのテーブル
+@cindex syntax class table
+
+  以下は構文クラス、それらの指定子となる文字と意味、および使用例を示すテーブルです。
+
+@table @asis
+@item 空白文字: @samp{@ }か@samp{-}
+シンボルや単語を区別する文字。空白文字は通常は他の構文的な意義をもたず、複数の空白文字は構文的には単一の空白文字と等しい。スペース、タブ、フォームフィードは、ほとんどすべてのメジャーモードにおいて空白文字にクラス分けされる。
+
+この構文クラスは@w{@samp{@ }}か@samp{-}により指定できる。両指定子は等価。
+
+@item 単語構成文字: @samp{w}
+人間の言語における単語の一部。これらは通常はプログラム内において変数やコマンドの名前として使用される。すべての大文字と小文字、および数字は通常は単語構成文字。
+
+@item シンボル構成文字: @samp{_}
+単語構成文字とともに変数やコマンドの名前で使用される追加の文字。例としてはLispモードの文字@samp{$&*+-_<>}が含まれ、これらはたとえ英単語の一部ではないとしてもシンボルの名前の一部となり得る。標準Cではシンボル内において非単語構成文字で有効な文字はアンダースコア(@samp{_})のみ。
+
+@item 区切り文字: @samp{.}
+人間の言語において句読点として使用される文字、またはプログラミング言語でシンボルを別のシンボルと区別するために使用される文字。Emacs
+Lispモードのようないくつかのプログラミング言語のモードでは、単語構成文字およびシンボル構成文字のいずれでもないいくつかの文字はすべて他の用途をもつので、このクラスの文字をもたない。Cモードのような他のプログラミング言語のモードでは演算子にたいして区切り文字構文が使用される。
+
+@item 開カッコ文字: @samp{(}
+@itemx 閉カッコ文字: @samp{)}
+文や式を囲うために異なるペアとして使用される文字。そのようなグループ化は開カッコで開始され、閉カッコで終了する。開カッコ文字はそれぞれ特定の閉カッコ文字にマッチして、その逆も成り立つ。Emacsは通常は閉カッコ挿入時にマッチする開カッコを示す。@ref{Blinking}を参照のこと。
+
+人間の言語やCのコードでは、カッコのペアは@samp{()}、@samp{[]}、@samp{@{@}}。Emacs
+Lispではリストとベクターにたいする区切り文字(@samp{()}と@samp{[]})はカッコ文字としてクラス分けされる。
+
+@item 文字列クォート: @samp{"}
+文字列定数を区切るために使用される文字。文字列の先頭と終端に同じ文字列クォート文字が出現する。このようなクォート文字列はネストされない。
+
+Emacsのパース機能は文字列を単一のトークンとみなす。文字列内ではその文字の通常の構文的な意味は抑制される。
+
+Lispモードはダブルクォーテーション(@samp{"})と垂直バー(@samp{|})とう2つの文字列クォート文字をもつ。Emacs
+Lispでは@samp{|}は使用しないがCommon
+Lispでは使用される。Cも文字列にたいするダブルクォート文字、および文字定数にたいするシングルアポストロフィ(@samp{'})という2つのクォート文字をもつ。
+
+人間用のテキストには文字列クォート文字がない。そのクォーテーション内の別の文字の通常の構文的プロパティを、クォーテーションマークがオフに切り替えることを、わたしたちは望まない。
+
+@item エスケープ構文文字: @samp{\}
+文字列や文字定数内で使用されるようなエスケープシーケンスで始まる文字。CとLispの両方で文字@samp{\}はこのクラスに属する(Cでは文字列内でのみ使用されるが、Cコード中を通じてこのように扱っても問題ないことがわかった)。
+
+@code{words-include-escapes}が非@code{nil}なら、このクラスの文字は単語の一部とみなされる。@ref{Word
+Motion}を参照のこと。
+
+@item 文字クォート: @samp{/}
+その文字の通常の構文的な意義を失うように、後続の文字をクォートするために使用される文字。これは直後に続く文字だけに影響する点がエスケープ文字と異なる。
+
+@code{words-include-escapes}が非@code{nil}なら、このクラスの文字は単語の一部とみなされる。@ref{Word
+Motion}を参照のこと。
+
+このクラスは@TeX{}モードのバックスラッシュにたいして使用される。
+
+@item 区切りペアー: @samp{$}
+文字列クォート文字と似ているが、この区切りの間にある文字の構文的なプロパティは抑制されない点が異なる。現在のところ@TeX{}モードだけが区切りペアを使用する(@samp{$}によりmathモードに出入りする)。
+
+@item 式プレフィクス: @samp{'}
+式に隣接して出現した場合には式の一部とみなされる構文的演算子にたいして使用される文字。Lispモードではアポストロフィー@samp{'}
+(クォートに使用)、カンマ@samp{,} (マクロに使用)、@samp{#}
+(特定のデータ型にたいするリード構文として使用)が、これらの文字に含まれる。
+
+@item コメント開始文字: @samp{<}
+@itemx コメント終了文字: @samp{>}
+@cindex comment syntax
+さまざまな言語においてコメントを区切るために使用する文字。人間用のテキストはコメント文字をもたない。Lispではセミコロン(@samp{;})がコメントの開始、改行かフォームフィードで終了する。
+
+@item 標準構文の継承: @samp{@@}
+この構文クラスは特定の構文を指定しない。これはその文字の構文を探すために親構文テーブルを照合するよう告げる。
+
+@item 汎用コメント区切り: @samp{!}
+特殊なコメントを開始または終了させる文字(この構文クラスは``comment-fence''としても知られる)。@emph{任意}の汎用コメント区切りは@emph{任意}の汎用コメント区切りにマッチするが、コメント開始とコメント終了はマッチできない。汎用コメント区切りは汎用コメント区切り同士としかマッチできない。
+
+この構文クラスは主として@code{syntax-table}テキストプロパティ(@ref{Syntax
+Properties}を参照)とともに使用することを意図している。任意の文字範囲の最初と最後の文字にたいして、それらが汎用コメント区切りであることを示す@code{syntax-table}プロパティを付与することにより、その範囲がコメントを形成するとマークすることができる。
+
+@item 汎用文字列区切り: @samp{|}
+文字列を開始や終了させる文字(この構文クラスは``string-fence''としても知られる)。@emph{任意}の汎用文字列区切りは@emph{任意}の汎用文字列区切りにマッチするが、通常の文字列クォート文字とはマッチできない。
+
+この構文クラスは主として@code{syntax-table}テキストプロパティ(@ref{Syntax
+Properties}を参照)とともに使用することを意図している。任意の文字範囲の最初と最後の文字にたいして、それらが汎用文字列区切りであることを示す@code{syntax-table}プロパティを付与することにより、その範囲が文字列定数を形成するとマークすることができる。
+@end table
+
+@node Syntax Flags
+@subsection 構文フラグ
+@cindex syntax flags
+
+  構文テーブル内の文字全体にたいして構文クラスに加えてフラグを指定できます。利用できる8つのフラグがあり、それらは文字@samp{1}、@samp{2}、@samp{3}、@samp{4}、@samp{b}、@samp{c}、@samp{n}、@samp{p}で表されます。
+
+  @samp{p}を除くすべてのフラグはコメント区切りを記述するために使用されます。数字のフラグは2文字から構成されるコメント区切りにたいして使用されます。これらは文字の文字クラスに関連付けられた構文的プロパティに加えて、その文字も@emph{同様}にコメントシーケンスの一部となれることを示します。Cモードでは区切り文字であり、@emph{かつ}コメントシーケンス開始(@samp{/*})の2文字目であり、@emph{かつ}コメントシーケンス終了(@samp{*/})の1文字目である@samp{*}のような文字のためにフラグとクラスは互いに独立しています。フラグ@samp{b}、@samp{c}、@samp{n}は対応するコメント区切りを限定するために使用されます。
+
+  以下は文字@var{c}にたいして利用できるフラグと意味を示すテーブルです:
+
+@itemize @bullet
+@item
+@samp{1}は@var{c}が2文字からなるコメント開始シーケンスの開始であることを意味する。
+
+@item
+@samp{2}は@var{c}がそのようなシーケンスの2文字目であることを意味する。
+
+@item
+@samp{3}は@var{c}が2文字からなるコメント終了シーケンスの開始であることを意味する。
+
+@item
+@samp{4}は@var{c}がそのようなシーケンスの2文字目であることを意味する。
+
+@item
+@samp{b}は@var{c}が代替えのコメントスタイル``b''に属するコメント区切りであることを意味する。このフラグは2文字のコメント開始では2文字目、2文字のコメント終了では1文字目にたいしてのみ意味をもつ。
+
+@item
+@samp{c}は@var{c}が代替えのコメントスタイル``c''に属するコメント区切りであることを意味する。2文字からなるコメント区切りにたいしては、そのいずれかが@samp{c}であればスタイル``c''となる。
+
+@item
+コメント区切り文字での@samp{n}は、この種のコメントがネスト可能であることを指定する。このようなコメント内では、同じスタイルのコメントだけが認識される。2文字からなるコメント区切りにたいしては、そのいずれかが@samp{n}であればネスト可能となる。
+
+@cindex comment style
+Emacsは任意の構文テーブル1つにたいして同時に複数のコメントスタイルをサポートする。コメントスタイルはフラグ@samp{b}、@samp{c}、@samp{n}の組み合わせで8個の異なるコメントスタイルが可能で、コメントスタイルはそれぞれフラグセットにより命名される。コメント区切りはそれぞれスタイルをもち、同じスタイルのコメント区切りとのみマッチできる。つまりコメントがスタイル``bn''のコメント開始シーケンスで開始されるなら、そのコメントは次のスタイル``bn''のコメント終了シーケンスにマッチするまで拡張されるだろう。フラグセットが@samp{b}と@samp{c}のいずれでもなければ、結果となるスタイルは``a''スタイルと呼ばれる。
+
+C++にたいして適切なコメント構文は以下のようになる:
+
+@table @asis
+@item @samp{/}
+@samp{124}
+@item @samp{*}
+@samp{23b}
+@item newline
+@samp{>}
+@end table
+
+これは4つのコメント区切りシーケンスを定義する:
+
+@table @asis
+@item @samp{/*}
+これは2文字目の@samp{*}が@samp{b}フラグをもつので、``b''スタイルのコメント開始シーケンス。
+
+@item @samp{//}
+これは2文字目の@samp{/}が@samp{b}フラグをもたないので、``a''スタイルのコメント開始シーケンス。
+
+@item @samp{*/}
+これは1文字目の@samp{*}が@samp{b}フラグをもつので、``b''スタイルのコメント終了シーケンス。
+
+@item newline
+これは改行文字が@samp{b}フラグをもたないので、``a''スタイルのコメント終了シーケンス。
+@end table
+
+@item
+@samp{p}はLisp構文にたいして追加のプレフィクス文字を識別する。これらが式の間に出現した際には空白文字として扱われる。これらが式の内部に出現したときは、それらの通常の構文クラスに応じて処理される。
+
+関数@code{backward-prefix-chars}はこれらの文字、同様にメインの構文クラスがプレフィクスであるような文字(@samp{'})を超えて後方に移動する。@ref{Motion
+and Syntax}を参照のこと。
+@end itemize
+
+@node Syntax Table Functions
+@section 構文テーブルの関数
+
+  このセクションでは構文テーブルの作成、アクセス、変更を行う関数を説明します。
+
+@defun make-syntax-table &optional table
+この関数は新たに構文テーブルを作成する。@var{table}が非@code{nil}なら新たな構文テーブルの親は@var{table}、それ以外なら標準構文テーブルが親になる。
+
+新たな構文テーブルでは最初はすべての文字に構文クラス``inherit''(@samp{@@})が与えられて、それらの構文は親テーブルから継承される(@ref{Syntax
+Class Table}を参照)。
+@end defun
+
+@defun copy-syntax-table &optional table
+この関数は@var{table}のコピーを構築してそれをリターンする。@var{table}が省略または@code{nil}なら標準構文テーブルのコピーをリターンする。それ以外の場合には、@var{table}が構文テーブルでなければエラーをシグナルする。
+@end defun
+
+@deffn Command modify-syntax-entry char syntax-descriptor  &optional table
+@cindex syntax entry, setting
+この関数は@var{syntax-descriptor}に応じて@var{char}の構文エントリーをセットする。@var{char}は文字、または@code{(@var{min}
+. @var{max})}という形式のコンスセルでなければならない。後者の場合には、この関数は@var{min}と@var{max}
+(両端を含む)の間のすべての文字にたいして構文エントリーをセットする。
+
+構文は@var{table}
+(デフォルトはカレントバッファーの構文テーブル)にたいしてのみ変更されて、他のすべての構文テーブルにたいしては変更されない。
+
+引数@var{syntax-descriptor}は構文記述子、すなわち1文字目が構文クラス指定子、2文字目以降がオプションでマッチング文字と構文フラグを指定する文字列。@ref{Syntax
+Descriptors}を参照のこと。@var{syntax-descriptor}が有効な構文記述子でなければエラーがシグナルされる。
+
+この関数は常に@code{nil}をリターンする。この文字にたいするテーブル内の古い構文情報は破棄される。
+
+@example
+@group
+@exdent @r{例:}
+
+;; @r{空白文字クラスのスペースをputする}
+(modify-syntax-entry ?\s " ")
+     @result{} nil
+@end group
+
+@group
+;; @r{@samp{$}を開カッコ文字にして、}
+;;   @r{@samp{^}を対応する閉カッコにする}
+(modify-syntax-entry ?$ "(^")
+     @result{} nil
+@end group
+
+@group
+;; @r{@samp{^}を閉カッコ文字にして}
+;;   @r{@samp{$}を対応する開カッコにする}
+(modify-syntax-entry ?^ ")$")
+     @result{} nil
+@end group
+
+@group
+;; @r{@samp{/}を区切り文字で}
+;;   @r{コメント開始シーケンス1文字目、}
+;;   @r{かつコメント終了シーケンス2文字目とする}
+;;   @r{これはCモードで使用される}
+(modify-syntax-entry ?/ ". 14")
+     @result{} nil
+@end group
+@end example
+@end deffn
+
+@defun char-syntax character
+この関数は指定子文字(@ref{Syntax Class
+Table}を参照)の表現で@var{character}の構文クラスをリターンする。これはクラス@emph{だけ}をリターンして、マッチング文字や構文フラグはリターンしない。
+
+以下の例はCモードにたいして適用する(
+@code{char-syntax}がリターンする文字を確認しやすいように@code{string}を使用する)。
+
+@example
+@group
+;; スペース文字は空白文字構文クラスをもつ
+(string (char-syntax ?\s))
+     @result{} " "
+@end group
+
+@group
+;; スラッシュ文字は区切り文字構文をもつ。
+;; コメント開始やコメント終了シーケンスの一部でもある場合、
+;; @code{char-syntax}呼び出しはこれを明らかにしないことに注意。
+(string (char-syntax ?/))
+     @result{} "."
+@end group
+
+@group
+;; 開カッコ文字は開カッコ構文をもつ。
+;; これがマッチング文字@samp{)}をもつことは
+;; @code{char-syntax}呼び出しでは自明ではないことに注意。
+(string (char-syntax ?\())
+     @result{} "("
+@end group
+@end example
+
+@end defun
+
+@defun set-syntax-table table
+この関数はカレントバッファーの構文テーブルを@var{table}にする。これは@var{table}をリターンする。
+@end defun
+
+@defun syntax-table
+この関数はカレント構文テーブル(カレントバッファーのテーブル)をリターンする。
+@end defun
+
+@deffn Command describe-syntax &optional buffer
+このコマンドは@var{buffer} (デフォルトはカレントバッファー)の構文テーブルのコンテンツをhelpバッファーに表示する。
+@end deffn
+
+@defmac with-syntax-table table body@dots{}
+このマクロは@var{table}をカレント構文テーブルとして使用して@var{body}を実行する。これは古いカレント構文テーブルのリストア後に@var{body}の最後のフォームの値をリターンする。
+
+各バッファーは独自にカレント構文テーブルをもつので、マクロはこれを入念に行うべきだろう。@code{with-syntax-table}はマクロの実行開始時には、そのときカレントのバッファーが何であれカレント構文テーブルを一時的に変更する。他のバッファーは影響を受けない。
+@end defmac
+
+@node Syntax Properties
+@section 構文プロパティ
+@kindex syntax-table @r{(text property)}
+
+ある言語の構文を指定するのに構文テーブルが十分に柔軟でないときは、
+バッファー内に出現する特定の文字にたいしてテキストプロパティ@code{syntax-table}を適用することにより構文テーブルをオーバーライドできます。テキストプロパティを適用する方法については@ref{Text
+Properties}を参照してください。
+
+  以下はテキストプロパティ@code{syntax-table}の有効な値です:
+
+@table @asis
+@item @var{syntax-table}
+プロパティの値が構文テーブルなら、根底となるテキスト文字の構文を決定するカレントバッファーの構文テーブルのかわりにそのテーブルが使用される。
+
+@item @code{(@var{syntax-code} . @var{matching-char})}
+この形式のコンスセルは根底となるテキスト文字の構文クラスを直接指定するraw構文テーブル(@ref{Syntax Table
+Internals}を参照)。
+
+@item @code{nil}
+このプロパティが@code{nil}なら、その文字の構文はカレント構文テーブルにより通常の方法で決定される。
+@end table
+
+@defvar parse-sexp-lookup-properties
+これが非@code{nil}なら、@code{forward-sexp}のような構文をスキャンする関数は@code{syntax-table}テキストプロパティを考慮し、それ以外ならカレント構文テーブルだけを使用する。
+@end defvar
+
+@defvar syntax-propertize-function
+この変数が非@code{nil}なら特定のテキスト範囲にたいして@code{syntax-table}プロパティを適用する関数を格納すること。これはモードに適した方法で@code{syntax-table}プロパティを適用する関数をインストールするようにメジャーモードで使用されることを意図している。
+
+この関数は@code{syntax-ppss} (@ref{Position
+Parse}を参照)、および構文フォント表示化(@ref{Syntactic Font Lock}を参照)の間にFont
+Lockモードにより呼び出される。これは作用すべきテキスト部分の開始@var{start}と終了@var{end}という2つの引数で呼び出される。@var{start}と@var{end}で区切られたリージョン内でポイントを任意に移動でき、そのような移動に@code{save-excursion}
+(@ref{Excursions}を参照)を使う必要はない。@var{end}の前の任意の位置で@code{syntax-ppss}を呼び出すこともできるが、Lispプログラムがどこかで@code{syntax-ppss}を呼び出して、その後にそこより前の位置でバッファーを変更する場合には、もはや古くなってしまった情報をキャッシュからフラッシュするために@code{syntax-ppss-flush-cache}を呼び出すのは、そのプログラムの責任である。
+
+@strong{警告:}
+この変数が非@code{nil}なら、Emacsは@code{syntax-table}テキストプロパティを任意に削除して、それらの再適用は@code{syntax-propertize-function}に依存する。つまりこの機能が使用される場合には、関数はメジャーモードが使用する@strong{すべて}の@code{syntax-table}テキストプロパティを適用しなければならない。特にCCモードはこれらのテキストプロパティの削除と適用に別の手段を使用するので、CCモードから派生したモードはこの変数を使用してはならない。
+@end defvar
+
+@defvar syntax-propertize-extend-region-functions
+このアブノーマルフックは@code{syntax-propertize-function}呼び出しに先立ち構文解析コードにより実行される。これは@code{syntax-propertize-function}に渡すために安全なバッファーの開始と終了の位置を見つける助けをする役割をもつ。たとえばメジャーモードは複数行の構文構成を識別して、境界が複数行の中間にならないようにこのフックに関数を追加できる。
+
+このフック内の各関数は引数@var{start}と@var{end}を受け取ること。これは2つのバッファー位置を調整するコンスセル@code{(@var{new-start}
+.
+@var{new-end})}、調整が必要なければ@code{nil}をリターンするべきである。フック関数はそれらすべてが@code{nil}をリターンするまで順番に繰り返し実行される。
+@end defvar
+
+@node Motion and Syntax
+@section モーションと構文
+@cindex moving across syntax classes
+@cindex skipping characters of certain syntax
+
+  このセクションでは、特定の構文クラスをもつ文字間を横断して移動する関数を説明します。
+
+@defun skip-syntax-forward syntaxes &optional limit
+この関数は@var{syntaxes}で指定された構文クラス(構文クラスの文字列)をもつ文字を横断してポイントを前方に移動する。バッファー終端か、(与えられた場合は)位置@var{limit}に到達、もしくはスキップしない文字に達した際に停止する。
+
+@var{syntaxes}が@samp{^}で始まる場合には、この関数は構文が@var{syntaxes}では@emph{ない}文字をスキップする。
+
+リターン値は移動した距離を表す非負の整数。
+@end defun
+
+@defun skip-syntax-backward syntaxes &optional limit
+この関数は@var{syntaxes}で指定された構文クラスをもつ文字を横断してポイントを後方に移動する。バッファー先頭か、(与えられた場合は)位置@var{limit}に到達、もしくはスキップしない文字に達した際に停止する。
+
+@var{syntaxes}が@samp{^}で始まる場合には、この関数は構文が@var{syntaxes}では@emph{ない}文字をスキップする。
+
+リターン値は移動した距離を表す0以下の整数。
+@end defun
+
+@defun backward-prefix-chars
+この関数は式プレフィクス構文の任意個数の文字を横断して後方にポイントを移動する。これには式プレフィクス構文クラスとフラグ@samp{p}の文字の両方が含まれる。
+@end defun
+
+@node Parsing Expressions
+@section 式のパース
+@cindex parsing expressions
+@cindex scanning expressions
+
+  このセクションでは釣り合いのとれた式の解析やスキャンを行う関数を説明します。たとえこれらの関数がLisp以外の言語にたいして作用可能であったとしても、Lisp用語にしたがってそのような式のことを@dfn{sexps}という用語で参照することにします。基本的にsexpはバランスのとれたカッコによるグループ化、または文字列、シンボル(構文が単語構成要素かシンボル構成要素である文字シーケンス)のいずれかです。しかし式プレフィクス構文(@ref{Syntax
+Class Table}を参照)の文字は、それらがsexpに隣接する場合にはsexpの一部として扱われます。
+
+  構文テーブルは文字の解釈を制御するので、これらの関数はLispモードでのLisp式、CモードでのCの式にたいして使用できます。釣り合いのとれた式にたいして有用な高レベル関数については@ref{List
+Motion}を参照してください。
+
+  ある文字の構文はパーサー自身の状態の記述ではなくパーサー状態の変更方法を制御します。たとえば文字列区切り文字はin-stringとin-codeの間でパーサー状態をトグルしますが、文字の構文が直接文字列内部にあるかどうかを告げることはありません。たとえば(15は汎用文字列区切りの構文コードであることに注意)、
+
+@example
+(put-text-property 1 9 'syntax-table '(15 . nil))
+@end example
+
+@noindent
+これはEmacsにたいしてカレントバッファーの最初の8文字が文字列であることを告げますが、それらはすべて文字列区切りです。結果としてEmacsはそれらを連続する4つの空文字列定数として扱います。
+
+@menu
+* Motion via Parsing::       パースにより機能する移動関数。
+* Position Parse::           ある位置の構文状態を判断する。
+* Parser State::             Emacsが構文状態を表す方法。
+* Low-Level Parsing::        指定されたリージョンを横断するパース。
+* Control Parsing::          パースに影響するパラメーター。
+@end menu
+
+@node Motion via Parsing
+@subsection パースにもとづくモーションコマンド
+@cindex motion based on parsing
+
+  このセクションでは式のパースにもとづいて処理を行うシンプルなポイント移動関数を説明します。
+
+@defun scan-lists from count depth
+この関数は位置@var{from}から釣り合いのとれたカッコのグループを前方に@var{count}個スキャンする。これはスキャンが停止した位置をリターンする。@var{count}が負ならスキャンは後方に移動する。
+
+@var{depth}が非0なら開始位置のカッコのネスト深さを@var{depth}として扱う。スキャナーはネスト深さが0になるまで繰り返して@var{count}回、前方か後方に移動する。そのため正の@var{depth}は開始位置からカッコを@var{depth}レベル抜け出して移動する効果があり、負の@var{depth}はカッコが@var{depth}レベル深くなるよう移動する効果をもつ。
+
+@code{parse-sexp-ignore-comments}が非@code{nil}ならスキャンはコメントを無視する。
+
+@var{count}個のカッコのグループをスキャンする前にスキャンがバッファーのアクセス可能範囲の先頭か終端に達した場合には、そのポイントのネスト深さが0なら値@code{nil}をリターンする。ネスト深さが非0なら@code{scan-error}エラーをシグナルする。
+@end defun
+
+@defun scan-sexps from count
+この関数は位置@var{from}から@var{count}個のsexpを前方にスキャンする。これはスキャンが停止した位置をリターンする。@var{count}が負ならスキャンは後方へ移動する。
+
+@code{parse-sexp-ignore-comments}が非@code{nil}ならスキャンはコメントを無視する。
+
+カッコのグループの中間でバッファー(のアクセス可能範囲)の先頭か終端に達したらエラーをシグナルする。@var{count}個を消費する前にカッコのグループの間でバッファーの先頭か終端に達したら@code{nil}をリターンする。
+@end defun
+
+@defun forward-comment count
+この関数は@var{count}個の完全なコメント(すなわち、もしあれば開始区切りと終了区切りを含む)、および途中で遭遇する任意の空白文字を横断してポイントを前方に移動する。@var{count}が負なら後方に移動する。コメントまたは空白文字以外のものに遭遇したら停止して停止位置にポイントを残す。これには、(たとえば)前方に移動してコメント開始を調べる際にコメント終了を探すことも含まれる。この関数は指定された個数の完全なコメントを横断して移動した後にも即座に停止する。空白以外のものがコメント間に存在せずに期待どおり@var{count}個のコメントが見つかったら@code{t}、それ以外は@code{nil}をリターンする。
+
+この関数はコメントを横断する際に、それが文字列内に埋め込まれているかどうか区別できない。それらがコメントのように見えればコメントとして扱われる。
+
+ポイントの後のすべてのコメントと空白文字を飛び越して移動するには@code{(forward-comment
+(buffer-size))}を使用する。バッファー内のコメント数は@code{(buffer-size)}を超えることはできないので、これは引数としての使用に適している。
+@end defun
+
+@node Position Parse
+@subsection ある位置のパース状態を調べる
+@cindex parse state for a position
+
+  インデントのような構文分析にとっては、与えられたバッファー位置に応じた構文状態の計算が有用なことが多々あります。それを手軽に行うのが以下の関数です。
+
+@defun syntax-ppss &optional pos
+この関数はパーサーがバッファーの可視範囲の先頭から開始して位置@var{pos}で停止するだろうというパーサー状態をリターンする。
+@iftex
+パーサー状態の説明は次のセクションを参照のこと
+@end iftex
+@ifnottex
+パーサー状態の説明は@ref{Parser State}を参照のこと
+@end ifnottex
+。
+
+リターン値はバッファーの可視範囲の先頭から@var{pos}までパースするために低レベル関数@code{parse-partial-sexp}
+(@ref{Low-Level
+Parsing}を参照)を呼び出した場合と同じようになる。しかし@code{syntax-ppss}は計算速度向上のためにキャッシュを使用する。この最適化のために、リターンされるパーサー状態のうち2つ目の値(前の完全な部分式)と6つ目の値(最小のカッコ深さ)は意味をもたない。
+
+この関数は@code{syntax-ppss-flush-cache}
+(以下参照)にたいして、@code{before-change-functions} (@ref{Change
+Hooks}を参照)にバッファーローカルなエントリーを追加するという副作用をもつ。このエントリーはバッファー変更にたいしてキャッシュの一貫性を保つ。とはいえ@code{before-change-functions}が一時的にletでバインドされている間に@code{syntax-ppss}が呼び出された場合、または@code{inhibit-modification-hooks}使用時のようにバッファーがフックを実行せずに変更される場合にはキャッシュは更新されないかもしれない。そのような場合には明示的に@code{syntax-ppss-flush-cache}を呼び出す必要がある。
+@end defun
+
+@defun syntax-ppss-flush-cache beg &rest ignored-args
+この関数は@code{syntax-ppss}が使用するキャッシュを位置@var{beg}からフラッシュする。残りの引数@var{ignored-args}は無視される。@code{before-change-functions}
+(@ref{Change Hooks}を参照)のような関数で直接使用できるように、この関数はそれらの引数を受け入れる。
+@end defun
+
+@node Parser State
+@subsection パーサー状態
+@cindex parser state
+
+  @dfn{パーサー状態(parser state)}とは@code{parse-partial-sexp} (@ref{Low-Level
+Parsing}を参照)を使用してバッファー内の指定された開始位置と終了位置の間のテキストをパースした後の構文パーサーの状態を記述する(現在のところは)11要素のリストです。@code{syntax-ppss}のようなパース関数
+@ifnottex
+(@ref{Position Parse}を参照)
+@end ifnottex
+も値としてパーサー状態をリターンします。  @code{parse-partial-sexp} can
+はパースを再開するために引数としてパーサー状態を受け取ります。
+
+  以下はパーサー状態の要素の意味です:
+
+@enumerate 0
+@item
+0から数えたカッコの深さ。@strong{警告:} パーサーの開始位置と終了位置の間に開カッコより多くの閉カッコがあれば負になることもある。
+
+@item
+@cindex innermost containing parentheses
+停止位置を含む最内のカッコグループの開始文字位置。なければ@code{nil}。
+
+@item
+@cindex previous complete subexpression
+最後の終端された完全な部分式の開始文字位置。なければ@code{nil}。
+
+@item
+@cindex inside string
+文字列内部なら非@code{nil}。より正確には文字列を終端させるであろう文字、または汎用文字列区切りが終端すべきような場合には@code{t}。
+
+@item
+@cindex inside comment
+ネスト不可なコメント(または任意のコメントスタイル。@ref{Syntax
+Flags}を参照)の内部なら@code{t}、ネスト可なコメントの内部ならコメントのネストレベル。
+
+@item
+@cindex quote character
+終了位置がクォート文字直後なら@code{t}。
+
+@item
+当該スキャン中に遭遇した最小のカッコ深さ。
+
+@item
+アクティブなコメントの種類。コメント以外、またはスタイル@samp{a}のコメント内なら@code{nil}、スタイル@samp{b}のコメントなら1、スタイル@samp{c}のコメントなら2、汎用コメント区切り文字で終端されるべきコメントなら@code{syntax-table}。
+
+@item
+文字列やコメントの開始位置。コメント内部ならコメントが始まる位置。文字列内部なら文字列が始まる位置。文字列やコメントの外部ならこの要素は@code{nil}。
+
+@item
+もっとも外側のカッコから始まる開きカッコのカレント位置のリスト。
+
+@item
+スキャンされた最後のバッファー位置が(潜在的に)2文字構文(コメント区切りやエスケープされた文字とクォートされた文字のペア)の最初の文字ならその位置の@var{syntax-code}
+(@ref{Syntax Table Internals}を参照)、それ以外なら@code{nil}。
+@end enumerate
+
+  パース継続のための引数として@code{parse-partial-sexp}に渡す場合には要素1、2、6は無視されます。要素9と10は主にパーサーコードにより内部的に使用されます。
+
+  以下の関数を使用することにより追加でパーサー状態からいくつかの有用な情報を利用できます:
+
+@defun syntax-ppss-toplevel-pos state
+この関数はパーサー状態@var{state}から文法構造上トップレベルでのパースでのスキャンした最後の位置をリターンする。``トップレベル''とはすべてのカッコ、コメント、文字列の外部であることを意味する。
+
+@var{state}がトップレベルの位置に到達したパースを表す場合には値は@code{nil}。
+@end defun
+
+@defun syntax-ppss-context state
+@var{state}をリターンするスキャン終了位置が文字列内にあれば@code{string}、コメント内にあれば@code{comment}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@node Low-Level Parsing
+@subsection 低レベルのパース
+
+  式パーサーを使用するもっとも基本的な方法は特定の状態で与えられた位置からパースを開始して、指定した位置でパースを終了するよう指示する方法です。
+
+@defun parse-partial-sexp start limit &optional target-depth stop-before state stop-comment
+この関数はカレントバッファー内のsexpを、@var{start}から開始して@var{limit}を超えてスキャンしないようパースを行う。これは位置@var{limit}、または以下に記述する特定の条件に適合したら停止してパースが停止した位置にポイントをセットする。これはポイントが停止した位置でのパースの状態を記述するパーサー状態
+@ifinfo
+(@ref{Parser State}を参照)
+@end ifinfo
+をリターンする。
+
+@cindex parenthesis depth
+3つ目の引数@var{target-depth}が非@code{nil}の場合には、カッコの深さが@var{target-depth}と等しくなったらパースを停止する。この深さは0、または@var{state}内で与えられる深さなら何であれそこから開始される。
+
+4つ目の引数@var{stop-before}が非@code{nil}の場合には、sexp開始となる任意の文字に到達したときにパースは停止する。@var{stop-comment}が非@code{nil}ならネストされていないコメントの開始の後にパースは停止する。@var{stop-comment}がシンボル@code{syntax-table}ならネストされていないコメントか文字列の開始の後、またはネストされていないコメントか文字列の終了のいずれか先に到達した方でパースは停止する。
+
+@var{state}が@code{nil}なら、@var{start}は関数定義先頭のようなカッコ構造のトップレベルであるとみなされる。かわりにこの構造の中間でパースを再開したいと思うかもしれない。これを行うにはパースの初期状態を記述する@var{state}引数を提供しなければならない。前の@code{parse-partial-sexp}呼び出しでリターンされた値で、これをうまく行うことができるだろう。
+@end defun
+
+@node Control Parsing
+@subsection パースを制御するためのパラメーター
+@cindex parsing, control parameters
+
+@defvar multibyte-syntax-as-symbol
+この変数が非@code{nil}なら構文テーブルがそれらについて何と言っているかに関わらず、@code{scan-sexps}はすべての非@acronym{ASCII}文字をシンボル構成要素として扱う(とはいえ依然として@code{syntax-table}テキストプロパティは構文をオーバーラードできる)。
+@end defvar
+
+@defopt parse-sexp-ignore-comments
+@cindex skipping comments
+この値が非@code{nil}ならこのセクション内の関数、および@code{forward-sexp}、@code{scan-lists}、@code{scan-sexps}はコメントを空白文字として扱う。
+@end defopt
+
+@code{parse-partial-sexp}の振る舞いも@code{parse-sexp-lookup-properties}の影響を受けます(@ref{Syntax
+Properties}を参照)。
+
+@defvar comment-end-can-be-escaped
+このバッファーローカル変数が非@code{nil}なら、通常ならコメントを終端するような単一の文字は、エスケープ時にはコメントを終端しない。これはCとC++のモードにおいて@samp{\}でエスケープされた改行により、@samp{//}で開始される行コメントを次行に継続させるために使用される。
+@end defvar
+
+1つ、または複数のコメントを横断して前方や後方に移動するには@code{forward-comment}を使用できます。
+
+@node Syntax Table Internals
+@section 構文テーブルの内部
+@cindex syntax table internals
+
+  構文テーブルは文字テーブル(@ref{Char-Tables}を参照)として実装されていますが、ほとんどのLispプログラムが直接それらの要素に作用することはありません。構文テーブルは構文データとして構文記述子を格納しません(@ref{Syntax
+Descriptors}を参照)。それらは内部的なフォーマットを使用しており、それについてはこのセクションで説明します。この内部的フォーマットは構文プロパティとして割り当てることもできます(@ref{Syntax
+Properties}を参照)。
+
+@cindex syntax code
+@cindex raw syntax descriptor
+  構文テーブル内の各要素は@dfn{raw構文記述子(raw syntax descriptor)}という@code{(@var{syntax-code}
+.
+@var{matching-char})}という形式のコンスセルです。@var{syntax-code}は下記のテーブルに応じて構文クラスと構文フラグをエンコードする整数です。@var{matching-char}が非@code{nil}なら、それはマッチング文字(構文記述子内の2つ目の文字と同様)を指定します。
+
+@cindex syntax tables (accessing elements of)
+raw構文記述子の文字を取得するには@w{@code{(aref (syntax-table) ch)}}のように@code{aref}
+(@ref{Array Functions}を参照)を使用してください。
+
+  以下はさまざまな構文クラスに対応する構文コードです。
+
+@multitable @columnfractions .2 .3 .2 .3
+@item
+@i{Code} @tab @i{Class} @tab @i{Code} @tab @i{Class}
+@item
+0 @tab 空白文字 @tab 8 @tab 区切り文字ペアー
+@item
+1 @tab 句読点 @tab 9 @tab エスケープ
+@item
+2 @tab 単語 @tab 10 @tab 文字クォート
+@item
+3 @tab シンボル @tab 11 @tab コメント開始
+@item
+4 @tab 開カッコ @tab 12 @tab コメント終了
+@item
+5 @tab 閉カッコ @tab 13 @tab 継承
+@item
+6 @tab 式プレフィクス @tab 14 @tab 汎用コメント
+@item
+7 @tab 文字列クォート @tab 15 @tab 汎用文字列
+@end multitable
+
+@noindent
+たとえば標準構文テーブルでは@samp{(}にたいするエントリーは@code{(4 . 41)}、41は@samp{)}の文字コードです。
+
+  構文フラグは最下位ビットから16ビット目より始まる高位ビットにエンコードされます。以下のテーブルは対応する各構文フラグにたいして2のべき乗を与えます。
+
+@multitable @columnfractions .15 .3 .15 .3
+@item
+@i{Prefix} @tab @i{Flag} @tab @i{Prefix} @tab @i{Flag}
+@item
+@samp{1} @tab @code{(ash 1 16)} @tab @samp{p} @tab @code{(ash 1 20)}
+@item
+@samp{2} @tab @code{(ash 1 17)} @tab @samp{b} @tab @code{(ash 1 21)}
+@item
+@samp{3} @tab @code{(ash 1 18)} @tab @samp{n} @tab @code{(ash 1 22)}
+@item
+@samp{4} @tab @code{(ash 1 19)} @tab @samp{c} @tab @code{(ash 1 23)}
+@end multitable
+
+@defun string-to-syntax desc
+与えられた構文記述子@var{desc}(文字列)にたいして、この関数は対応するraw構文記述子をリターンする。
+@end defun
+
+@defun syntax-class-to-char syntax
+与えられた構文記述子@var{syntax} (整数)にたいして、この関数は対応する構文記述子(文字)をリターンする。
+@end defun
+
+@defun syntax-after pos
+この関数はバッファー内の位置@var{pos}の後の文字にたいして、構文テーブルと同様に構文プロパティも考慮したraw構文記述子をリターンする。@var{pos}がバッファーのアクセス可能範囲(@ref{Narrowing,
+accessible portion}を参照)の外部ならリターン値は@code{nil}。
+@end defun
+
+@defun syntax-class syntax
+この関数はraw構文記述子@var{syntax}にたいする構文コードをリターンする。より正確にはこれはraw構文記述子の@var{syntax-code}要素から構文フラグを記録する高位16ビットをマスクして、その結果の整数をリターンする。
+
+@var{syntax}が@code{nil}ならリターン値は@code{nil}。これは以下の式
+
+@example
+(syntax-class (syntax-after pos))
+@end example
+
+@noindent
+は@code{pos}がバッファーのアクセス可能範囲外部なら、エラーをthrowしたり不正なコードをリターンすることなく@code{nil}に評価されるため。
+@end defun
+
+@node Categories
+@section カテゴリー
+@cindex categories of characters
+@cindex character categories
+
+  @dfn{カテゴリー(categories)}は構文的に文字をクラス分けする別の手段を提供します。必要に応じて複数のカテゴリーを定義して、それぞれの文字に独立して1つ以上のカテゴリーを割り当てることができます。構文クラスと異なりカテゴリーは互いに排他ではありません。1つの文字が複数のカテゴリーに属すのは普通のことです。
+
+@cindex category table
+  バッファーはそれぞれ@dfn{カテゴリーテーブル(category
+table)}をもっています。これはどのカテゴリーが定義されていて、各カテゴリーにどの文字が属すかを記録しています。カテゴリーテールは自身のカテゴリーを定義しますが、標準カテゴリーはすべてのモードで利用可能なので、これらは通常は標準カテゴリーテーブルをコピーすることにより初期化されます。
+
+  カテゴリーはそれぞれ@w{@samp{
+}}から@samp{~}の範囲の@acronym{ASCII}プリント文字による名前をもちます。@code{define-category}で定義する際にはカテゴリーの名前を指定します。
+
+@cindex category set
+  カテゴリーテーブルは実際には文字テーブルです(@ref{Char-Tables}を参照)。カテゴリーテーブルのインデックス@var{c}の要素は、文字@var{c}が属するカテゴリーを示す@dfn{カテゴリーセット(category
+set)}というブールベクターです。このカテゴリーセット内で、もしインデックス@var{cat}の要素が@code{t}なら@var{cat}はそのセットのメンバーであり、その文字@var{c}はカテゴリー@var{cat}に属することを意味します。
+
+以下の3つの関数のオプション引数@var{table}のデフォルトは、カレントバッファーのカテゴリーテーブルです。
+
+@defun define-category char docstring &optional table
+この関数はカテゴリーテーブル@var{table}にたいして名前が@var{char}、ドキュメントが@var{docstring}であるような新たなカテゴリーを定義する。
+
+以下ではR2L(right-to-left: 右から左)への強い方向性(directionality)をもつ文字(@ref{Bidirectional
+Display}を参照)にたいするカテゴリーを新たに定義して、それを特別なカテゴリーテーブル内で使用する例を示す。文字の方向性に関する情報を取得するために、コード例ではUnicodeプロパティ@samp{bidi-class}
+(@ref{Character Properties, bidi-class}を参照)を使用する。
+
+@example
+(defvar special-category-table-for-bidi
+  ;;     空のcategory-tableを作成
+  (let ((category-table (make-category-table))
+        ;; Create a char-table which gives the 'bidi-class' Unicode
+        ;; 各文字のプロパティ
+        (uniprop-table
+         (unicode-property-table-internal 'bidi-class)))
+    (define-category ?R "Characters of bidi-class R, AL, or RLO"
+                     category-table)
+    ;; Unicodeの'bidi-class'プロパティが
+    ;; R、AL、RLOであるような(R2Lの方向性をもつ)文字の
+    ;; カテゴリーエントリーを変更する
+    (map-char-table
+     (lambda (key val)
+         (if (memq val '(R AL RLO))
+             (modify-category-entry key ?R category-table)))
+     uniprop-table)
+    category-table))
+@end example
+@end defun
+
+@defun category-docstring category &optional table
+この関数はカテゴリーテーブル@var{table}内のカテゴリー@var{category}のドキュメント文字列をリターンする。
+
+@example
+(category-docstring ?a)
+     @result{} "ASCII"
+(category-docstring ?l)
+     @result{} "Latin"
+@end example
+@end defun
+
+@defun get-unused-category &optional table
+この関数は@var{table}内で現在のところ未定義なカテゴリーの名前(文字)をリターンする。@var{table}内で利用可能なカテゴリーがすべて使用済みなら@code{nil}をリターンする。
+@end defun
+
+@defun category-table
+この関数はカレントバッファーのカテゴリーテーブルをリターンする。
+@end defun
+
+@defun category-table-p object
+この関数は@var{object}がカテゴリーテーブルなら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun standard-category-table
+この関数は標準カテゴリーテーブルをリターンする。
+@end defun
+
+@defun copy-category-table &optional table
+この関数は@var{table}のコピーを構築してリターンする。@var{table}が与えられない(または@code{nil})なら、標準カテゴリーテーブルのコピーをリターンする。それ以外の場合には、もし@var{table}がカテゴリーテーブルでなければエラーをシグナルする。
+@end defun
+
+@defun set-category-table table
+この関数は@var{table}をカレントバッファーのカテゴリーテーブルにする。リターン値は@var{table}。
+@end defun
+
+@defun make-category-table
+これは空のカテゴリーテーブルを作成してリターンする。空のカテゴリーテーブルでは、どのカテゴリーも割り当てられておらず何らかのカテゴリーに属する文字もない。
+@end defun
+
+@defun make-category-set categories
+この関数は初期内容が文字列@var{categories}にリストされるカテゴリーであるような、新たなカテゴリーセット(ブールベクター)をリターンする。@var{categories}の要素はカテゴリー名であること。新たなカテゴリーセットはそれらのカテゴリーにたいして@code{t}、それ以外のすべてのカテゴリーにたいして@code{nil}をもつ。
+
+@example
+(make-category-set "al")
+     @result{} #&128"\0\0\0\0\0\0\0\0\0\0\0\0\2\20\0\0"
+@end example
+@end defun
+
+@defun char-category-set char
+この関数はカレントバッファーのカテゴリーテーブル内で、文字@var{char}にたいするカテゴリーセットをリターンする。これは文字@var{char}が属するカテゴリーを記録するブールベクター。関数@code{char-category-set}はカテゴリーテーブル内にある同じブールベクターをリターンするのでメモリーの割り当ては行わない。
+
+@example
+(char-category-set ?a)
+     @result{} #&128"\0\0\0\0\0\0\0\0\0\0\0\0\2\20\0\0"
+@end example
+@end defun
+
+@defun category-set-mnemonics category-set
+この関数はカテゴリーセット@var{category-set}を、そのセットのメンバーのカテゴリーを指定する文字を含む文字列に変換する。
+
+@example
+(category-set-mnemonics (char-category-set ?a))
+     @result{} "al"
+@end example
+@end defun
+
+@defun modify-category-entry char category &optional table reset
+この関数はカテゴリーテーブル@var{table}
+(デフォルトはカレントバッファーのカテゴリーテーブル)内の@var{char}のカテゴリーセットを変更する。@var{char}には文字、または@code{(@var{min}
+.
+@var{max})}という形式のコンスセルを指定できる。後者の場合には、この関数は@var{min}と@var{max}の間(両端を含む)の範囲にあるすべての文字のカテゴリーセットを変更する。
+
+これは通常はカテゴリーセットに@var{category}を追加することにより変更を行う。しかし@var{reset}が非@code{nil}なら、かわりに@var{category}を削除する。
+@end defun
+
+@deffn Command describe-categories &optional buffer-or-name
+この関数はカレントカテゴリーテーブル内のカテゴリー仕様を説明する。これはその説明をバッファーに挿入してから、そのバッファーを表示する。@var{buffer-or-name}が非@code{nil}なら、かわりにそのバッファーのカテゴリーテーブルを説明する。
+@end deffn

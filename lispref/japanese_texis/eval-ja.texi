@@ -1,0 +1,770 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1994, 1998, 2001--2024 Free Software Foundation,
+@c Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Evaluation
+@chapter 評価
+@cindex evaluation
+@cindex interpreter
+@cindex interpreter
+@cindex value of expression
+
+  Emacs Lispでの式の@dfn{評価(evaluation)}は、@dfn{Lispインタープリター} ---
+入力としてLispオブジェクトを受け取り、それの@dfn{式としての値(value as an expression)}を計算する ---
+により処理されます。評価を行なう方法はそのオブジェクトのデータ型に依存していて、それはこのチャプターで説明するルールにより行なわれます。インタープリターはプログラムの一部を評価するために自動的に実行されますが、Lispプリミティブ関数の@code{eval}を通じて明示的に呼び出すこともできます。
+
+@ifnottex
+@menu
+* Intro Eval::               事の在り方における評価。
+* Forms::                    さまざまなオブジェクト類が評価される方法。
+* Quoting::                  (プログラム内に定数を配すことによる)評価の回避。
+* Backquote::                リスト構文より簡単な構築。
+* Eval::                     Lispインタープリターを明示的に呼び出す方法。
+* Deferred Eval::            フォームのlazyな遅延評価。
+@end menu
+
+@node Intro Eval
+@section 評価の概要
+
+  Lispインタープリター(またはLispエバリュエーター)はEmacsの一部であり、与えられた式の値を計算します。Lispで記述された関数が呼び出されると、エバリュエーターはその関数のbody(本文)の中の式を評価してその関数の値を計算します。したがってLispプログラムを実行するとは、実際にはLispインタープリターを実行することを意味します。
+@end ifnottex
+
+@cindex form
+@cindex expression
+@cindex S-expression
+@cindex sexp
+  評価を意図したLispオブジェクトは@dfn{フォーム(form)}、または@dfn{式(expression)}と呼ばれます@footnote{@dfn{S式(S-expression)}、短くは@dfn{sexp}という言葉でも呼ばれることがありますが、わたしたちはこのマニュアル内では通常はこの用語は使用しません。}。フォームはデータオブジェクトであって単なるテキストではないという事実は、Lisp風の言語と通常のプログラミング言語との間にある基本的な相違点の1つです。任意のオブジェクトを評価できますが、実際に評価される事が非常に多いのは数字、シンボル、リスト、文字列です。
+
+  以降のセクションでは、各種フォームにたいしてそれを評価することが何を意味するかの詳細を説明します。
+
+  Lispフォームを読み取ってそのフォームを評価するのは、非常に一般的なアクティビティーですが、読み取りと評価は別のアクティビティーであって、どちらか一方を単独で処理することができます。読み取っただけでは何も評価されません。読み取りはLispオブジェクトのプリント表現をそのオブジェクト自体に変換します。そのオブジェクトが評価されるべきフォームなのか、それともまったく違う目的をもつかを指定するのは、@code{read}の呼び出し元の役目です。@ref{Input
+Functions}を参照してください。
+
+@cindex recursive evaluation
+  評価とは再帰的な処理であり、あるフォームを評価するとそのフォームの一部が評価されるといったことがよくあります。たとえば@code{(car
+x)}のような@dfn{関数呼び出し(function call)}のフォームを評価する場合、Emacsは最初にその引数(サブフォーム
+@code{x})を評価します。引数を評価した後、Emacsはその関数(@code{car})を@dfn{実行(executes)}します。その関数がLispで記述されていれば、関数の@dfn{body(本文)}を評価することによって実行が行なわれます(しかしこの例で使用している@code{car}はLisp関数ではなくCで実装されたプリミティブ関数である)。関数と関数呼び出しについての情報は@ref{Functions}を参照してください。
+
+@cindex environment
+  評価は@dfn{環境(environment)}と呼ばれるコンテキストの内部で行なわれます。環境はすべてのLisp変数(@ref{Variables}を参照)のカレント値とバインディングにより構成されます。@footnote{``環境''にたいするこの定義は、プログラムの結果に影響し得るすべてのデータを特に意図したものではありません。}フォームが新たなバインディングを作成せずに変数を参照する際、その変数はカレントの環境から与えられる値へと評価されます。フォームの評価は、変数のバインディングによって一時的にその環境を変更することもあります(@ref{Local
+Variables}を参照)。
+
+@cindex side effect
+@anchor{Definition of side effect}
+  フォームの評価が永続する変更を行なうこともあります。これらの変更は@dfn{副作用(side
+effects)}と呼ばれます。副作用を生成するフォームの例は@code{(setq foo 1)}です。
+
+  コマンドキー解釈での評価と混同しないでください。エディターのコマンドループはアクティブなキーマップを使用して、キーボード入力をコマンド(インタラクティブに呼び出すことができる関数)に変換してからそのコマンドを実行するために、@code{call-interactively}を使用します。そのコマンドがLispで記述されていれば、そのコマンドの実行には通常は評価を伴います。しかしこのステップはコマンドキー解釈の一部とは考えません。@ref{Command
+Loop}を参照してください。
+
+@node Forms
+@section フォームの種類
+
+  評価される事を意図したLispオブジェクトは@dfn{フォーム(form)}、または@dfn{式(expression)})と呼ばれます。Emacsがフォームを評価する方法はフォームのデータ型に依存します。Emacsは3種の異なるフォーム
+--- シンボル、リスト、およびその他すべての型 ---
+をもち、それらが評価される方法は異なります。このセクションではまず最初に自己評価フォームのその他の型から開始して、3つの種類をすべて1つずつ説明します。
+
+@menu
+* Self-Evaluating Forms::    自分自身を評価するフォーム。
+* Symbol Forms::             変数として評価されるシンボル。
+* Classifying Lists::        さまざまな種類のリストフォームを区別する方法。
+* Function Indirection::     シンボルがリストのcarにあればそのシンボルを通じて実際の関数を見つける。
+* Function Forms::           関数を呼び出すフォーム。
+* Macro Forms::              マクロを呼び出すフォーム。
+* Special Forms::            スペシャルフォームは特異なプリミティブであり、それらのほとんどがとても重要である。
+* Autoloading::              実際の定義を含むファイルのロードをセットアップする関数。
+@end menu
+
+@node Self-Evaluating Forms
+@subsection 自己評価を行うフォーム
+@cindex vector evaluation
+@cindex literal evaluation
+@cindex self-evaluating form
+@cindex form, self-evaluating
+
+  @dfn{自己評価フォーム(self-evaluating
+form)}はリストやシンボルではないすべてのフォームです。自己評価フォームはそのフォーム自身を評価します。評価の結果は評価されたオブジェクトと同じです。したがって数字の25は25、文字列@code{"foo"}は文字列@code{"foo"}に評価されます。同様にベクターの評価では、ベクターの要素の評価は発生しません
+--- 内容が変更されずに同じベクターがリターンされます。
+
+@example
+@group
+'123               ; @r{評価されずに表示される数字}
+     @result{} 123
+@end group
+@group
+123                ; @r{通常どおり評価され、同じものがreturnされる}
+     @result{} 123
+@end group
+@group
+(eval '123)        ; @r{手動での評価 --- 同じものがreturnされる}
+     @result{} 123
+@end group
+@group
+(eval (eval '123)) ; @r{2度評価しても何も変わらない。}
+     @result{} 123
+@end group
+@end example
+
+  自己評価フォームはプログラムの一部となる値を生成します。これを@code{setcar}や@code{aset}、その他の類似操作を通じて変更しようと試みるべきではありません。Lispインタープリターがプログラム中の自己評価フォームにより生成される定数を統合して、これらの定数が構造を共有するかもしれません。@ref{Mutability}を参照してください。
+
+  自己評価されるという事実による利点から数字、文字、文字列、そしてベクターでさえLispコード内で記述されるのが一般的です。しかし入力構文がない型にたいしてこれを行なうのは極めて異例です。なぜなら、これらをテキスト的に記述する方法がないからです。Lispプログラムを使用してこれらの型を含むLisp式を構築することは可能です。以下は例です:
+
+@example
+@group
+;; @r{バッファーオブジェクトを含む式を構築する。}
+(setq print-exp (list 'print (current-buffer)))
+     @result{} (print #<buffer eval-ja.texi>)
+@end group
+@group
+;; @r{それを評価する。}
+(eval print-exp)
+     @print{} #<buffer eval-ja.texi>
+     @result{} #<buffer eval-ja.texi>
+@end group
+@end example
+
+@node Symbol Forms
+@subsection シンボルのフォーム
+@cindex symbol evaluation
+@cindex symbol forms
+@cindex forms, symbol
+
+  シンボルが評価されるときは変数として扱われます。それが値をもつなら結果はその変数の値になります。そのシンボルが変数としての値をもたなければ、Lispインタープリターはエラーをシグナルします。変数の使用法についての情報は@ref{Variables}を参照してください。
+
+  以降の例では@code{setq}でシンボルに値をセットしています。その後シンボルを評価してからを@code{setq}に戻します。
+
+@example
+@group
+(setq a 123)
+     @result{} 123
+@end group
+@group
+(eval 'a)
+     @result{} 123
+@end group
+@group
+a
+     @result{} 123
+@end group
+@end example
+
+  シンボル@code{nil}と@code{t}は特別に扱われるので、@code{nil}の値は常に@code{nil}、@code{t}の値は常に@code{t}になります。これらに他の値をセットしたり、他の値にバインドすることはできません。したがってこの2つのシンボルは、(たとえ@code{eval}がそれらを他の任意のシンボルと同様に扱うとはいえ)自己評価フォームと同じように振る舞います。名前が@samp{:}で始まるシンボルも同じ方法で自己評価されます。そして、(通常は)値を変更できない点も同じです。@ref{Constant
+Variables}を参照してください。
+
+@node Classifying Lists
+@subsection リストフォームの分類
+@cindex list form evaluation
+@cindex forms, list
+
+  空ではないリストフォームは関数呼び出し、マクロ呼び出し、スペシャルフォームのいずれかで、それは1番目の引数にしたがいます。これら3種のフォームは、以下で説明するように異なる方法で評価されます。残りの要素は関数、マクロ、またはスペシャルフォームにたいする@dfn{引数(arguments)}を構成します。
+
+  空ではないリストを評価する最初のステップは、1番目の要素の確認です。この要素は単独でそのリストがどの種類のフォームなのかと、残りの引数をどのように処理するがを決定します。SchemeのようなLisp方言とは異なり、1番目の要素は評価されません。
+
+@node Function Indirection
+@subsection シンボル関数インダイレクション
+@cindex symbol function indirection
+@cindex indirection for functions
+@cindex void function
+
+  リストの最初の要素がシンボルなら、評価はそのシンボルの関数セルを調べて、元のシンボルの代わりに関数セルの内容を使用します。その内容が他のシンボルなら、シンボルではないものが得られるまでこのプロセスが繰り返されます。このプロセスのことを@dfn{シンボル関数インダイレクション(symbol
+function indirection:
+indirectionは間接の意)}と呼びます。シンボル関数インダイレクションについての情報は@ref{Function
+Names}を参照してください。
+
+  このプロセスの結果、シンボルの関数セルが同じシンボルを参照する場合には、無限ループを起こす可能性があります。それ以外なら最終的には非シンボルにたどりつき、それは関数か他の適切なオブジェクトである必要があります。
+
+@kindex invalid-function
+  適切なオブジェクトとは、より正確にはLisp関数(ラムダ式)、バイトコード関数、プリミティブ関数、Lispマクロ、スペシャルフォーム、またはオートロードオブジェクトです。これらそれぞれの型については以降のセクションで説明します。これらの型以外のオブジェクトならEmacsは@code{invalid-function}エラーをシグナルします。
+
+  以下の例はシンボルインダイレクションのプロセスを説明するものです。わたしたちはシンボルの関数セルへの関数のセットに@code{fset}、関数セルの内容(@ref{Function
+Cells}を参照)の取得に@code{symbol-function}を使用します。具体的には@code{first}の関数セルにシンボル@code{car}を格納して、シンボル@code{first}を@code{erste}の関数セルに格納します。
+
+@example
+@group
+;; @r{この関数セルのリンクを構築する:}
+;;   -------------       -----        -------        -------
+;;  | #<subr car> | <-- | car |  <-- | first |  <-- | erste |
+;;   -------------       -----        -------        -------
+@end group
+@group
+(symbol-function 'car)
+     @result{} #<subr car>
+@end group
+@group
+(fset 'first 'car)
+     @result{} car
+@end group
+@group
+(fset 'erste 'first)
+     @result{} first
+@end group
+@group
+(erste '(1 2 3))   ; @r{@code{erste}により参照される関数を呼び出す}
+     @result{} 1
+@end group
+@end example
+
+  対照的に、以下の例ではシンボル関数インダイレクションを使用せずに関数を呼び出しています。なぜなら1番目の要素はシンボルではなく、無名Lisp関数(anonymous
+Lisp function)だからです。
+
+@example
+@group
+((lambda (arg) (erste arg))
+ '(1 2 3))
+     @result{} 1
+@end group
+@end example
+
+@noindent
+関数自身を実行するとその関数のbodyを評価します。ここでは@code{erste}を呼び出すとき、シンボル関数インダイレクションが行なわれています。
+
+  このフォームが使用されるのは稀であり、現在では推奨されていません。かわりに以下のように記述するべきです:
+
+@example
+@group
+(funcall (lambda (arg) (erste arg))
+         '(1 2 3))
+@end group
+@end example
+または単に
+@example
+@group
+(let ((arg '(1 2 3))) (erste arg))
+@end group
+@end example
+
+  ビルトイン関数の@code{indirect-function}は、明示的にシンボル関数インダイレクションを処理するための簡単な方法を提供します。
+
+@defun indirect-function function &optional noerror
+@anchor{Definition of indirect-function}
+この関数は@var{function}が意味するものを関数としてリターンする。@var{function}がシンボルなら@var{function}の関数定義を探して、その値で最初からやり直す。@var{function}がシンボルでなければ@var{function}自身をリターンする。
+
+この関数は最終的なシンボルがバインドされていなければ@code{nil}をリターンする。特定のシンボル内にループがあれば、この関数は@code{cyclic-function-indirection}エラーをシグナルする。
+
+オペション引数@var{noerror}は廃れており、後方互換のためだけのもので効果はない。
+
+以下はLispで@code{indirect-function}を定義する例である:
+
+@example
+(defun indirect-function (function)
+  (if (and function
+           (symbolp function))
+      (indirect-function (symbol-function function))
+    function))
+@end example
+@end defun
+
+@node Function Forms
+@subsection 関数フォームの評価
+@cindex function form evaluation
+@cindex function call
+@cindex forms, function call
+
+  リストの1番目の要素がLispの関数オブジェクト、バイトコードオブジェクト、プリミティブ関数オブジェクトのいずれかと評価されると、そのリストは@dfn{関数呼び出し(function
+call)}になります。たとえば、以下は関数@code{+}を呼び出します:
+
+@example
+(+ 1 x)
+@end example
+
+  関数呼び出しを評価する最初のステップでは、そのリストの残りの要素を左から右に評価します。結果は引数の実際の値で、リストの各要素にたいして1つの値となります。次のステップでは関数@code{apply}(@ref{Calling
+Functions}を参照)を使用して、引数のリストでその関数を呼び出します。関数がLispで記述されていたら引数はその関数の引数変数にバインドするために使用されます。その後に関数body内のフォームが順番に評価されて、リストのbodyフォームの値が関数呼び出しの値になります。
+
+@node Macro Forms
+@subsection Lispマクロの評価
+@cindex macro call evaluation
+@cindex forms, macro call
+
+  リストの最初の要素がマクロオブジェクトと評価されると、そのリストは@dfn{マクロ呼び出し(macro
+call)}になります。マクロ呼び出しが評価されるとき、リストの残りの要素は最初は@emph{評価されません}。そのかわりこれらの要素自体がマクロの引数に使用されます。そのマクロ定義は、元のフォームが評価される場所で置換フォームを計算します。これをマクロの@dfn{展開(expansion)}と言います。展開した結果は、任意の種類のフォーム
+---
+自己評価定数、シンボル、リストになります。展開した結果自体がマクロ呼び出しなら、結果が他の種類のフォームになるまで、繰り返し展開処理が行なわれます。
+
+  通常のマクロ展開は、その展開結果を評価することにより終了します。しかし他のプログラムもマクロ呼び出しを展開し、それらが展開結果を評価するか、あるいは評価しないかもしれないので、そのマクロ展開が即時または最終的に評価される必要がない場合があります。
+
+  引数式は通常はマクロ展開の計算の一部としては評価されませんが、展開の部分として出現するので、展開結果が評価されるときに計算されます。
+
+  たとえば以下のようなマクロ定義が与えられたとします:
+
+@example
+@group
+(defmacro cadr (x)
+  (list 'car (list 'cdr x)))
+@end group
+@end example
+
+@noindent
+@code{(cadr (assq 'handler list))}のような式はマクロ呼び出しであり、展開結果は以下のようになります:
+
+@example
+(car (cdr (assq 'handler list)))
+@end example
+
+@noindent
+引数@code{(assq 'handler list)}が展開結果に含まれることに注意してください。
+
+Emacs Lispマクロの完全な説明は@ref{Macros}を参照してください。
+
+@node Special Forms
+@subsection スペシャルフォーム
+@cindex special forms
+@cindex forms, special
+@cindex evaluation of special forms
+
+  @dfn{スペシャルフォーム(special
+form)}とは、特別だとマークされたプリミティブであり、引数がすべて評価される訳ではありません。もっとも特別なフォームは制御構文の定義や変数バインディングの処理等、関数ではできないことを行ないます。
+
+  スペシャルフォームはそれぞれ、どの引数を評価して、どの引数を評価しないかについて独自のルールをもちます。特定の引数が評価されるかどうかは、他の引数を評価した結果に依存します。
+
+  式の最初のシンボルがスペシャルフォームなら、式はそのスペシャルフォームのルールにしたがう必要があります。それ以外ならEmacsの挙動は(たとえクラッシュしてないとしても)未定義です。たとえば@code{((lambda
+(x) x . 3)
+4)}は@code{lambda}で始まるサブ式を含みますが、これは適正な@code{lambda}式ではないので、Emacsはエラーをシグナルするかもしれないし、3や4や@code{nil}をリターンしたり、もしかしたら他の挙動を示すかもしれません。
+
+@defun special-form-p object
+この述語は引数がスペシャルフォームかをテストして、スペシャルフォームなら@code{t}、それ以外なら@code{nil}をリターンする。
+@end defun
+
+  以下にEmacs Lispのスペシャルフォームすべてと、それらがどこで説明されているかのリファレンスをアルファベット順でリストします。
+
+@table @code
+@item and
+@pxref{Combining Conditions}
+
+@item catch
+@pxref{Catch and Throw}
+
+@item cond
+@pxref{Conditionals}
+
+@item condition-case
+@pxref{Handling Errors}
+
+@item defconst
+@pxref{Defining Variables}
+
+@item defvar
+@pxref{Defining Variables}
+
+@item function
+@pxref{Anonymous Functions}
+
+@item if
+@pxref{Conditionals}
+
+@item interactive
+@pxref{Interactive Call}
+
+@item lambda
+@pxref{Lambda Expressions}
+
+@item let
+@itemx let*
+@pxref{Local Variables}
+
+@item or
+@pxref{Combining Conditions}
+
+@item prog1
+@itemx prog2
+@itemx progn
+@pxref{Sequencing}
+
+@item quote
+@pxref{Quoting}
+
+@item save-current-buffer
+@pxref{Current Buffer}
+
+@item save-excursion
+@pxref{Excursions}
+
+@item save-restriction
+@pxref{Narrowing}
+
+@item setq
+@pxref{Setting Variables}
+
+@item setq-default
+@pxref{Creating Buffer-Local}
+
+@item unwind-protect
+@pxref{Nonlocal Exits}
+
+@item while
+@pxref{Iteration}
+@end table
+
+@cindex CL note---special forms compared
+@quotation
+@b{Common Lispに関する注意: }GNU EmacsとCommon
+Lispのスペシャルフォームを比較する。@code{setq}、@code{if}、@code{catch}はEmacs LispとCommon
+Lispの両方でスペシャルフォームである。@code{save-excursion}はEmacs Lispではスペシャルフォームだが、Common
+Lispには存在しない。@code{throw}はCommon
+Lispではスペシャルフォーム(なぜなら複数の値をthrowできなければならない)だが、Emacs Lispでは(複数の値をもたない)関数である。
+@end quotation
+
+@node Autoloading
+@subsection 自動ロード
+
+  @dfn{オートロード(autoload)}機能により、まだ関数定義がEmacsにロードされていない関数(またはマクロ)を呼び出すことができます。オートロードは定義がどのファイルに含まれるかを指定します。オートロードオブジェクトがシンボルの関数定義にある場合は、関数としてそのシンボルを呼び出すことにより、自動的に指定されたファイルがロードされます。その後にファイルからロードされた実際の定義を呼び出します。シンボル内の関数定義としてオートロードオブジェクトをアレンジする方法は@ref{Autoload}で説明します。
+
+@node Quoting
+@section クォート
+@cindex forms, quote
+
+  スペシャルフォーム@code{quote}は、単一の引数を記述されたままに評価せずにリターンします。これはプログラムに自己評価オブジェクトではない、定数シンボルや定数リストを含める方法を提供します(数字、文字列、ベクターのような自己評価オブジェクトをクォートする必要はない)。
+
+@defspec quote object
+このスペシャルフォームは@var{object}を評価せずにリターンする。リターン値は共有されるかもしれないので変更しないこと。@ref{Self-Evaluating
+Forms}を参照のこと。
+@end defspec
+
+@cindex @samp{'} for quoting
+@cindex quoting using apostrophe
+@cindex apostrophe for quoting
+@code{quote}はプログラム中で頻繁に使用されるので、Lispはそれにたいする便利な入力構文を提供します。アポストロフィー文字(@samp{'})に続けてLispオブジェクト(の入力構文)を記述すると、それは1番目の要素が@code{quote}、2番目の要素がそのオブジェクトであるようなリストに展開されます。つまり入力構文@code{'x}は@code{(quote
+x)}の略記になります。
+
+以下に@code{quote}を使用した式の例をいくつか示します:
+
+@example
+@group
+(quote (+ 1 2))
+     @result{} (+ 1 2)
+@end group
+@group
+(quote foo)
+     @result{} foo
+@end group
+@group
+'foo
+     @result{} foo
+@end group
+@group
+''foo
+     @result{} 'foo
+@end group
+@group
+'(quote foo)
+     @result{} 'foo
+@end group
+@group
+['foo]
+     @result{} ['foo]
+@end group
+@end example
+
+  @code{(list '+ 1 2)}と@code{'(+ 1 2)}の2つの式はいずれも@code{(+ 1
+2)}とequalなリストを生成しますが前者はmutableリストを新たに作成するのにたいして、後者は共有される可能性のある変更すべきではないコンスから構築したリストを作成します。@ref{Self-Evaluating
+Forms}を参照してください。
+
+  他のクォート構文としては、コンパイル用にLispで記述された無名のラムダ式の元となる@code{function} (@ref{Anonymous
+Functions}を参照)、リストを計算して置き換える際にリストの一部だけをクォートするために使用される@samp{`}(@ref{Backquote}を参照)があります。
+
+@node Backquote
+@section バッククォート
+@cindex backquote (list substitution)
+@cindex ` (list substitution)
+@findex `
+@cindex forms, backquote
+
+  @dfn{バッククォート構文(backquote
+constructs)}を使用することにより、リストをクォートしてそのリストのある要素を選択的に評価することができます。もっとも単純な場合、スペシャルフォーム
+@iftex
+@code{quote}と同じです。
+@end iftex
+@ifnottex
+@code{quote} (前セクションで説明済み。@ref{Quoting}を参照)と同じになります。
+@end ifnottex
+たとえば以下の2つのフォームは同じ結果を生みます:
+
+@example
+@group
+`(a list of (+ 2 3) elements)
+     @result{} (a list of (+ 2 3) elements)
+@end group
+@group
+'(a list of (+ 2 3) elements)
+     @result{} (a list of (+ 2 3) elements)
+@end group
+@end example
+
+@findex , @r{(with backquote)}
+  バッククォートする引数の内側でスペシャルマーカー@samp{,}を使用すると、それは値が定数でないことを示します。Emacs
+Lispエバリュエーターは@samp{,}がついた引数を放置して、リスト構文内にその値を配置します:
+
+@example
+@group
+`(a list of ,(+ 2 3) elements)
+     @result{} (a list of 5 elements)
+@end group
+@end example
+
+@noindent
+@samp{,}による置き換えを、リスト構文のより深いレベルでも使用できます。たとえば:
+
+@example
+@group
+`(1 2 (3 ,(+ 4 5)))
+     @result{} (1 2 (3 9))
+@end group
+@end example
+
+@findex ,@@ @r{(with backquote)}
+@cindex splicing (with backquote)
+  スペシャルマーカー@samp{,@@}を使用すれば、評価された値を結果リストに@dfn{継ぎ足す(splice)}こともできます。継ぎ足されたリストの要素は、結果リスト内の他の要素と同じレベルになります。@samp{`}を使用しない等価なコードは読むのが困難なことがよくあります。以下にいくつかの例を示します:
+
+@example
+@group
+(setq some-list '(2 3))
+     @result{} (2 3)
+@end group
+@group
+(cons 1 (append some-list '(4) some-list))
+     @result{} (1 2 3 4 2 3)
+@end group
+@group
+`(1 ,@@some-list 4 ,@@some-list)
+     @result{} (1 2 3 4 2 3)
+@end group
+
+@group
+(setq list '(hack foo bar))
+     @result{} (hack foo bar)
+@end group
+@group
+(cons 'use
+  (cons 'the
+    (cons 'words (append (cdr list) '(as elements)))))
+     @result{} (use the words foo bar as elements)
+@end group
+@group
+`(use the words ,@@(cdr list) as elements)
+     @result{} (use the words foo bar as elements)
+@end group
+@end example
+
+バッククォート構文の部分式に置換や継ぎ足し(splice)がなければ、これは共有される可能性があり変更するべきではないコンス、ベクター、文字列での@code{quote}のように振る舞います。@ref{Self-Evaluating
+Forms}を参照してください。
+
+@node Eval
+@section evalについて
+
+  フォームはほとんどの場合、実行されるプログラム内に出現することにより自動的に評価されます。ごく稀に実行時 ---
+たとえば編集されているテキストやプロパティリストから取得したフォームを読み取った後 ---
+に計算されるようにフォームを評価するコードを記述する必要があるかもしれません。このようなときは@code{eval}関数を使用します。@code{eval}が不必要だったり、かわりに他の何かを使用すべきときがよくあります。たとえば変数から値を取得するには@code{eval}も機能しますが、@code{symbol-value}のほうが適しています。@code{eval}で評価するためにプロパティリストに式を格納するかわりに、@code{funcall}に渡すように関数を格納した方がよいでしょう。
+
+  このセクションで説明する関数と変数はフォームの評価、評価処理の制限の指定、最後にリターンされた値の記録を行なうものです。ファイルのロードでも評価が行なわれます(@ref{Loading}を参照)。
+
+  データ構造に式を格納して評価するより、データ構造に関数を格納して@code{funcall}や@code{apply}で呼び出すほうが、より明解で柔軟です。関数を使用することにより、引数に情報を渡す能力が提供されます。
+
+@defun eval form &optional lexical
+これは式を評価する基本的な関数である。この関数はカレント環境内で@var{form}を評価して、その結果をリターンする。@var{form}オブジェクトの型はそれが評価される方法を決定します。@ref{Forms}を参照のこと。
+
+引数@var{lexical}は、ローカル変数にたいするスコープ規則(@ref{Variable
+Scoping}を参照)を指定する。これが省略または@code{nil}ならデフォルトのダイナミックスコープ規則を使用して@var{form}を評価することを意味する。@code{t}ならレキシカルスコープ規則が使用されることを意味する。@var{lexical}の値にはレキシカルバインディングでの特定の@dfn{レキシカル環境(lexical
+environment)}を指定する空ではないalistも指定できる。しかしこの機能はEmacs
+Lispデバッガーのような、特別な用途にたいしてのみ有用。@ref{Lexical Binding}を参照のこと。
+
+@code{eval}は関数なので@code{eval}呼び出しに現れる引数式は2回 ---
+@code{eval}が呼び出される前の準備で一度、@code{eval}関数自身によりもう一度 --- 評価される。以下に例を示す:
+
+@example
+@group
+(setq foo 'bar)
+     @result{} bar
+@end group
+@group
+(setq bar 'baz)
+     @result{} baz
+;; @r{@code{eval}が引数@code{foo}を受け取る}
+(eval 'foo)
+     @result{} bar
+;; @r{@code{eval}が、@code{foo}の値である、引数@code{bar}を受け取る}
+(eval foo)
+     @result{} baz
+@end group
+@end example
+
+@code{eval}で現在アクティブな呼び出しの数は@code{max-lisp-eval-depth}に制限される(以下参照)。
+@end defun
+
+@deffn Command eval-region start end &optional stream read-function
+@anchor{Definition of eval-region}
+この関数はカレントバッファー内の、位置@var{start}と@var{end}で定義されるリージョン内のフォームを評価する。この関数はリージョンからフォームを読み取って@code{eval}を呼び出す。これはリージョンの最後に達するか、処理されないエラーがシグナルされるまで行なわれる。
+
+デフォルトでは@code{eval-region}は出力を何も生成しない。しかし@var{stream}が非@code{nil}なら出力関数(@ref{Output
+Functions}を参照)で生成された任意の出力、同様にリージョン内の式を評価した結果の値が、@var{stream}を使用してプリントされる。@ref{Output
+Streams}を参照のこと。
+
+@var{read-function}が非@code{nil}なら、@code{read}のかわりに1つずつ式を読み取るために使用する関数を指定すること。これは入力を読み取るストリームを指定する、1つの引数で呼び出される関数である。この関数を指定するために変数@code{load-read-function}(@ref{Definition
+of load-read-function,, How Programs Do
+Loading}を参照)も使用できるが、引数@var{read-function}を使用するほうが堅実である。
+
+@code{eval-region}はポイントを移動しない。常に@code{nil}をリターンする。
+@end deffn
+
+@cindex evaluation of buffer contents
+@deffn Command eval-buffer &optional buffer-or-name stream filename unibyte print
+この関数は@code{eval-region}と似ているが、引数は異なるオプション機能を提供する。@code{eval-buffer}はバッファー@var{buffer-or-name}のアクセス可能な部分(@ref{Narrowing,,,
+emacs, The GNU Emacs
+Manual}を参照)の全体を処理する。@var{buffer-or-name}にはバッファー名(文字列)を指定でき、@code{nil}(または省略)のときはカレントバッファーを意味する。@var{stream}が非@code{nil}、または@var{print}が@code{nil}なら、@code{eval-region}のように@var{stream}が使用される。この場合には式の評価結果の値は依然として破棄されるが、出力関数による出力はエコーエリアにプリントされる。@var{filename}は@code{load-history}
+(@ref{Unloading}を参照)に使用されるファイル名であり、デフォルトは@code{buffer-file-name}
+(@ref{Buffer File
+Name}を参照)。@var{unibyte}が非@code{nil}なら@code{read}可能な限りは文字列をユニコードに変換する。
+@end deffn
+
+@defopt max-lisp-eval-depth
+@anchor{Definition of max-lisp-eval-depth}
+この変数はエラー(エラーメッセージは@code{"Lisp nesting exceeds
+max-lisp-eval-depth"})がシグナルされる前に@code{eval}、@code{apply}、@code{funcall}の呼び出しで許容される最大の深さを定義する。
+
+超過した際にエラーを起こすこの制限は、誤って定義された関数による無限再帰をEmacs
+Lispが回避するための手段として用いられる。@code{max-lisp-eval-depth}の値を過大に増加させると、そのようなコードはかわりにスタックオーバーフローを起こすだろう。オーバーフローを処理できるシステムがいくつかある。この場合には通常のLisp評価は割り込まれて、制御はトップレベルのコマンドループ(@code{top-level})に戻される。この状況ではEmacs
+Lispデバッガにエンターする手段は存在しないことに注意されたい。@ref{Error Debugging}を参照のこと。
+
+@cindex Lisp nesting error
+
+Lisp式に記述された関数の呼び出し、関数呼び出しの引数と関数bodyフォームにたいする再帰評価、Lispコード内での明示的な呼び出し等では内部的に@code{eval}、@code{apply}、@code{funcall}を使用して深さ制限を計数する。
+
+この変数のデフォルト値は1600。この値を100未満にセットした場合には、値が与えられた値に達するとLispはそれを100にリセットする。空きが少なければデバッガー自身を実行するために空きが必要になるので、Lispデバッガーに入ったときは値が増加される。
+@end defopt
+
+@defvar values
+この変数の値は読み取り、評価、プリントを行なった標準的なEmacsコマンドにより、バッファー(ミニバッファーを含む)からリターンされる値のリストである(これには@file{*ielm*}バッファーでの評価、@code{lisp-interaction-mode}での@kbd{C-j}や@kbd{C-x
+C-e}、類似の評価コマンドを使用した評価は@emph{含まれない}ことに注意)。
+
+この変数は時代遅れでありEmacsプロセスのメモリーフットプリントを常に増加させるため、将来のバージョンでは削除されるだろう。この理由により使用を推奨しない。
+
+@code{values}の要素の順序はもっとも最近の要素が最初になる。
+
+@example
+@group
+(setq x 1)
+     @result{} 1
+@end group
+@group
+(list 'A (1+ 2) auto-save-default)
+     @result{} (A 3 t)
+@end group
+@group
+values
+     @result{} ((A 3 t) 1 @dots{})
+@end group
+@end example
+
+この変数は最近評価されたフォームの値を後で参照するのに有用かもしれない。@code{values}自体の値のプリントは、値がおそらく非常に長くなるので通常は悪いアイデアである。かわりに以下のように特定の要素を調べること:
+
+@example
+@group
+;; @r{もっとも最近評価された結果を参照する}
+(nth 0 values)
+     @result{} (A 3 t)
+@end group
+@group
+;; @r{これは新たな要素をputするので}
+;;   @r{すべての要素が1つ後に移動する}
+(nth 1 values)
+     @result{} (A 3 t)
+@end group
+@group
+;; @r{これは次に新しい、この例の前の次に新しい要素を取得する}
+(nth 3 values)
+     @result{} 1
+@end group
+@end example
+@end defvar
+
+@node Deferred Eval
+@section 遅延されたLazy評価
+
+@cindex deferred evaluation
+@cindex lazy evaluation
+
+
+  たとえばプログラムの将来において計算結果が不要ということがわかった場合に時間を要する計算処理を回避したい等、式の評価を遅延させると便利な場合があります。そのような@dfn{遅延評価(deferred
+evaluation)}をサポートするために、@file{thunk}ライブラリは以下の関数とマクロを提供します。
+
+@cindex thunk
+@defmac thunk-delay forms@dots{}
+@var{forms}を評価するための@dfn{thunk}をリターンする(訳注:
+thunkとは、別のサブルーチンに計算を追加で挿入するために使用するサブルーチンであり、計算結果が必要になるまで計算を遅延したり、別のサブルーチンの先頭や最後に処理を挿入するために使用される。英語版Wikipediaより)。thunkは@code{thunk-delay}呼び出しのlexical環境を継承するクロージャである(@ref{Closures}を参照)。このマクロの使用には@code{lexical-binding}が必要。
+@end defmac
+
+@defun thunk-force thunk
+thunkを作成した@code{thunk-delay}で指定されたフォームの評価を@var{thunk}に強制する。最後のフォームの評価結果をリターンする。@var{thunk}が強制されたことも``記憶''される。同一の@var{thunk}にたいする以降の@code{thunk-force}呼び出しでは、フォームを再度評価せずに同じ結果をリターンする。
+@end defun
+
+@defmac thunk-let (bindings@dots{}) forms@dots{}
+このマクロは@code{let}の類似だが``lazy(遅延された)''変数バインディングを作成する。すべてのバインディングは@w{@code{(@var{symbol}
+@var{value-form})}}という形式をもつ。@code{let}とは異なり、すべての@var{value-form}の評価は@var{forms}を最初に評価する際に、対応する@var{symbol}のバインディングが使用されるまで遅延される。すべての@var{value-form}は最大でも1回評価される。このマクロの使用には@code{lexical-binding}が必要。
+@end defmac
+
+例:
+
+@example
+@group
+(defun f (number)
+  (thunk-let ((derived-number
+              (progn (message "Calculating 1 plus 2 times %d" number)
+                     (1+ (* 2 number)))))
+    (if (> number 10)
+        derived-number
+      number)))
+@end group
+
+@group
+(f 5)
+@result{} 5
+@end group
+
+@group
+(f 12)
+@print{} Calculating 1 plus 2 times 12
+@result{} 25
+@end group
+
+@end example
+
+遅延バインドされた変数の特性として、それらにたいする(@code{setq}による)セットはエラーになります。
+
+
+@defmac thunk-let* (bindings@dots{}) forms@dots{}
+これは@code{thunk-let}と似ているが、@var{bindings}内の任意の式がこの@code{thunk-let*}フォーム内の先行するバインディングの参照を許されている点が異なる。このマクロの使用には@code{lexical-binding}が必要。
+@end defmac
+
+@example
+@group
+(thunk-let* ((x (prog2 (message "Calculating x...")
+                    (+ 1 1)
+                  (message "Finished calculating x")))
+             (y (prog2 (message "Calculating y...")
+                    (+ x 1)
+                  (message "Finished calculating y")))
+             (z (prog2 (message "Calculating z...")
+                    (+ y 1)
+                  (message "Finished calculating z")))
+             (a (prog2 (message "Calculating a...")
+                    (+ z 1)
+                  (message "Finished calculating a"))))
+  (* z x))
+
+@print{} Calculating z...
+@print{} Calculating y...
+@print{} Calculating x...
+@print{} Finished calculating x
+@print{} Finished calculating y
+@print{} Finished calculating z
+@result{} 8
+
+@end group
+@end example
+
+@code{thunk-let}と@code{thunk-let*}はthunkを暗黙に使用します。これらの拡張はヘルパーシンボルを作成してバインディング式をラップするthunkにバインドします。@var{forms}本体中の元の変数にたいするすべての参照は、対応するヘルパー変数を引数とする@code{thunk-force}呼び出し式に置き換えられます。したがって@code{thunk-let}や@code{thunk-let*}を使用するコードはthunkを使用するように書き換えが可能ですが、多くの場合には明示的にthunkを使用するよりこれらのマクロを使用するほうが優れたコードになるでしょう。

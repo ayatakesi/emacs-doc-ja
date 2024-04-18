@@ -1,0 +1,832 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1994, 1998--1999, 2001--2024 Free Software
+@c Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Read and Print
+@chapter Lispオブジェクトの読み取りとプリント
+
+  @dfn{プリント(print)}と@dfn{読み取り(read)}はLispオブジェクトからテキスト形式への変換、またはその逆の変換を行なう操作です。これらは@ref{Lisp
+Data Types}で説明したプリント表現(printed representation)と入力構文(read syntax)を使用します。
+
+  このチャプターでは読み取りとプリントのためのLisp関数について説明します。このチャプターではさらに@dfn{ストリーム(stream)}についても説明します。ストリームとは、(読み取りでは)テキストがどこから取得されるか、(プリントでは)テキストをどこに出力するかを指定します。
+
+@menu
+* Streams Intro::            ストリーム、読み取り、プリントの概観。
+* Input Streams::            入力ストリームとして使用できる、さまざまなデータ型。
+* Input Functions::          テキストからLispオブジェクトを読み取る関数。
+* Output Streams::           出力ストリームとして使用できる、さまざまなデータ型。
+* Output Functions::         テキストとしてLispオブジェクトをプリントする関数。
+* Output Variables::         プリント関数が何を行うか制御する変数。
+* Output Overrides::         出力変数のオーバーライド
+@end menu
+
+@node Streams Intro
+@section 読み取りとプリントの概念
+@cindex Lisp reader
+@cindex printing
+@cindex reading
+
+  Lispオブジェクトの@dfn{読み取り}とは、テキスト形式のLisp式をパース(parse:
+解析)して、対応するLispオブジェクトを生成することを意味します。これはLLispプログラムがLispコードファイルからLispに取得される方法でもあります。わたしたちはそのテキストのことを、そのオブジェクトの@dfn{入力構文(read
+syntax)}と呼んでいます。たとえばテキスト@samp{(a .@:
+5)}は、@sc{car}が@code{a}で@sc{cdr}が数字の5であるようなコンスセルにたいする入力構文です。
+
+  Lispオブジェクトの@dfn{プリント}とは、あるオブジェクトをそのオブジェクトの@dfn{プリント表現(printed
+representation)}に変換することによって、そのオブジェクトを表すテキストを生成することを意味します(@ref{Printed
+Representation}を参照)。上述のコンスセルをプリントするとテキスト@samp{(a .@: 5)}が生成されます。
+
+  読み取りとプリントは概ね逆の処理といえます。あるテキスト断片を読み取った結果として生成されたオブジェクトをプリントすると、多くの場合は同じテキストが生成され、あるオブジェクトをプリントした結果のテキストを読み取ると、通常は同じようなオブジェクトが生成されます。たとえばシンボル@code{foo}をプリントするとテキスト@samp{foo}が生成されて、そのテキストを読み取るとシンボル@code{foo}がリターンされます。要素が@code{a}と@code{b}のリストをプリントするとテキスト@samp{(a
+b)}が生成されて、そのテキストを読み取ると、(同じリストではないが)要素が@code{a}と@code{b}のリストが生成されます。
+
+  しかし、これら2つの処理は互いにまったく逆の処理というわけではありません。３つの例外があります:
+
+@itemize @bullet
+@item
+プリントは読み取ることが不可能なテキストを生成できる。たとえばバッファー、フレーム、サブプロセス、マーカーは@samp{#}で始まるテキストとしてプリントされる。このテキストの読み取りを試みるとエラーとなる。これらのデータ型を読み取る方法は存在しない。
+
+@item
+1つのオブジェクトが複数のテキスト的な表現をもつことができる。たとえば@samp{1}と@samp{01}は同じ整数を表し、@samp{(a
+b)}と@samp{(a .@:
+(b))}は同じリストを表す。読み取りは複数の候補を受容するかもしれないが、プリントはそのうちのただ1つを選択しなければならない。
+
+@item
+あるオブジェクトの読み取りシーケンスの中間の特定ポイントに、読み取り結果に影響を与えないコメントを置くことができる。
+@end itemize
+
+@node Input Streams
+@section 入力ストリーム
+@cindex stream (for reading)
+@cindex input stream
+
+  テキストを読み取るLisp関数の大部分は、引数として@dfn{入力ストリーム(input
+stream)}を受け取ります。入力ストリームは読み取られるテキストの文字をどこから、どのように取得するかを指定します。以下は利用できる入力ストリーム型です:
+
+@table @asis
+@item @var{buffer}
+@cindex buffer input stream
+入力文字は@var{buffer}のポイントの後の文字から直接読み取られる。文字の読み取りとともにポイントが進む。
+
+@item @var{marker}
+@cindex marker input stream
+入力文字は@var{marker}があるバッファーの、マーカーの後の文字から直接読み取られる。文字の読み取りとともにマーカーが進む。ストリームがマーカーならバッファー内のポイント値に影響はない。
+
+@item @var{string}
+@cindex string input stream
+入力文字は@var{string}の最初の文字から必要な文字数分が取得される。
+
+@item @var{function}
+@cindex function input stream
+入力文字は@var{function}から生成され、その関数は2種類の呼び出しをサポートしなければならない:
+
+@itemize @bullet
+@item
+引数なしで呼び出されたときは次の文字をリターンする。
+
+@item
+1つの引数(常に文字)で呼び出されたとき、@var{function}は引数を保存して次の呼び出しでリターンするように準備する。これは文字の@dfn{読み戻し(unreading)}と呼ばれ、Lispリーダーが1文字多く読みとったとき、それを`読みとった場所に戻したいときに発生する。この場合には@var{function}のリターン値と違いはない。
+@end itemize
+
+@item @code{t}
+@cindex @code{t} input stream
+@code{t}はその入力がミニバッファーから読み取られるストリームであることを意味する。実際にはミニバッファーが1回呼び出されて、ユーザーから与えられたテキストが、その後に入力ストリームとして使用される文字列となる。Emacsがbatchモード(@ref{Batch
+Mode}を参照)で実行されている場合には、ミニバッファーのかわりに標準入力が使用される。たとえば、
+@example
+(message "%s" (read t))
+@end example
+batchモードでは標準入力からLisp式が読み取られて、結果は標準出力にプリントされるだろう。
+
+@item @code{nil}
+@cindex @code{nil} input stream
+入力ストリームとして@code{nil}が与えられた場合は、かわりに@code{standard-input}の値が使用されることを意味する。この値は@dfn{デフォルトの入力ストリーム(default
+input stream)}であり、非@code{nil}の入力ストリームでなければならない。
+
+@item @var{symbol}
+入力ストリームとしてのシンボルは、(もしあれば)そのシンボルの関数定義と等価である。
+@end table
+
+  以下の例ではバッファーストリームから読み込んで、読み取りの前後におけるポイント位置を示しています:
+
+@example
+@group
+---------- Buffer: foo ----------
+This@point{} is the contents of foo.
+---------- Buffer: foo ----------
+@end group
+
+@group
+(read (get-buffer "foo"))
+     @result{} is
+@end group
+@group
+(read (get-buffer "foo"))
+     @result{} the
+@end group
+
+@group
+---------- Buffer: foo ----------
+This is the@point{} contents of foo.
+---------- Buffer: foo ----------
+@end group
+@end example
+
+@noindent
+最初の読み取りではスペースがスキップされていることに注意してください。読み取りでは意味のあるテキストに先行する、任意のサイズの空白文字がスキップされます。
+
+  以下はマーカーストリームからの読み取りの例で、最初は表示されているバッファーの先頭にマーカーを配置されています。読み取られた値はシンボル@code{This}です。
+
+@example
+@group
+
+---------- Buffer: foo ----------
+This is the contents of foo.
+---------- Buffer: foo ----------
+@end group
+
+@group
+(setq m (set-marker (make-marker) 1 (get-buffer "foo")))
+     @result{} #<marker at 1 in foo>
+@end group
+@group
+(read m)
+     @result{} This
+@end group
+@group
+m
+     @result{} #<marker at 5 in foo>   ;; @r{最初のスペースの前}
+@end group
+@end example
+
+  以下では文字列のコンテンツから読み取っています:
+
+@example
+@group
+(read "(When in) the course")
+     @result{} (When in)
+@end group
+@end example
+
+  以下はミニバッファーから読み取る例です。プロンプトは@w{@samp{Lisp expression:
+}}です(このプロンプトはストリーム@code{t}から読み取る際は常に使用される)。ユーザーの入力はプロンプトの後に表示されます。
+
+@example
+@group
+(read t)
+     @result{} 23
+---------- Buffer: Minibuffer ----------
+Lisp expression: @kbd{23 @key{RET}}
+---------- Buffer: Minibuffer ----------
+@end group
+@end example
+
+  最後は@code{useless-stream}という名前の関数ストリームから読み取る例です。ストリームを使用する前に変数@code{useless-list}を文字のリストで初期化しています。その後はリスト内の次の文字を取得するため、または文字をリストの先頭に追加することにより読み戻すために関数@code{useless-stream}を呼び出します。
+
+@example
+@group
+(setq useless-list (append "XY()" nil))
+     @result{} (88 89 40 41)
+@end group
+
+@group
+(defun useless-stream (&optional unread)
+  (if unread
+      (setq useless-list (cons unread useless-list))
+    (prog1 (car useless-list)
+           (setq useless-list (cdr useless-list)))))
+     @result{} useless-stream
+@end group
+@end example
+
+@noindent
+このストリームを使って以下のように読み取ります:
+
+@example
+@group
+(read 'useless-stream)
+     @result{} XY
+@end group
+
+@group
+useless-list
+     @result{} (40 41)
+@end group
+@end example
+
+@noindent
+開カッコと閉カッコがリスト内に残されることに注意してください。Lispリーダーは開カッコに出会うと、それを入力の終わりと判断して読み戻します。次にこのポイント位置からこのストリームを読み取ると、@samp{()}が読み取られて@code{nil}がリターンされます。
+
+@node Input Functions
+@section 入力関数
+
+  このセクションでは、読み取りに関係のあるLisp関数と変数について説明します。
+
+  以下の関数では@var{stream}は入力ストリーム(前のセクションを参照)を意味します。@var{stream}が@code{nil}または省略された場合のデフォルト値は@code{standard-input}です。
+
+@kindex end-of-file
+  読み取りにおいて終端されていないリスト、ベクター、文字列に遭遇したら@code{end-of-file}がシグナルされます。
+
+@defun read &optional stream
+この関数は@var{stream}からテキスト表現されたLisp式を1つ読み取ってLispオブジェクトとしてリターンする。これは基本的なLisp入力関数である。
+@end defun
+
+@defun read-from-string string &optional start end
+@cindex string to object
+この関数は@var{string}内のテキストからテキスト表現された最初のLisp式を読み取る。リターン値は@sc{car}がその式で、@sc{cdr}が次に読み取られるその文字列内の残りの文字(読み取られていない最初の文字)の位置を与える整数であるようなコンスセルである。
+
+@var{start}が与えられると、文字列内のインデックス@var{start}(最初の文字はインデックス0)から読み取りが開始される。@var{end}を指定すると、残りの文字列が存在しないかのごとくそのインデックスの直前で読み取りがストップされる。
+
+たとえば:
+
+@example
+@group
+(read-from-string "(setq x 55) (setq y 5)")
+     @result{} ((setq x 55) . 11)
+@end group
+@group
+(read-from-string "\"A short string\"")
+     @result{} ("A short string" . 16)
+@end group
+
+@group
+;; @r{最初の文字から読み取りを開始}
+(read-from-string "(list 112)" 0)
+     @result{} ((list 112) . 10)
+@end group
+@group
+;; @r{2つ目の文字から読み取りを開始}
+(read-from-string "(list 112)" 1)
+     @result{} (list . 5)
+@end group
+@group
+;; @r{7番目の文字から読み取りを開始}
+;;   @r{して9番目の文字で停止}
+(read-from-string "(list 112)" 6 8)
+     @result{} (11 . 8)
+@end group
+@end example
+@end defun
+
+@defun read-positioning-symbols &optional stream
+この関数は@code{read}が行うように@var{stream}からテキストとして1つの式を読み取るが、読み込んだシンボルにたいしてそのシンボルが@var{stream}で出現した位置を読み込んだシンボルに付加する。効率上の理由によりシンボル@code{nil}だけは位置を付加しない。@ref{Symbols
+with Position}を参照のこと。これはバイトコンパイラーによって使用される関数である。
+@end defun
+
+@defvar standard-input
+この変数はデフォルト入力ストリーム(引数@var{stream}が@code{nil}のときに@code{read}が使用するストリーム)を保持する。デフォルトは@code{t}で、これはミニバッファーを使用することを意味する。
+@end defvar
+
+@defvar read-circle
+非@code{nil}なら、この変数は循環構造(circular structure)と共有構造(shared
+structures)の読み取りを有効にする。@ref{Circular Objects}を参照のこと。デフォルト値は@code{t}。
+@end defvar
+
+@cindex binary I/O in batch mode
+batchモードのEmacsプロセスの標準入力や標準出力のストリームにたいして読み取りや書き込みを行う際には、任意のバイナリーデータにたいしてそのまま読み取りや書き込みを行うことや、改行とCR-LFの変換を何も行わないことを保証することが要求される場合があります。この問題はMS-WindowsとMS-DOSだけに存在する問題であり、POSIXではそのような問題はありません。以下の関数によりEmacsプロセスのすべての標準ストリームのI/Oモードを制御することができます。
+
+@defun set-binary-mode stream mode
+@var{stream}のI/Oモードのバイナリーとテキストを切り替える。@var{mode}が非@code{nil}ならバイナリーモード、それ以外ならテキストモードに切り替える。@var{stream}の値は@code{stdin}、@code{stdout}、@code{stderr}のいずれか。この関数は副作用として@var{stream}の保留中の出力データをすべてフラッシュして、@var{stream}の以前のI/Oモードの値をリターンする。POSIXでは常に非@code{nil}値をリターンして、保留中の出力のフラッシュ以外は何も行わない。
+@end defun
+
+@defun readablep object
+@cindex readable syntax
+この述語は@var{object}が@dfn{読み取り可能構文(readable syntax)}かどうか、つまり書き込んでからEmacs
+Lispリーダーによって読み戻せるかどうかを判定する。読み取り可能でなければ@code{nil}、読み取り可能であればこの関数は@var{object}のプリント表現をリターンする(@code{prin1}を通じて;
+@ref{Output Functions}を参照)。
+@end defun
+
+@node Output Streams
+@section 出力ストリーム
+@cindex stream (for printing)
+@cindex output stream
+
+  出力ストリームはプリントによって生成された文字に何を行うかを指定します。ほとんどのプリント関数は引数としてオプションで出力ストリームを受け取ります。以下は利用できる出力ストリーム型です:
+
+@table @asis
+@item @var{buffer}
+@cindex buffer output stream
+出力文字は@var{buffer}のポイント位置に挿入される。文字が挿入された分だけポイントが進む。
+
+@item @var{marker}
+@cindex marker output stream
+出力文字は@var{marker}があるバッファーのマーカー位置に挿入される。文字が挿入された分だけマーカー位置が進む。ストリームがマーカーのときは、そのバッファー内のポイント位置にプリントは影響せず、この種のプリントでポイントは移動しない(マーカー位置がポイント位置かポイント位置より前の場合は除く。通常はテキストの周囲にポイントが進む)。
+
+@item @var{function}
+@cindex function output stream
+出力文字は文字を格納する役目をもつ@var{function}に渡される。この関数は1つの文字を引数に出力される文字の回数呼び出され、格納したい場所にその文字を格納する役目をもつ。
+
+@item @code{t}
+@cindex @code{t} output stream
+出力文字はエコーエリアに表示される。Emacsがbatchモード(@ref{Batch
+Mode}を参照)で実行中なら、出力はかわりに標準出力デスクリプターに書き込まれる。
+
+@item @code{nil}
+@cindex @code{nil} output stream
+出力ストリームに@code{nil}が指定された場合は、かわりに@code{standard-output}変数の値が使用されることを意味する。この値は@dfn{デフォルトの出力ストリーム(default
+output stream)}であり、非@code{nil}でなければならない。
+
+@item @var{symbol}
+出力ストリームとしてのシンボルは、(もしあれば)そのシンボルの関数定義と等価である。
+@end table
+
+  有効な出力ストリームの多くは、入力ストリームとしても有効です。したがって入力ストリームと出力ストリームの違いは、Lispオブジェクトの型ではなく、どのようにLispオブジェクトを使うかという点です。
+
+  以下はバッファーを出力ストリームとして使用する例です。ポイントは最初は@samp{the}の中の@samp{h}の直前にあります。そして最後も同じ@samp{h}の直前に配置されます。
+
+@cindex print example
+@example
+@group
+---------- Buffer: foo ----------
+This is t@point{}he contents of foo.
+---------- Buffer: foo ----------
+@end group
+
+(print "This is the output" (get-buffer "foo"))
+     @result{} "This is the output"
+
+@group
+---------- Buffer: foo ----------
+This is t
+"This is the output"
+@point{}he contents of foo.
+---------- Buffer: foo ----------
+@end group
+@end example
+
+  次はマーカーを出力ストリームとして使用する例です。マーカーは最初はバッファー@code{foo}内の単語@samp{the}の中の@samp{t}と@samp{h}の間にあります。最後には挿入されたテキストによってマーカーが進んで、同じ@samp{h}の前に留まります。通常の方法で見られるようなポイント位置への影響がないことに注意してください。
+
+@example
+@group
+---------- Buffer: foo ----------
+This is the @point{}output
+---------- Buffer: foo ----------
+@end group
+
+@group
+(setq m (copy-marker 10))
+     @result{} #<marker at 10 in foo>
+@end group
+
+@group
+(print "More output for foo." m)
+     @result{} "More output for foo."
+@end group
+
+@group
+---------- Buffer: foo ----------
+This is t
+"More output for foo."
+he @point{}output
+---------- Buffer: foo ----------
+@end group
+
+@group
+m
+     @result{} #<marker at 34 in foo>
+@end group
+@end example
+
+  以下はエコーエリアに出力を表示する例です:
+
+@example
+@group
+(print "Echo Area output" t)
+     @result{} "Echo Area output"
+---------- Echo Area ----------
+"Echo Area output"
+---------- Echo Area ----------
+@end group
+@end example
+
+  最後は関数を出力ストリームとして使用する例です。関数@code{eat-output}は与えられたそれぞれの文字を@code{last-output}の先頭にconsします(@ref{Building
+Lists}を参照)。最後にはリストには出力されたすべての文字が逆順で含まれます。
+
+@example
+@group
+(setq last-output nil)
+     @result{} nil
+@end group
+
+@group
+(defun eat-output (c)
+  (setq last-output (cons c last-output)))
+     @result{} eat-output
+@end group
+
+@group
+(print "This is the output" #'eat-output)
+     @result{} "This is the output"
+@end group
+
+@group
+last-output
+     @result{} (10 34 116 117 112 116 117 111 32 101 104
+    116 32 115 105 32 115 105 104 84 34 10)
+@end group
+@end example
+
+@noindent
+このリストを逆転すれば正しい順序で出力することができます:
+
+@example
+@group
+(concat (nreverse last-output))
+     @result{} "
+\"This is the output\"
+"
+@end group
+@end example
+
+@noindent
+@code{concat}を呼び出してリストを文字列に変換すれば、内容をより明解に確認できます。
+
+@cindex @code{stderr} stream, use for debugging
+@anchor{external-debugging-output}
+@defun external-debugging-output character
+この関数はデバッグ時の出力ストリームとして有用。これは標準エラーストリームに@var{character}を書き込む。
+
+たとえば
+@example
+@group
+(print "This is the output" #'external-debugging-output)
+@print{} This is the output
+@result{} "This is the output"
+@end group
+@end example
+@end defun
+
+@node Output Functions
+@section 出力関数
+
+  このセクションではオブジェクトをオブジェクトのプリント表現に変換して、LispオブジェクトをプリントするLisp関数を説明します。
+
+@cindex @samp{"} in printing
+@cindex @samp{\} in printing
+@cindex quoting characters in printing
+@cindex escape characters in printing
+  Emacsプリント関数には、正しく読み取れるように必要なとき出力にクォート文字を追加するものがあります。使用されるクォート文字は@samp{"}と@samp{\}です。これらは文字列をシンボルと区別するとともに、文字列とシンボル内の区切り文字が読み取りの際に区切り文字として扱われることを防ぎます。完全な詳細は@ref{Printed
+Representation}を参照してください。クォートするかしないかはプリント関数の選択によって指定できます。
+
+  そのテキストがLispに読み戻す場合、またはLispプログラマーにLispオブジェクトを明解に説明するのが目的の場合は、曖昧さを避けるためにクォート文字をプリントするべきです。しかしプログラマー以外の人間にたいして出力の見栄えを良くするのが目的なら、通常はクォートなしでプリントしたほうがよいでしょう。
+
+  Lispオブジェクトは自己参照ができます。通常の方法で自己参照オブジェクトをプリントするにはテキストが無限に必要であり、その試みにより無限再帰が発生する恐れがあります。Emacsはそのような再帰を検知して、すでにプリントされたオブジェクトを再帰的にプリントするかわりに、@samp{#@var{level}}をプリントします。たとえば以下はカレントのプリント処理において、レベル0のオブジェクトを再帰的に参照することを示しています:
+
+@example
+(setq foo (list nil))
+     @result{} (nil)
+(setcar foo foo)
+     @result{} (#0)
+@end example
+
+  以下の関数では@var{stream}は出力ストリームを意味します(出力ストリームの説明は前のセクションを参照。デバッグではストリーム値として@ref{external-debugging-output}も有用)
+@var{stream}が@code{nil}か省略された場合のデフォルトは@code{standard-output}の値です。
+
+@defun print object &optional stream
+@cindex Lisp printer
+@code{print}関数はプリントを行うための便利な手段である。この関数は@var{object}の前後に改行を付与して@var{object}のプリント表現を@var{stream}にプリントする。クォート文字が使用される。@code{print}は@var{object}をリターンする。たとえば:
+
+@example
+@group
+(progn (print 'The\ cat\ in)
+       (print "the hat")
+       (print " came back"))
+     @print{}
+     @print{} The\ cat\ in
+     @print{}
+     @print{} "the hat"
+     @print{}
+     @print{} " came back"
+     @result{} " came back"
+@end group
+@end example
+@end defun
+
+@defun prin1 object &optional stream overrides
+この関数は@var{object}のプリント表現を@var{stream}に出力する。この関数は@code{print}のように出力を分割するための改行をプリントしないが、@code{print}のようにクォート文字を使用する。@var{object}をリターンする。
+
+@example
+@group
+(progn (prin1 'The\ cat\ in)
+       (prin1 "the hat")
+       (prin1 " came back"))
+     @print{} The\ cat\ in"the hat"" came back"
+     @result{} " came back"
+@end group
+@end example
+
+@var{overrides}が非@code{nil}なら、それは@code{t}
+(すべてのプリンター関連変数にたいしてデフォルトとして@code{prin1}を使うよう指示する)、あるいはセッティングのリストであること。詳細については@ref{Output
+Overrides}を参照のこと。
+@end defun
+
+@defun princ object &optional stream
+この関数は@var{object}のプリント表現を@var{stream}に出力する。@var{object}をリターンする。
+
+この関数は@code{read}ではなく人間が読める出力を生成することを意図しているので、クォート文字を挿入せず文字列のコンテンツの前後にダブルクォート文字を配置しない。各呼び出しの間にスペースを何も出力しない。
+
+@example
+@group
+(progn
+  (princ 'The\ cat)
+  (princ " in the \"hat\""))
+     @print{} The cat in the "hat"
+     @result{} " in the \"hat\""
+@end group
+@end example
+@end defun
+
+@defun terpri &optional stream ensure
+@cindex newline in print
+この関数は@var{stream}に改行を出力する。名前の由来は``terminate
+print(プリントを終端する)''。@var{ensure}が非@code{nil}の場合には、@var{stream}がすでに行頭にあれば改行をプリントしない。この場合には@var{stream}に関数は指定できず、指定するとエラーがシグナルされる。この関数は改行をプリントしたら@code{t}をリターンする。
+@end defun
+
+@defun write-char character &optional stream
+この関数は@var{character}を@var{stream}に出力する。@var{character}をリターンする。
+@end defun
+
+@defun flush-standard-output
+端末に出力を送信するようなEmacsベースのバッチスクリプトでは、@code{standard-output}に改行文字を書き込むたびにEmacsが自動的に出力を表示する。この関数を使えば最初に改行文字を送信せずに@code{standard-output}をフラッシュ(flush)できるので、不完全な行を表示することができる。
+@end defun
+
+@defun prin1-to-string object &optional noescape overrides
+@cindex object to string
+この関数は同じ引数で@code{prin1}がプリントするテキストを含む文字列をリターンする。
+
+@example
+@group
+(prin1-to-string 'foo)
+     @result{} "foo"
+@end group
+@group
+(prin1-to-string (mark-marker))
+     @result{} "#<marker at 2773 in strings-ja.texi>"
+@end group
+
+If @var{overrides} is non-@code{nil}, it should either be @code{t}
+(which tells @code{prin1} to use the defaults for all printer related
+variables), or a list of settings.  @xref{Output Overrides}, for details.
+@end example
+
+@var{noescape}が非@code{nil}なら出力中のクォート文字の使用を抑制する(この引数はEmacsバージョン19以降でサポートされた)。
+
+@example
+@group
+(prin1-to-string "foo")
+     @result{} "\"foo\""
+@end group
+@group
+(prin1-to-string "foo" t)
+     @result{} "foo"
+@end group
+@end example
+
+Lispオブジェクトのプリント表現を文字列として取得する別の手段については、@ref{Formatting
+Strings}の@code{format}を参照のこと。
+@end defun
+
+@defmac with-output-to-string body@dots{}
+このマクロは出力を文字列に送るよう@code{standard-output}をセットアップしてフォーム@var{body}を実行する。その文字列をリターンする。
+
+たとえばカレントバッファー名が@samp{foo}なら、
+
+@example
+(with-output-to-string
+  (princ "The buffer is ")
+  (princ (buffer-name)))
+@end example
+
+@noindent
+は@code{"The buffer is foo"}をリターンする。
+@end defmac
+
+@cindex pretty-printer
+@defun pp object &optional stream
+この関数は@code{prin1}と同じように@var{object}を@var{stream}に出力するが、より優雅(pretty)な方法でこれを行う。すなわちこの関数は人間がより読みやすいようにオブジェクトのインデントとパディングを行う。
+@end defun
+
+任意のバイナリーデータを書き込んだり非POSIXホストで改行変換を回避するためにこのセクションで説明した関数を使用してbatchモードでバイナリーI/Oモードを使用する必要がある場合には@ref{Input
+Functions, set-binary-mode}を参照してください。
+
+@node Output Variables
+@section 出力に影響する変数
+@cindex output-controlling variables
+
+@defvar standard-output
+この変数の値はデフォルト出力ストリーム(@var{stream}引数が@code{nil}のときプリント関数が使用するストリーム)である。デフォルトは@code{t}で、これはエコーエリアに表示することを意味する。
+@end defvar
+
+@defvar print-quoted
+これが非@code{nil}なら、省略されたリーダー構文(たとえば@code{(quote
+foo)}を@code{'foo}、@code{(function
+foo)}を@code{#'foo}のように)を使用してクォートされたフォームをプリントすることを意味する。デフォルトは@code{t}。
+@end defvar
+
+@defvar print-escape-newlines
+@cindex @samp{\n} in print
+@cindex escape characters
+この変数が非@code{nil}なら、文字列内の改行は@samp{\n}、改ページは@samp{\f}でプリントされる。これらの文字は通常は実際の改行と改ページとしてプリントされる。
+
+この変数はクォートつきのプリントを行うプリント関数@code{prin1}と@code{print}に影響を与える。@code{princ}に影響はない。以下は@code{prin1}を使用した場合の例である:
+
+@example
+@group
+(prin1 "a\nb")
+     @print{} "a
+     @print{} b"
+     @result{} "a
+b"
+@end group
+
+@group
+(let ((print-escape-newlines t))
+  (prin1 "a\nb"))
+     @print{} "a\nb"
+     @result{} "a
+b"
+@end group
+@end example
+
+@noindent
+2つ目の式では@code{prin1}を呼び出す間は@code{print-escape-newlines}のローカルバインドが効果をもつが、結果をプリントするときには効果がない。
+@end defvar
+
+@defvar print-escape-control-characters
+この変数が非@code{nil}なら、クォートつきでプリントするプリント関数@code{prin1}と@code{print}は、文字列内のコントロール文字をバックスラッシュシーケンスとしてプリントする。この変数と@code{print-escape-newlines}がいずれも非@code{nil}なら改行と改頁には後者が優先される。
+@end defvar
+
+@defvar print-escape-nonascii
+この変数が非@code{nil}なら、クォートつきでプリントするプリント関数@code{prin1}と@code{print}は文字列内のユニバイトの非@acronym{ASCII}文字を無条件でバックスラッシュシーケンスとしてプリントする。
+
+これらの関数は出力ストリームがマルチバイトバッファー、あるいはマーカーがマルチバイトバッファーをポイントするときは、この変数の値に関わらずユニバイト非@acronym{ASCII}文字にたいしてバックスラッシュシーケンスを使用する。
+@end defvar
+
+@defvar print-escape-multibyte
+この変数が非@code{nil}なら、クォートつきでプリントするプリント関数@code{prin1}と@code{print}は、文字列内のマルチバイトの非@acronym{ASCII}文字を無条件でバックスラッシュシーケンスとしてプリントする。
+
+これらの関数は出力ストリームがユニバイトバッファー、あるいはマーカーがユニバイトバッファーをポイントするときは、この変数の値に関わらずマルチバイト非@acronym{ASCII}文字にたいしてバックスラッシュシーケンスを使用する。
+@end defvar
+
+@defvar print-charset-text-property
+この変数は文字列のプリントにおいてテキストプロパティ`charset'のプリントを制御する。値は@code{nil}、@code{t}、または@code{default}のいずれか。
+
+値が@code{nil}なら@code{charset}テキストプロパティを決してプリントせず、@code{t}なら常にプリントする。
+
+値が@code{default}なら``予期せぬ(unexpected)''@code{charset}プロパティがある場合だけ@code{charset}テキストプロパティをプリントする。ASCII文字ではすべてのcharsetが``期待された(expected)''ものとみなされる。それ以外なら文字の期待される@code{charset}プロパティは@code{char-charset}により与えられる。
+@end defvar
+
+@defvar print-length
+@cindex printing limits
+この変数の値は任意のリスト、ベクター、ブールベクターをプリントする際の最大要素数である。プリントされるオブジェクトがこれより多くの要素をもつ場合は、省略記号(``...'')で省略される。
+
+値が@code{nil}(デフォルト)の場合は無制限。
+
+@example
+@group
+(setq print-length 2)
+     @result{} 2
+@end group
+@group
+(print '(1 2 3 4 5))
+     @print{} (1 2 ...)
+     @result{} (1 2 ...)
+@end group
+@end example
+@end defvar
+
+@defvar print-level
+この変数の値はプリント時の丸カッコ(parentheses: ``()'')と角カッコ(brackets:
+``[]"')のネスト最大深さである。この制限を超える任意のリストとベクターは省略記号(``...'')で省略される。値@code{nil}(デフォルト)は無制限を意味する。
+@end defvar
+
+@defopt eval-expression-print-length
+@defoptx eval-expression-print-level
+これらは@code{eval-expression}によって使用される@code{print-length}と@code{print-level}の値であり、したがって間接的に多くのインタラクティブな評価コマンドにより使用される(@ref{Lisp
+Eval,, Evaluating Emacs Lisp Expressions, emacs, The GNU Emacs Manual}を参照)。
+@end defopt
+
+  以下の変数は循環構造および共有構造の検出と報告に使用されます:
+
+@defvar print-circle
+非@code{nil}なら、この変数はプリント時の循環構造と共有構造の検出を有効にする。@ref{Circular Objects}を参照のこと。
+@end defvar
+
+@defvar print-unreadable-function
+デフォルトではEmacsは読み取り可能ではないオブジェクトを@samp{#<...>"}のようにプリントする。たとえば:
+
+@example
+(prin1-to-string (make-marker))
+     @result{} "#<marker in no buffer>"
+@end example
+
+この変数が非@code{nil}なら、これらのオブジェクトにたいするプリントを処理するために呼び出される関数であること。この関数はそのオブジェクト、およびプリント関数(@ref{Output
+Functions}を参照)によって使用される@var{noescape}フラグという2つの引数で呼び出される。
+
+この関数は@code{nil}(通常のようにオブジェクトをプリント)、文字列(プリントする文字列)、あるいは他のオブジェクト(そのオブジェクトをプリントしない)のいずれかをリターンすること。たとえば:
+
+@example
+(let ((print-unreadable-function
+       (lambda (object escape) "hello")))
+  (prin1-to-string (make-marker)))
+     @result{} "hello"
+@end example
+@end defvar
+
+@defvar print-gensym
+非@code{nil}なら、この変数はプリント時のインターンされていないシンボル(@ref{Creating
+Symbols}を参照)の検出を有効にする。これが有効なら、インターンされていないシンボルはプレフィックス@samp{#:}とともにプリントされる。このプレフィックスは、Lispリーダーにたいしてインターンされていないシンボルを生成するよう告げる。
+@end defvar
+
+@defvar print-continuous-numbering
+非@code{nil}なら、複数のプリント呼び出しを通じて通番が振られることを意味する。これは@samp{#@var{n}=}ラベルと@samp{#@var{m}#}参照にたいしてプリントされる数字に影響する。この変数を@code{setq}でセットしてはならない。@code{let}を使用して一時的に@code{t}にバインドすること。これを行う場合は@code{print-number-table}も@code{nil}にバインドすること。
+@end defvar
+
+@defvar print-number-table
+この変数は@code{print-circle}機能を実装するために、プリント処理で内部的に使用されるベクターを保持する。@code{print-continuous-numbering}をバインドするときにこの変数を@code{nil}にバインドする以外は、この変数を使用するべきではない。
+@end defvar
+
+@defvar float-output-format
+この変数は浮動小数点数をプリントする方法を指定する。デフォルトは@code{nil}で、これは情報を失わずにその数値を表せるもっとも短い出力を使用することを意味する。
+
+出力フォーマットをより精密に制御するために、この変数に文字列をセットできる。この文字列にはCの@code{sprintf}関数で使用される@samp{%}指定子をセットする。この変数で使用することのできる制限についての詳細は、この変数のドキュメント文字列を参照のこと。
+@end defvar
+
+@defvar print-integers-as-characters
+この変数が非@code{nil}ならグラフィックベース文字を表す整数はLispの文字構文を用いてプリントされる(@ref{Basic Char
+Syntax}を参照)。それ以外の数は通常の方法でプリントされる。たとえばリスト@code{(4 65 -1 10)}は@samp{(4 ?A -1
+?\n)}のようにプリントされるだろう。
+
+正確にはUnicode一般カテゴリーLetter、Number、Punctuation、Symbol、Private-useに属する文字(@ref{Character
+Properties}を参照)を表す文字、同じように改行のようなエスケープシーケンスを独自にもつコントロール文字にたいする値は、文字構文を使用してプリントされる。
+@end defvar
+
+@node Output Overrides
+@section 出力変数のオーバーライド
+@cindex overrides, in output functions
+@cindex output variables, overriding
+
+前のセクション(@ref{Output Variables}を参照)では、Emacs
+Lispプリンターが出力用にデータをどのようにフォーマットするかを制御するさまざまな変数を説明しました。これらは一般的には変更用にユーザーが利用できますが、デフォルトのフォーマットでデータを出力したり、あるいは他の手段でユーザーセッティングをオーバーライドしたい場合があるかもしれません。たとえばEmacs
+Lispのデータをファイルに格納したい場合には、そのデータが@code{print-length}のセッティングによって短縮されたくはないでしょう。
+
+そのために@code{prin1}および@code{prin1-to-string}という関数にはオプションとして@var{overrides}引数があります。この引数には@code{t}(すべてのプリント用変数をデフォルト値にリセット)、あるいはいくつかの変数にたいするセッティングのリストのいずれかを指定できます。このリストの要素はそれぞれ@code{t}(``デフォルトへのリセット''を意味しており、通常はリストの最初の要素)、あるいは@code{car}が出力変数を意味するシンボルで@code{cdr}がその変数にたいする値であるようなペアーを指定できます。
+
+たとえば以下はデフォルトだけを用いてプリントします:
+
+@lisp
+(prin1 object nil t)
+@end lisp
+
+以下はカレントのプリントセッティングを用いて@var{object}をプリントしますが、@code{print-length}の値を5にオーバーライドします:
+
+@lisp
+(prin1 object nil '((length . 5)))
+@end lisp
+
+そして最後は@code{print-length}を5にバインドする以外はデフォルトセッティングを用いて@var{object}をプリントする例です:
+
+@lisp
+(prin1 object nil '(t (length . 5)))
+@end lisp
+
+以下は使用できるシンボルと、それらのシンボルがマップされる変数のリストです:
+
+@table @code
+@item length
+@code{print-length}をオーバーライドする。
+@item level
+@code{print-level}をオーバーライドする。
+@item circle
+@code{print-circle}をオーバーライドする。
+@item quoted
+@code{print-quoted}をオーバーライドする。
+@item escape-newlines
+@code{print-escape-newlines}をオーバーライドする。
+@item escape-control-characters
+@code{print-escape-control-characters}をオーバーライドする。
+@item escape-nonascii
+@code{print-escape-nonascii}をオーバーライドする。
+@item escape-multibyte
+@code{print-escape-multibyte}をオーバーライドする。
+@item charset-text-property
+@code{print-charset-text-property}をオーバーライドする。
+@item unreadeable-function
+@code{print-unreadable-function}をオーバーライドする。
+@item gensym
+@code{print-gensym}をオーバーライドする。
+@item continuous-numbering
+@code{print-continuous-numbering}をオーバーライドする。
+@item number-table
+@code{print-number-table}をオーバーライドする。
+@item float-format
+@code{float-output-format}をオーバーライドする。
+@item integers-as-characters
+@code{print-integers-as-characters}をオーバーライドする。
+@end table
+
+将来的には変数に直接マップされない、このパラメーターだけを介してのみ使用できるオーバーライドが更に提供されるかもしれません。

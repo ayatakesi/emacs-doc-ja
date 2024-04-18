@@ -1,0 +1,4048 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1995, 1998--2024 Free Software Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Text
+@chapter テキスト
+@cindex text
+
+  このチャプターではバッファー内のテキストを扱う関数を説明します。ほとんどはカレントバッファー内のテキストにたいして検査、挿入、削除を行ってポイント位置やポイントに隣接するテキストを操作することが多々あります。その多くはインタラクティブ(interactive:
+対話的)です。テキストを変更するすべての関数は、その変更にたいするundo(アンドゥ、取り消し)を提供します(@ref{Undo}を参照)。
+
+  テキストに関連する関数の多くが、@var{start}と@var{end}という名前の引数として渡された2つのバッファー位置により定義されるテキストのリージョンを操作します。これらの引数はマーカー(@ref{Markers}を参照)か数値的な文字位置(@ref{Positions}を参照)のいずれかであるべきです。これらの引数の順序は関係ありません。@var{start}がリージョンの終端で@var{end}がリージョンの先頭であっても問題はありません。たとえば@code{(delete-region
+1 10)}と@code{(delete-region 10
+1)}は等価です。@var{start}と@var{end}のいずれかがバッファーのアクセス可能範囲の外部なら@code{args-out-of-range}エラーがシグナルされます。インタラクティブな呼び出しでは、これらの引数にポイントとマークが使用されます。
+
+@cindex buffer contents
+  このチャプターを通じて、``テキスト(text)''とは(関係あるときは)そのプロパティも含めたバッファー内の文字を意味します。ポイントは常に2つの文字の間にあり、カーソルはポイントの後の文字上に表示されることを覚えておいてください。
+
+@menu
+* Near Point::               ポイント付近のテキストを調べる。
+* Buffer Contents::          一般的な方法によってテキストを調べる。
+* Comparing Text::           バッファーの部分文字列を比較する。
+* Insertion::                バッファーへの新たなテキストの追加。
+* Commands for Insertion::   テキスト挿入のためのユーザーレベルコマンド。
+* Deletion::                 バッファーからテキストを削除する。
+* User-Level Deletion::      テキスト削除のためのユーザーレベルコマンド。
+* The Kill Ring::            テキスト削除時にユーザーのためにそれを保存する場所。
+* Undo::                     バッファーのテキストにたいする変更の取り消し。
+* Maintaining Undo::         undo情報の有効と無効。情報をどれだけ保持するか制御する方法。
+* Filling::                  明示的にフィルを行う関数。
+* Margins::                  フィルコマンドにたいしてマージンを指定する方法。
+* Adaptive Fill::            コンテキストからフィルプレフィクスを選択するAdaptive 
+                               Fillモード。
+* Auto Filling::             行ブレークにたいするauto-fillの実装方法。
+* Sorting::                  バッファーの一部をソートする関数。
+* Columns::                  水平位置の計算とその使用方法。
+* Indentation::              インデントの挿入や調整のための関数。
+* Case Changes::             バッファーの一部にたいする大文字小文字変換。
+* Text Properties::          テキスト文字にたいするLispプロパティリストの追加。
+* Substitution::             与ええられた文字の出現箇所を置換する。
+* Registers::                レジスターの実装方法。レジスターに格納されたテキストや位置にアクセスする。
+* Transposition::            バッファーの2つの部分を交換する。
+* Replacing::                他のバッファーのテキストによるバッファーテキストの置換。
+* Decompression::            圧縮データの扱い。
+* Base 64::                  Base64エンコーディングとの変換。
+* Checksum/Hash::            暗号ハッシュの計算。
+* Suspicious Text::          文字列の不信度の判定。
+* GnuTLS Cryptography::      GnuTLSからインポートされた暗号化アルゴリズム。
+* Database::                 SQLデータベースとの相互作用。
+* Parsing HTML/XML::         HTMLおよびXMLの解析。
+* Parsing JSON::             JSON値のパースと生成。
+* JSONRPC::                  JSONのRPCプロトコル(リモートプロシージャコントロールプロトコル)
+* Atomic Changes::           複数バッファーへの変更をアトミックにインストールする。
+* Change Hooks::             テキスト変更時に実行する関数の指定。
+@end menu
+
+@node Near Point
+@section ポイント近傍のテキストを調べる
+@cindex text near point
+
+  ポイント付近にある文字を調べるための関数が数多く提供されています。簡単な関数のいくつかはここで説明します。@ref{Regexp
+Search}の@code{looking-at}も参照してください。
+
+以下の4つの関数でのバッファーの``先頭(beginning)''と``終端(end)''はそれぞれ、アクセス可能範囲の先頭と終端を意味します。
+
+@defun char-after &optional position
+この関数はカレントバッファーの位置@var{position}
+(つまり直後)の文字をリターンする。@var{position}がこの目的にたいする範囲の外にある場合、すなわちバッファーの先頭より前、またはバッファーの終端以降にあるなら値は@code{nil}。@var{position}のデフォルトはポイント。
+
+以下の例ではバッファーの最初の文字が@samp{@@}であると仮定する:
+
+@example
+@group
+(string (char-after 1))
+     @result{} "@@"
+@end group
+@end example
+@end defun
+
+@defun char-before &optional position
+この関数はカレントバッファーの位置@var{position}の直前の文字をリターンする。@var{position}がこの目的にたいする範囲の外にある場合、すなわちバッファーの先頭より前、またはバッファーの終端より後にあるなら値は@code{nil}。@var{position}のデフォルトはポイント。
+@end defun
+
+@defun following-char
+この関数はカレントバッファーのポイントの後にある文字をリターンする。これは@code{(char-after
+(point))}と同様。ただしポイントがバッファー終端にある場合には、@code{following-char}は0をリターンする。
+
+ポイントが常に2つの文字の間にあり、カーソルは通常はポイント後の文字上に表示されることを思い出してほしい。したがって@code{following-char}がリターンする文字はカーソル上の文字となる。
+
+以下の例では@samp{a}と@samp{c}の間にポイントがある。
+
+@example
+@group
+---------- Buffer: foo ----------
+Gentlemen may cry ``Pea@point{}ce! Peace!,''
+but there is no peace.
+---------- Buffer: foo ----------
+@end group
+
+@group
+(string (preceding-char))
+     @result{} "a"
+(string (following-char))
+     @result{} "c"
+@end group
+@end example
+@end defun
+
+@defun preceding-char
+この関数はカレントバッファーのポイントの前の文字をリターンする。上記@code{following-char}の下の例を参照のこと。ポイントがバッファー先頭にあれば、@code{preceding-char}は0をリターンする。
+@end defun
+
+@defun bobp
+この関数はポイントがバッファー先頭にあれば@code{t}をリターンする。ナローイングが効力をもつなら、これはテキストのアクセス可能範囲の先頭を意味する。@ref{Point}の@code{point-min}も参照のこと。
+@end defun
+
+@defun eobp
+この関数はポイントがバッファー終端にあれば@code{t}をリターンする。ナローイングが効力をもつなら、これはテキストのアクセス可能範囲の終端を意味する。@ref{Point}の@code{point-max}も参照のこと。
+@end defun
+
+@defun bolp
+この関数はポイントが行の先頭にあれば@code{t}をリターンする。@ref{Text
+Lines}を参照のこと。バッファー(またはアクセス可能範囲)の先頭は、常に行の先頭とみなされる。
+@end defun
+
+@defun eolp
+この関数はポイントが行の終端にあれば@code{t}をリターンする。@ref{Text
+Lines}を参照のこと。バッファー(またはアクセス可能範囲)の終端は常に行の先頭とみなされる。
+@end defun
+
+@node Buffer Contents
+@section バッファーのコンテンツを調べる
+@cindex buffer portion as string
+
+  このセクションではLispプログラムがバッファー内の任意の範囲にあるテキストを文字列に変換するための関数を説明します。
+
+@defun buffer-substring start end
+この関数はカレントバッファー内の位置@var{start}と@var{end}で定義されるリージョンのテキストのコピーを含む文字列をリターンする。引数がバッファーのアクセス可能範囲内の位置でなければ、@code{buffer-substring}は@code{args-out-of-range}エラーをリターンする。
+
+以下の例ではFont-Lockモードが有効でないものとする:
+
+@example
+@group
+---------- Buffer: foo ----------
+This is the contents of buffer foo
+
+---------- Buffer: foo ----------
+@end group
+
+@group
+(buffer-substring 1 10)
+     @result{} "This is t"
+@end group
+@group
+(buffer-substring (point-max) 10)
+     @result{} "he contents of buffer foo\n"
+@end group
+@end example
+
+コピーされるテキストが何らかのテキストプロパティをもっていたら、それらのプロパティが属する文字とともに文字列にコピーされる。しかしバッファー内のオーバーレイ(@ref{Overlays}を参照)、およびそれらのプロパティは無視されるためコピーされない。
+
+たとえばFont-Lockモードが有効なら以下のような結果を得るだろう:
+
+@example
+@group
+(buffer-substring 1 10)
+     @result{} #("This is t" 0 1 (fontified t) 1 9 (fontified t))
+@end group
+@end example
+@end defun
+
+@defun buffer-substring-no-properties start end
+これは@code{buffer-substring}と同様だが、テキストプロパティはコピーせずに文字自体だけをコピーする点が異なる。@ref{Text
+Properties}を参照のこと。
+@end defun
+
+@defun buffer-string
+この関数はカレントバッファーのアクセス可能範囲全体のコンテンツを文字列としてリターンする。コピーするテキストに何らかのテキストプロパティがあれば、それらを所有する文字とともに文字列にコピーされる。
+@end defun
+
+  異なる場所からのコピー時に双方向テキストの再配置によって結果の文字列の視覚的外見が変更されないように保証する必要があるなら、@code{buffer-substring-with-bidi-context}関数を使用すること(@ref{Bidirectional
+Display, buffer-substring-with-bidi-context}を参照)。
+
+@defun filter-buffer-substring start end &optional delete
+この関数は変数@code{filter-buffer-substring-function}により指定された関数を使用して、@var{start}と@var{end}の間のバッファーテキストをフィルターしてその結果をリターンする。
+
+デフォルトのフィルター関数は時代遅れとなったラッパーフック@code{filter-buffer-substring-functions}
+(この時代遅れの機能に関する詳細はマクロ@code{with-wrapper-hook}のドキュメント文字列を参照)が@code{nil}ならバッファーから未変更のテキスト、すなわち@code{buffer-substring}がリターンするであろうテキストをリターンする。
+
+@var{delete}が非@code{nil}なら、この関数は@code{delete-and-extract-region}と同じように、コピー後に@var{start}と@var{end}の間のテキストを削除する。
+
+Lispコードはkillリング、Xクリップボード、レジスターのようなユーザーがアクセス可能なデータ構造内にコピーする際には@code{buffer-substring}、@code{buffer-substring-no-properties}、@code{delete-and-extract-region}のかわりにこの関数を使用すること。メジャーモードとマイナーモードはバッファー外部にコピーするテキストを変更するために@code{filter-buffer-substring-function}を変更することができる。
+@end defun
+
+@defvar filter-buffer-substring-function
+この変数の値は実際の処理を行うために@code{filter-buffer-substring}が呼び出す関数。その関数は@code{filter-buffer-substring}と同じように3つの引数を受けとり、それらは@code{filter-buffer-substring}にドキュメントされているように扱うこと。関数はフィルターされたテキストをリターン(およびオプションでソーステキストを削除)すること。
+@end defvar
+
+@noindent The following two variables are obsoleted by
+以下の2つの変数は@code{filter-buffer-substring-function}により時代遅れになりましたが、後方互換のために依然としてサポートされます。
+
+@defvar filter-buffer-substring-functions
+これは時代遅れとなったラッパーフックであり、このフックのメンバーは@var{fun}、@var{start}、@var{end}、@var{delete}の4つの引数を受け取る関数であること。@var{fun}は3つの引数(@var{start}、@var{end}、@var{delete})を受け取り、文字列をリターンする関数。いずれも引数@var{start}、@var{end}、@var{delete}は@code{filter-buffer-substring}のときと同様の意味をもつ。
+
+1つ目のフック関数は@code{filter-buffer-substring}のデフォルトの処理と同じく@var{start}と@var{end}の間のバッファー部分文字列をリターン(オプションでバッファーから元テキストを削除)する関数であり、それが@var{fun}に渡される。ほとんどの場合にはフック関数は@var{fun}を1回だけ呼び出してから、その結果にたいして自身の処理を行う。次のフック関数はこれと等しい@var{fun}を受け取って、それが順次繰り返されていく。実際のリターン値はすべてのフック関数が順次処理した結果。
+@end defvar
+
+@defun current-word &optional strict really-word
+この関数はポイント位置またはその付近のシンボル(または単語)を文字列としてリターンする。リターン値にテキストプロパティは含まれない。
+
+オプション引数@var{really-word}が非@code{nil}なら単語、それ以外はシンボル(単語文字とシンボル構成文字の両方を含む)を探す。
+
+オプション引数@var{strict}が非@code{nil}のならポイントは単語(またはシンボル)の内部にあるか隣接しなければならない。そこに単語(またはシンボル)がなければ、この関数は@code{nil}をリターンする。@var{strict}が@code{nil}ならポイントと同一行にある近接する単語(またはシンボル)を許容する。
+@end defun
+
+@defun thing-at-point thing &optional no-properties
+ポイントに隣接または周辺にある@var{thing}を文字列としてリターンする。
+
+引数@var{thing}は構文エンティティの種別を指定するシンボルである。可能なシンボルとしては@code{symbol}、@code{list}、@code{sexp}、@code{defun}、@code{filename}、@code{existing-filename}、@code{url}、@code{word}、@code{sentence}、@code{whitespace}、@code{line}、@code{page}、@code{string}、および他が含まれる。
+
+オプション引数@var{no-properties}は非@code{nil}なら、この関数はリターン値からテキストプロパティを取り除く。
+
+@example
+---------- Buffer: foo ----------
+Gentlemen may cry ``Pea@point{}ce! Peace!,''
+but there is no peace.
+---------- Buffer: foo ----------
+
+(thing-at-point 'word)
+     @result{} "Peace"
+(thing-at-point 'line)
+     @result{} "Gentlemen may cry ``Peace! Peace!,''\n"
+(thing-at-point 'whitespace)
+     @result{} nil
+@end example
+
+@defvar thing-at-point-provider-alist
+ユーザーおよびモードは、この変数によって@code{thing-at-point}が機能する方法を調節できる。これは@var{thing}、およびそれ(thing)をリターンする関数(パラメーターなしで呼び出される)の連想リストである。@var{thing}のエントリーは非@code{nil}の結果がリターンされるまで順に評価される。
+
+たとえばメジャーモードは以下のように指定できる:
+
+@lisp
+(setq-local thing-at-point-provider-alist
+            (append thing-at-point-provider-alist
+                    '((url . my-mode--url-at-point))))
+@end lisp
+
+非@code{nil}をリターンするproviderがなければ、標準的な方法によって@var{thing}を計算する。
+@end defvar
+@end defun
+
+@node Comparing Text
+@section テキストの比較
+@cindex comparing buffer text
+
+  以下の関数により最初にバッファー内のテキストを文字列内にコピーすることなく、バッファー内のテキスト断片を比較することが可能になります。
+
+@defun compare-buffer-substrings buffer1 start1 end1 buffer2 start2 end2
+この関数により1つのバッファー、または2つの異なるバッファーの2つの部分文字列(substrings)を比較できる。最初の3つの引数はバッファーとそのバッファー内の2つの位置を与えることにより、1つの部分文字列を指定する。最後の3つの引数は、同様の方法によりもう一方の部分文字列を指定する。@var{buffer1}と@var{buffer2}のいずれか、または両方にたいしてカレントバッファーを意味する@code{nil}を使用できる。
+
+1つ目の部分文字列が2つ目の部分文字列より小なら負、大なら正、等しければ値は0となる。結果の絶対値は部分文字列内で最初に異なる文字のインデックスに1を和した値。
+
+@code{case-fold-search}が非@code{nil}なら、この関数はcase(大文字小文字)の違いを無視する。テキストプロパティは常に無視される。
+
+カレントバッファー内にテキスト@w{@samp{foobarbar
+haha!rara!}}がある。そしてこの例では2つの部分文字列が@samp{rbar
+}と@samp{rara!}だとする。1つ目の文字列の2つ目の文字が大きいので値は2となる。
+
+@example
+(compare-buffer-substrings nil 6 11 nil 16 21)
+     @result{} 2
+@end example
+@end defun
+
+@node Insertion
+@section テキストの挿入
+@cindex insertion of text
+@cindex text insertion
+
+@cindex insertion before point
+@cindex before point, insertion
+  @dfn{挿入(insertion)}とはバッファーへの新たなテキストの追加を意味します。テキストはポイント位置、すなわちポイント前の文字とポイント後の文字の間に追加されます。挿入関数は挿入されたテキストの後にポイントを残しますが、前にポイントを残す関数もいくつかあります。前者の挿入を@dfn{ポイント後挿入(after
+point)}、後者を@dfn{ポイント前挿入(before point)}と呼びます。
+
+  挿入により挿入位置の後にあったマーカーは、テキストを取り囲むように移動されます(@ref{Markers}を参照)。マーカーが挿入箇所をさしている際には、挿入によるマーカーの再配置の有無はそのマーカーの挿入タイプに依存します(@ref{Marker
+Insertion
+Types}を参照)。@code{insert-before-markers}のような特定のスペシャル関数は、マーカーの挿入タイプとは関係なく挿入されたテキストの後にそのようなすべてのマーカーを再配置します。
+
+  カレントバッファーが読み取り専用(@ref{Read Only Buffers}を参照)、または読み取り専用テキスト(@ref{Special
+Properties}を参照)を挿入しようとすると、挿入関数はエラーをシグナルします。
+
+  以下の関数は文字列やバッファーからプロパティとともにテキスト文字をコピーします。挿入される文字はコピー元の文字と完全に同一のプロパティをもちます。それとは対照的に文字列やバッファーの一部ではない個別の引数として指定された文字は、隣接するテキストからテキストプロパティを継承します。
+
+  テキストが文字列かバッファー由来なら、マルチバイトバッファーに挿入するために挿入関数はユニバイトからマルチバイトへの変換、およびその逆も行います。しかしたとえカレントバッファーがマルチバイトバッファーであったとしても、コード128から255までのユニバイトはマルチバイトに変換しません。@ref{Converting
+Representations}を参照してください。
+
+@defun insert &rest args
+この関数は文字列および/または1つ以上の文字@var{args}をカレントバッファーのポイント位置に挿入して、ポイントを前方に移動する。言い換えるとポイントの前にテキストを挿入する。すべての@var{args}が文字列が文字列と文字のいずれでもなければエラーをシグナルする。値は@code{nil}。
+@end defun
+
+@defun insert-before-markers &rest args
+この関数は文字列および/または1つ以上の文字@var{args}をカレントバッファーのポイント位置に挿入して、ポイントを前方に移動する。すべての@var{args}が文字列が文字列と文字のいずれでもなければエラーをシグナルする。値は@code{nil}。
+
+この関数は他の挿入関数と異なり、挿入されたテキストの後を指すように、まずマーカーが挿入位置を指すよう再配置する。挿入位置からオーバーレイが開始される場合には、挿入されたテキストはそのオーバーレイの外側に出される。空でないオーバーレイが挿入位置で終わる場合には、挿入されたテキストはそのオーバーレイの内側に入れられる。
+@end defun
+
+@deffn Command insert-char character &optional count inherit
+このコマンドはカレントバッファーのポイントの前に、@var{character}のインスタンスを@var{count}個挿入する。引数@var{count}は整数、@var{character}は文字でなければならない。
+
+インタラクティブに呼び出された際には、このコマンドは@var{character}にたいしてコードポイントかUnicode名による入力を求める。@ref{Inserting
+Text,,, emacs, The GNU Emacs Manual}を参照のこと。
+
+この関数はたとえカレントバッファーがマルチバイトバッファーであっても、コード128から255のユニバイト文字をマルチバイト文字に変換しない。@ref{Converting
+Representations}を参照のこと。
+
+@var{inherit}が非@code{nil}なら、挿入された文字は挿入位置前後の2文字からステッキーテキストプロパティ(sticky text
+properties)を継承する。@ref{Sticky Properties}を参照のこと。
+@end deffn
+
+@defun insert-buffer-substring from-buffer-or-name &optional start end
+この関数はカレントバッファーのポイント前に、バッファー@var{from-buffer-or-name}の一部を挿入する。挿入されるテキストは@var{start}
+(を含む)から@var{end}
+(を含まない)の間のリージョン(これらの引数のデフォルトは、そのバッファーのアクセス可能範囲の先頭と終端)。この関数は@code{nil}をリターンする。
+
+以下の例ではバッファー@samp{bar}をカレントバッファーとしてフォームを実行する。バッファー@samp{bar}は最初は空であるものとする。
+
+@example
+@group
+---------- Buffer: foo ----------
+We hold these truths to be self-evident, that all
+---------- Buffer: foo ----------
+@end group
+
+@group
+(insert-buffer-substring "foo" 1 20)
+     @result{} nil
+
+---------- Buffer: bar ----------
+We hold these truth@point{}
+---------- Buffer: bar ----------
+@end group
+@end example
+@end defun
+
+@defun insert-buffer-substring-no-properties from-buffer-or-name &optional start end
+これは@code{insert-buffer-substring}と似ているが、テキストプロパティをコピーしない点が異なる。
+@end defun
+
+@defun insert-into-buffer to-buffer &optional start end
+これは@code{insert-buffer-substring}と同様だが、反対方向に機能する。テキストはカレントバッファーから@var{to-buffer}にコピーされる。テキストブロックは@var{to-buffer}のカレントポイントにコピーされて、(そのバッファーの)ポイントはコピーしたテキスト終端に進められる。@code{start}/@code{end}が@code{nil}なら、カレントバッファーのテキスト全体をコピーする。
+@end defun
+
+  テキスト挿入に加えて、隣接するテキストからテキストプロパティを継承する他の関数については@ref{Sticky
+Properties}を参照のこと。インデント関数により挿入された空白文字もテキストプロパティを継承する。
+
+@node Commands for Insertion
+@section ユーザーレベルの挿入コマンド
+
+  このセクションではテキスト挿入のための高レベルコマンド、ユーザーによる使用を意図しているがLispプログラムでも有用なコマンドについて説明します。
+
+@deffn Command insert-buffer from-buffer-or-name
+このコマンドは@var{from-buffer-or-name}
+(存在しなければならない)のアクセス可能範囲全体をカレントバッファーのポイントの後に挿入する。マークは挿入されたテキストの後に残される。値は@code{nil}。
+@end deffn
+
+@deffn Command self-insert-command count &optional char
+@cindex character insertion
+@cindex self-insertion
+このコマンドは文字@var{char}を挿入する。これをポイント前で@var{count}回繰り返して@code{nil}をリターンする。ほとんどのプリント文字はこのコマンドにバインドされる。通常の使用では@code{self-insert-command}はEmacsでもっとも頻繁に呼び出される関数だが、Lispプログラムではそれをキーマップにインストールする場合を除いて使用されるのは稀。
+
+インタラクティブな呼び出しでは@var{count}は数プレフィクス引数。
+
+@c FIXME: This variable is obsolete since 23.1.
+自己挿入では入力文字は@code{translation-table-for-input}を通じて変換される。@ref{Translation of
+Characters}を参照のこと。
+
+これは、入力文字がテーブル@code{auto-fill-chars}内にあり、@code{auto-fill-function}が非@code{nil}なら常にそれを呼び出す(@ref{Auto
+Filling}を参照)。
+
+@c Cross refs reworded to prevent overfull hbox.  --rjc 15mar92
+このコマンドはAbbrevモードが有効で、かつ入力文字が単語構成構文をもたなければabbrev展開を行う(@ref{Abbrevs}と@ref{Syntax
+Class Table}を参照)。さらに入力文字が閉カッコ構文(close parenthesis
+syntax)をもつ場合には@code{blink-paren-function}を呼び出す責任もある(@ref{Blinking}を参照)。
+
+@vindex post-self-insert-hook
+@vindex self-insert-uses-region-functions
+このコマンドは最後にフック@code{post-self-insert-hook}を実行する。これを使えば、テキストのタイプ時に自動的に再インデントを行うことができる。このフックにセットした関数は@code{last-command-event}
+(@ref{Command Loop Info}を参照)を使うことにより、挿入したばかりの文字にアクセスすることができる。
+
+このフックのいずれかの関数がリージョン(@ref{The
+Region}を参照)にたいして作用する必要があるなら、@code{post-self-insert-hook}の関数が呼び出される前にDelete
+Selectionモード(@ref{Using Region, Delete Selection, , emacs, The GNU Emacs
+Manual}を参照)がリージョンを削除しないようにする必要がある。これを行うにはDelete
+Selectionモードにリージョンを削除しないように告げる特別なフック@code{self-insert-uses-region-functions}に@code{nil}をリターンする関数を追加すること。
+
+@code{self-insert-command}の標準的な定義にたいして、独自の定義による置き換えを試みてはならない。エディターコマンドループはこのコマンドを特別に扱うからだ。
+@end deffn
+
+@deffn Command newline &optional number-of-newlines interactive
+このコマンドはカレントバッファーのポイントの前に改行を挿入する。@var{number-of-newlines}が与えられたら、その個数の改行文字が挿入される。インタラクティブな呼び出しでは、@var{number-of-newlines}はプレフィクス数引数。
+
+@cindex newline and Auto Fill mode
+この関数はカレント列数が@code{fill-column}より大、かつ@var{number-of-newlines}が@code{nil}なら@code{auto-fill-function}を呼び出す。このコマンドは改行を挿入するために@code{self-insert-command}を呼び出して、続けて@code{auto-fill-function}を呼び出すことにより前の行をブレークする(@ref{Auto
+Filling}を参照)。@code{auto-fill-function}が通常行うのは改行の挿入であり、最終的な結果としてはポイント位置と、その行のより前方の位置という2つの異なる箇所に改行を挿入する。@var{number-of-newlines}が非@code{nil}なら@code{newline}はauto-fillを行わない。
+
+このコマンドはインタラクティブな呼び出し、または@var{interactive}が非@code{nil}ならフック@code{post-self-insert-hook}を実行する。
+
+このコマンドは左マージンが0でなければ、左マージンにインデントする。@ref{Margins}を参照のこと。
+
+リターン値は@code{nil}。
+@end deffn
+
+@deffn Command ensure-empty-lines &optional number-of-empty-lines
+このコマンドはポイントの前に特定の行数の空行を確保するために用いることができる(ここで言う``空行''とは文字が何もない行のことを指し、空白文字があればそれは空行ではない)。デフォルトではポイントの前に1行の空行を確保する。
+
+ポイントが行頭になければ、まず改行文字を挿入する。指定したより多くの空行がポイントの前にある場合には空行の行数を減らす。それ以外の場合には指定した行数に増やす。
+@end deffn
+
+@defvar overwrite-mode
+この変数はoverwriteモードが効力をもつかどうかを制御する。値は@code{overwrite-mode-textual}、@code{overwrite-mode-binary}、または@code{nil}。@code{overwrite-mode-textual}はテキスト的なoverwriteモード(改行とタブを特別に扱う)、@code{overwrite-mode-binary}はバイナリーoverwriteモード(改行とタブを普通の文字と同様に扱う)を指定する。
+@end defvar
+
+@node Deletion
+@section テキストの削除
+@cindex text deletion
+
+@cindex deleting text vs killing
+  削除とはバッファー内のテキストの一部をkillリングに保存せずに取り除くことを意味します(@ref{The Kill
+Ring}を参照)。削除されたテキストをyankすることはできませんが、undoメカニズム(@ref{Undo}を参照)を使用すれば再挿入が可能です。特別なケースにおいてはkillリングにテキストの保存を行う削除関数がいくつかあります。
+
+  削除関数はすべてカレントバッファーにたいして処理を行います。
+
+@deffn Command erase-buffer
+この関数はカレントバッファーのテキスト全体(アクセス可能範囲だけでは@emph{ない})を削除してバッファーが読み取り専用なら@code{buffer-read-only}、バッファー内の一部テキストが読み取り専用なら@code{text-read-only}をシグナルする。それ以外では確認なしでテキストを削除する。リターン値は@code{nil}。
+
+バッファーからの大量テキストの削除では、バッファーが大幅に縮小されたという理由により、通常はさらなる自動保存が抑制される。しかし@code{erase-buffer}は将来のテキストが以前のテキストと関連があるのは稀であり、以前のテキストのサイズと比較されるべきではないというアイデアにもとづいてこれを行わない。
+@end deffn
+
+@deffn Command delete-region start end
+このコマンドはカレントバッファー内の位置@var{start}から@var{end}までの間のテキストを削除して@code{nil}をリターンする。削除されるリージョン内にポイントがあれば、リージョン削除後のポイントの値は@var{start}。それ以外の場合は、マーカーが行うようにポイントはテキストを取り囲むように再配置される。
+@end deffn
+
+@defun delete-and-extract-region start end
+この関数はカレントバッファー内の位置@var{start}から@var{end}までの間のテキストを削除して、削除されたテキストを含む文字列をリターンする。
+
+削除されるリージョン内にポイントがあれば、リージョン削除後のポイントの値は@var{start}。それ以外ならマーカーが行うようにポイントはテキストを取り囲むように再配置される。
+@end defun
+
+@deffn Command delete-char count &optional killp
+このコマンドはポイント直後の@var{count}文字、@var{count}が負なら直前の@var{count}文字を削除する。@var{killp}が非@code{nil}なら削除した文字をkillリングに保存する。
+
+インタラクティブな呼び出しでは、@var{count}は数プレフィクス引数、@var{killp}は未処理プレフィクス引数(unprocessed
+prefix
+argument)。すなわちプレフィクス引数が与えられたらそのテキストはkillリングに保存され、与えられなければ1文字が削除されて、それはkillリングに保存されない。
+
+リターン値は常に@code{nil}。
+@end deffn
+
+@deffn Command delete-backward-char count &optional killp
+@cindex deleting previous char
+このコマンドはポイント直前の@var{count}文字、@var{count}が負なら直後の@var{count}文字を削除する。@var{killp}が非@code{nil}なら、削除した文字をkillリングに保存する。
+
+インタラクティブな呼び出しでは、@var{count}は数プレフィクス引数、@var{killp}は未処理プレフィクス引数(unprocessed
+prefix
+argument)。すなわちプレフィクス引数が与えられたらそのテキストはkillリングに保存され、与えられなければ1文字が削除されて、それはkillリングに保存されない。
+
+リターン値は常に@code{nil}。
+@end deffn
+
+@deffn Command backward-delete-char-untabify count &optional killp
+@cindex tab deletion
+このコマンドはタブをスペースに変換しながら、後方に@var{count}文字を削除する。次に削除する文字がタブなら、まず適正な位置を保つような数のスペースに変換してから、それらのうちのスペース1つをタブのかわりに削除する。@var{killp}が非@code{nil}なら、このコマンドは削除した文字をkillリングに保存する。
+
+タブからスペースへの変換は@var{count}が正の場合のみ発生する。負の場合はポイント後の正確に@minus{}@var{count}文字が削除される。
+
+インタラクティブな呼び出しでは、@var{count}は数プレフィクス引数、@var{killp}は未処理プレフィクス引数(unprocessed
+prefix
+argument)。すなわちプレフィクス引数が与えられたらそのテキストはkillリングに保存され、与えられなければ1文字が削除されて、それはkillリングに保存されない。
+
+リターン値は常に@code{nil}。
+@end deffn
+
+@defopt backward-delete-char-untabify-method
+このオプションは@code{backward-delete-char-untabify}が空白文字を扱う方法を指定する。可能な値には@code{untabify}
+(タブを個数分のスペースに変換してスペースを1つ削除。これがデフォルト)、@code{hungry}
+(1コマンドでポイント前のタブとスペースすべてを削除する)、@code{all}
+(ポイント前のタブとスペース、および改行すべてを削除する)、@code{nil} (空白文字にたいして特に何もしない)。
+@end defopt
+
+@node User-Level Deletion
+@section ユーザーレベルの削除コマンド
+
+  このセクションでは、主にユーザーにたいして有用ですがLispプログラムでも有用なテキストを削除するための高レベルのコマンドを説明します。
+
+@deffn Command delete-horizontal-space &optional backward-only
+@cindex deleting whitespace
+この関数はポイント近辺のすべてのスペースとタブを削除する。リターン値は@code{nil}。
+
+@var{backward-only}が非@code{nil}なら、この関数はポイント前のスペースとタブを削除するがポイント後のスペースとタブは削除しない。
+
+以下の例では、各行ごとに2番目と3番目の間にポイントを置いて、@code{delete-horizontal-space}を4回呼び出している。
+
+@example
+@group
+---------- Buffer: foo ----------
+I @point{}thought
+I @point{}     thought
+We@point{} thought
+Yo@point{}u thought
+---------- Buffer: foo ----------
+@end group
+
+@group
+(delete-horizontal-space)   ; @r{Four times.}
+     @result{} nil
+
+---------- Buffer: foo ----------
+Ithought
+Ithought
+Wethought
+You thought
+---------- Buffer: foo ----------
+@end group
+@end example
+@end deffn
+
+@deffn Command delete-indentation &optional join-following-p beg end
+この関数はポイントのある行をその前の行に結合(join)する。結合においてはすべての空白文字を削除、特定のケースにおいてはそれらを1つのスペースに置き換える。@var{join-following-p}が非@code{nil}なら、@code{delete-indentation}はかわりに後続行と結合を行う。それ以外の場合には@var{beg}と@var{end}が非@code{nil}なら、この関数は@var{beg}と@var{end}で定義されるリージョン内のすべての行を結合する。
+
+インタラクティブな呼び出しでは@var{join-following-p}はプレフィクス引数、@var{beg}と@var{end}はリージョンがアクティブならリージョンの開始と終了、それ以外は@code{nil}。この関数は@code{nil}をリターンする。
+
+fillプレフィクスがあり、結合される2つ目の行もそのプレフィクスで始まる場合には、行の結合前に@code{delete-indentation}はそのfillプレフィクスを削除する。@ref{Margins}を参照のこと。
+
+以下の例では@samp{events}で始まる行にポイントがあり、前の行の末尾に1つ以上のスペースが存在しても違いは生じない。
+
+@smallexample
+@group
+---------- Buffer: foo ----------
+When in the course of human
+@point{}    events, it becomes necessary
+---------- Buffer: foo ----------
+@end group
+
+(delete-indentation)
+     @result{} nil
+
+@group
+---------- Buffer: foo ----------
+When in the course of human@point{} events, it becomes necessary
+---------- Buffer: foo ----------
+@end group
+@end smallexample
+
+行の結合後に結合点に単一のスペースを残すか否かを決定するのは、関数@code{fixup-whitespace}の責任である。
+@end deffn
+
+@deffn Command fixup-whitespace
+この関数はポイントを取り囲むすべての水平スペースを、コンテキストに応じて1つのスペースまたはスペースなしに置き換える。リターン値は@code{nil}。
+
+行の先頭や末尾において、スペースの適正な数は0。閉カッコ構文(close parenthesis
+syntax)の前の文字、開カッコの後の文字、式プレフィクス構文(expression-prefix
+syntax)においても、スペースの適正な数は0。それ以外ではスペースの適正な数は1。@ref{Syntax Class Table}を参照のこと。
+
+以下の例では最初に1行目の単語@samp{spaces}の前にポイントがある状態で、@code{fixup-whitespace}を呼び出している。2回目の呼び出しでは@samp{(}の直後にポイントがある。
+
+@smallexample
+@group
+---------- Buffer: foo ----------
+This has too many     @point{}spaces
+This has too many spaces at the start of (@point{}   this list)
+---------- Buffer: foo ----------
+@end group
+
+@group
+(fixup-whitespace)
+     @result{} nil
+(fixup-whitespace)
+     @result{} nil
+@end group
+
+@group
+---------- Buffer: foo ----------
+This has too many spaces
+This has too many spaces at the start of (this list)
+---------- Buffer: foo ----------
+@end group
+@end smallexample
+@end deffn
+
+@deffn Command just-one-space &optional n
+@comment !!SourceFile simple.el
+このコマンドはポイントを取り囲むすべてのスペースを1つのスペース、@var{n}が指定された場合は@var{n}個のスペースで置き換える。リターン値は@code{nil}。
+@end deffn
+
+@c There is also cycle-spacing, but I cannot see it being useful in
+@c Lisp programs, so it is not mentioned here.
+
+@deffn Command delete-blank-lines
+この関数はポイントを取り囲む空行を削除する。ポイントが前後に1行以上の空行がある空の行にある場合には、1行を除いてそれらすべてを削除する。ポイントが孤立した空行にあればその行を削除する。ポイントが空でない行にあれば、その直後にあるすべての空白を削除する。
+
+@c and the Newline character?
+空行とはタブまたはスペースのみを含む行として定義される。
+
+@code{delete-blank-lines}は@code{nil}をリターンする。
+@end deffn
+
+@deffn Command delete-trailing-whitespace &optional start end
+@var{start}と@var{end}で定義されるリージョン内から末尾の空白文字を削除する。
+
+このコマンドはリージョン内の各行の最後の非空白文字後にある空白文字を削除する。
+
+このコマンドがバッファー全体(マークが非アクティブな状態で呼び出された場合やLispから@var{end}と@code{nil}で呼び出された場合)にたいして動作する場合には、変数@code{delete-trailing-lines}が非@code{nil}ならバッファーの終端行の末尾の行も削除する。
+@end deffn
+
+@node The Kill Ring
+@section killリング
+@cindex kill ring
+
+  @dfn{kill関数(kill
+functions)}は削除関数のようにテキストを削除しますが、ユーザーが@dfn{yank}により再挿入できるようにそれらを保存する点が異なります。これらの関数のほとんどは@samp{kill-}という名前をもちます。対照的に名前が@samp{delete-}で始まる関数は、(たとえ削除をundoできるとしても)通常はyank用にテキストを保存しません。それらは削除(deletion)関数です。
+
+  ほとんどのkillコマンドは主にインタラクティブな使用を意図しており、ここでは説明しません。ここで説明するのは、そのようなコマンドの記述に使用されるために提供される関数です。テキストをkillするために、これらの関数を使用できます。Lisp関数の内部的な目的のためにテキストの削除を要するときは、killリング内のコンテンツに影響を与えないように通常は削除関数を使用するべきでしょう。@ref{Deletion}を参照してください。
+
+  killされたテキストは後のyank用に@dfn{killリング(kill
+ring)}内に保存されます。これは直前のkillだけでなく直近のkillのいくつかを保持するリストです。yankがそれをサイクル順に要素をもつリストとして扱うので、これを``リング(ring)''と称しています。このリストは変数@code{kill-ring}に保持されており、リスト用の通常関数で操作可能です。このセクションで説明する、これをリングとして扱うために特化された関数も存在します。
+
+  特にkillされた実体が@emph{破壊}されてしまわないような操作を参照するという理由から、``kill''という単語の使用が不適切だと考える人もいます。これは通常の生活において死は永遠であり、killされた実体は生活に戻ることはないことと対照的です。したがって他の比喩表現も提案されてきました。たとえば、``cutリング(cut
+ring)''という用語は、コンピューター誕生前に原稿を再配置するためにハサミで切り取って貼り付けていたような人に意味があるでしょう。しかし今となってはこの用語を変更するのは困難です。
+
+@menu
+* Kill Ring Concepts::       killリング内のテキストがどのように見えるか。
+* Kill Functions::           テキストをkillする関数。
+* Yanking::                  yankが行われる方法。
+* Yank Commands::            killリングにアクセスするコマンド。
+* Low-Level Kill Ring::      killリングアクセス用の関数と変数。
+* Internals of Kill Ring::   killリングのデータを保持する変数。
+@end menu
+
+@node Kill Ring Concepts
+@subsection killリングの概念
+
+  killリングはリスト内でもっとも最近にkillされたテキストが先頭になるように、killされたテキストを記録します。たとえば短いkillリングは以下のようになるでしょう:
+
+@example
+("some text" "a different piece of text" "even older text")
+@end example
+
+@noindent
+このリストのエントリー長が@code{kill-ring-max}に達すると、新たなエントリー追加により最後のエントリーが自動的に削除されます。
+
+  killコマンドが他のコマンドと混ざり合っているときは、各killコマンドはkillリング内に新たなエントリーを作成します。連続する複数のkillコマンドは単一のkillリングエントリーを構成します。これは1つの単位としてyankされます。2つ目以降の連続するkillコマンドは、最初のkillにより作成されたエントリーにテキストを追加します。
+
+  yankにたいしては、killリング内のただ1つのエントリーが、そのリングの先頭のエントリーとなります。いくつかのyankコマンドは、異なる要素を先頭に指定することにより、リングを回転(rotate)させます。しかしこの仮想的回転はリスト自身を変更しません。もっとも最近のエントリーが、常にリスト内の最初に配置されます。
+
+@node Kill Functions
+@subsection kill用の関数
+
+  @code{kill-region}はテキストkill用の通常サブルーチンです。この関数を呼び出すすべてのコマンドはkillコマンドです(そして恐らくは名前に@samp{kill}が含まれる)。@code{kill-region}は新たにkillされたテキストをkillリング内の最初の要素内に置くか、それをもっとも最近の要素に追加します。これは前のコマンドがkillコマンドか否かを、(@code{last-command}を使用して)自動的に判別して、もしkillコマンドならkillされたテキストをもっとも最近のエントリーに追加します。
+
+@cindex filtering killed text
+  以下で説明するコマンドはkillされるテキストがkillリングに保存される前に、それらをフィルターできます。これらの関数は、このフィルタリングを行うために@code{filter-buffer-substring}を呼び出します(@ref{Buffer
+Contents}を参照)。デフォルトではこれらはフィルタリングを行いませんが、バッファーにあったときと異なるようにテキストをkillリングに保存するために、マイナーモードとフック関数はフィルタリングをセットアップできます。
+
+@deffn Command kill-region start end &optional region
+この関数は@var{start}と@var{end}の間のテキスト範囲をkillするが、オプション引数@var{region}が非@code{nil}なら、かわりにカレントリージョンのテキストをkillする。そのテキストは削除されるが、そのテキストプロパティと共にkillリングに保存される。値は常に@code{nil}。
+
+インタラクティブな呼び出しでは@var{start}と@var{end}はポイントとマークで@var{region}は常に非@code{nil}なので、このコマンドは常にカレントリージョン内のテキストをkillする。
+
+バッファーまたはテキストが読み取り専用なら、@code{kill-region}は同じようにkillリングを変更後に、バッファーを変更せずにエラーをシグナルする。これはユーザーが一連のkillコマンドで、読み取り専用バッファーからkillリングにテキストをコピーするのに有用。
+@end deffn
+
+@defopt kill-read-only-ok
+このオプションが非@code{nil}なら、バッファーやテキストが読み取り専用でも@code{kill-region}はエラーをシグナルしない。かわりにバッファーを変更せずにkillリングを更新して単にリターンする。
+@end defopt
+
+@deffn Command copy-region-as-kill start end &optional region
+この関数は@var{start}と@var{end}の間のテキスト範囲(テキストプロパティを含む)をkillリングに保存するが、バッファーからそのテキストを削除しない。しかしオプション引数@var{region}が非@code{nil}なら、この関数は@var{start}と@var{end}を無視して、かわりにカレントリージョンを保存する。この関数は常に@code{nil}をリターンする。
+
+インタラクティブな呼び出しでは@var{start}と@var{end}はポイントとマークで@var{region}は常に非@code{nil}なので、このコマンドは常にカレントリージョン内のテキストをkillする。
+
+このコマンドは後続のkillコマンドが同一のkillリングエントリーに追加しないように、@code{this-command}に@code{kill-region}をセットしない。
+@end deffn
+
+@node Yanking
+@subsection yank
+
+  yankとはkillリングからテキストを挿入しますが、それが単なる挿入ではないことを意味します。@code{yank}とそれに関連するコマンドは、テキスト挿入前に特別な処理を施すために@code{insert-for-yank}を使用します。
+
+@defun insert-for-yank string
+この関数は@code{insert}と同様に機能するが、結果をカレントバッファーに挿入する前にテキストプロパティ@code{yank-handler}、同様に変数@code{yank-handled-properties}と@code{yank-excluded-properties}に応じて@var{string}内のテキストを処理する点が異なる。
+
+@var{string}を挿入する前に@code{yank-transform-functions} (以下参照)が実行される。
+@end defun
+
+@defun insert-buffer-substring-as-yank buf &optional start end
+この関数は@code{insert-buffer-substring}と似ているが、@code{yank-handled-properties}と@code{yank-excluded-properties}に応じてテキストを処理する点が異なる(これは@code{yank-handler}プロパティを処理しないが、いずれにせよバッファー内のテキストでは通常は発生しない)。
+@end defun
+
+@c FIXME: Add an index for yank-handler.
+  文字列の一部またはすべてにテキストプロパティ@code{yank-handler}をputすると、@code{insert-for-yank}が文字列を挿入する方法が変更されます。文字列の別の箇所が異なる@code{yank-handler}の値をもつ場合(比較は@code{eq})、部分文字列はそれぞれ個別に処理されます。プロパティ値は以下の形式からなる1から4要素のリストでなければなりません(2番目以降の要素は省略可):
+
+@example
+(@var{function} @var{param} @var{noexclude} @var{undo})
+@end example
+
+  これらの要素が何を行うかを以下に示します:
+
+@table @var
+@item function
+@var{function}が非@code{nil}なら、@code{insert}のかわりに文字列を挿入するために、挿入する文字列を単一の引数として、その関数が呼び出される。
+
+@item param
+非@code{nil}の@var{param}が与えられた場合には、それは@var{string}
+(または処理される@var{string}の部分文字列)を置き換えるオブジェクトとして@var{function}
+(または@code{insert})に渡される。たとえば@var{function}が@code{yank-rectangle}なら、@var{param}は矩形(rectangle)として挿入されるべき文字列のリスト。
+
+@item noexclude
+非@code{nil}の@var{noexclude}が与えられたら、挿入される文字列にたいする@code{yank-handled-properties}と@code{yank-excluded-properties}の通常の動作を無効にする。
+
+@item undo
+非@code{nil}の@var{undo}が与えられたら、それはカレントオブジェクトの挿入をundoするために@code{yank-pop}が呼び出す関数。この関数はカレントリージョンのstartとendという2つの引数で呼び出される。@var{function}は@code{yank-undo-function}をセットすることにより@var{undo}の値をオーバーライドできる。
+@end table
+
+@cindex yanking and text properties
+@defopt yank-handled-properties
+この変数はyankされるテキストの状態を処理するスペシャルテキストプロパティを指定する。これは(通常の方法、または@code{yank-handler}を通じた)テキストの挿入後、@code{yank-excluded-properties}が効力をもつ前に効果を発揮する。
+
+値は要素が@code{(@var{prop}
+.
+@var{fun})}であるようなalistであること。alistの各要素は順番に処理される。挿入されるテキストはテキスト範囲にたいして、テキストプロパティが@var{prop}と@code{eq}なものがスキャンされる。そのような範囲にたいしてプロパティの値、そのテキストの開始と終了の位置という3つの引数により@var{fun}が呼び出される。
+@end defopt
+
+@defopt yank-excluded-properties
+この変数の値は挿入されるテキストから削除するためのプロパティのリスト。デフォルト値にはマウスに応答したりキーバインディングの指定を引き起こすテキストのような、煩わしい結果をもたらすかもしれないプロパティが含まれる。これは@code{yank-handled-properties}の後に効果を発揮する。
+@end defopt
+
+@defvar yank-transform-functions
+この変数は関数のリストである。関数はそれぞれyankする文字列を引数として(順番に)呼び出されて、(恐らくは変換後の)文字列をリターンすること。この変数をグローバルにセットすることもできるが、@code{yank}の変種として新たなコマンドの作成にも用いることができる。たとえば@code{yank}のように機能するが、挿入前に空白文字を整理するようなコマンドを作成するには以下のように記述すればよい:
+
+@lisp
+(defun yank-with-clean-whitespace ()
+  (interactive)
+  (let ((yank-transform-functions
+	 '(string-clean-whitespace)))
+    (call-interactively #'yank)))
+@end lisp
+@end defvar
+
+@node Yank Commands
+@subsection yank用の関数
+
+  このセクションではyank用の高レベルなコマンドを説明します。これらのコマンドは主にユーザー用に意図されたものですが、Lispプログラム内での使用にたいしても有用です。@code{yank}と@code{yank-pop}はいずれも、変数@code{yank-excluded-properties}とテキストプロパティ@code{yank-handler}にしたがいます(@ref{Yanking}を参照)。
+
+@deffn Command yank &optional arg
+@cindex inserting killed text
+このコマンドはkillリングの先頭にあるテキストをポイントの前に挿入する。これは@code{push-mark}(@ref{The
+Mark}を参照)を使用して、そのテキストの先頭にマークをセットする。
+
+@var{arg}が非@code{nil}のリスト(これはユーザーがインタラクティブに数字を指定せずに@kbd{C-u}タイプ時に発生する)なら、@code{yank}は上述のようにテキストを挿入するがポイントはyankされたテキストの前、マークはyankされたテキストの後に置かれる。
+
+@var{arg}が数字なら@code{yank}は@var{arg}番目に最近killされたテキスト、すなわちkillリングリストの@var{arg}番目の要素を挿入する。この順番はコマンドの目的にたいして1番目の要素としてみなされるリスト先頭の要素から巡回的に数えられる。
+
+@code{yank}は、それが他のプログラムから提供されるテキストを使用しないかぎり(使用する場合はそのテキストをkillリングにpushする)、killリングのコンテンツを変更しない。しかし@var{arg}が非1の整数なら、killリングを転回(rotate)してyankされるテキストをリング先頭に置く。
+
+@code{yank}は@code{nil}をリターンする。
+@end deffn
+
+@deffn Command yank-pop &optional arg
+@code{yank}や別の@code{yank-pop}の直後に呼び出されると、このコマンドはkillリングからyankしたばかりのエントリーを、killリングの別のエントリーに置き換える。このようにコマンドが呼び出されたときは、リージョンには別のyankコマンドが挿入したばかりのテキストが含まれる。@code{yank-pop}はそのテキストを削除して、killされた別のテキスト片をその位置に挿入する。そのテキスト片はすでにkillリング内のどこか別の箇所にあるので、これは削除されたテキストをkillリングに追加しない。しかし新たにyankされたテキストが先頭になるように、killリングの転回は行う。
+
+@var{arg}が@code{nil}なら置換テキストはkillリングの1つ前の要素。@var{arg}が数字なら置換テキストはkillリングの@var{arg}個前の要素である。@var{arg}が負なら、より最近のkillが置換される。
+
+killリング内のkillされたエントリーの順序はラップするので、繰り返し@code{yank-pop}を呼び出してもっとも古いkillに達すると、その後はもっとも新しいkillとなり、もっとも新しいkillの前がもっとも古いkillとなる。
+
+このコマンドはyank以外のコマンドの後でも呼び出せる。この場合にはミニバッファーでkillリングエントリーにたいする入力を求めて、ミニバッファーヒストリー(@ref{Minibuffer
+History}を参照)としてkillリング要素を使用する。これによりユーザーはkillリング内に記録されている以前のkillをインタラクティブに選択できる。
+
+リターン値は常に@code{nil}である。
+@end deffn
+
+@defvar yank-undo-function
+この変数が非@code{nil}なら、関数@code{yank-pop}は前の@code{yank}や@code{yank-pop}により挿入されたテキストを削除するために、@code{delete-region}のかわりにこの変数の値を使用する。値はカレントリージョンの開始と終了という2つの引数をとる関数でなければならない。
+
+関数@code{insert-for-yank}はテキストプロパティ@code{yank-handler}の要素@var{undo}に対応して、この変数を自動的にセットする。
+@end defvar
+
+@node Low-Level Kill Ring
+@subsection 低レベルのkillリング
+
+  以下の関数と変数はkillリングにたいして低レベルなアクセスを提供しますが、それらはウィンドウシステムの選択(@ref{Window System
+Selections}を参照)との相互作用にも留意するので、Lispプログラム内での使用に関しても依然として有用です。
+
+@defun current-kill n &optional do-not-move
+関数@code{current-kill}はkillリングの先頭を指すyankポインターを、(新しいkillから古いkillに)
+@var{n}個転回して、リング内のその箇所のテキストをリターンする。
+
+オプションの第2引数@var{do-not-move}が非@code{nil}なら、@code{current-kill}はyankポインターを変更しない。カレントyankポインターから@var{n}個目のkillを単にリターンする。
+
+@var{n}が0ならそれは最新のkillの要求を意味しており、@code{current-kill}はkillリング照会前に@code{interprogram-paste-function}(以下参照)の値を呼び出す。その値が関数で、かつそれが文字列か複数の文字列からなるリストをリターンすると、@code{current-kill}はその文字列をkillリング上にpushして最初の文字列をリターンする。これは@var{do-not-move}の値に関わらず、@code{interprogram-paste-function}がリターンする最初の文字列のkillリングエントリーを指すようにyankポインターのセットも行う。それ以外では@code{current-kill}は@var{n}にたいする0値を特別に扱うことはなく、yankポインターが指すエントリーをリターンしてyankポインターの移動は行わない。
+@end defun
+
+@defun kill-new string &optional replace
+この関数はテキスト@var{string}をkillリング上にpushしてyankポインターがそれを指すようにセットする。それが適切なら、もっとも古いエントリーを破棄する。
+@code{interprogram-paste-function}@code{interprogram-paste-function}
+(ユーザーオプション@code{save-interprogram-paste-before-kill}にしたがう)と@code{interprogram-cut-function}
+(以下参照)の値の呼び出しも行う。
+
+@var{replace}が非@code{nil}なら@code{kill-new}はkillリング上に@var{string}をpushせずに、killリングの1つ目の要素を@var{string}に置き換える。
+@end defun
+
+@defun kill-append string before-p
+この関数はkillリング内の最初のエントリーにテキスト@var{string}を追加して、その結合されたエントリーを指すようにyankポインターをセットする。通常はそのエントリーの終端に@var{string}が追加されるが、@var{before-p}が非@code{nil}ならエントリーの先頭に追加される。この関数はサブルーチンとして@code{kill-new}も呼び出すので@code{interprogram-cut-function}とおそらく@code{interprogram-paste-function}の値(以下参照)が拡張により呼び出される。
+@end defun
+
+@defvar interprogram-paste-function
+この変数は他のプログラムからkillリングへkillされたテキストを転送する方法を提供する。値は@code{nil}、または引数のない関数であること。
+
+値が関数なら、もっとも最近のkillを取得するために@code{current-kill}はそれを呼び出す。その関数が非@code{nil}値をリターンすると、その値がもっとも最近のkillとして使用される。@code{nil}をリターンしたらkillリングの先頭が使用される。
+
+複数選択をサポートするウィンドウシステムのサポートを容易にするために、この関数は文字列のリストをリターンすることもある。その場合には1つ目の文字列がもっとも最近のkillとして使用され、その他の文字列はすべて@code{yank-pop}によるアクセスを容易にするためにkillリング上にpushされる。
+
+この関数の通常の用途は、たとえそれが他アプリケーションに属する選択であっても、もっとも最近のkillとしてウィンドウシステムのクリップボードからそれを取得することである。しかしクリップボードのコンテンツがカレントEmacsセッションに由来するなら、この関数は@code{nil}をリターンする筈である。
+@end defvar
+
+@defvar interprogram-cut-function
+この変数はウィンドウシステム使用時に、他のプログラムにkillされたテキストを転送する方法を提供する。値は@code{nil}、または1つの引数を要求する関数であること。
+
+値が関数なら@code{kill-new}と@code{kill-append}はkillリングの新たな1つ目要素を引数としてそれを呼び出す。
+
+この関数の通常の用途は、新たにkillされたテキストをウィンドウシステムのクリップボードに配置することである。@ref{Window System
+Selections}を参照のこと。
+@end defvar
+
+@node Internals of Kill Ring
+@subsection killリングの内部
+
+  変数@code{kill-ring}は、文字列リスト形式でkillリングのコンテンツを保持します。もっとも最近のkillが常にこのリストの先頭になります。
+
+  変数@code{kill-ring-yank-pointer}は、@sc{car}が次のyankのテキストであるような、killリングリスト内のリンクをpointします。これをリングの先頭を識別すると言います。そして、@code{kill-ring-yank-pointer}を異なるリンクに移動することを@dfn{killリングの転回(rotating
+the kill
+ring)}と呼びます。yankポインターを移動する関数はyankポインターをリスト終端から先頭、またはその逆へラップするのでkillリングを``ring''と呼びます。killリングの転回は仮想的なものであって@code{kill-ring}の値は変更しません。
+
+  @code{kill-ring}と@code{kill-ring-yank-pointer}はいずれも、通常は値がリストであるようなLisp変数です。@code{kill-ring-yank-pointer}の名前にある単語``pointer''は、その変数の目的が次回yankコマンドにより使用されるリストの最初の要素を指すことであることを示します。
+
+  @code{kill-ring-yank-pointer}の値は常にkillリングリスト内の1つのリンクと@code{eq}です。それが指す要素は、そのリンクの@sc{car}です。killリングを変更するkillコマンドも、この変数に@code{kill-ring}の値をセットします。その効果は新たにkillされた先頭になるように、リングを転回することです。
+
+  以下は変数@code{kill-ring-yank-pointer}が、killリング@code{("some text" "a different
+piece of text" "yet older text")}内の2番目のエントリーを指すことを表すダイアグラムです。
+
+@example
+@group
+kill-ring                  ---- kill-ring-yank-pointer
+  |                       |
+  |                       v
+  |     --- ---          --- ---      --- ---
+   --> |   |   |------> |   |   |--> |   |   |--> nil
+        --- ---          --- ---      --- ---
+         |                |            |
+         |                |            |
+         |                |             -->"yet older text"
+         |                |
+         |                 --> "a different piece of text"
+         |
+          --> "some text"
+@end group
+@end example
+
+@noindent
+この状態は@kbd{C-y} (@code{yank})の直後に@kbd{M-y} (@code{yank-pop})を行うことにより発生し得ます。
+
+@defvar kill-ring
+この変数はもっとも最近にkillされたテキストが先頭になるように、killされたテキストのシーケンスのリストを保持する。
+@end defvar
+
+@defvar kill-ring-yank-pointer
+この変数の値は、yankにたいして使用されるkillリングの先頭にある要素を示す。より正確には値は@code{kill-ring}の値のtail値であり、その@sc{car}が@kbd{C-y}によりyankされるはずのkill文字列。
+@end defvar
+
+@defopt kill-ring-max
+この変数の値は、リング終端の要素を破棄する前にkillリングが成長し得る最大長。@code{kill-ring-max}のデフォルト値は120。
+@end defopt
+
+@node Undo
+@section アンドゥ
+@cindex redo
+
+  ほとんどのバッファーは、バッファーのテキストにたいして行われた変更をundoできるように、すべての変更を記録する@dfn{undoリスト(undo
+list)}をもっています(undoリストをもたないバッファーとは通常はEmacsがundoを有用とみなさない特殊用途のバッファーである。特に名前がスペースで始まるバッファーはすべてundoの記録がデフォルトでオフになっている。@ref{Buffer
+Names}を参照)。バッファー内でテキストを変更するすべてのプリミティブはundoリストの先頭に自動的に要素を追加して、それは変数@code{buffer-undo-list}に格納されます。
+
+@defvar buffer-undo-list
+このバッファーローカル変数の値は、カレントバッファーのundoリスト。値が@code{t}ならundo情報の記録を無効にする。
+@end defvar
+
+以下はundoリストが保有可能な要素の種類です:
+
+@table @code
+@item @var{position}
+この種の要素は前のポイント値を記録する。この要素をundoすることによりポイントは@var{position}に移動する。通常のカーソル移動はどのような類のundo記録も作成しないが、削除操作はそのコマンド以前にポイントがあった場所を記録するためにこのエントリーを使用する。
+
+@item (@var{beg} . @var{end})
+この種の要素は挿入されたテキストを削除する方法を示す。挿入においてそのテキストはバッファー内の範囲@var{beg}から@var{end}を占める。
+
+@item (@var{text} . @var{position})
+この種の要素は削除されたテキストを再度挿入する方法を示す。文字列@var{text}は削除されたテキストそのもの。削除されたテキストを再挿入する位置は@code{(abs
+@var{position})}。@var{position}が正ならポイントがあったのは削除されたテキストの先頭、それ以外では末尾。この要素の直後に0個以上の(@var{marker}
+. @var{adjustment})要素が続く。
+
+@item (t . @var{time-flag})
+この種の要素は未変更のバッファーが変更されたことを示す。@var{time-flag}
+(非整数のLispタイムスタンプ)は、visitされたファイルにたいしてそれが以前にvisitや保存されたときの更新時刻(modification
+time)を、@code{current-time}と同じ形式を用いて表す。@ref{Time of
+Day}を参照のこと。@var{time-flag}が0ならそのバッファーに対応するファイルがないことを、@minus{}1ならvisitされたファイルは以前は存在しなかったことを意味する。@code{primitive-undo}はバッファーを再度未変更とマークするかどうかを判断するために、これらの値を使用する(ファイルの状態が@var{time-flag}のそれとマッチする場合のみ未変更とマーク)。
+
+@item (nil @var{property} @var{value} @var{beg} . @var{end})
+この種の要素はテキストプロパティの変更を記録する。変更をundoする方法は以下のようになる:
+
+@example
+(put-text-property @var{beg} @var{end} @var{property} @var{value})
+@end example
+
+@item (@var{marker} . @var{adjustment})
+この種の要素はマーカー@var{marker}がそれを取り囲むテキストの削除により再配置されて、@var{adjustment}文字位置を移動したということを記録する。undoリスト内の前にある要素(@var{text}
+. @var{position})とマーカーの位置が一致する場合には、この要素をundoすることにより@var{marker} @minus{}
+@var{adjustment}文字移動する。
+
+@item (apply @var{funname} . @var{args})
+これは拡張可能なundoアイテムであり、引数@var{args}とともに@var{funname}を呼び出すことによりundoが行われる。
+
+@item (apply @var{delta} @var{beg} @var{end} @var{funname} . @var{args})
+これは拡張可能なundoアイテムであり、@var{beg}から@var{end}までに限定された範囲にたいして、そのバッファーのサイズを@var{delta}文字増加させる変更を記録する。これは引数@var{args}とともに@var{funname}を呼び出すことによりundoが行われる。
+
+この種の要素は、それがリージョンと関係するか否かを判断することによりリージョンに限定されたundoを有効にする。
+
+@item nil
+この要素は境界(boundary)である。2つの境界の間にある要素を@dfn{変更グループ(change
+group)}と呼び、それぞれの変更グループは通常1つのキーボードコマンドに対応するとともに、undoコマンドは通常はグループを1つの単位として全体をundoを行う。
+@end table
+
+@defun undo-boundary
+この関数はundoリスト内に境界を配置する。このような境界ごとにundoコマンドは停止して、連続するundoコマンドは、より以前の境界へとundoを行っていく。この関数は@code{nil}をリターンする。
+
+この関数を明示的に呼び出すことは、あるコマンドの効果を複数単位に分割するために有用である。たとえば@code{query-replace}はユーザーが個別に置換をundoできるように、それぞれの置換後に@code{undo-boundary}を呼び出している。
+
+しかしほとんどの場合には、この関数は適切なタイミングで自動的に呼び出される。
+@end defun
+
+@defun undo-auto-amalgamate
+@cindex amalgamating commands, and undo
+@vindex amalgamating-undo-limit
+エディターコマンドループは各アンドゥがが通常はそれぞれ1つのコマンドの効果をアンドゥするように、各キーシーケンスを実行する直前に@code{undo-boundary}を呼び出す。少数の例外は@dfn{融合(amalgamating)}コマンドである。これらのコマンドは一般的にバッファーにたいして小さい変更を発生させるので、変更をグループとしてアンドゥできるように、20回目のコマンドごとに境界が挿入される。デフォルトでは自己挿入入力文字を生成するコマンド@code{self-insert-command}
+(@ref{Commands for Insertion}を参照)、文字を削除するコマンド@code{delete-char}
+(@ref{Deletion}を参照)は融合コマンドである。複数バッファーのコンテンツに影響するコマンド、たとえば発生し得るとすれば@code{post-command-hook}上の関数が@code{current-buffer}以外のバッファーに影響を及ぼす場合には、影響を受ける各バッファーごとに@code{undo-boundary}が呼び出されるだろう。
+
+この関数を融合コマンドの前に呼び出すことができる。そのような一連の呼び出しが行われていると、以前の@code{undo-boundary}は削除される。
+
+融合可能な最大の変更数は@code{amalgamating-undo-limit}変数で制御される。この変数が1なら変更は融合されない。
+@end defun
+
+Lispプログラムは@code{undo-amalgamate-change-group}を呼び出すことによって、一連の変更を単一の変更グループにまとめることができます(@ref{Atomic
+Changes}を参照)。この関数で生成したグループにたいして@code{amalgamating-undo-limit}は効果がないことに注意してください。
+
+@defvar undo-auto-current-boundary-timer
+プロセスバッファーのようないくつかのバッファーでは、何もコマンドを実行していなくても変更が発生し得る。このような場合には、通常は@code{undo-boundary}この変数内のタイマーにより定期的に呼び出される。この挙動を抑制するには、この変数を非@code{nil}にセットすること。
+@end defvar
+
+@defvar undo-in-progress
+この変数は通常は@code{nil}だが、undoコマンドはこれを@code{t}にバインドする。これによりさまざまな種類の変更フックがundoにより呼び出された際に、それを告げることが可能になる。
+@end defvar
+
+@defun primitive-undo count list
+これはundoリストの要素のundoにたいする基本的な関数。これは@var{list}の最初の@var{count}要素をundoして@var{list}の残りをリターンする。
+
+@code{primitive-undo}はバッファー変更時に、そのバッファーのundoリストに要素を追加する。undoコマンドは混乱を避けるためにundo操作シーケンス冒頭にundoリストの値を保存する。その後でundo操作は保存された値の使用と更新を行う。undoにより追加された新たな要素はこの保存値の一部でないので継続するundoと干渉しない。
+
+この関数は@code{undo-in-progress}をバインドしない。
+@end defun
+
+@defmac with-undo-amalgamate body@dots{}
+このマクロは@var{body}の実行中に挿入されたundo境界を削除して、一度にまとめてundoできるようにする。
+@end defmac
+
+いくつかのコマンは、コマンドの選択的なアンドゥを妨害する方法により、実行後にリージョンをアクティブなままにします。@code{undo}をそのようなコマンドの直後に呼び出した際にアクティブなリージョンを無視するには、コマンドの関数シンボルの@code{undo-inhibit-region}プロパティに非@code{nil}値をセットします。@ref{Standard
+Properties}を参照してください。
+
+@node Maintaining Undo
+@section アンドゥリストの保守
+
+  このセクションでは与えられたバッファーにたいしてundo情報を有効や無効にする方法を説明します。undoリストが巨大化しないようにundoリストを切り詰める方法も説明します。
+
+  新たに作成されたバッファー内のundo情報記録は、通常は開始とともに有効になります。しかしバッファー名がスペースで始まる場合には、undoの記録は初期状態では無効になっています。以下の2つの関数、または自身で@code{buffer-undo-list}をセットすることにより、undo記録の有効化や無効化を明示的に行うことができます。
+
+@deffn Command buffer-enable-undo &optional buffer-or-name
+このコマンドは以降の変更をundo可能にするように、バッファー@var{buffer-or-name}のundo情報記録を有効にする。引数が与えられなければカレントバッファーを使用する。そのバッファー内のundo記録がすでに有効ならこの関数は何も行わない。リターン値は@code{nil}。
+
+インタラクティブな呼び出しでは@var{buffer-or-name}はカレントバッファーであり、他のバッファーを指定することはできない。
+@end deffn
+
+@deffn Command buffer-disable-undo &optional buffer-or-name
+@cindex disabling undo
+この関数は@var{buffer-or-name}のundoリストを破棄して、それ以上のundo情報記録を無効にする。結果として以前の変更と以後のすべての変更にたいするそれ以上のundoは不可能になる。@var{buffer-or-name}のundoリストがすでに無効ならこの関数に効果はない。
+
+インタラクティブな呼び出しではBUFFER-OR-NAMEはカレントバッファー。他のバッファーを指定することはできない。リターン値は@code{nil}。
+@end deffn
+
+  編集が継続されるにつれてundoリストは次第に長くなっていきます。利用可能なメモリー空間すべてを使い尽くすのを防ぐために、ガベージコレクションがundoリストを設定可能な制限サイズに切り詰めて戻します(この目的のためにundoリストのサイズはリストを構成するコンスセルに加えて削除された文字列により算出される)。@code{undo-limit}、@code{undo-strong-limit}、@code{undo-outer-limit}の3つの変数は、許容できるサイズの範囲を制御します。これらの変数においてサイズは専有するバイト数で計数され、それには保存されたテキストとその他データが含まれます。
+
+@defopt undo-limit
+これは許容できるundoリストサイズのソフトリミット。このサイズを超過した箇所の変更グループは最新の変更グループ1つが保持される。
+@end defopt
+
+@defopt undo-strong-limit
+これはundoリストの許容できるサイズの上限。このサイズを超過する箇所の変更グループは(その他すべてのより古い変更グループとともに)自身を破棄する。1つ例外があり@code{undo-outer-limit}を超過すると最新の変更グループだけが破棄される。
+@end defopt
+
+@defopt undo-outer-limit
+ガベージコレクション時にカレントコマンドのundo情報がこの制限を超過したら、Emacsはその情報を破棄して警告を表示する。これはメモリーオーバーフローを防ぐための最後の回避用リミットである。
+@end defopt
+
+@defopt undo-ask-before-discard
+この変数が非@code{nil}ならundo情報の@code{undo-outer-limit}超過時に、Emacsはその情報を破棄するかどうかをエコーエリアで尋ねる。デフォルト値は@code{nil}でこれは自動的な破棄を意味する。
+
+このオプションは主にデバッグを意図している。これを尋ねる際にはガベージコレクションは抑制されており、もしユーザーがその問にたいして答えるのをあまりに長くかかるなら、Emacsがメモリーリークを起こすかもしれないことを意味する。
+@end defopt
+
+@node Filling
+@section fill
+@cindex filling text
+
+  @dfn{フィル(fill:
+充填)}とは、指定された最大幅付近(ただし超過せず)に、(行ブレークを移動することにより)行の長さを調整することを意味します。加えて複数行を@dfn{位置揃え(justify)}することもできます。位置揃えとはスペースを挿入して左および/または右マージンを正確に整列させることを意味します。その幅は変数@code{fill-column}により制御されます。読みやすくするために行の長さは70列程度を超えないようにするべきです。
+
+  テキストの挿入とともに自動的にテキストをフィルするAuto
+Fillモードを使用できますが、既存テキストの変更では不適切にフィルされたままになるかもしれません。その場合にはテキストを明示的にフィルしなければなりません。
+
+  このセクションのコマンドのほとんどは有意な値をリターンしません。フィルを行うすべての関数はカレント左マージン、カレント右マージン、カレント位置揃えスタイルに留意します(@ref{Margins}を参照)。カレント位置揃えスタイルが@code{none}なら、フィル関数は実際には何も行いません。
+
+  フィル関数のいくつかは引数@var{justify}を受け取ります。これが非@code{nil}なら、それは何らかの類の位置揃えを要求します。特定の位置揃えスタイルを要求するために@code{left}、@code{right}、@code{full}、@code{center}を指定できます。これが@code{t}なら、それはそのテキスト部分にたいしてカレント位置揃えスタイルを使用することを意味します(以下の@code{current-justification}を参照)。その他すべての値は@code{full}として扱われます。
+
+  インタラクティブにフィル関数を呼び出すには際、プレフィクス引数の使用は@var{justify}にたいして暗に値@code{full}を指定します。
+
+@deffn Command fill-paragraph &optional justify region
+このコマンドはポイント位置、またはその後のパラグラフ(paragraph:
+段落)をフィルする。@var{justify}が非@code{nil}なら、同様に各行が位置揃えされる。これはパラグラフ境界を探すために、通常のパラグラフ移動コマンドを使用する。@ref{Paragraphs,,,
+emacs, The GNU Emacs Manual}を参照のこと。
+
+もし@var{region}が非@code{nil}で、Transient
+Markモードが有効かつマークがアクティブなら、このコマンドはカレントパラグラフのみフィルするかわりに、リージョン内すべてのパラグラフをフィルするためにコマンド@code{fill-region}を呼び出す。このコマンドがインタラクティブに呼び出された際は、@var{region}は@code{t}。
+@end deffn
+
+@deffn Command fill-region start end &optional justify nosqueeze to-eop
+このコマンドは@var{start}から@var{end}のリージョン内のすべてのパラグラフをフィルする。@var{justify}が非@code{nil}なら同様に位置揃えも行う。
+
+@var{nosqueeze}が非@code{nil}なら、それは行ブレーク以外の空白文字を残すことを意味する。@var{to-eop}が非@code{nil}なら、それはパラグラフ終端(以下の@code{use-hard-newlines}が有効なら次のhard改行)までのフィルを維持することを意味する。
+
+変数@code{paragraph-separate}はパラグラフを分割する方法を制御する。@ref{Standard Regexps}を参照のこと。
+@end deffn
+
+@defun pixel-fill-region start end pixel-width
+Emacsのほとんどのバッファーでは文字数と@code{char-width}にもとづいて(@code{fill-region}のような)fill関数が機能するように、等幅(monospace)のテキストを使用する。しかしEmacsは可変幅フォント(proportional
+font)を使ったイメージを含むテキストのような、他のタイプのオブジェクトを描画でき、正にこれを処理するために存在するのが@code{pixel-fill-region}である。これは@var{start}と@var{end}の間にあるリージョンのテキストをピクセル単位の粒度でfillするので、可変ピッチのフォントや異なるいくつかのフォントはサイズに関わらずfillされるようになる。引数@var{pixel-width}はfill後に線に許容される最大のピクセル幅を指定する。これは@code{fill-region}における@code{fill-column}のピクセル解像度に相当する。以下のLispコードはプロポーショナルフォントを用いてテキストを挿入してから、300ピクセルを超えない幅になるようにfillする例である:
+
+@lisp
+(insert (propertize
+	 "This is a sentence that's ends here."
+	 'face 'variable-pitch))
+(pixel-fill-region (point) (point-max) 300)
+@end lisp
+
+@var{start}が行頭にある場合には、後続行のインデントのプレックスとして@var{start}の水平位置をピクセル単位に変換した値が用いられる。
+
+@findex pixel-fill-width
+@code{pixel-fill-width}はピクセル幅を計算するために使用できるヘルパー関数である。引数なしならカレントウィンドウの幅より若干小さい値をリターンする。1つ目のオプション@var{columns}の値には、@code{fill-column}が用いる標準的なモノスペースフォントによる列数を指定する。2つ目のオプションの値は使用するウィンドウである。典型的には以下のように使用する:
+
+@lisp
+(pixel-fill-region
+  start end (pixel-fill-width fill-column))
+@end lisp
+@end defun
+
+@deffn Command fill-individual-paragraphs start end &optional justify citation-regexp
+このコマンドはリージョン内の各パラグラフを、それの固有なフィルプレフィクスに応じてフィルする。したがってパラグラフの行がスペースでインデントされていれば、フィルされたパラグラフは同じ様式でインデントされた状態に保たれるだろう。
+
+最初の2つの引数@var{start}と@var{end}はフィルするリージョンの先頭と終端。3つ目の引数@var{justify}、4つ目の引数@var{citation-regexp}はオプション。@var{justify}が非@code{nil}なら、そのパラグラフはフィルと同様に位置揃えも行われる。@var{citation-regexp}が非@code{nil}なら、それはこの関数がメールメッセージを処理しているのでヘッダーラインをフィルするべきではないことを意味する。@var{citation-regexp}が文字列なら、それは正規表現として扱われる。それが行の先頭にマッチすれば、その行は引用マーカー(citation
+marker)として扱われる。
+
+@c FIXME: "That mode" is confusing.  It isn't a major/minor mode.
+@code{fill-individual-paragraphs}は通常はインデントの変更を新たなパラグラフの開始とみなす。@code{fill-individual-varying-indent}が非@code{nil}ならセパレーターラインだけがパラグラフを分割する。その場合には、最初の行からさらにインデントが追加されたパラグラフを処理することが可能になる。
+@end deffn
+
+@defopt fill-individual-varying-indent
+この変数は上述のように@code{fill-individual-paragraphs}の動作を変更する。
+@end defopt
+
+@deffn Command fill-region-as-paragraph start end &optional justify nosqueeze squeeze-after
+このコマンドはテキストのリージョンを1つのパラグラフとみなしてそれをフィルする。そのリージョンが多数のパラグラフから構成されていたらパラグラフ間の空行は削除される。@var{justify}が非@code{nil}ならフィルとともに位置揃えも行う。
+
+@var{nosqueeze}が非@code{nil}なら、それは改行以外の空白に手を加えずに残すことを意味する。@var{squeeze-after}が非@code{nil}なら、それはリージョン内の位置を指定して、その位置より前にある改行以外の空白文字に手を加えず残すことを意味する。
+
+Adaptive
+Fillモードでは、このコマンドはフィルプレフィクスを選択するためにデフォルトで@code{fill-context-prefix}を呼び出す。@ref{Adaptive
+Fill}を参照のこと。
+@end deffn
+
+@deffn Command justify-current-line &optional how eop nosqueeze
+このコマンドはその行が正確に@code{fill-column}で終わるように単語間にスペースを挿入する。リターン値は@code{nil}。
+
+引数@var{how}が非@code{nil}なら、それは位置揃えスタイルを明示的に指定する。指定できる値は@code{left}、@code{right}、@code{full}、@code{center}、または@code{none}。値が@code{t}なら指定済みの位置揃えスタイル(以下の@code{current-justification}を参照)にしたがうことを意味する。@code{nil}は位置揃え@code{full}と同じ。
+
+@var{eop}が非@code{nil}なら、それは@code{current-justification}がfull位置揃えを指定する場合にleft位置揃えだけを行うことを意味する。これはパラグラフ最終行にたいして使用される。パラグラフ全体がfull位置揃えだったとしても最終行はfull位置揃えであるべきではない。
+
+@var{nosqueeze}が非@code{nil}なら、それは内部のスペースを変更しないことを意味する。
+@end deffn
+
+@defopt default-justification
+この変数の値は位置揃えに使用するスタイルをテキストプロパティで指定しないテキストにたいするスタイルを指定する。可能な値は@code{left}、@code{right}、@code{full}、@code{center}、または@code{none}。デフォルト値は@code{left}。
+@end defopt
+
+@defun current-justification
+この関数はポイント周辺のフィルに使用するための適正な位置揃えスタイルをリターンする。
+
+これはポイント位置のテキストプロパティ@code{justification}の値、そのようなテキストプロパティが存在しなければ変数@code{default-justification}の値をリターンする。しかし``位置揃えなし''なら、@code{none}ではなく@code{nil}をリターンする。
+@end defun
+
+@defopt sentence-end-double-space
+@anchor{Definition of sentence-end-double-space}
+この変数が非@code{nil}ならピリオドの後の単一のスペースをセンテンスの終わりとみなさず、フィル関数はそのような箇所でのラインブレークを行わない。
+@end defopt
+
+@defopt sentence-end-without-period
+この変数が非@code{nil}なら、ピリオドなしでセンテンスは終了できる。これはたとえばピリオドなしの2連スペースでセンテンスが終わるタイ語などに使用される。
+@end defopt
+
+@defopt sentence-end-without-space
+この変数が非@code{nil}なら、それは後にスペースをともなうことなくセンテンスを終了させ得る文字列であること。
+@end defopt
+
+@defopt fill-separate-heterogeneous-words-with-space
+この変数が非@code{nil}なら異種(たとえば英語のCJK)の2つの単語は一方が行末にあり、もう一方が次行の先頭にある場合にはフィルでの結合時にスペースで分割される。
+@end defopt
+
+@defvar fill-paragraph-function
+この変数はパラグラフのフィルをオーバーライドする手段を提供する。この値が非@code{nil}なら、@code{fill-paragraph}はその処理を行うためにその関数を呼び出す。その関数が非@code{nil}値をリターンすると、@code{fill-paragraph}は処理が終了したとみなして即座にその値をリターンする。
+
+この機能の通常の用途はプログラミング言語のモードにおいてコメントをフィルすることである。通常の方法でその関数がパラグラフをフィルする必要があるなら、以下のようにそれを行うことができる:
+
+@example
+(let ((fill-paragraph-function nil))
+  (fill-paragraph arg))
+@end example
+@end defvar
+
+@defvar fill-forward-paragraph-function
+この変数は@code{fill-region}や@code{fill-paragraph}のようなフィル関数が次のパラグラフへ前方に移動する方法をオーバーライドするための手段を提供する。値は移動するパラグラフの数@var{n}を唯一の引数として呼び出される関数であり、@var{n}と実際に移動したパラグラフ数の差をリターンすること。この変数のデフォルト値は@code{forward-paragraph}。@ref{Paragraphs,,,
+emacs, The GNU Emacs Manual}を参照のこと。
+@end defvar
+
+@defvar use-hard-newlines
+この変数が非@code{nil}なら、フィル関数はテキストプロパティ@code{hard}をもつ改行を削除しない。これらのhard改行、パラグラフのセパレーターとして機能する。@ref{Hard
+and Soft Newlines,, Hard and Soft Newlines, emacs, The GNU Emacs
+Manual}を参照のこと。
+@end defvar
+
+@node Margins
+@section fillのマージン
+@cindex margins, filling
+
+@defopt fill-prefix
+このバッファーローカル変数が非@code{nil}なら、それは通常のテキスト行の先頭に出現して、それらのテキスト行をフィルする際には無視されるべきテキスト文字列を指定する。そのフィルプレフィクスで始まらない行はパラグラフの開始とみなされ、フィルプレフィクスで始まる行はその後にスペースが追加される。フィルプレフィクスで始まりその後に追加のスペースがない行はフィル可能な通常のテキスト行。結果となるフィル済みの行もフィルプレフィクスで開始される。
+
+もしあればフィルプレフィクスは左マージンのスペースの後になる。
+@end defopt
+
+@defopt fill-column
+このバッファーローカル変数はフィルされる行の最大幅を指定する。値は列数を表す整数であること。Auto Fillモード(@ref{Auto
+Filling}を参照)を含むフィル、位置揃え、センタリングを行うすべてのコマンドがこの変数の影響を受ける。
+
+実際の問題として他の人が読むためのテキストを記述する場合には、@code{fill-column}を70より大きくするべきではない。これにしたがわないと人が快適に読むには行が長くなり過ぎてしまい、下手に記述されたテキストに見えてしまうだろう。
+
+@code{fill-column}のデフォルト値は70。特定のモードでAuto Fillモードを無効にするには以下のように記述できる:
+
+@lisp
+(add-hook 'foo-mode-hook (lambda () (auto-fill-mode -1))
+@end lisp
+@end defopt
+
+@deffn Command set-left-margin from to margin
+これは@var{from}から@var{to}のテキストの@code{left-margin}プロパティに値@var{margin}をセットする。Auto
+Fillモードが有効なら、このコマンドは新たなマージンにフィットするようにリージョンの再フィルも行う。
+@end deffn
+
+@deffn Command set-right-margin from to margin
+これは@var{from}から@var{to}のテキストの@code{right-margin}プロパティに値@var{margin}をセットする。Auto
+Fillモードが有効なら、このコマンドは新たなマージンにフィットするようにリージョンの再フィルも行う。
+@end deffn
+
+@defun current-left-margin
+この関数はポイント周辺をフィルするために使用する、適切な左マージン値をリターンする。値はカレント行開始文字の@code{left-margin}プロパティの値(なければ0)と変数@code{left-margin}の値の合計。
+@end defun
+
+@defun current-fill-column
+この関数はポイント周辺のテキストをフィルするために使用する、適切なフィル列値をリターンする。値は変数@code{fill-column}からポイント後の文字の@code{right-margin}プロパティの値を減じた値。
+@end defun
+
+@deffn Command move-to-left-margin &optional n force
+この関数はカレント行の左マージンにポイントを移動する。移動先の列は関数@code{current-left-margin}により決定される。引数@var{n}が非@code{nil}なら、まず@code{move-to-left-margin}は@var{n}行前方に移動する。
+
+@var{force}が非@code{nil}なら、それは行のインデントが左マージン値とマッチしなければインデントを修正するように指定する。
+@end deffn
+
+@defun delete-to-left-margin &optional from to
+この関数は@var{from}から@var{to}の間のテキストから左マージンのインデントを取り除く。削除するインデントの量は@code{current-left-margin}を呼び出すことにより決定される。この関数が非空白文字を削除することはない。@var{from}と@var{to}が省略された場合のデフォルトはそのバッファー全体。
+@end defun
+
+@defun indent-to-left-margin
+この関数はカレント行の先頭のインデントを変数@code{left-margin}に指定された値に調整する(これにより空白文字の挿入や削除が起こるかもしれない)。Paragraph-Indent
+Textモード内の変数@code{indent-line-function}の値はこの関数。
+@end defun
+
+@defopt left-margin
+この変数は左マージンの基本列を指定する。Fundamentalモードでは、@key{RET}はこの列にインデントする。この変数は手段の如何を問わずセットされると自動的にバッファーローカルになる。
+@end defopt
+
+@defopt fill-nobreak-predicate
+この変数はメジャーモードにたいして、特定の箇所で行ブレークしないように指定する手段を提供する。値は関数のリストであること。フィルがバッファー内の特定箇所で行ブレークすると判断されるときは、常にその箇所にポイントを置いた状態でこれらの関数を引数なしで呼び出す。これらの関数のいずれかが非@code{nil}をリターンすると、その行のその箇所では行ブレークしない。
+@end defopt
+
+@node Adaptive Fill
+@section Adaptive Fillモード
+@c @cindex Adaptive Fill mode  "adaptive-fill-mode" is adjacent.
+
+  @dfn{Adaptive
+Fillモード}が有効なとき、Emacsは事前定義された値を使用するのではなく、フィルされる各パラグラフのテキストから自動的にフィルプレフィクスを決定します。@ref{Filling}と@ref{Auto
+Filling}で説明されているように、このフィルプレフィクスはフィルの間にそのパラグラフの2行目以降の行頭に挿入されます。
+
+@defopt adaptive-fill-mode
+この変数が非@code{nil}ならAdaptive Fillモードは有効。デフォルトは@code{t}。
+@end defopt
+
+@defun fill-context-prefix from to
+@c The optional argument first-line-regexp is not documented
+@c because it exists for internal purposes and might be eliminated
+@c in the future.
+この関数はAdaptive
+Fillモード実装の肝である。これは@var{from}から@var{to}、通常はパラグラフの開始から終了にあるテキストにもとづいてフィルプレフィクスを選択する。これは以下で説明する変数にもとづき、そのパラグラフの最初の2行を調べることによりこれを行う。
+
+この関数は通常は文字列としてフィルプレフィクスをリターンする。しかしこれを行う前に、この関数はそのプレフィクスで始まる行がパラグラフの開始とは見えないだろうか、最終チェックを行う(以降では特に明記しない)。これが発生した場合には、この関数はかわりに@code{nil}をリターンすることにより異常を通知する。
+
+以下は@code{fill-context-prefix}が行う詳細:
+
+@enumerate
+@item
+1行目からフィルプレフィクス候補を取得するために、(もしあれば)まず@code{adaptive-fill-function}内の関数、次に@code{adaptive-fill-regexp}
+(以下参照)の正規表現を試みる。これらの非@code{nil}の最初の結果、いずれも@code{nil}なら空文字列が1行目の候補となる。
+@item
+そのパラグラフが1行だけなら、関数は見つかったプレフィクス候補の妥当性をテストする。その後でこの関数はそれが妥当ならその候補を、それ以外はスペース文字列をリターンする(以下の@code{adaptive-fill-first-line-regexp}の説明を参照)。
+@item
+すでにそのパラグラフが2行以上なら、この関数は次に1行目にたいして行なったのとまったく同じ方法で2行目でプレフィクス候補を探す。見つからなければ@code{nil}をリターンする。
+@item
+ここでこの関数は発見的手法により2つのプレフィクス候補を比較する。2行目の候補の非空白文字の並びが1行目の候補と同じなら、この関数は2行目の候補をリターンする。それ以外では2つの候補に共通するもっとも長い先頭の部分文字列(これは空文字列かもしれない)をリターンする。
+@end enumerate
+@end defun
+
+@defopt adaptive-fill-regexp
+Adaptive
+Fillモードは、(もしあれば)行の左マージン空白文字の後から開始されるテキストにたいしてこの正規表現をマッチする。マッチする文字列がその行のフィルプレフィクス候補。
+
+デフォルト値は空白文字と特定の句読点文字が混在した文字列にマッチする。
+@end defopt
+
+@defopt adaptive-fill-first-line-regexp
+この正規表現は1行だけのパラグラフに使用され、1つの可能なフィルプレフィクス候補の追加の妥当性評価として機能する。その候補はこの正規表現にマッチするか、@code{comment-start-skip}にマッチしなければならない。マッチしなければ@code{fill-context-prefix}はその候補を同じ幅のスペース文字列に置き換える。
+
+この変数のデフォルト値は @w{@code{"\\`[
+\t]*\\'"}}であり、これは空白文字列だけにマッチする。このデフォルトの効果は1行パラグラフで見つかったフィルプレフィクスが、常に純粋な空白文字となるよう強制することである。
+@end defopt
+
+@defopt adaptive-fill-function
+この変数に関数をセットすることにより、自動的なフィルプレフィクス選択にたいしてより複雑な方法を指定することが可能になる。その関数は、(もしあれば)行の左マージンの後のポイントで呼び出され、かつポイントを保たなければならない。その関数はその行のフィルプレフィクス、またはプレフィクスの判断に失敗したことを意味する@code{nil}のいずれかをリターンすること。
+@end defopt
+
+@node Auto Filling
+@section オートfill
+@cindex filling, automatic
+@cindex Auto Fill mode
+
+Auto Fillモードはテキスト挿入とともに自動的に行をフィルするマイナーモードです。@ref{Auto Fill,,, emacs, The GNU
+Emacs Manual}を参照してください。このセクションではAuto
+Fillモードにより使用される変数をいくつか説明します。既存テキストを明示的にフィルしたり位置揃えすることができる関数の説明は@ref{Filling}を参照してください。
+
+  Auto
+Fillモードではテキスの一部を再フィルするためにマージンや位置揃えを変更する関数も利用できます。@ref{Margins}を参照してください。
+
+@defvar auto-fill-function
+このバッファーローカル変数の値はテーブル@code{auto-fill-chars}
+(以下参照)からの文字の自己挿入後に呼び出される関数(引数なし)であること。@code{nil}でもよく、その場合は特に何もしない。
+
+Auto
+Fillモードが有効なら@code{auto-fill-function}の値は@code{do-auto-fill}。これは行ブレークにたいする通常のストラテジーを実装することを唯一の目的とする関数である。
+@end defvar
+
+@defvar normal-auto-fill-function
+この変数はAuto Fillがオンのときは@code{auto-fill-function}にたいして使用する関数を指定する。Auto
+Fillの動作方法を変更するためにメジャーモードはこの変数にバッファーローカル値をセットできる。
+@end defvar
+
+@defvar auto-fill-chars
+文字が自己挿入された際に@code{auto-fill-function}を呼び出す文字からなる文字テーブル(ほとんどの言語環境においてはスペースと改行)。
+@end defvar
+
+@defopt comment-auto-fill-only-comments
+この変数が非@code{nil}なら行のフィルは自動的にコメントだけになる。より正確にはカレントバッファーにたいしてコメント構文が定義されていれば、コメントの外側の自己挿入文字が@code{auto-fill-function}を呼び出さないことを意味する。
+@end defopt
+
+
+@node Sorting
+@section テキストのソート
+@cindex sorting text
+
+  このセクションで説明するソート関数は、すべてバッファー内のテキストを再配置します。これはリスト要素を再配置する@code{sort}関数とは対照的です(@pxref{Rearrangement})。これらの関数がリターンする値に意味はありません。
+
+@defun sort-subr reverse nextrecfun endrecfun &optional startkeyfun endkeyfun predicate
+この関数はバッファーをレコードに細分してそれらをソートする一般的なテキストソートルーチン。このセクションのコマンドのほとんどは、この関数を使用する。
+
+@code{sort-subr}が機能する方法を理解するためには、バッファーのアクセス可能範囲を@dfn{ソートレコード(sort
+records)}と呼ばれる分離された断片に分割すると考えればよい。レコードは連続、あるいは非連続かもしれないがオーバーラップしてはならない。各ソートレコードの一部(全体かもしれない)はソートキーとして指定される。これらソートキーによるソートによりレコードは再配置される。
+
+レコードは通常はソートキー昇順で再配置される。@code{sort-subr}の1つ目の引数@var{reverse}が非@code{nil}ならレコードはソートキー降順にソートされて再配置される。
+
+@code{sort-subr}にたいする以下の4つの引数は、ソートレコード間でポイントを移動するために呼び出される。これらは@code{sort-subr}内で頻繁に呼び出される。
+
+@enumerate
+@item
+@var{nextrecfun}はレコード終端のポイントで呼び出される。この関数は次のレコードの先頭にポイントを移動する。@code{sort-subr}が呼び出された際には、ポイント位置が1つ目のレコードの開始とみなされる。したがって@code{sort-subr}を呼び出す前は、通常はそのバッファーの先頭にポイントを移動すること。
+
+この関数はバッファー終端にポイントを残すことにより、それ以上のソートレコードがないことを示すことができるできる。
+
+@item
+@var{endrecfun}はレコード内にあるポイントで呼び出される。これはレコード終端にポイントを移動する。
+
+@item
+@var{startkeyfun}はポイントをレコード先頭からソートキー先頭に移動する。この引数はオプションで、省略された場合はレコード全体がソートキーとなる。もし与えられた場合には、その関数はソートキーとして使用する非@code{nil}値、または@code{nil}
+(ソートキーはそのバッファー内のポイント位置から始まることを示す)のいずれかをリターンすること。後者の場合にはソートキー終端を見るけるために@var{endkeyfun}が呼び出される。
+
+@item
+@var{endkeyfun}はソートキー先頭からソートキー終端にポイントを移動するために呼び出される。引数はオプション。@var{startkeyfun}が@code{nil}をリターンし、かつこの引数が省略(または@code{nil})の場合には、そのソートキーはレコード終端まで拡張される。@var{startkeyfun}が非@code{nil}値をリターンした場合には@var{endkeyfun}は不要。
+@end enumerate
+
+引数@var{predicate}はキーの比較に使用する関数。この関数は引数として比較する2つのキーを受け取り、1つ目のキーが2つ目のキーよりソート順で前なら非@code{nil}をリターンすること。引数のキーが正確に何であるかは@var{startkeyfun}と@var{endkeyfun}がリターンする値に依存する。@var{predicate}が省略または@code{nil}の場合のデフォルトはキーが数値なら@code{<}、キーがコンスセル(@code{car}がキーのバッファー位置の開始で@code{cdr}が終了)なら@code{compare-buffer-substrings}、それ以外なら@code{string<}
+(キーを文字列とみなす)。
+
+@code{sort-subr}の例として以下は@code{sort-lines}関数の完全な定義である:
+
+@example
+@group
+;; @r{ドキュメント文字列の冒頭2行は}
+;; @r{ユーザー閲覧時には1行となることに注意}
+(defun sort-lines (reverse beg end)
+  "リージョン内の行をアルファベット順にソート;\
+ 引数は降順を意味する
+プログラムから呼び出す場合は、以下の3つの引数がある:
+@end group
+@group
+REVERSE(非nilは逆順の意)、\
+およびBEGとEND(ソートするリージョン)
+変数`sort-fold-case'は英字\
+大文字小文字の違いが
+ソート順に影響するかどうかを決定する"
+@end group
+@group
+  (interactive "P\nr")
+  (save-excursion
+    (save-restriction
+      (narrow-to-region beg end)
+      (goto-char (point-min))
+      (let ((inhibit-field-text-motion t))
+        (sort-subr reverse 'forward-line 'end-of-line)))))
+@end group
+@end example
+
+ここで@code{forward-line}は次のレコードの先頭にポイントを移動して、@code{end-of-line}はレコードの終端にポイントを移動する。レコード全体をソートキーとするので引数@var{startkeyfun}と@var{endkeyfun}は渡していない。
+
+@code{sort-paragraphs}はほとんど同じだが、@code{sort-subr}の呼び出しが以下のようになる:
+
+@example
+@group
+(sort-subr reverse
+           (lambda ()
+             (while (and (not (eobp))
+                         (looking-at paragraph-separate))
+               (forward-line 1)))
+           'forward-paragraph)
+@end group
+@end example
+
+ソートレコード内を指す任意のマーカーは、@code{sort-subr}リターン後は無意味なマーカー位置のまま取り残される。
+@end defun
+
+@defopt sort-fold-case
+この変数が非@code{nil}なら、@code{sort-subr}とその他のバッファーソート関数は文字列比較時にcase(大文字小文字)の違いを無視する。
+@end defopt
+
+@deffn Command sort-regexp-fields reverse record-regexp key-regexp start end
+このコマンドは@var{start}から@var{end}の間のリージョンを、@var{record-regexp}と@var{key-regexp}で指定されたようにアルファベット順にソートする。@var{reverse}が負の整数なら逆順にソートする。
+
+アルファベット順のソートとは2つのソートキーにたいして、それぞれの1つ目の文字同士、2つ目の文字同士、...のように比較することにより、キーを比較することを意味する。文字が一致しなければ、それはソートキーが不等なことを意味する。最初の不一致箇所で文字が小さいソートキーが小さいソートキーとなる。個別の文字はEmacs文字セット内の文字コードの数値に応じて比較される。
+
+引数@var{record-regexp}の値はバッファーをソートレコードに分割する方法を指定する。各レコードの終端で、この正規表現にたいする検索は完了して、これにマッチするテキストが次のレコードとして採用される。たとえば改行の前に少なくとも1つの文字がある行にマッチする正規表現@samp{^.+$}は、そのような行をソートレコードとするだろう。正規表現の構文と意味については@ref{Regular
+Expressions}を参照のこと。
+
+引数@var{key-regexp}の値は各レコードのどの部分がソートキーかを指定する。@var{key-regexp}はレコード全体、またはその一部にマッチすることができる。後者の場合にはレコードの残りの部分はソート順に影響しないが、レコードが新たな位置に移動される際はともに移動される。
+
+引数@var{key-regexp}は@var{record-regexp}の部分式(subexpression)、またはその正規表現自体にマッチしたテキストを参照できる。
+
+@var{key-regexp}には以下を指定できる:
+
+@table @asis
+@item @samp{\@var{digit}}
+@var{record-regexp}内で@var{digit}番目のカッコ@samp{\(...\)}でグループ化によりマッチしたテキストがソートキーになる。
+
+@item @samp{\&}
+レコード全体がソートキーとなる。
+
+@item 正規表現
+@code{sort-regexp-fields}は、そのレコード内で正規表現にたいするマッチを検索する。そのようなマッチがあればそれがソートキー。レコード内に@var{key-regexp}にたいするマッチがなければそのレコードは無視されて、そのバッファー内でのレコードの位置は変更されないことを意味する(他のレコードがそのレコードを移動するかもしれない)。
+@end table
+
+たとえばリージョン内のすべての行にたいして、最初の単語が文字@samp{f}で始まる行をソートすることを目論むなら、@var{record-regexp}を@samp{^.*$}、@var{key-regexp}を@samp{\<f\w*\>}にセットすること。結果は以下のような式になる
+
+@example
+@group
+(sort-regexp-fields nil "^.*$" "\\<f\\w*\\>"
+                    (region-beginning)
+                    (region-end))
+@end group
+@end example
+
+@code{sort-regexp-fields}をインタラクティブに呼び出した場合にはミニバッファー内で@var{record-regexp}と@var{key-regexp}の入力を求める。
+@end deffn
+
+@deffn Command sort-lines reverse start end
+このコマンドは@var{start}と@var{end}の間のリージョン内の行をアルファベット順にソートする。@var{reverse}が非@code{nil}なら逆順にソートする。
+@end deffn
+
+@deffn Command sort-paragraphs reverse start end
+このコマンドは@var{start}と@var{end}の間のリージョン内のパラグラフをアルファベット順にソートする。@var{reverse}が非@code{nil}なら逆順にソートする。
+@end deffn
+
+@deffn Command sort-pages reverse start end
+このコマンドは@var{start}と@var{end}の間のリージョン内のページをアルファベット順にソートする。@var{reverse}が非@code{nil}なら逆順にソートする。
+@end deffn
+
+@deffn Command sort-fields field start end
+このコマンドは@var{start}と@var{end}の間のリージョン内の行にたいして、各行の@var{field}番目のフィールドをアルファベット順に比較することに行をソートする。@var{field}は空白文字により区切られて、1から数えられる。@var{field}が負なら行の終端から@w{@minus{}@var{field}}番目のフィールドでソートする。このコマンドはテーブルのソートに有用。
+@end deffn
+
+@deffn Command sort-numeric-fields field start end
+このコマンドは@var{start}と@var{end}の間のリージョン内の行にたいして、各行の@var{field}番目のフィールドを数値的に比較することにより行をソートする。@var{field}は空白文字により区切られて、1から数えられる。リージョン内の各行の指定されたフィールドは数字を含んでいなければならない。0で始まる数字は8進数、@samp{0x}で始まる数字は16進数として扱われる。
+
+@var{field}が負なら行の終端から@w{@minus{}@var{field}}番目のフィールドでソートする。このコマンドはテーブルのソートに有用。
+@end deffn
+
+@defopt sort-numeric-base
+この変数は@code{sort-numeric-fields}にたいして数字を解析するための基本基数を指定する。
+@end defopt
+
+@deffn Command sort-columns reverse &optional beg end
+このコマンドは@var{beg}と@var{end}の間にある行にたいして特定の列範囲をアルファベット順に比較することによりソートする。@var{beg}と@var{end}の列位置はソートが行われる列範囲にバインドされる。
+
+@var{reverse}が非@code{nil}なら逆順にソートする。
+
+このコマンドが通常と異なるのは、位置@var{beg}を含む行全体と位置@var{end}を含む行全体がソートされるリージョンに含まれることである。
+
+タブは指定された列に分割される可能性があるので、@code{sort-columns}はタブを含むテキストを受け付けないことに注意。ソート前に@kbd{M-x
+untabify}を使用してタブをスペースに変換すること。
+
+可能ならユーティリティプログラム@code{sort}を呼び出すことにより、このコマンドは実際に機能する。
+@end deffn
+
+@node Columns
+@section 列を数える
+@cindex columns
+@cindex counting columns
+@cindex horizontal position
+
+  列関数は文字位置(バッファー先頭から数えた文字数)と列位置(行先頭から数えたスクリーン文字数)を変換する関数です。
+
+  これら列関数はスクリーン上占める列数に応じて各文字を数えます。これはコントロール文字は@code{ctl-arrow}の値に応じて2列または4列を、タブは@code{tab-width}の値と、タブが始まる列の位置に依存する列数を占めるものとして数えられることを意味します。@ref{Usual
+Display}を参照してください。
+
+  列数計算はウィンドウ幅と水平スクロール量を無視します。結果として列値は任意に大きくなる可能性があります。最初(または左端)の列は0と数えられます。列値は不可視性を別としてオーバーレイとテキストプロパティを無視します。@code{buffer-invisibility-spec}で不可視のテキストを省略記号(ellipsis)として表示するように指定していないかぎり(@ref{Invisible
+Text}を参照)、不可視のテキストは幅が0であるとみなされます。
+
+@defun current-column
+この関数は左マージンを0として列単位で数えたポイントの水平位置をリターンする。列の位置はカレント行の開始からポイントまでの間の文字の表示上の表現すべての幅の和。
+@end defun
+
+@deffn Command move-to-column column &optional force
+この関数はカレント行の@var{column}にポイントを移動する。@var{column}の計算には行の開始からポイントまでの文字の表示上の表現の幅が考慮される。
+
+インタラクティブに呼び出された際には、@var{column}はプレフィクス数引数の値。@var{column}が整数でなければエラーがシグナルされる。
+
+@c This behavior used to be documented until 2013/08.
+@ignore
+If column @var{column} is beyond the end of the line, point moves to
+the end of the line.  If @var{column} is negative, point moves to the
+beginning of the line.
+@end ignore
+
+列@var{column}がタブのような複数列を占める文字の中間にあるために列を移動することが不可能な場合には、ポイントはその文字の終端に移動される。しかし@var{force}が非@code{nil}、かつ@var{column}がタブの中間にあるなら、(@code{indent-tabs-mode}が@code{nil}なら)@code{move-to-column}はタブをスペースに変換するか、(それ以外なら)その前に十分なスペースを挿入するので正確に列@var{column}に移動することができる。それ以外の複数列文字については分割する手段がないので、@var{force}指定に関わらず異常を引き起こす恐れがある。
+
+その行が列@var{column}に達するほど長くない場合にも引数@var{force}は効果をもつ。@var{column}が@code{t}ならその列に達するよう行端に空白を追加することを意味する。
+
+リターン値は実際に移動した列番号。
+@end deffn
+
+@node Indentation
+@section インデント
+@cindex indentation
+
+  インデント関数は行の先頭にある空白文字の調査、移動、変更に使用されます。行の他の箇所にある空白文字を変更できる関数もいくつかあります。列とインデントは左マージンを0として数えられます。
+
+@menu
+* Primitive Indent::         インデントのカウントと挿入に使用される関数。
+* Mode-Specific Indent::     異なるモード用にインデントをカスタマイズする。
+* Region Indent::            リージョン内すべての行のインデント。
+* Relative Indent::          前の行にもとづきカレント行をインデントする。
+* Indent Tabs::              調整可能なタイプライター形式のタブストップ。
+* Motion by Indent::         最初の非ブランク文字への移動。
+@end menu
+
+@node Primitive Indent
+@subsection インデント用のプリミティブ
+
+  このセクションではインデントのカウントと挿入に使用されるプリミティブ関数について説明します。以降のセクションの関数はこれらのプリミティブを使用します。関連する関数については@ref{Size
+of Displayed Text}を参照してください。
+
+@defun current-indentation
+@comment !!Type Primitive Function
+@comment !!SourceFile indent.c
+この関数はカレント行のインデント、すなわち最初の非ブランク文字の水平位置をリターンする。行のコンテンツ全体がブランクなら、それは行終端の水平位置である。
+
+@code{buffer-invisibility-spec}で不可視のテキストを省略記号(ellipsis)として表示するように指定していないかぎり、この関数は不可視のテキストの幅を0とみなす。@ref{Invisible
+Text}を参照のこと。
+@end defun
+
+@deffn Command indent-to column &optional minimum
+@comment !!Type Primitive Function
+@comment !!SourceFile indent.c
+この関数はポイントから@var{column}に達するまでタブとスペースでインデントを行う。@var{minimum}が指定されて、かつそれが非@code{nil}なら、たとえ@var{column}を超えることが要求される場合であっても、少なくともその個数のスペースが挿入される。それ以外ではポイントがすでに@var{column}を超える場合には、この関数は何も行わない。値は挿入されたインデントの終端列。
+
+挿入される空白文字は周囲のテキスト(通常は先行するテキストのみ)のテキストプロパティを継承する。@ref{Sticky
+Properties}を参照のこと。
+@end deffn
+
+@defopt indent-tabs-mode
+@comment !!SourceFile indent.c
+この変数が非@code{nil}なら、インデント関数はスペースと同じようにタブを挿入でき、それ以外ではスペースだけを挿入できる。この変数はセットすることにより自動的にカレントバッファー内でバッファーローカルになる。
+@end defopt
+
+@node Mode-Specific Indent
+@subsection メジャーモードが制御するインデント
+
+  すべてのメジャーモードにとって重要な関数は、編集対象の言語にたいして正しくインデントを行うように@key{TAB}キーをカスタマイズします。このセクションでは@key{TAB}キーのメカニズムと、それを制御する方法について説明します。このセクションの関数は予期せぬ値をリターンします。
+
+@deffn Command indent-for-tab-command &optional rigid
+これはほとんどの編集用モードで@key{TAB}にバインドされるコマンド。これの通常の動作はカレント行のインデントだが、かわりにタブ文字の挿入やリージョンのインデントを行うこともできる。
+
+これは以下のことを行う:
+
+@itemize
+@item
+まずTransient
+Markモードが有効かどうか、そしてリージョンがアクティブかどうかをチェックする。もしそうならリージョン内のテキストすべてをインデントするために@code{indent-region}を呼び出す(@ref{Region
+Indent}を参照)。
+
+@item
+それ以外なら@code{indent-line-function}内のインデント関数が@code{indent-to-left-margin}の場合、または変数@code{tab-always-indent}が挿入する文字としてタブ文字を指定する場合(以下参照)にはタブ文字を挿入する。
+
+@item
+それ以外ならカレント行をインデントする。これは@code{indent-line-function}内の関数を呼び出すことにより行われる。その行がすでにインデント済みで、かつ@code{tab-always-indent}の値が@code{complete}(以下参照)ならポイント位置のテキストの補完を試みる。
+@end itemize
+
+@var{rigid}が非@code{nil}
+(インタラクティブな場合はプレフィクス引数)なら、このコマンドが行をインデントした後、あるいはタブを挿入後に新たなインデントを反映するために、このコマンドはカレント行先頭にある釣り合いのとれた式全体も厳正にインデントする。この引数はコマンドがリージョンをインデントする場合は無視される。
+@end deffn
+
+@defvar indent-line-function
+この変数の値はカレント行をインデントするために@code{indent-for-tab-command}、およびその他種々のインデントコマンドにより使用される関数。これは通常はメジャーモードにより割り当てられ、たとえばLispモードはこれを@code{lisp-indent-line}、Cモードは@code{c-indent-line}のようにセットする。デフォルト値は@code{indent-relative}。@ref{Auto-Indentation}を参照のこと。
+@end defvar
+
+@deffn Command indent-according-to-mode
+このコマンドはカレントのメジャーモードに適した方法でカレント行をインデントするために@code{indent-line-function}内の関数を呼び出す。
+@end deffn
+
+@deffn Command newline-and-indent
+この関数は改行を挿入後に、メジャーモードに応じて新たな行(挿入した改行の次の行)をインデントする。これは@code{indent-according-to-mode}を呼び出すことによりインデントを行う。
+@end deffn
+
+@deffn Command reindent-then-newline-and-indent
+このコマンドはカレント行の再インデント、ポイント位置への改行の挿入、その後に新たな行(挿入した改行の次の行)のインデントを行う。これは@code{indent-according-to-mode}を呼び出すことにより両方の行をインデントする。
+@end deffn
+
+@defopt tab-always-indent
+この変数は@key{TAB}
+(@code{indent-for-tab-command})コマンドの挙動のカスタマイズに使用できる。値が@code{t}(デフォルト)ならコマンドは通常はカレント行だけをインデントする。値が@code{nil}ならコマンドはポイントが左マージン、またはその行のインデント内ににあるときのみカレント行をインデントして、それ以外はタブ文字を挿入する。値が@code{complete}ならコマンドはまずカレント行のインデントを試みて、その行がすでにインデント済みならポイント位置のテキストを補完するために@code{completion-at-point}を呼び出す(@ref{Completion
+in Buffers}を参照)。
+@end defopt
+
+@defopt tab-first-completion
+@code{tab-always-indent}が@code{complete}なら、@code{tab-first-completion}変数を介して拡張するか、それともインデントするかを更にカスタマイズできる。以下の値を使用できる:
+@table @code
+@item eol
+ポイントが行末にあれば補完のみ。
+
+@item word
+次の文字が単語構文をもたなければ補完。
+
+@item word-or-paren
+次の文字が単語構文やカッコでなければ補完。
+
+@item word-or-paren-or-punct
+次の文字が単語構文やカッコや句読点でなければ補完。
+@end table
+
+いずれの場合でも、2回目の@kbd{TAB}の結果は常に補完となる。
+@end defopt
+
+@cindex literate programming
+@cindex multi-mode indentation
+  いくつかのメジャーモードでは、異なるメジャーモードに所属する構文をもつ埋め込みのテキストリージョンをサポートする必要があります。これらの例にはドキュメントとソースコード断片の組み合わせである@dfn{文芸的プログラミング(literate
+programming)}のソースファイル、PythonやJSのコード断片を含んだYacc/Bisonプログラムが含まれます。埋め込みチャンクをを正しくインデントするためには、主モードがインデントをガイドする何らかのコンテキストを提供しつつ、他のモードのインデントエンジン(JSでは@code{js-indent-line}、Pythonでは@code{python-indent-line}の呼び出し)にインデントを委譲する必要があります。メジャーモードはインデントコードで@code{widen}の呼び出しを避けて@code{prog-first-column}にしたがうべきです。
+
+@defvar prog-indentation-context
+この変数が非@code{nil}なら副モードのインデントエンジンにたいして上位モードが提供するインデントのコンテキストを保持する。値は@code{(@var{first-column}
+. @var{rest})}という形式のリストであること。リストのメンバーは以下の意味をもつ:
+
+@table @var
+@item first-column
+トップレベルの構文にたいして使用する列。これは副モードが使用するトップレベルの列のデフォルト値(通常は0)を置き換える。
+@item rest
+現在のところ使用しない。
+@end table
+@end defvar
+
+以下は他のメジャーモードの副モードとしての呼び出しをサポートする際に、そのメジャーモードのインデントエンジンが使用するべき便宜用の関数です。
+
+@defun prog-first-column
+トップレベルのプログラム上のコンテキストの列値にたいしてリテラル値(通常は0)を使用するかわりにこの関数を呼び出す。関数の値はトップレベルに使用する列数。上位モードの影響下になければ関数は0をリターンする。
+@end defun
+
+
+@node Region Indent
+@subsection リージョン全体のインデント
+
+  このセクションではリージョン内すべての行をインデントするコマンドを説明します。これらは予期せぬ値をリターンします。
+
+@deffn Command indent-region start end &optional to-column
+このコマンドは@var{start} (含む)から@var{end}
+(含まず)で始まる非ブランク行すべてをインデントする。@var{to-column}が@code{nil}なら@code{indent-region}はカレントモードのインデント関数、すなわち@code{indent-line-function}の値を呼び出すことにより非ブランク行すべてをインデントする。
+
+@var{to-column}が非@code{nil}なら、それはインデントの列数を指定する整数であること。その場合には、この関数は空白文字を追加か削除することにより正確にその量のインデントを各行に与える。
+
+フィルプレフィクスがある場合には、@code{indent-region}はそのフィルプレフィクスで開始されるように各行をインデントする。
+@end deffn
+
+@defvar indent-region-function
+この変数の値はショートカットとして@code{indent-region}により使用されるかもしれない関数。その関数はリージョンの開始と終了という2つの引数を受け取ること。その関数はリージョンの行を1行ずつインデントするときと同じような結果を生成するようにデザインするべきだが、おそらくより高速になるであろう。
+
+値が@code{nil}ならショートカットは存在せず@code{indent-region}は実際に1行ずつ機能する。
+
+ショートカット関数は@code{indent-line-function}が関数定義先頭をスキャンしなければならないCモードやLispモードのようなモードにたいして有用であり、それを各行に適用するためには行数の2乗に比例する時間を要するだろう。ショートカットは各行のインデントとともに移動してスキャン情報を更新でき、それは線形時間である。行を個別にインデントするのが高速なモードではショートカットの必要性はない。
+
+引数@var{to-column}が非@code{nil}の@code{indent-region}では意味は異なり、この変数は使用しない。
+@end defvar
+
+@deffn Command indent-rigidly start end count
+この関数は@var{start} (含む)から@var{end}
+(含まず)までのすべての行を横に@var{count}列インデントする。これは影響を受けるリージョンの外観を保ち、それを厳密な単位として移動する。
+
+これはインデントされていないテキストリージョンのインデントだけでなく、フォーマット済みコードのリージョンにたいするインデントにも有用。たとえば@var{count}が3なら、このコマンドは指定されたリージョン内で始まるすべての行のインデントに3を追加する。
+
+プレフィクス引数なしでインタラクティブに呼び出された場合には、このコマンドはインデントを厳密に調整するためにTransient
+Markモードを呼び出す。@ref{Indentation Commands,,, emacs, The GNU Emacs
+Manual}を参照のこと。
+@end deffn
+
+@deffn Command indent-code-rigidly start end columns &optional nochange-regexp
+これは@code{indent-rigidly}と似ているが文字列やコメントで始まる行を変更しない点が異なる。
+
+加えて( @var{nochange-regexp}が非@code{nil}なら)
+@var{nochange-regexp}が行先頭にマッチする場合にはその行を変更しない。
+@end deffn
+
+@node Relative Indent
+@subsection 前行に相対的なインデント
+
+  このセクションでは前の行のコンテンツにもとづいてカレント行をインデントするコマンドを2つ説明します。
+
+@deffn Command indent-relative &optional first-only unindented-ok
+このコマンドは前の非ブランク行の次の@dfn{インデントポイント(indent
+point)}と同じ列に拡張されるように、ポイント位置に空白文字を挿入する。インデントポイントとは後に空白文字をともなった非空白文字。次のインデントポイントはポイントのカレント列より大きい、最初のインデントポイントになる。たとえばポイントがテキスト行の最初の非ブランク文字の下と左にある場合には、空白文字を挿入してその列に移動する。
+
+前の非ブランク行に次のインデントポイントがない(列の位置が十分大きくない)場合には、(
+@var{unindented-ok}が非@code{nil}なら)何もしないか、あるいは@code{tab-to-tab-stop}を呼び出す。したがってポイントが短いテキスト行の最後の列の下と右にある場合には、このコマンドは通常は空白文字を挿入することにより次のタブストップにポイントを移動する。
+
+@var{first-only}が非@code{nil}なら、最初のインデント位置だけを考慮する。
+
+@code{indent-relative}のリターン値は予測できない。
+
+以下の例ではポイントは2行目の先頭にある:
+
+@example
+@group
+            This line is indented twelve spaces.
+@point{}The quick brown fox jumped.
+@end group
+@end example
+
+@noindent
+式@code{(indent-relative nil)}の評価により以下が生成される:
+
+@example
+@group
+            This line is indented twelve spaces.
+            @point{}The quick brown fox jumped.
+@end group
+@end example
+
+  次の例ではポイントは@samp{jumped}の@samp{m}と@samp{p}の間にある:
+
+@example
+@group
+            This line is indented twelve spaces.
+The quick brown fox jum@point{}ped.
+@end group
+@end example
+
+@noindent
+式@code{(indent-relative nil)}の評価により以下が生成される:
+
+@example
+@group
+            This line is indented twelve spaces.
+The quick brown fox jum  @point{}ped.
+@end group
+@end example
+@end deffn
+
+@deffn Command indent-relative-first-indent-point
+@comment !!SourceFile indent.el
+このコマンドは引数@var{first-only}に@code{t}を指定して@code{indent-relative}を呼び出すことにより、前の非ブランク行に倣ってカレント行をインデントする。リターン値は予測できない。
+
+カレント列より先のインデントポイントが前の非ブランク行に存在しなければこのコマンドは何もしない。
+@end deffn
+
+@node Indent Tabs
+@subsection 調整可能なタブストップ
+@cindex tabs stops for indentation
+
+  このセクションではユーザー指定のタブストップ(tab
+stops)と、それらの使用やセットするメカニズムについて説明します。``タブストップ''という名前はタイプライターのタブストップと機能が類似しているため使用されています。この機能は次のタブストップ列に到達するために、適切な数のスペースとタブを挿入することにより機能します。これはバッファー内のタブ文字の表示に影響を与えません(@ref{Usual
+Display}を参照)。Textモードのような少数のメジャーモードだけが、@key{TAB}文字を入力としてこのタブストップ機能を使用することに注意してください。@ref{Tab
+Stops,,, emacs, The GNU Emacs Manual}を参照してください。
+
+@deffn Command tab-to-tab-stop
+このコマンドは@code{tab-stop-list}により定義される次のタブストップ列までポイント前にスペースかタブを挿入する。
+@end deffn
+
+@defopt tab-stop-list
+この変数は@code{tab-to-tab-stop}により使用されるタブストップ列を定義する。これは@code{nil}、もしくは増加(均等に増加する必要はない)していく整数のリストであること。このリストは暗黙に、最後の要素と最後から2番目の要素の間隔(またはリストの要素が2未満なら@code{tab-width})を繰り返すことにより無限に拡張される。値@code{nil}は列@code{tab-width}ごとにタブストップすることを意味する。
+
+インタラクティブにタブストップの位置を編集するには@kbd{M-x edit-tab-stops}を使用すればよい。
+@end defopt
+
+@node Motion by Indent
+@subsection インデントにもとづくモーションコマンド
+
+  以下は主にインタラクティブに使用されるコマンドであり、テキスト内のインデントにもとづいて動作します。
+
+@deffn Command back-to-indentation
+@comment !!SourceFile simple.el
+このコマンドはカレント行(ポイントのある行のこと)の最初の非空白文字にポイントを移動する。
+@end deffn
+
+@deffn Command backward-to-indentation &optional arg
+@comment !!SourceFile simple.el
+このコマンドは後方へ@var{arg}行ポイントを移動した後に、その行の最初の非ブランク文字にポイントを移動する。@var{arg}が省略または@code{nil}のときのデフォルトは1。
+@end deffn
+
+@deffn Command forward-to-indentation &optional arg
+@comment !!SourceFile simple.el
+このコマンドは前方へ@var{arg}行ポイントを移動した後に、その行の最初の非ブランク文字にポイントを移動する。@var{arg}が省略または@code{nil}のときのデフォルトは1。
+@end deffn
+
+@node Case Changes
+@section 大文字小文字の変更
+@cindex case conversion in buffers
+
+  ここで説明するcase(大文字小文字)変換コマンドはカレントバッファー内のテキストに作用します。文字列と文字のcase変換コマンドは@ref{Case
+Conversion}、大文字や小文字に変換する文字やその変換方法のカスタマイズは@ref{Case Tables}を参照してください。
+
+@deffn Command capitalize-region start end
+この関数は@var{start}と@var{end}で定義されるリージョン内のすべての単語をcapitalizeする。capitalizeとは各単語の最初の文字を大文字、残りの文字を小文字に変換することを意味する。この関数は@code{nil}をリターンする。
+
+リージョンのいずれかの端が単語の中間にある場合には、リージョン内にある部分を単語全体として扱う。
+
+インタラクティブに@code{capitalize-region}が呼び出された際には、@var{start}と@var{end}はポイントとマークになり小さいほうが先になる。
+
+@example
+@group
+---------- Buffer: foo ----------
+This is the contents of the 5th foo.
+---------- Buffer: foo ----------
+@end group
+
+@group
+(capitalize-region 1 37)
+@result{} nil
+
+---------- Buffer: foo ----------
+This Is The Contents Of The 5th Foo.
+---------- Buffer: foo ----------
+@end group
+@end example
+@end deffn
+
+@deffn Command downcase-region start end
+この関数は@var{start}と@var{end}で定義されるリージョン内のすべての英文字を小文字に変換する。この関数は@code{nil}をリターンする。
+
+インタラクティブに@code{downcase-region}が呼び出された際には、@var{start}と@var{end}はポイントとマークになり小さいほうが先になる。
+@end deffn
+
+@deffn Command upcase-region start end
+この関数は@var{start}と@var{end}で定義されるリージョン内のすべての英文字を大文字に変換する。この関数は@code{nil}をリターンする。
+
+インタラクティブに@code{upcase-region}が呼び出された際には、@var{start}と@var{end}はポイントとマークになり小さいほうが先になる。
+@end deffn
+
+@deffn Command capitalize-word count
+この関数はポイントの後の@var{count}単語をcapitalizeして、変換後その後にポイントを移動する。capitalizeとは各単語の先頭を大文字、残りを小文字に変換することを意味する。@var{count}が負なら、この関数は前の@minus{}@var{count}単語をcapitalizeするがポイントは移動しない。値は@code{nil}。
+
+ポイントが単語の中間にある場合には、ポイントの前にある単語部分は前方に移動する際は無視される。そして残りの部分が単語全体として扱われる。
+
+インタラクティブに@code{capitalize-word}が呼び出された際には、@var{count}に数プレフィクス引数がセットされる。
+@end deffn
+
+@deffn Command downcase-word count
+この関数はポイントの後の@var{count}単語を小文字に変換して、変換後その後にポイントを移動する。@var{count}が負なら、この関数は前の@minus{}@var{count}単語を小文字に変換するがポイントは移動しない。値は@code{nil}。
+
+インタラクティブに@code{downcase-word}が呼び出された際には、@var{count}に数プレフィクス引数がセットされる。
+@end deffn
+
+@deffn Command upcase-word count
+この関数はポイントの後の@var{count}単語を大文字に変換して、変換後その後にポイントを移動する。@var{count}が負なら、この関数は前の@minus{}@var{count}単語を小文字に変換するがポイントは移動しない。値は@code{nil}。
+
+インタラクティブに@code{upcase-word}が呼び出された際には、@var{count}に数プレフィクス引数がセットされる。
+@end deffn
+
+@node Text Properties
+@section テキストのプロパティ
+@cindex text properties
+@cindex attributes of text
+@cindex properties of text
+
+  バッファーや文字列内の各文字位置は、シンボルにおけるプロパティリスト(@ref{Property
+Lists}を参照)のように@dfn{テキストプロパティリスト(text property
+list)}をもつことができます。特定の位置の特定の文字に属するプロパティ、たとえばこのセンテンス先頭の文字@samp{T} (訳注:
+翻訳前のセンテンスは"The properties belong to a
+..."で始まる)、または@samp{foo}の最初の@samp{o}など、もし同じ文字が異なる2箇所に存在する場合には、2つの文字は一般的に異なるプロパティをもちます。
+
+  それぞれのプロパティには名前と値があります。どちらも任意のLispオブジェクトをもつことができますが、名前は通常はシンボルです。典型的にはそれぞれのプロパティ名シンボルは特定の目的のために使用されます。たとえばテキストプロパティ@code{face}は、文字を表示するためのフェイスを指定します(@ref{Special
+Properties}を参照)。名前を指定してそれに対応する値を尋ねるのが、このプロパティリストにアクセスするための通常の方法です。
+
+  ある文字が@code{category}プロパティをもつ場合は、それをその文字の@dfn{プロパティカテゴリー(property
+category)}と呼びます。これはシンボルであるべきです。そのシンボルのプロパティはその文字のプロパティにたいしてデフォルトとしての役割をもちます。
+
+  文字列とバッファーの間でのテキストのコピーでは、文字とともにそのプロパティが保持されます。これには@code{substring}、@code{insert}、@code{buffer-substring}のようなさまざまな関数が含まれます。テキストのkillとyank(@ref{The
+Kill
+Ring}を参照)においてはそのテキストのプロパティも保持されますが、特別に扱われるプロパティもいくつかあり、テキストのyank時に削除されるかもしれません。@ref{Yanking}を参照してください。
+
+@menu
+* Examining Properties::     単一の文字のプロパティを調べる。
+* Changing Properties::      テキスト範囲のプロパティをセットする。
+* Property Search::          プロパティが値を変更する場所の検索。
+* Special Properties::       特別な意味をもつ特定のプロパティ。
+* Format Properties::        テキストのフォーマットを表すプロパティ。
+* Sticky Properties::        挿入されたテキストが隣接するテキストからプロパティを取得する方法。
+* Lazy Properties::          テキストが調べられる際のみ、ものぐさな方法でテキストプロパティを計算する。
+* Clickable Text::           テキストプロパティを使用して、テキストリージョンがクリック時に何か行うようにする。
+* Fields::                   バッファー内にフィールドを定義する@code{field}プロパティ。
+* Not Intervals::            テキストプロパティがLispから可視なテキストインターバルをもたない理由。
+@end menu
+
+@node Examining Properties
+@subsection テキストプロパティを調べる
+@cindex examining text properties
+@cindex text properties, examining
+
+  テキストプロパティを調べるもっともシンプルな方法は、特定の文字の特定のプロパティの値を尋ねる方法です。これを行うには@code{get-text-property}を使用します。ある文字のプロパティリスト全体を取得するには@code{text-properties-at}を使用します。複数の文字のプロパティを一度に調べる関数については@ref{Property
+Search}を参照してください。
+
+  以下の関数は文字列とバッファーの両方を処理します。バッファー内の位置は1から始まりますが、文字列内の位置は0から始まることに留意してください。カレントバッファー以外のバッファーのパースは低速になるかもしれません。
+
+@defun get-text-property pos prop &optional object
+この関数は@var{object}
+(バッファーか文字列)内の位置@var{pos}の後にある文字のプロパティ@var{prop}の値をリターンする。引数@var{object}はオプションでありデフォルトはカレントバッファー。
+
+@var{position}が@var{object}の終端にあれば値は@code{nil}になるが、バッファーのナローイングは値に影響しないことに注意。つまり@var{object}がバッファーか@code{nil}の場合には、そのバッファーがナローイングされていて、かつ@var{object}がナローイングされたバッファーの終端にあれば結果は非@code{nil}になるだろう。
+
+厳密な意味で@var{prop}プロパティは存在しないが、その文字がシンボルのプロパティカテゴリーをもつなら、@code{get-text-property}はそのシンボルの@var{prop}プロパティをリターンする。
+@end defun
+
+@defun get-char-property position prop &optional object
+この関数は@code{get-text-property}と似ているが、まずオーバーレイをチェックして次にテキストプロパティをチェックする点が異なる。@ref{Overlays}を参照のこと。
+
+引数@var{object}は文字列、バッファー、あるいはウィンドウかもしれない。ウィンドウならそのウィンドウ内に表示されているバッファーのテキストプロパティとオーバーレイが使用されるが、そのウィンドウにたいしてアクティブなオーバーレイだけが考慮される。@var{object}がバッファーなら、そのバッファー内のオーバーレイがまず優先的に考慮されて、その後にテキストプロパティが考慮される。@var{object}が文字列なら文字列がオーバーレイをもつことは決してないのでテキストプロパティだけが考慮される。
+@end defun
+
+@defun get-pos-property position prop &optional object
+この関数は@code{get-char-property}と似ているが、@var{position}
+(すぐ右)にある文字のプロパティのかわりにプロパティのstickiness(粘着性)とオーバーレイのadvancement(前向的)のセッティングに注意を払う点が異なる。
+@end defun
+
+@defun get-char-property-and-overlay position prop &optional object
+これは@code{get-char-property}と似ているが、そのプロパティ値が由来するオーバーレイについて追加情報を与える点が異なる。
+
+値は@sc{car}がプロパティ値であるようなコンスセルであり、これは同じ引数により@code{get-char-property}がリターンするであろう値と同じ。@sc{cdr}はそのプロパティが見つかった箇所のオーバーレイ、テキストプロパティとして見つかった場合や見つからなかった場合には@code{nil}。
+
+@var{position}が@var{object}の終端なら@sc{car}と@sc{cdr}の値はどちらも@code{nil}。
+@end defun
+
+@defvar char-property-alias-alist
+この変数はプロパティ名と代替となるプロパティ名リストをマップするalistを保持する。文字があるプロパティにたいして直接値を指定しなければ、順に代替プロパティ名が調べられて最初の非@code{nil}値が使用される。この変数は@code{default-text-properties}より優先されて、この変数より@code{category}プロパティが優先される。
+@end defvar
+
+@defun text-properties-at position &optional object
+この関数は文字列かバッファー@var{object}内の位置@var{position}にある文字のプロパティリスト全体をリターンする。@var{object}が@code{nil}ならデフォルトはカレントバッファー。
+
+@var{position}が@var{object}の終端にあれば値は@code{nil}になるが、バッファーのナローイングは値に影響しないことに注意。つまり@var{object}がバッファーか@code{nil}の場合には、そのバッファーがナローイングされていて、かつ@var{object}がナローイングされたバッファーの終端にあれば結果は非@code{nil}になるだろう。
+@end defun
+
+@defvar default-text-properties
+この変数はテキストプロパティにたいしてデフォルト値を与えるプロパティリストを保持する。あるプロパティにたいして文字が直接、あるいはカテゴリーシンボルや@code{char-property-alias-alist}を通じて値を指定しないときは、常にこのリストに格納された値がかわりに使用される。以下は例:
+
+@example
+(setq default-text-properties '(foo 69)
+      char-property-alias-alist nil)
+;; @r{文字1は自身のプロパティをもたない}
+(set-text-properties 1 2 nil)
+;; @r{取得される値はデフォルト値}
+(get-text-property 1 'foo)
+     @result{} 69
+@end example
+@end defvar
+
+@defun object-intervals OBJECT
+この関数は@var{object}内のインターバル(テキストプロパティ)をインターバルのリストとしてリターンする。@var{object}は文字列かバッファーでなければならない。このリストの構造を変更しても、オブジェクト内のインターバルは変更されない。
+
+@example
+(object-intervals (propertize "foo" 'face 'bold))
+     @result{} ((0 3 (face bold)))
+@end example
+
+リターンされたリストの各要素は1つのインターバルを表す。インターバルはそれぞれ3つのパーツをもつ。1つ目は開始、2つ目は終了、3つ目はそのインターバル自身のテキストプロパティ。
+@end defun
+
+@node Changing Properties
+@subsection テキストプロパティの変更
+@cindex changing text properties
+@cindex text properties, changing
+
+  プロパティを変更するプリミティブは、バッファーや文字列内の指定されたテキスト範囲に適用されます。関数@code{set-text-properties}
+(セクションの最後を参照)は、その範囲内のテキストのプロパティリスト全体をセットします。名前を指定することにより特定のプロパティだけを追加、変更、削除するためにも有用です。
+
+  テキストプロパティはバッファー(か文字列)のコンテンツの一部とみなされ、かつスクリーン上でのバッファーの見栄えに影響を与えることができるので、バッファー内のテキストプロパティの変更はすべてバッファーを変更済みとマークします。バッファーテキストプロパティの変更もアンドゥできます(@ref{Undo}を参照)。バッファー内の位置は1から始まりますが、文字列内の位置は0から始まります。
+
+@defun put-text-property start end prop value &optional object
+この関数は文字列かバッファー@var{object}内の@var{start}と@var{end}の間のテキストにたいして、プロパティ@var{prop}に@var{value}をセットする。@var{object}が@code{nil}ならデフォルトはカレントバッファー。
+@end defun
+
+@defun add-text-properties start end props &optional object
+この関数は文字列かバッファー@var{object}内の@var{start}と@var{end}の間のテキストにたいして、テキストプロパティを追加またはオーバーライドする。@var{object}が@code{nil}ならデフォルトはカレントバッファー。
+
+引数@var{props}には追加するプロパティを指定する。これはプロパティリストの形式(@ref{Property
+Lists}を参照)、つまりプロパティ名と対応する値が交互に出現するような要素を含むリストであること。
+
+関数が実際に何らかのプロパティの値を変更したら@code{t}、それ以外(
+@var{props}が@code{nil}、またはプロパティの値がテキスト内のプロパティの値と一致している場合)は@code{nil}がリターン値となる。
+
+たとえば以下はテキストの範囲に@code{comment}と@code{face}のプロパティをセットする例:
+
+@example
+(add-text-properties @var{start} @var{end}
+                     '(comment t face highlight))
+@end example
+@end defun
+
+@defun remove-text-properties start end props &optional object
+この関数は文字列かバッファー@var{object}内の@var{start}と@var{end}の間のテキストから、指定されたテキストプロパティを削除する。@var{object}が@code{nil}ならデフォルトはカレントバッファー。
+
+引数@var{props}は削除するプロパティを指定する。これはプロパティリストの形式(@ref{Property
+Lists}を参照)、つまりプロパティ名と対応する値が交互に出現するような要素を含むリストであること。しかし問題となるのは名前であって付随する値は無視される。たとえば@code{face}プロパティを削除するには以下のようにすればよい。
+
+@example
+(remove-text-properties @var{start} @var{end} '(face nil))
+@end example
+
+関数が実際に何らかのプロパティの値を変更したら@code{t}、それ以外(
+@var{props}が@code{nil}、または指定されたテキスト内にそれらのプロパティをもつ文字がない場合)は@code{nil}がリターン値となる。
+
+特定のテキストからすべてのテキストプロパティを削除するには、新たなプロパティリストに@code{nil}を指定して@code{set-text-properties}を使用すればよい。
+@end defun
+
+@defun remove-list-of-text-properties start end list-of-properties &optional object
+@code{remove-text-properties}と同様だが、@var{list-of-properties}がプロパティ名と値が交互になったリストではなくプロパティ名だけのリストである点が異なる。
+@end defun
+
+@defun set-text-properties start end props &optional object
+この関数は文字列かバッファー@var{object}内の@var{start}から@var{end}の間のテキストにたいするテキストプロパティリストを完全に置き換える。@var{object}が@code{nil}ならデフォルトはカレントバッファー。
+
+引数@var{props}は新たなプロパティリスト。これはプロパティ名と対応する値が交互となるような要素のリストであること。
+
+@code{set-text-properties}のリターン後には、指定された範囲内のすべての文字は等しいプロパティをもつ。
+
+@var{props}が@code{nil}なら、指定されたテキスト範囲からすべてのプロパティを取り除く効果がある。以下は例:
+
+@example
+(set-text-properties @var{start} @var{end} nil)
+@end example
+
+この関数のリターン値を信用してはならない。
+@end defun
+
+@defun add-face-text-property start end face &optional appendp object
+この関数は@var{start}と@var{end}の間のテキストのテキストプロパティ@code{face}にフェイス@var{face}を追加するように動作する。@var{face}はフェイス名、もしくはanonymousフェイス(anonymous
+face: 無名フェイス)のような@code{face}プロパティ(@ref{Special
+Properties}を参照)にたいして有効な値であること(@ref{Faces}を参照)。
+
+リージョン内の任意のテキストがすでに非@code{nil}の@code{face}プロパティをもつ場合には、それらのフェイスは保たれる。この関数は@code{face}プロパティに最初の要素(デフォルト)が@var{face}、以前に存在していたフェイスが残りの要素であるようなフェイスのリストをセットする。オプション引数@var{appendp}が非@code{nil}なら、@var{face}はかわりにリストの最後に追加される。フェイスリスト内では、各属性にたいして最初に出現する値が優先されることに注意。
+
+たとえば以下のコードでは@var{start}と@var{end}の間のテキストにグリーン斜体のフェイスを割り当てるだろう:
+
+@example
+(add-face-text-property @var{start} @var{end} 'italic)
+(add-face-text-property @var{start} @var{end} '(:foreground "red"))
+(add-face-text-property @var{start} @var{end} '(:foreground "green"))
+@end example
+
+オプション引数@var{object}が非@code{nil}なら、それはカレントバッファーではなく動作するバッファーか文字列を指定する。@var{object}が文字列なら@var{start}と@var{end}は0基準で文字列内をインデックス付けする。
+@end defun
+
+  文字列にテキストプロパティを付するもっとも簡単な方法は@code{propertize}です:
+
+@defun propertize string &rest properties
+この関数はテキストプロパティ@var{properties}を追加した@var{string}のコピーをリターンする。これらのプロパティはリターンされる文字列内のすべての文字に適用される。以下は@code{face}プロパティと@code{mouse-face}プロパティとともに文字列を構築する例:
+
+@smallexample
+(propertize "foo" 'face 'italic
+            'mouse-face 'bold-italic)
+     @result{} #("foo" 0 3 (mouse-face bold-italic face italic))
+@end smallexample
+
+文字列のさまざまな部分に異なるプロパティをputするには、それぞれの部分を@code{propertize}で構築して、それらを@code{concat}で結合すればよい:
+
+@smallexample
+(concat
+ (propertize "foo" 'face 'italic
+             'mouse-face 'bold-italic)
+ " and "
+ (propertize "bar" 'face 'italic
+             'mouse-face 'bold-italic))
+     @result{} #("foo and bar"
+                 0 3 (face italic mouse-face bold-italic)
+                 3 8 nil
+                 8 11 (face italic mouse-face bold-italic))
+@end smallexample
+@end defun
+
+  プロパティではなくバッファーからテキストをコピーする関数@code{buffer-substring-no-properties}については@ref{Buffer
+Contents}を参照してください。
+
+@findex with-silent-modifications, and changes in text properties
+  バッファーを変更せずにバッファーにテキストプロパティを追加したり削除したければ、その呼び出しを上記の@code{with-silent-modifications}マクロでラップできます。@ref{Buffer
+Modification}を参照してください。
+
+@node Property Search
+@subsection テキストプロパティの検索関数
+@cindex searching text properties
+@cindex text properties, searching
+
+  テキストプロパティの通常の使用では、ほとんどの場合は複数または多くの連続する文字が同じ値のプロパティをもちます。文字を1つずつ調べるプログラムを記述するよりも、同じプロパティ値をもつテキスト塊(chunks
+of text)を処理するほうがより高速です。
+
+  以下はこれを行うことに使用できる関数です。これらはプロパティ値の比較に@code{eq}を使用します。すべての関数において@var{object}のデフォルトはカレントバッファーです。
+
+  より良いパフォーマンスのためには、特に単一のプロパティを検索する関数における@var{limit}引数の使用が重要です。さもないと興味のあるプロパティが変化しない場合に、バッファー終端までのスキャンで長い時間を要するでしょう。
+
+  これらの関数はポイントを移動しません。そのかわりに位置(または@code{nil}
+)をリターンします。ポイントは常に文字と文字の間にあることを思い出してください。これらの関数によりリターンされる位置は、異なるプロパティをもつ2つの文字の間にあります。
+
+@defun next-property-change pos &optional object limit
+この関数は文字列かバッファー@var{object}内の位置@var{pos}から、何らかのテキストプロパティの変化が見つかるまでテキストを前方にスキャンして、変化のあった位置をリターンする。言い換えると@var{pos}の直後の文字とプロパティが等しくない、@var{pos}の先にある最初の文字の位置をリターンする。
+
+@var{limit}が非@code{nil}ならスキャンは位置@var{limit}で停止する。そのポイントより前にプロパティが変化しなければ、この関数は@var{limit}をリターンする。
+
+プロパティが@var{object}終端まで変化せず、かつ@var{limit}が@code{nil}なら値は@code{nil}。値が非@code{nil}なら、それは@var{pos}以上の位置。@var{limit}が@var{pos}と等しいときのみ値は@var{pos}になる。
+
+以下はすべてのプロパティが定数であるようなテキスト塊によりバッファーをスキャンする方法の例:
+
+@smallexample
+(while (not (eobp))
+  (let ((plist (text-properties-at (point)))
+        (next-change
+         (or (next-property-change (point) (current-buffer))
+             (point-max))))
+    @r{ポイントから@var{next-change}へテキストを処理@dots{}}
+    (goto-char next-change)))
+@end smallexample
+@end defun
+
+@defun previous-property-change pos &optional object limit
+これは@code{next-property-change}と似ているが、@var{pos}から前方ではなく後方にスキャンする点が異なる。値が非@code{nil}なら、それは@var{pos}以下の位置。@var{limit}と@var{pos}が等しい場合のみ@var{pos}をリターンする。
+@end defun
+
+@defun next-single-property-change pos prop &optional object limit
+この関数はプロパティ@var{prop}内の変化にたいしてテキストをスキャンして、変化があった位置をリターンする。このスキャンは文字列かバッファー@var{object}内の位置@var{pos}から前方に行われる。言い換えると@var{pos}の直後の文字とプロパティ@var{prop}が等しくない、@var{pos}の先にある最初の文字の位置をリターンする。
+
+@var{limit}が非@code{nil}ならスキャンは位置@var{limit}で終了する。そのポイントより前にプロパティの変化がなければ、@code{next-single-property-change}は@var{limit}をリターンする。
+
+プロパティが@var{object}終端まで変化せず、かつ@var{limit}が@code{nil}なら値は@code{nil}。値が非@code{nil}なら、それは@var{pos}以上の位置。@var{limit}が@var{pos}と等しいときのみ値は@var{pos}になる。
+@end defun
+
+@defun previous-single-property-change pos prop &optional object limit
+これは@code{next-single-property-change}と似ているが、@var{pos}から前方ではなく後方にスキャンする点が異なる。値が非@code{nil}なら、それは@var{pos}以下の位置。@var{limit}と@var{pos}が等しい場合のみ@var{pos}をリターンする。
+@end defun
+
+@defun next-char-property-change pos &optional limit
+@code{next-property-change}と似ているが、これはテキストプロパティと同様にオーバーレイも考慮して、バッファー終端より前に変化が見つからなければ、@code{nil}ではなくバッファー位置の最大をリターンする点が異なる(この点では@code{next-property-change}よりも対応するオーバーレイ関数@code{next-overlay-change}と似ている)。この関数はカレントバッファーだけを処理するので@var{object}オペランドは存在しない。これはいずれかの種類のプロパティが変化した、次のアドレスをリターンする。
+@end defun
+
+@defun previous-char-property-change pos &optional limit
+これは@code{next-char-property-change}と似ているが、@var{pos}から前方ではなく後方へスキャンすること、および変化が見つからなければバッファー位置の最小をリターンする点が異なる。
+@end defun
+
+@defun next-single-char-property-change pos prop &optional object limit
+@code{next-single-property-change}と似ているが、これはテキストプロパティと同様にオーバーレイも考慮して、@var{object}終端より前に変化が見つからなければ、@code{nil}ではなく@var{object}内の有効な位置の最大をリターンする点が異なる。@code{next-char-property-change}と異なり、この関数は@var{object}オペランドを@emph{もつ}。@var{object}が非バッファーならテキストプロパティだけが考慮される。
+@end defun
+
+@defun previous-single-char-property-change pos prop &optional object limit
+これは@code{next-single-char-property-change}と似ているが、@var{pos}から前方ではなく後方へスキャンすること、および変化が見つからなければ@var{object}内の有効な位置の最小をリターンする点が異なる。
+@end defun
+
+@defun text-property-any start end prop value &optional object
+この関数は@var{start}と@var{end}の間に少なくともプロパティ@var{prop}に値@var{value}をもつ文字が1つあれば非@code{nil}をリターンする。より正確には、これはそのような最初の文字の位置、それ以外は@code{nil}をリターンする。
+
+5つ目のオプション引数@var{object}はスキャンする文字列かバッファーを指定する。位置は@var{object}にたいして相対的。@var{object}のデフォルトはカレントバッファー。
+@end defun
+
+@defun text-property-not-all start end prop value &optional object
+この関数は@var{start}と@var{end}の間に少なくともプロパティ@var{prop}に値@var{value}をもたない文字が1つあれば非@code{nil}をリターンする。より正確には、これはそのような最初の文字の位置、それ以外は@code{nil}をリターンする。
+
+5つ目のオプション引数@var{object}はスキャンする文字列かバッファーを指定する。位置は@var{object}にたいして相対的。@var{object}のデフォルトはカレントバッファー。
+@end defun
+
+@defun text-property-search-forward prop &optional value predicate not-current
+@var{predicate}にしたがい、値が@var{value}
+(デフォルトは@code{nil})にマッチするようなプロパティ@var{prop}をもつ次のテキストリージョンを検索する。
+
+この関数はポイントを移動するという点において@code{search-forward} (@ref{String
+Search}を参照)や類似関数をモデルとするが、@code{match-beginning}や類似関数とは異なりマッチを記述する構造もリターンする。
+
+値がマッチするようなテキストプロパティが見つからなければ、この関数は@code{nil}をリターンする。見つかった場合にはマッチしたテキストプロパティをもつリージョン終端にポイントを置いて、そのマッチに関する情報とともに@code{prop-match}構造体をリターンする。
+
+@var{predicate}は@code{t} ( @code{equal}のシノニム)、@code{nil} ( ``not
+equal''を意味する)、または2つの引数(@var{value}、およびマッチ候補のバッファー位置のテキストプロパティ@var{prop}の値)で呼び出される述語関数のいずれかを指定できる。その述語関数はマッチがあれば非@code{nil}、なければ@code{nil}をリターンすること。
+
+@var{not-current}が非@code{nil}の場合には、もしプロパティがマッチしたリージョン内に既にポイントがあればそのリージョンをスキップして、次のリージョンを探す。
+
+@code{prop-match}構造は@code{prop-match-beginning}
+(マッチ先頭)、@code{prop-match-end} (マッチ終端)、@code{prop-match-value}
+(マッチ先頭の@var{property}の値)というアクセサ関数をもつ。
+
+以下の例では下記のような内容をもつバッファーを使用する:
+
+@display
+This is a @b{bold} and here's @b{@i{bolditalic}} and this is the end.
+@end display
+
+すなわち単語``bold''は@code{bold}フェイス、単語``italic''は@code{italic}フェイスをもつものとする。
+
+まず最初は:
+
+@lisp
+(while (setq match (text-property-search-forward 'face 'bold t))
+  (push (buffer-substring (prop-match-beginning match)
+                          (prop-match-end match))
+        words))
+@end lisp
+
+これは@code{bold}フェイスを使用するすべての単語を選択する。
+
+@lisp
+(while (setq match (text-property-search-forward 'face nil t))
+  (push (buffer-substring (prop-match-beginning match)
+                          (prop-match-end match))
+        words))
+@end lisp
+
+これはフェイスプロパティをもたないすべての断片を選択する。結果としてリスト@samp{(@w{"This is a "} @w{"and here's
+"} @w{"and this is the end"})}が得られるだろう(@code{push}を使用しているので逆順になる; @ref{List
+Variables}を参照)。
+
+@lisp
+(while (setq match (text-property-search-forward 'face nil nil))
+  (push (buffer-substring (prop-match-beginning match)
+                          (prop-match-end match))
+        words))
+@end lisp
+
+これは@code{face}に何らかがセットされているすべてのリージョンを選択するがプロパティが変化する箇所で分割するので結果は@samp{("bold"
+"bold" "italic")}になるだろう。
+
+これを使用するかもしれないより現実的な例してURLを表す特定のセクションがあり、それらが@code{shr-url}でタグ付けされているバッファーがあると仮定してみる。
+
+@lisp
+(while (setq match (text-property-search-forward 'shr-url nil nil))
+  (push (prop-match-value match) urls))
+@end lisp
+
+これはそれらすべてのURLのリストを与えるだろう。
+
+@end defun
+
+@defun text-property-search-backward prop &optional value predicate not-current
+これは@code{text-property-search-forward}と同様だが、後方に検索する。マッチが見つかったらポイントはマッチしたリージョンの終端ではなく先頭に配置される。
+@end defun
+
+
+@node Special Properties
+@subsection 特殊な意味をもつプロパティ
+
+  以下はビルトインで特別な意味をもつテキストプロパティ名のテーブルです。以降のセクションではフィルとプロパティ継承を制御する特別なプロパティ名をいくつか追加でリストしています。これ以外のすべての名前は特別な意味をもたず自由に使用できます。
+
+  注意:
+プロパティ@code{composition}、@code{display}、@code{invisible}、@code{intangible}はすべてのEmacsコマンドの後に好ましい箇所にポイントを移動させることもできます。@ref{Adjusting
+Point}を参照してください。
+
+@table @code
+@cindex property category of text character
+@c FIXME: Isn't @kindex for keyboard commands?
+@kindex category @r{(text property)}
+@item category
+ある文字が@code{category}プロパティをもつ場合には、それをその文字の@dfn{プロパティカテゴリー(property
+category)}と呼ぶ。これはシンボルであること。このシンボルのプロパティはその文字のプロパティのデフォルトとしての役割をもつ。
+
+@item face
+@cindex face codes of text
+@kindex face @r{(text property)}
+@code{face}プロパティはその文字の外観を制御する(@ref{Faces}を参照)。このプロパティの値は以下が可能:
+
+@itemize @bullet
+@item
+フェイス名(シンボルか文字列)。
+
+@item
+anonymousフェイス: @code{(@var{keyword} @var{value}
+@dots{})}形式のプロパティリスト。@var{keyword}はそれぞれフェイス属性名、@var{value}はその属性の値。
+
+@item
+フェイスのリスト。各リスト要素はフェイス名かanonymousフェイスであること。これはリストされた各フェイス属性を集計したフェイスを指定する。このリスト内で最初にあるフェイスがより高い優先度をもつ。
+
+@item
+@code{(foreground-color . @var{color-name})}または@code{(background-color
+. @var{color-name})}という形式のコンスセル。これは@code{(:foreground
+@var{color-name})}や@code{(:background
+@var{color-name})}と同じようにフォアグラウンドやバックグラウンドを指定する。この形式は後方互換のためだけにサポートされており無視すること。
+
+@item
+@w{@code{(:filtered @var{filter}
+@var{face-spec})}}という形式のコンスセル。これは@var{face-spec}で与えられたフェイスを指定するが、フェイスを表示に使用する際に@var{filter}がマッチした場合のみ。@var{face-spec}には上述した任意のフォームを使用できる。@var{filter}は@w{@code{(:window
+@var{param}
+@var{value})}}という形式であること。これはパラメーター@var{param}が@var{value}に@code{eq}であるようなウィンドウにマッチする。変数@code{face-filters-always-match}が非@code{nil}なら、すべてのフェイスフィルターがマッチしたとみなす。
+@end itemize
+
+Font Lockモード(@ref{Font Lock
+Mode}を参照)はほとんどのバッファーにおいて、コンテキストにもとづき文字の@code{face}プロパティを動的に更新することにより機能する。
+
+@code{add-face-text-property}関数は、このプロパティをセットする便利な手段を提供する。@ref{Changing
+Properties}を参照のこと。
+
+@item font-lock-face
+@kindex font-lock-face @r{(text property)}
+このプロパティはFont Lockモードが配下にあるテキストに適用すべき@code{face}プロパティにたいして値を指定する。これはFont
+Lockモードに使用されるフォント表示手法の1つであり、独自のハイライトを実装する特別なモードにたいして有用。@ref{Precalculated
+Fontification}を参照のこと。Font Lockモードが無効なら@code{font-lock-face}に効果はない。
+
+@item mouse-face
+@kindex mouse-face @r{(text property)}
+このプロパティは、このプロパティをもつテキストの上にマウスポインターがある際に、@code{face}のかわりに使用される。これが発生する際にはマウスの下にある文字だけではなく、同じ値の@code{mouse-face}プロパティをもつテキスト全体がハイライトされる。
+
+Emacsはテキストサイズ(@code{:height}、@code{:weight}、@code{:slant})を変更する@code{mouse-face}プロパティ由来の属性すべてを無視する。これらの属性はハイライトされていないテキストと常に等しい。
+
+@item cursor-face
+@kindex cursor-face @r{(text property)}
+@findex cursor-face-highlight-mode
+@vindex cursor-face-highlight-nonselected-window
+これは@code{mouse-face}と似ているが、このプロパティをもつテキスト内にポイント(マウスではない)がある際に使用されるプロパティである。ハイライトはモード@code{cursor-face-highlight-mode}が有効な場合のみ行われる。変数@code{cursor-face-highlight-nonselected-window}が非@code{nil}ならば、たとえウィンドウが選択されていなくても@code{highlight-nonselected-windows}がリージョンにたいして行うのと同様(@ref{Mark,,
+The Mark and the Region, emacs, The GNU Emacs
+Manual}を参照)に、このフェイスをもつテキストがハイライトされる。
+
+@item fontified
+@kindex fontified @r{(text property)}
+このプロパティはそのテキストの表示準備が整っているかどうかを告げる。@code{nil}ならEmacsの再表示ルーチンはバッファーの該当部分を表示する前に、準備のために@code{fontification-functions}
+(@ref{Auto Faces}を参照)の中の関数を呼び出す。これはフォントロックのコードのjust-in-timeにより内部的に使用される。
+
+@item display
+このプロパティはテキストが表示される方法を変更するさまざまな機能をアクティブ化する。たとえばこれによりテキスト外観を縦長(taller)または縦短(short)したり、高く(higher)または低く(lower)、太く(wider)または細く(narrower)したり、あるいはイメージに置き換えることができる。@ref{Display
+Property}を参照のこと。
+
+@item help-echo
+@kindex help-echo @r{(text property)}
+@cindex tooltip for help strings
+@anchor{Text help-echo}
+テキストが@code{help-echo}プロパティに文字列をもつ場合には、そのテキスト上にマウスを移動した際には、@code{substitute-command-keys}を通じて文字列を渡した後にEmacsはエコーエリアかツールチップウィンドウ(@ref{Tooltips}を参照)にその文字列を表示する。
+
+@code{help-echo}プロパティの値が関数なら、その関数は@var{window}、@var{object}、@var{pos}の3つの引数で呼び出されてヘルプ文字列、ヘルプ文字列が存在しなければ@code{nil}をリターンすること。1つ目の引数@var{window}はそのヘルプが見つかったウィンドウ。2つ目の引数@var{object}は@code{help-echo}プロパティをもつバッファー、オーバーレイ、または文字列。@var{pos}引数は以下のとおり:
+
+@itemize @bullet{}
+@item
+@var{object}がバッファーなら@var{pos}はそのバッファー内の位置。
+@item
+@var{object}がオーバーレイなら、そのオーバーレイは@code{help-echo}プロパティをもち@var{pos}はそのオーバーレイのバッファー内の位置。
+@item
+@var{object}が文字列(オーバーレイ文字列、または@code{display}プロパティにより表示された文字列)なら@var{pos}はその文字列内の位置。
+@end itemize
+
+@code{help-echo}プロパティの値が関数と文字列のいずれでもなければ、それはヘルプ文字列を得るために評価される。
+
+変数@code{show-help-function}をセットすることにより、ヘルプテキストが表示される方法を変更できる(@ref{Help
+display}を参照)。
+
+この機能はモードライン内、およびその他のアクティブテキストにたいして使用される。
+
+@item help-echo-inhibit-substitution
+@cindex help-echo text, avoid command-key substitution
+@kindex help-echo-inhibit-substitution @r{(text property)}
+@code{help-echo}文字列の最初の文字が非@code{nil}の@code{help-echo-inhibit-substitution}プロパティをもつ場合には、@code{substitute-command-keys}を通じて渡すことなく@code{show-help-function}が行うように表示される。
+
+@item keymap
+@cindex keymap of character
+@kindex keymap @r{(text property)}
+@code{keymap}プロパティはコマンドにたいして追加のキーマップを指定する。このキーマップを適用する際には、マイナーモードキーマップとバッファーのローカルマップの前に、このマップがキー照合のために使用される。@ref{Active
+Keymaps}を参照のこと。プロパティ値がシンボルなら、そのシンボルの関数定義がキーマップとして使用される。
+
+ポイントの前の文字のプロパティの値は、それが非@code{nil}でrear-stickyであり、かつポイントの後の文字のプロパティ値が非@code{nil}でfront-stickyなら適用される(マウスクリックではポイント位置のかわりにクリック位置が使用される)。
+
+@item local-map
+@kindex local-map @r{(text property)}
+このプロパティは@code{keymap}と同じように機能するが、これはそのバッファーのローカルマップの@emph{かわりに}使用するキーマップを指定する点が異なる。ほとんど(もしかするとすべて)の目的にたいしては@code{keymap}を使用するほうが良いだろう。
+
+@item syntax-table
+@code{syntax-table}プロパティは特定の文字にたいしてどのシンタックステーブルがオーバーライドするかを告げる。@ref{Syntax
+Properties}を参照のこと。
+
+@item read-only
+@cindex read-only character
+@kindex read-only @r{(text property)}
+ある文字がプロパティ@code{read-only}をもつなら、その文字の変更は許可されない。これを行おうとするすべてのコマンドは@code{text-read-only}エラーを受け取る。プロパティの値が文字列ならその文字列がエラーメッセージとして使用される。
+
+read-only文字に隣接する箇所への挿入は、そこに通常のテキストの行うことがstickinessによる@code{read-only}プロパティを継承するならエラーとなる。つまりstickinessを制御することによりread-onlyテキストに隣接する挿入の権限を制御することができる。@ref{Sticky
+Properties}を参照のこと。
+
+プロパティ変更はバッファー変更とみなされるので、特別なトリック(@code{inhibit-read-only}を非@code{nil}にバインドしてからプロパティを削除する)を知らないかぎり、@code{read-only}プロパティを取り除くことは不可能。@ref{Read
+Only Buffers}を参照のこと。
+
+@item inhibit-read-only
+@kindex inhibit-read-only @r{(text property)}
+プロパティ@code{inhibit-read-only}をもつ文字はたとえ読み取り専用バッファーでも編集できる。@ref{Read Only
+Buffers}を参照のこと。
+
+@item invisible
+@kindex invisible @r{(text property)}
+非@code{nil}の@code{invisible}プロパティにより、スクリーン上で文字を不可視にできる。詳細は@ref{Invisible
+Text}を参照のこと。
+
+@kindex inhibit-isearch @r{(text property)}
+@item inhibit-isearch
+@code{inhibit-isearch}プロパティが非@code{nil}なら、isearchはそのテキストをスキップする。
+
+@item intangible
+@kindex intangible @r{(text property)}
+連続する文字のグループが非@code{nil}の等しい@code{intangible}プロパティをもつなら、それらの文字の間にポイントを置くことは不可能。そのグループ内に前方へポイントの移動を試みると、ポイントは実際にはそのグループの終端に移動する。そのグループ内に後方へポイントの移動を試みると、ポイントは実際にはそのグループの先頭に移動する。
+
+連続する文字のグループが非@code{nil}の等しくない@code{intangible}プロパティをもつなら、それらの文字は個別のグループに属して、各グループは上述のように別のグループとして扱われる。
+
+変数@code{inhibit-point-motion-hooks}が非@code{nil}
+(デフォルト)なら@code{intangible}プロパティは無視される。
+
+注意せよ:
+このプロパティは非常に低レベルで処理されて、予想外の方法により多くのコードに影響する。そのため使用に際しては特別な注意を要する。誤った使用方法としては不可視のテキストにintangibleプロパティをputするのが一般的な誤りであり、コマンドループは各コマンドの終わりに不可視テキストの外部へポイントを移動するだろうから、これは実際には必要ない。@ref{Adjusting
+Point}を参照のこと。これらの理由によりこのプロパティは時代遅れであり、かわりに@code{cursor-intangible}プロパティを使用すること。
+
+@item cursor-intangible
+@kindex cursor-intangible @r{(text property)}
+@findex cursor-intangible-mode
+@cindex rear-nonsticky, and cursor-intangible property
+マイナーモード@code{cursor-intangible-mode}がオンになっている際には、再表示が発生する直前に非@code{nil}の@code{cursor-intangible}プロパティをもつすべての位置からポイントが移動させられる。許容されるカーソル位置の計算時にはこのプロパティの``粘着性(stickiness)''が考慮される(@ref{Sticky
+Properties}を参照)ので、たとえばカーソルがエンターできないような連続する5つの@samp{x}を挿入するためには、以下のような何かしらを行う必要がある:
+
+@lisp
+(insert
+ (propertize "xxxx" 'cursor-intangible t)
+ (propertize "x" 'cursor-intangible t 'rear-nonsticky t))
+@end lisp
+
+@vindex cursor-sensor-inhibit
+変数@code{cursor-sensor-inhibit}が非@code{nil}なら、@code{cursor-intangible}プロパティと@code{cursor-sensor-functions}プロパティ(以下参照)は無視される。
+
+@item field
+@kindex field @r{(text property)}
+同じ@code{field}プロパティをもつ連続する文字は@dfn{フィールド}を構成する。@code{forward-word}や@code{beginning-of-line}を含むいくつかの移動関数はフィールド境界で移動を停止する。@ref{Fields}を参照のこと。
+
+@item cursor
+@kindex cursor @r{(text property)}
+カーソルは通常はカレントバッファー位置を``隠している''(つまりかわりに表示されている)オーバーレイ、およびテキストプロパティ文字列の先頭か終端に表示される。Emacsに指示するかわりに文字に非@code{nil}の@code{cursor}テキストプロパティを与えることにより、それら文字列内の任意の望む文字にカーソルを置くことができる。加えて@code{cursor}プロパティの値が整数なら、それはカーソルがその文字上に表示されるようにオーバーレイまたは@code{display}プロパティが始まる位置から数えたバッファーの文字位置の数字を指定する。特にある文字の@code{cursor}プロパティの値が数字@var{n}なら、カーソルは範囲@code{[@var{ovpos}..@var{ovpos}+@var{n})}内の任意のバッファー位置にあるその文字上に表示されるだろう。ここで@var{ovpos}は@code{overlay-start}
+(@ref{Managing
+Overlays}を参照)により与えられるオーバーレイ開始位置、またはそのバッファー内で@code{display}プロパティが始まる位置である。
+
+言い換えると文字列の非@code{nil}値の@code{cursor}プロパティをもつ文字はカーソルが表示される文字である。このプロパティの値はオーバーレイまたはディスプレイ文字列が表示上でポイントを不可視にしている際に、カーソルを表示するバッファーの位置を告げる。値が整数@var{n}ならオーバーレイまたは@code{display}プロパティの始まりから@var{n}後ろの位置までの間にポイントがあるとき、カーソルはそこに表示される。値がそれ以外の非@code{nil}ならポイントが@code{display}プロパティの先頭となるバッファー位置にあるとき、あるいはディスプレイ上でその位置が不可視なら@code{overlay-start}となるバッファー位置でのみカーソルが表示される。@code{cursor}プロパティの整数値は、たとえそのポイントがディスプレイ上可視でなくとも、その文字上でカーソルが表示されることを意味し得ることに注意。
+
+このプロパティの微妙なのは、ディスプレイまたはオーバーレイ文字列の一部であるような改行にはこのプロパティが機能しない点である。これはEmacsがディスプレイ上の文字にたいしてソン@code{cursor}プロパティを探す際に、検索するスクリーン上で改行文字がグラフィック表現をもたないからである。
+
+@cindex cursor position for @code{display} properties and overlays
+バッファーのテキストを網羅するオーバーレイ文字列(@ref{Overlay Properties,
+before-string}を参照)や文字列であるような@code{display}プロパティがバッファーに多くある場合には、それらの文字列を走査する間にカーソルを置く箇所をEmacsに合図するために、@code{cursor}プロパティを使用するのはよいアイデアである。これはdisplayやオーバーレイ文字列に``カバー''された何らかのバッファー位置にポイントがある際に、Lispプログラムやユーザーがカーソルを配置したい箇所でディスプレイエンジンと直接通信する。
+
+@item pointer
+@kindex pointer @r{(text property)}
+これはそのテキストやイメージ上にマウスポインターがあるときの特定のマウスシェイプを指定する。利用できるポインターシェイプについては@ref{Pointer
+Shape}を参照のこと。
+
+@item line-spacing
+@kindex line-spacing @r{(text property)}
+改行は改行で終わるディスプレイ行の高さを制御するテキストプロパティやオーバーレイプロパティ@code{line-spacing}をもつことができる。このプロパティ値はデフォルトのフレーム行スペーシングと、バッファーローカル変数@code{line-spacing}をオーバーライドする。@ref{Line
+Height}を参照のこと。
+
+@item line-height
+@kindex line-height @r{(text property)}
+改行は改行で終わるディスプレイ行のトータル高さを制御するテキストプロパティ、またはオーバーレイプロパティ@code{line-height}をもつことができる。@ref{Line
+Height}を参照のこと。
+
+@item wrap-prefix
+テキストが@code{wrap-prefix}プロパティをもつなら、それが定義するプレフィクスはテキストラッピング(text wrapping:
+テキスト折り返し)に由来するすべての継続行の先頭に表示時に追加されるだろう(行が切り詰められた場合にはwrap-prefixが使用されることはない)。これは文字列、イメージ(@ref{Other
+Display Specs}を参照)、あるいはディスプレイプロパティ@code{:width}や@code{:align-to}
+(@ref{Specified Space}を参照)により指定された空白文字範囲かもしれない。
+
+wrap-prefixはバッファーローカル変数@code{wrap-prefix}を使用して、バッファー全体にも指定され得る(が@code{wrap-prefix}テキストプロパティは@code{wrap-prefix}変数の値より優先される)。@ref{Truncation}を参照のこと。
+
+@item line-prefix
+テキストが@code{line-prefix}プロパティをもつなら、それが定義するプレフィクスは表示時にすべての非継続行の先頭に追加されるだろう。これは文字列、イメージ(@ref{Other
+Display Specs}を参照)、あるいはディスプレイプロパティ@code{:width}や@code{:align-to}
+(@ref{Specified Space}を参照)により指定された空白文字範囲かもしれない。
+
+line-prefixはバッファーローカル変数@code{line-prefix}を使用して、バッファー全体にも指定され得る(が@code{line-prefix}テキストプロパティは@code{line-prefix}変数の値より優先される)。@ref{Truncation}を参照のこと。
+
+@item modification-hooks
+@cindex change hooks for a character
+@cindex hooks for changing a character
+@kindex modification-hooks @r{(text property)}
+ある文字がプロパティ@code{modification-hooks}をもつなら、その値は関数のリストであること。その文字の変更により、実際の変更前にそれらの関数すべてが呼び出される。それぞれの関数は、変更されようとするバッファー部分の先頭と終端という2つの引数を受け取る。特定のmodificationフック関数が単一のプリミティブにより変更されつつある複数の文字に出現する場合は、その関数が呼び出される回数を予測することはできない。さらに挿入は既存の文字を変更しないので、このフックは文字の削除、他の文字への置換、またはそれらのテキストプロパティ変更時のみ実行されるだろう。
+
+他の同類フックとは異なり、Emacsはこれらの関数を呼び出し時に@code{inhibit-modification-hooks}を非@code{nil}に@emph{バインドしない}。関数がバッファーを変更するようなら、バッファー変更による変更フックの実行を防ぐために、この変数を非@code{nil}にバインドすることを考慮する必要がある。そうでなければ再帰呼び出しに備えなければならない。@ref{Change
+Hooks}を参照のこと。
+
+オーバーレイも@code{modification-hooks}プロパティをサポートするが詳細は若干異なる(@ref{Overlay
+Properties}を参照)。
+
+@item insert-in-front-hooks
+@itemx insert-behind-hooks
+@kindex insert-in-front-hooks @r{(text property)}
+@kindex insert-behind-hooks @r{(text property)}
+あるバッファーへの挿入操作は後続文字の@code{insert-in-front-hooks}プロパティ、および先行文字の@code{insert-behind-hooks}プロパティにリストされる関数の呼び出しも行う。これらの関数は挿入されるテキストの先頭と終端という2つの引数を受け取る。関数は優先される実際の挿入が行われた@emph{後に}呼び出される。
+
+これらの関数を呼び出す際には@code{inhibit-modification-hooks}は非@code{nil}にバインドされる。関数がバッファーを変更する場合には、これらの変更にたいして変更フックが実行されるように、@code{inhibit-modification-hooks}を@code{nil}にバインドしたいと思うかもしれない。しかしこれを行うことによって、あなたの変更フックが再帰的に呼び出されるかもしれないので、確実にそれに備えること。
+
+バッファー内のテキスト変更時にに呼び出される他のフックについては@ref{Change Hooks}も参照のこと。
+
+@item point-entered
+@itemx point-left
+@cindex hooks for motion of point
+@kindex point-entered @r{(text property)}
+@kindex point-left @r{(text property)}
+スペシャルプロパティ@code{point-entered}と@code{point-left}はポイント移動をレポートするフック関数を記録する。ポイントを移動するたびにEmacsは以下の2つのプロパティ値を比較する:
+
+@itemize @bullet
+@item
+古い位置の後の文字の@code{point-left}プロパティ。
+@item
+新しい位置の後の文字の@code{point-entered}プロパティ。
+@end itemize
+
+@noindent
+これらの2つの値が異なる場合には、(@code{nil}でなければ)古いポイント値と新しいポイント値という2つの引数とともにそれらそれぞれ呼び出される。
+
+同じ比較は古い位置と新しい位置の前の文字にたいしても行われる。この結果として2つの@code{point-left}関数(同じ関数かもしれない)、および/または2つの@code{point-entered}関数(同じ関数かもしれない)が実行される可能性がある。ある場合においては、まずすべての@code{point-left}関数が呼び出されて、その後にすべての@code{point-entered}関数が呼び出される。
+
+さまざまなバッファー位置にたいして、そこにポイントを移動することなく文字を調べるために@code{char-after}を使用することができる。実際のポイント値変更だけがこれらのフック関数を呼び出す。
+
+変数@code{inhibit-point-motion-hooks}はデフォルトでは@code{point-left}と@code{point-entered}のフック実行を抑制する。@ref{Inhibit
+point motion hooks}を参照のこと。
+
+これらのプロパティは時代遅れであり、かわりに@code{cursor-sensor-functions}を使用してほしい。
+
+@item cursor-sensor-functions
+@kindex cursor-sensor-functions @r{(text property)}
+@findex cursor-sensor-mode
+このスペシャルプロパティはカーソル移動に反応する関数リストを記録する。このリスト内の各関数は影響を受けるウィンドウ、既知のカーソルの以前の位置、このプロパティをもつテキストにカーソルが入ったか離れたかに依存するシンボル@code{entered}か@code{left}という3つの受け取って再表示の直前に呼び出される。関数はマイナーモード@code{cursor-sensor-mode}がオンのときのみ呼び出される。
+
+変数@code{cursor-sensor-inhibit}が非@code{nil}なら@code{cursor-sensor-functions}プロパティは無視される。
+
+@item composition
+@kindex composition @r{(text property)}
+このテキストプロパティは文字シーケンスをコンポーネントから構成される単一グリフ(single
+glyph)として表示するために使用される。しかしこのプロパティの値自身は完全にEmacsの内部的なものであり、たとえば@code{put-text-property}などで直接操作しないこと。
+
+@item minibuffer-message
+@kindex minibuffer-message @r{(text property)}
+このテキストプロパティは、アクティブミニバッファーの一時的なメッセージを表示する場所を指定する。具体的にはこのプロパティをもつミニバッファーテキストの最初の文字が、その前に表示する一時的なメッセージを所有する。デフォルトではミニバッファーテキスト終端に一時的なメッセージが表示される。このテキストプロパティは@code{set-message-function}のデフォルト値の関数が使用する(@ref{Displaying
+Messages}を参照)。
+
+@end table
+
+@defvar inhibit-point-motion-hooks
+@anchor{Inhibit point motion hooks} この時代遅れの変数が非@code{nil}のときは、@code{point-left}と@code{point-entered}のフックは実行されず@code{intangible}プロパティは効果をもたない。この変数はグローバルにセットせず@code{let}でバインドすること。この変数の影響を受けるプロパティは時代遅れなので、それらを効果的に無効にするためにデフォルト値は@code{t}。
+@end defvar
+
+@defvar show-help-function
+@anchor{Help display} この変数が非@code{nil}なら、それはヘルプ文字列を表示するために呼び出される関数を指定する。これらは@code{help-echo}プロパティ、メニューヘルプ文字列(@ref{Simple
+Menu Items}と@ref{Extended Menu Items}を参照)、ツールバーヘルプ文字列(@ref{Tool
+Bar}を参照)かもしれない。指定された関数は、ヘルプ文字列の最初の文字が非@code{nil}の@code{help-echo-inhibit-substitution}をもっていなければ、表示するためのヘルプ文字列(関数に与えられる前に@code{substitute-command-keys}を通じて渡される)を単一の引数として呼び出される。@ref{Keys
+in
+Documentation}を参照のこと。@code{show-help-function}を使用するモードの例は、Tooltipモード(@ref{Tooltips,,,
+emacs, The GNU Emacs Manual}を参照)のコード例を参照のこと。
+@end defvar
+
+@defvar face-filters-always-match
+この変数が非@code{nil}なら、特定の条件が合致された際のみ適用される属性を指定するフェイスフィルターは常にマッチするとみなされる。
+@end defvar
+
+@node Format Properties
+@subsection フォーマットされたテキストのプロパティ
+
+  以下のテキストプロパティはフィルコマンドの挙動に影響を与えます。これらはフォーマットされたテキストを表すために使用されます。@ref{Filling}と@ref{Margins}を参照してください。
+
+@table @code
+@item hard
+改行文字がこのプロパティをもつならそれは``hard''改行。フィルコマンドはhard改行を変更せずそれらを横断して単語を移動しない。しかしこのプロパティはマイナーモード@code{use-hard-newlines}が有効な場合のみ影響を与える。@ref{Hard
+and Soft Newlines,, Hard and Soft Newlines, emacs, The GNU Emacs
+Manual}を参照のこと。
+
+@item right-margin
+このプロパティはその部分のテキストのフィルにたいして余分な右マージンを指定する。
+
+@item left-margin
+このプロパティはその部分のテキストのフィルにたいして余分な左マージンを指定する。
+
+@item justification
+このプロパティはその部分のテキストのフィルにたいして位置揃え(justification)のスタイルを指定する。
+@end table
+
+@node Sticky Properties
+@subsection テキストプロパティの粘着性
+@cindex sticky text properties
+@cindex inheritance, text property
+
+  ユーザーがそれらをタイプした際にはバッファーに挿入される自己挿入文字(@ref{Commands for
+Insertion}を参照)は、通常は先行する文字と同じプロパティをもちます。これはプロパティの@dfn{継承(inheritance)}と呼ばれます。
+
+  対照的にLispプログラムは継承の有無に関わらず挿入を行うことができ、それは挿入プリミティブの選択に依存します。@code{insert}のような通常のテキスト挿入関数は何もプロパティを継承しません。これらは挿入される文字列と正確に同じプロパティをもち、それ以外のプロパティはもちません。これはたとえばkillリング外部にたいしてのように、あるコンテキストから他のコンテキストにテキストをコピーするプログラムにたいして適正です。継承つきで挿入を行うためには、このセクションで説明するスペシャルプリミティブを使用します。自己挿入文字はこれらのプリミティブを使用するのでプロパティを継承します。
+
+@cindex front-sticky text property
+@cindex rear-nonsticky text property
+  継承つきで挿入を行う際に、@emph{何の}プロパティがどこから継承されるかは@dfn{sticky(スティッキー、粘着する)}に依存します。ある文字の後への挿入における、それらの文字のプロパティ継承は@dfn{rear-sticky(後方スティッキー)}です。ある文字の前への挿入における、それらの文字ノプロパティ継承は@dfn{front-sticky(前方スティッキー)}です。これら両側のstickyが同じプロパティにたいして異なるsticky値をもつ場合には、前の文字の値が優先します。
+
+  デフォルトではテキストプロパティはfront-stickyではなくrear-stickyです。したがってデフォルトでは、すべてのプロパティは前の文字から継承して、後の文字からは何も継承しません。
+
+  さまざまなテキストプロパティのstickiness(スティッキネス、スティッキー性、粘着性、粘着度)は、2つのテキストプロパティ@code{front-sticky}と@code{rear-nonsticky}、および変数@code{text-property-default-nonsticky}で制御できます。与えられたプロパティにたいして異なるデフォルトを指定するためにこの変数を使用できます。テキストの任意の特定部分に特定のstickyや非stickyプロパティを指定するために、これら2つのテキストプロパティを使用できます。
+
+  ある文字の@code{front-sticky}プロパティが@code{t}なら、その文字のすべてのプロパティはfront-stickyです。@code{front-sticky}プロパティがリストなら、その文字のstickyなプロパティは名前がそのリスト内にあるプロパティです。たとえばある文字が値が@code{(face
+read-only)}であるような@code{front-sticky}プロパティをもつなら、その文字の前への挿入ではその文字の@code{face}プロパティと@code{read-only}プロパティは継承できますが他のプロパティは継承できません。
+
+  @code{rear-nonsticky}は逆の方法で機能します。ほとんどのプロパティはデフォルトでrear-stickyであり、@code{rear-nonsticky}プロパティはどのプロパティが@emph{rear-stickyではない}かを告げます。ある文字の@code{rear-nosticky}プロパティが@code{t}なら、その文字のすべてのプロパティはrear-stickyではありません。@code{rear-nosticky}プロパティがリストなら、その文字のstickyなプロパティは名前がそのリスト内に@emph{ない}プロパティです。
+
+@defvar text-property-default-nonsticky
+この変数はさまざまなテキストプロパティのデフォルトのrear-stickinessを定義するalist。各要素は@code{(@var{property}
+.
+@var{nonstickiness})}という形式をもち、これは特定のテキストプロパティ@var{property}のstickinessを定義する。
+
+@var{nonstickiness}が非@code{nil}なら、それはプロパティ@var{property}がデフォルトでrear-nonstickyであることを意味する。すべてのプロパティはデフォルトではfront-nonstickyなので、これにより@var{property}は両方向にたいしてデフォルトでnonstickyになる。
+
+テキストプロパティ@code{front-sticky}と@code{rear-nonsticky}が使用された際には、@code{text-property-default-nonsticky}内で指定されたデフォルトの@var{nonstickiness}より優先される。
+@end defvar
+
+  以下はプロパティ継承つきでテキストを挿入する関数です:
+
+@defun insert-and-inherit &rest strings
+関数@code{insert}と同じように文字列@var{strings}を挿入するが、隣接するテキストからすべてのstickyなプロパティを継承する。
+@end defun
+
+@defun insert-before-markers-and-inherit &rest strings
+関数@code{insert-before-markers}と同じように文字列@var{strings}を挿入するが、隣接するテキストからすべてのstickyなプロパティを継承する。
+@end defun
+
+  継承を行わない通常の挿入関数については@ref{Insertion}を参照してください。
+
+@node Lazy Properties
+@subsection テキストプロパティのlazyな計算
+
+  バッファー内のすべてのテキストにたいしてテキストプロパティを計算するかわりに、何かがテキスト範囲に依存している場合にはテキストプロパティを計算するようにアレンジできます。
+
+  プロパティとともにバッファーからテキストを抽出するプリミティブは@code{buffer-substring}です。この関数はプロパティを調べる前にアブノーマルフック@code{buffer-access-fontify-functions}を実行します。
+
+@defvar buffer-access-fontify-functions
+この変数はテキストプロパティ計算用の関数のリストを保持する。@code{buffer-substring}がバッファーの一部のテキストとテキストプロパティをコピーする前にこのリスト内の関数すべてを呼び出す。各関数はアクセスされるバッファー範囲を指定する2つの引数を受け取る(バッファーは常にカレントバッファー)。
+@end defvar
+
+  関数@code{buffer-substring-no-properties}はいずれにせよテキストプロパティを無視するので、これらの関数を呼び出さない。
+
+  同じバッファー部分にたいして複数回フック関数が呼び出されるのを防ぐために変数@code{buffer-access-fontified-property}を使用できる。
+
+@defvar buffer-access-fontified-property
+この変数の値が非@code{nil}なら、それはテキストプロパティ名として使用されるシンボル。そのテキストプロパティにたいする非@code{nil}値は、その文字にたいする他のテキストプロパティはすでに計算済みであることを意味する。
+
+@code{buffer-substring}にたいして指定された範囲内のすべての文字、このプロパティにたいする値として非@code{nil}をもつなら、@code{buffer-substring}は@code{buffer-access-fontify-functions}の関数を呼び出さない。それらの文字がすでに正しいテキストプロパティをもつとみなして、それらがすでに所有するプロパティを単にコピーする。
+
+@code{buffer-access-fontify-functions}の関数にこのプロパティ、同様に他のプロパティを処理対象の文字に追加させることがこの機能の通常の用途である。この方法では同じテキストにたいして、それらの関数が何度も呼び出されるのを防ぐことができる。
+@end defvar
+
+@node Clickable Text
+@subsection クリック可能なテキストの定義
+@cindex clickable text
+@cindex follow links
+@cindex mouse-1
+
+  @dfn{クリック可能テキスト(clickable
+text)}とは何らかの結果を生成するためにマウスやキーボードコマンドを通じてクリックできるテキストです。多くのメジャーモードがテキスト的なハイパーリンク、略して@dfn{リンク(link)}を実装するためにクリック可能テキストを使用しています。
+
+  リンクの挿入や操作を行うもっとも簡単な方法は@code{button}パッケージの使用です。@ref{Buttons}を参照してください。このセクションではテキストプロパティを使用してバッファー内に手作業でクリック可能テキストをセットアップする方法を説明します。簡略にするためにクリック可能テキストを@dfn{リンク}と呼ぶことにします。
+
+  リンクの実装には、(1)リンク上にマウスが移動した際にクリック可能であることを示し、(2)そのリンク上の@key{RET}か@kbd{mouse-2}で何かを行うようにして、(3)そのリンクが@code{mouse-1-click-follows-link}にしたがうよう@code{follow-link}をセットアップする、という3つのステップが含まれます。
+
+  クリック可能なことを示すためには、そのリンクのテキストに@code{mouse-face}プロパティを追加します。するとEmacsはそれ以降マウスがその上に移動した際にリンクをハイライトするでしょう。加えて@code{help-echo}テキストプロパティを使用してツールチップかエコーエリアメッセージを定義するべきです。@ref{Special
+Properties}を参照してください。たとえば以下はDiredがファイル名がクリック可能なことを示す方法です:
+
+@smallexample
+ (if (dired-move-to-filename)
+     (add-text-properties
+       (point)
+       (save-excursion
+         (dired-move-to-end-of-filename)
+         (point))
+       '(mouse-face highlight
+         help-echo "mouse-2: visit this file in other window")))
+@end smallexample
+
+  リンクをクリック可能にするためには、
+@key{RET}と@kbd{mouse-2}を望むアクションを行うコマンドにバインドします。各コマンドはリンク上から呼び出されたかチェックして、それに応じて動作するべきです。たとえばDiredメジャーモードのキーマップは@kbd{mouse-2}を以下のコマンドにバインドします:
+
+@smallexample
+(defun dired-mouse-find-file-other-window (event)
+  "In Dired, visit the file or directory name you click on."
+  (interactive "e")
+  (let ((window (posn-window (event-end event)))
+        (pos (posn-point (event-end event)))
+        file)
+    (if (not (windowp window))
+        (error "No file chosen"))
+    (with-current-buffer (window-buffer window)
+      (goto-char pos)
+      (setq file (dired-get-file-for-visit)))
+    (if (file-directory-p file)
+        (or (and (cdr dired-subdir-alist)
+                 (dired-goto-subdir file))
+            (progn
+              (select-window window)
+              (dired-other-window file)))
+      (select-window window)
+      (find-file-other-window (file-name-sans-versions file t)))))
+@end smallexample
+
+@noindent
+このコマンドはクリックがどこで発生したかを判断するために関数@code{posn-window}と@code{posn-point}、visitするファイルの判断に関数@code{dired-get-file-for-visit}を使用します。
+
+  マウスコマンドをメジャーモードキーマップ内でバインドするかわりに、@code{keymap}プロパティ(@ref{Special
+Properties}を参照)を使用してリンクテキスト内でバインドできます。たとえば:
+
+@example
+(let ((map (make-sparse-keymap)))
+  (define-key map [mouse-2] 'operate-this-button)
+  (put-text-property link-start link-end 'keymap map))
+@end example
+
+@noindent
+この手法により異なるリンクに異なるコマンドを簡単に定義できます。さらにそのバッファー内の残りのテキストにたいしては、@key{RET}と@kbd{mouse-2}のグローバル定義を利用可能なまま残すことができます。
+
+@vindex mouse-1-click-follows-link
+  リンク上でのクリックにたいするEmacsの基本コマンドは@kbd{mouse-2}です。しかし他のグラフィカルなアプリケーションとの互換性のために、ユーザーがマウスを動かさずに素早くリンクをクリックするという条件の下で、Emacsはリンク上での@kbd{mouse-1}クリックも認識します。この振る舞いはユーザーオプション@code{mouse-1-click-follows-link}により制御されます。@ref{Mouse
+References,,, emacs, The GNU Emacs Manual}を参照してください。
+
+@kindex follow-link @r{(text or overlay property)}
+  @code{mouse-1-click-follows-link}にしたがうようにリンクをセットアップするには、(1)そのテキストに@code{follow-link}テキストプロパティまたはオーバーレイプロパティを適用する、または(2)@code{follow-link}イベントをキーマップ(@code{keymap}テキストプロパティを通じたメジャーモードキーマップまたはローカルキーマップ)にバインドするかの、いずれかを行わなければなりません。@code{follow-link}プロパティの値、または@code{follow-link}イベントにたいするバインディングはリンクアクションにたいするコンディション(condition)として機能します。この条件はEmacsにたいして2つのことを告げます。それは@kbd{mouse-1}のクリックがそのリンクの内側で発生したとみなすべき状況、そして@kbd{mouse-1}のクリックを何に変換するかを告げるアクションコード(action
+code)を計算する方法です。そのリンクのアクション条件は以下のうちの1つです:
+
+@table @asis
+@item @code{mouse-face}
+コンディションがシンボル@code{mouse-face}の場合には、その位置に非@code{nil}の@code{mouse-face}プロパティがあればそれはリンク内側の位置。アクションコードは常に@code{t}。
+
+以下はInfoモードが@key{mouse-1}を処理する例:
+
+@smallexample
+(keymap-set Info-mode-map "<follow-link>" 'mouse-face)
+@end smallexample
+
+@item 関数
+コンディションが関数@var{func}の場合には、@code{(@var{func}
+@var{pos})}が非@code{nil}に評価されれば、位置@var{pos}はリンクの内側。@var{func}がリターンする値はアクションコードとして機能する。
+
+以下はpcvsがファイル名の上でのみ@kbd{mouse-1}によるリンクのフォローを有効にする方法の例:
+
+@smallexample
+(keymap-set map "<follow-link>"
+            (lambda (pos)
+              (eq (get-char-property pos 'face) 'cvs-filename-face)))
+@end smallexample
+
+@item その他
+コンディション値がそれ以外の場合には、その位置はリンク内側であり、そのコンディション自体がアクションコード。(バッファー全体に適用されないように)リンクテキストのテキストプロパティかオーバーレイプロパティを通じてコンディションを適用するときのみ、この類のコンディションを指定すべきなのは明確である。
+@end table
+
+@noindent
+アクションコードは@kbd{mouse-1}がリンクをフォローする方法を告げます:
+
+@table @asis
+@item 文字列かベクター
+アクションコードが文字列かベクターなら、@kbd{mouse-1}イベントは文字列かベクターの最初の要素に変換される。つまり@kbd{mouse-1}クリックのアクションはその文字、またはシンボルのローカルかグローバルのバインディング。したがってアクションコードが@code{"foo"}なら、@kbd{mouse-1}は@kbd{f}、@code{[foo]}なら@kbd{mouse-1}は@key{foo}に変換される。
+
+@item その他
+その他の非@code{nil}のアクションコードでは、@kbd{mouse-1}イベントは同じ位置の@kbd{mouse-2}イベントに変換される。
+@end table
+
+  @code{define-button-type}で定義されるボタンをアクティブにするように@kbd{mouse-1}を定義するには、そのボタンに@code{follow-link}プロパティを与えます。このプロパティの値は上述したリンクのアクションコンディションであるべきです。@ref{Buttons}を参照のこと。たとえば以下はHelpモードが@kbd{Mouse-1}を処理する例です。
+
+@smallexample
+(define-button-type 'help-xref
+  'follow-link t
+  'action #'help-button-action)
+@end smallexample
+
+  @code{define-widget}で定義されたウィジェットに@kbd{mouse-1}を定義するには、そのウィジェットに@code{:follow-link}プロパティを与えます。このプロパティの値は、上述したようなリンクのアクションコンディションであるべきです。たとえば以下は@key{mouse-1}クリックが@key{RET}に変換されるように@code{link}ウィジェットを指定する方法の例です:
+
+@smallexample
+(define-widget 'link 'item
+  "An embedded link."
+  :button-prefix 'widget-link-prefix
+  :button-suffix 'widget-link-suffix
+  :follow-link "\C-m"
+  :help-echo "Follow the link."
+  :format "%[%t%]")
+@end smallexample
+
+@defun mouse-on-link-p pos
+この関数はカレントバッファー内の位置@var{pos}がリンク上なら非@code{nil}をリターンする。@var{pos}は@code{event-start}がリターンするようなマウスイベント位置でもよい(@ref{Accessing
+Mouse}を参照)。
+@end defun
+
+@node Fields
+@subsection フィールドの定義と使用
+@cindex fields
+
+  フィールドとはバッファー内にある連続する文字範囲であり、@code{field}プロパティ(テキストプロパティかオーバーレイプロパティ)に同じ値(@code{eq}で比較)をもつことにより識別されます。このセクションではフィールドの操作に利用できるスペシャル関数を説明します。
+
+  フィールドはバッファー位置@var{pos}で指定します。各フィールドはバッファー位置の範囲を含むと考えて、指定した位置はその位置を含むフィールドを表します。
+
+  @var{pos}の前後の文字は同じフィールドに属し、どのフィールドが@var{pos}を含むかという疑問はありません。それらの文字が属するフィールドがそのフィールドです。@var{pos}がフィールド境界のときは、それがどのフィールドに属すかは、取り囲む2つの文字の@code{field}プロパティのstickinessに依存します(@ref{Sticky
+Properties}を参照)。@var{pos}に挿入されたテキストからプロパティが継承されたフィールドが@var{pos}を含むフィールドです。
+
+  @var{pos}に新たに挿入されたテキストが、いずれの側からも@code{field}プロパティを継承しない異常なケースがあります。これは前の文字の@code{field}プロパティがrear-stickyでなく、後の文字の@code{field}プロパティがfront-stickyでもない場合に発生します。このケースでは@var{pos}は前後のフィールドいずれにも属しません。フィールド関数はそれを、開始と終了が@var{pos}であるような空フィールドに属するものとして扱います。
+
+  以下のすべての関数では、@var{pos}が省略か@code{nil}ならポイントの値がデフォルトとして使用されます。ナローイング(narrowing)が効力をもつ場合には、@var{pos}はアクセス可能部分にあるはずです。@ref{Narrowing}を参照してください。
+
+@defun field-beginning &optional pos escape-from-edge limit
+この関数は@var{pos}で指定されたフィールドの先頭をリターンする。
+
+@var{pos}が自身のフィールド先頭にあり、かつ@var{escape-from-edge}が非@code{nil}なら、@var{pos}周辺の@code{field}プロパティのstickinessに関わらず、リターン値は常に@var{pos}が終端であるような、前にあるフィールドの先頭になる。
+
+@var{limit}が非@code{nil}なら、それはバッファーの位置。そのフィールドの先頭が@var{limit}より前なら、かわりに@var{limit}がリターンされるだろう。
+@end defun
+
+@defun field-end &optional pos escape-from-edge limit
+この関数は@var{pos}で指定されるフィールドの終端をリターンする。
+
+@var{pos}が自身のフィールド終端にあり、かつ@var{escape-from-edge}が非@code{nil}なら、@var{pos}周辺の@code{field}プロパティのstickinessに関わらず、リターン値は常に@var{pos}が@emph{先頭}であるような後のフィールドの終端になる。
+
+@var{limit}が非@code{nil}なら、それはバッファーの位置である。そのフィールドの終端が@var{limit}より後なら、かわりに@var{limit}がリターンされるだろう。
+@end defun
+
+@defun field-string &optional pos
+この関数は@var{pos}で指定されるフィールドのコンテンツを文字列としてリターンする。
+@end defun
+
+@defun field-string-no-properties &optional pos
+この関数は@var{pos}で指定されるフィールドのコンテンツを、テキストプロパティを無視して文字列としてリターンする。
+@end defun
+
+@defun delete-field &optional pos
+この関数は@var{pos}で指定されるフィールドのテキストを削除する。
+@end defun
+
+@defun constrain-to-field new-pos old-pos &optional escape-from-edge only-in-line inhibit-capture-property
+この関数は@var{new-pos}を@var{old-pos}が属するフィールドに``拘束(constrain)''する。言い換えると、これは
+@var{old-pos}と同じフィールド内で@var{new-pos}にもっとも近い位置をリターンする。
+
+@var{new-pos}が@code{nil}なら、@code{constrain-to-field}はかわりにポイントの値を使用してポイントをリターンすることに加えて、その位置にポイントを移動する。
+
+@var{old-pos}が2つのフィールドの境界なら、許容できる最後の位置は引数@var{escape-from-edge}に依存する。@var{escape-from-edge}が@code{nil}なら、@var{new-pos}は新たに文字が@var{old-pos}が挿入されたときに継承するであろう値と、@code{field}プロパティが等しいフィールドでなければならない。@var{escape-from-edge}が非@code{nil}なら@var{new-pos}は隣接する2つのフィールド内のどこでも構わない。さらに2つのフィールドが特別な値@code{boundary}により他のフィールドで分割されている場合には、このスペシャルフィールド内のすべてのポイントも境界上とみなされる。
+
+引数なしの@kbd{C-a}コマンドのように、特別な種類の位置に後方へ移動して一度そこに留まるには、おそらく@var{escape-from-edge}にたいして@code{nil}を指定するべきであろう。フィールドをチェックする他の移動コマンドにたいしては、おそらく@code{t}を渡すべきである。
+
+オプション引数@var{only-in-line}が非@code{nil}、かつ@var{new-pos}を通常の方法により拘束することにより異なる行へ移動するような場合には、@var{new-pos}は非拘束でリターンされる。これは@code{next-line}や@code{beginning-of-line}のような行単位の移動コマンドで、それらのコマンドが正しい行へ移動できる場合のみフィールド境界を尊重するようにするために用いられる。
+
+オプション引数@var{inhibit-capture-property}が非@code{nil}、かつ@var{old-pos}がその名前の非@code{nil}のプロパティをもつ場合には、すべてのフィールド境界は無視される。
+
+変数@code{inhibit-field-text-motion}を非@code{nil}値にバインドすることにより、@code{constrain-to-field}にすべてのフィールド境界を無視(何者にも拘束されることがない)させることができる。
+@end defun
+
+@node Not Intervals
+@subsection なぜテキストプロパティはインターバルではないのか
+@cindex intervals
+
+  バッファー内のテキストへの属性の追加をサポートする一部のエディターの中には、ユーザーにテキスト内のインターバルを指定させて、そのインターバルにプロパティを追加することによって属性の追加をサポートするものがあります(訳注:
+日本語のカタカナ英語として通用しているインターバルは「間隔」、「距離」、「合間」のようにインターバルの両端に実体がありインターバル自体は隔たりだけを表す疎な実体という日常会話でのinterval訳を連想しますが、Emacs
+Lispリファレンスにおけるインターバルは計算幾何学におけるインターバル木のように開始と終了をもった数学分野におけるinterval訳である「区間」の意味で用いられています;
+@ref{Examining Properties,
+object-intervals}を参照してください)。それらのエディターではユーザーやプログラマーが個別にインターバルの開始と終了を決定することが許されています。わたしたちはテキスト変更に関連する逆説的な特定の振る舞いを避けるために、故意に異なる種類のインターフェイスをEmacs
+Lisp内に提供しました。
+
+  複数のインターバルに細分化することが実際に意味をもつなら、それは特定のプロパティをもつ単一のインターバルのバッファーと、同じテキストをもち両方が同じプロパティをもつ2つのインターバルに分割されたバッファーを区別できることを意味します。
+
+  インターバルを1つだけもつバッファーがあり、その一部をkillすることを考えてみてください。そのそのバッファーに残されるのは1つのインターバルであり、killリング(とundoリスト)内のコピーは別個のインターバルになります。そのkillされたテキストをyankで戻すと、同じプロパティをもつ2つのインターバルを得ることになります。したがって編集では1つのインターバルと2つのインターバルの違いは保たれません。
+
+  テキスト挿入時に2つのインターバルを結合することにより、この問題に``対応''したとします。これはそのバッファーが元々単一のインターバルだったなら上手く機能します。
+しかしかわりに同じプロパティをもつ隣接する2つのインターバルがあり、そのうちの1つのインターバルからテキストをkillしてyankで戻すことを考えてみてください。あるケースを解決する同じインターバル結合機能が、他のケースにおいては問題を引き起こすのです。このyank後にインターバルはただ1つとなります。繰り返します、編集では1つのインターバルと2つのインターバルの違いは保たれないのです。
+
+  インターバルの間の境界上へのテキスト挿入においても満足できる回答が存在しないような問題が発生します。
+
+  しかし``バッファーにあるテキスト位置または文字列位置のプロパティは何か?''という形式の問にたいして、編集が一貫した振る舞いをするようアレンジするのは簡単です。そこでわたしたちはこれらが合理的な唯一の問いであると判断したのです。わたしたちはインターバルの開始と終了の場所を問うような実装をしませんでした。
+
+  実際には明白にインターバル境界であるような箇所では、通常はテキストプロパティ検索関数を使用できます。可能であるならインターバルは常に結合されるとみなすことにより、それらがインターバル境界を探すと考えることができます。@ref{Property
+Search}を参照してください。
+
+  Emacsはプレゼンテーション機能として明示的なインターバルも提供します。@ref{Overlays}を参照してください。
+
+@node Substitution
+@section 文字コードの置き換え
+@cindex replace characters in region
+@cindex substitute characters
+
+  以下の関数は文字コードにもとづいて指定されたリージョン内の文字を置き換えます。
+
+@defun subst-char-in-region start end old-char new-char &optional noundo
+@cindex replace characters
+この関数は@var{start}と@var{end}で定義されるカレントバッファーのリージョン内に出現する文字@var{old-char}を@var{new-char}に置き換える。これら2つの文字はマルチバイト形式で同じ長さでなければならない。
+
+@cindex undo avoidance
+@var{noundo}が非@code{nil}なら@code{subst-char-in-region}はundo用に変更を記録せず、バッファーを変更済みとマークしない。これは古い機能である選択的ディスプレイ(@ref{Selective
+Display}を参照)にとって有用だった。
+
+@code{subst-char-in-region}はポイントを移動せず@code{nil}をリターンする。
+
+@example
+@group
+---------- Buffer: foo ----------
+This is the contents of the buffer before.
+---------- Buffer: foo ----------
+@end group
+
+@group
+(subst-char-in-region 1 20 ?i ?X)
+     @result{} nil
+
+---------- Buffer: foo ----------
+ThXs Xs the contents of the buffer before.
+---------- Buffer: foo ----------
+@end group
+@end example
+@end defun
+
+
+@defun subst-char-in-string fromchar tochar string &optional inplace
+@cindex replace characters in string
+この関数は@var{string}内のすべての文字@var{fromchar}を@var{tochar}に置き換える。デフォルトでは@var{string}のコピーで置き換えは発生するが、オプション引数@var{inplace}が非@code{nil}なら、この関数は@var{string}自体を変更する。いずれの場合でも、この関数は結果となる文字列をリターンする。
+@end defun
+
+@deffn Command translate-region start end table
+この関数はバッファー内の位置@var{start}と@var{end}の間の文字にたいして、変換テーブル(translation
+table)を適用する。
+
+変換テーブル@var{table}は文字列か文字テーブル。@code{(aref @var{table}
+@var{ochar})}は@var{ochar}に対応した変換後の文字を与える。@var{table}が文字列なら、@var{table}の長さより大きいコードの文字はこの変更により変更されない。
+
+@code{translate-region}のリターン値は、その変換により実際に変更された文字数。変換テーブル内でその文字自身にマップされる文字は勘定に入らない。
+@end deffn
+
+@node Registers
+@section レジスター
+@cindex registers
+
+  レジスター(register)とは、Emacs内の編集においてさまざまな異なる種類の値を保持できる一種の変数です。レジスターはそれぞれ1文字で命名されます。すべての@acronym{ASCII}文字、およびそれらのメタ修飾された変種(ただし@kbd{C-g}は例外)をレジスターの命名に使用できます。したがって利用可能なレジスター数は255になります。Emacs
+Lispではレジスターは自身の名前となるその文字により指定されます。
+
+@defvar register-alist
+この変数は要素が@code{(@var{name}
+.@var{contents})}という形式のalist。使用中のEmacsレジスターごとに通常は1つの要素が存在する。
+
+オブジェクト@var{name}はレジスターを識別する文字(整数)。
+@end defvar
+
+  レジスターの@var{contents}には、いくつかのタイプがある:
+
+@table @asis
+@item 数字
+数字はそれ自身を意味する。@code{insert-register}はレジスター内の数字を探して10進数に変換する。
+
+@item マーカー
+マーカーはジャンプ先のバッファー位置を表す。
+
+@item 文字列
+文字列の場合はレジスター内に保存されたテキスト。
+
+@item 矩形(rectangle)
+@cindex rectangle, as contents of a register
+矩形は文字列のリストを表す。
+
+@item @code{(@var{window-configuration} @var{position})}
+これは1つのフレームにリストアされるウィンドウ構成、およびカレントバッファー内のジャンプ先の位置を表す。
+
+@cindex frameset
+@item @code{(@var{frame-configuration} @var{position})}
+これはリストア用のフレーム構成とカレントバッファー内のジャンプ先の位置。フレーム構成は@dfn{フレームセット(frameset)}とも呼ばれる。
+
+@item @code{(file @var{filename})}
+これはvisitするファイルを表し、この値にジャンプすることによりファイル@var{filename}をvisitする。
+
+@item @code{(file-query @var{filename} @var{position})}
+これはvisitするファイルとファイル内の位置を表す。この値にジャンプすることによりファイル@var{filename}をvisitしてバッファー位置@var{position}に移動する。このタイプの位置をリストアすると、まずユーザーにたいして確認を求める。
+
+@item @code{(buffer @var{buffer-name})}
+これはvisitするバッファーを表し、この値にジャンプすることによりバッファー@var{buffer-name}に切り替える。
+@end table
+
+  このセクションの関数は特に明記しない限り予期せぬ値をリターンします。
+
+@defun get-register reg
+この関数はレジスター@var{reg}のコンテンツ、コンテンツがなければ@code{nil}をリターンする。
+@end defun
+
+@defun set-register reg value
+この関数はレジスター@var{reg}のコンテンツに@var{value}をセットする。レジスターには任意の値をセットできるが、その他のレジスター関数は特定のデータ型を期待する。リターン値は@var{value}。
+@end defun
+
+@deffn Command view-register reg
+このコマンドはレジスター@var{reg}に何が含まれているかを表示する。
+@end deffn
+
+@deffn Command insert-register reg &optional beforep
+このコマンドはカレントバッファーにレジスター@var{reg}のコンテンツを挿入する。
+
+このコマンドは通常は挿入したテキストの前にポイント、後にマークを配置する。しかしオプションの第2引数@var{beforep}が非@code{nil}ならマークを前、ポイントを後に配置する。インタラクティブな呼び出しでは、プレフィクス引数を与えることにより2つ目の引数@var{beforep}に@code{nil}を渡すことができる。
+
+このコマンドはインタラクティブに呼び出された際には、デフォルトではテキストの後にポイントを配置して、プレフィクス引数を与えるとこの反対の振る舞いを行う。
+
+レジスターに矩形が含まれる場合には、その矩形はポイントの左上隅に挿入される。これはそのテキストがカレント行と、その下に続く行に挿入されることを意味する。
+
+レジスターが保存されたテキスト(文字列)または矩形(リスク)以外の何かを含む場合には、現在のところは役に立つようなことは起きない。これは将来変更されるかもしれない。
+@end deffn
+
+@defun register-read-with-preview prompt
+@cindex register preview
+この関数は@var{prompt}、およびもしかしたら既存レジスターとそのコンテンツをプレビューしてレジスターの名前を読み取ってレジスター名をリターンする。このプレビューはユーザーオプション@code{register-preview-delay}と@code{register-alist}がいずれも非@code{nil}なら、@code{register-preview-delay}で指定された遅延の後に一時ウィンドウ内に表示される。このプレビューはユーザーが(たとえばヘルプ文字のタイプにより)ヘルプを要求した場合にも表示される。レジスター名を読み取るンタラクティブな関数には、この関数の使用を推奨する。
+@end defun
+
+@node Transposition
+@section テキストの交換
+
+  以下の関数はテキストの一部を置き換えるために使用できます:
+
+@defun transpose-regions start1 end1 start2 end2 &optional leave-markers
+この関数はバッファーの重複しない2つの部分を交換する(重複する場合にはエラーをシグナルする)。引数@var{start1}と@var{end1}は一方の部分の両端、引数@var{start2}と@var{end2}はもう一方の部分の両端を指定する。
+
+@code{transpose-regions}は通常は置き換えたテキストにともないマーカーを再配置する。以前は2つの置き換えたテキストのうちの一方の部分に位置していたマーカーは、その部分とともに移動されるので、それを挟む2つの文字の新たな位置の間に留まることになる。しかし@var{leave-markers}が非@code{nil}なら、@code{transpose-regions}はこれを行わず、すべてのマーカーを再配置せずに残す。
+@end defun
+
+@node Replacing
+@section バッファーテキストの置換
+
+  以下の関数を使用して、あるバッファーのテキストを他のバッファーのテキストで置き換えることができます:
+
+@deffn Command replace-buffer-contents source &optional max-secs max-costs
+この関数はバファー@var{source}のアクセス可能範囲でカレントバッファーのアクセス可能範囲を置き換える。@var{source}はバッファーオブジェクトかバッファー名のいずれか。@code{replace-buffer-contents}が成功するとカレントバッファーのアクセス可能範囲のテキストは、バッファー@var{source}のアクセス可能範囲のテキストと等しくなる。
+
+この関数はバファー@var{source}のアクセス可能範囲でカこの関数はカレントバッファーのポイント、マーカー、テキストプロパティ、オーバーレイをそのまま維持しようと試みる。この挙動が好都合であるような潜在的なケースは外部コードをフォーマットするプログラムだろう。これらは通常は再フォーマットしたテキストを一時的なバッファーかファイルに書き込んで、@code{delete-region}や@code{insert-buffer-substring}を使用することによりそれらのプロパティを削除する。しかし後者の組み合わせのほうが通常は高速である(@ref{Deletion}と@ref{Insertion}を参照)。
+
+これが機能するためには@code{replace-buffer-contents}が元バッファーと@var{source}のコンテンツを比較する必要があり、これはバッファーが巨大で多数の差異が存在する場合にはコストがかかる処理となる。@code{replace-buffer-contents}の実行時間を制限するために、2つのオプション引数がある。
+
+@var{max-secs}は秒単位のハードリミットを定義する。これが与えられて超過した場合には、@code{delete-region}および@code{insert-buffer-substring}にフォールバックする。
+
+@var{max-costs}は差分計算の品質を定義する。このリミットを実際のコストが超過したら、次善だがより高速な発見的手法を使用する。デフォルト値は1000000。
+
+@code{replace-buffer-contents}は非破壊的な置換ができれば@code{t}をリターンする。それ以外の場合には@var{max-secs}を超過したら@code{nil}をリターンする。
+@end deffn
+
+@defun replace-region-contents beg end replace-fn &optional max-secs max-costs
+この関数は与えられた@var{replace-fn}を使用して、@var{beg}と@var{end}の間のリージョンを置換する。関数@var{replace-fn}はカレントバッファーを指定されたリージョンにナローして実行される。リージョンを置換する文字列またはバッファーのいずれかをリターンすること。
+
+置換は上述の@code{replace-buffer-contents}
+(引数@var{max-secs}、@var{max-costs}、リターン値についても記述あり)を使用して行われる。
+
+注意:
+置換物が文字列なら一時バッファーに配置されるので@code{replace-buffer-contents}が処理することができる。したがってすでにバッファーに置換物がある場合には、@code{buffer-substring}の類を使用して文字列に変換することは無意味である。
+@end defun
+
+@node Decompression
+@section 圧縮されたデータの処理
+
+@code{auto-compression-mode}が有効なときは、Emacsは圧縮されたファイルをvisitする際に自動的に解凍して、それを変更して保存する際は自動的に再圧縮します。@ref{Compressed
+Files,,, emacs, The GNU Emacs Manual}を参照してください。
+
+上記の機能は外部の実行可能ファイル(例:
+@command{gzip})を呼び出すことにより機能します。zlibライブラリーを使用したビルトインの解凍サポートつきでEmacsをコンパイルすることもでき、これは外部プログラムの実行に比べて高速です。
+
+@defun zlib-available-p
+この関数はビルトインzlib解凍が利用可能なら非@code{nil}をリターンする。
+@end defun
+
+@defun zlib-decompress-region start end &optional allow-partial
+この関数はビルトインのzlib解凍を使用して@var{start}と@var{end}の間のリージョンを解凍する。このリージョンにはgzipかzlibで圧縮されたデータが含まれていなければならない。この関数は成功したらリージョンのコンテンツを解凍されたデータに置き換える。@var{allow-partial}が@code{nil}か省略の場合に失敗すると、この関数はリージョンを変更せずに@code{nil}をリターンする。それ以外の場合には解凍されなかったバイト数をリターンして、正常に解凍されたデータが何であれ、それによりリージョンのテキストを置き換える。この関数はユニバイトバッファーでのみ呼び出すことができる。
+@end defun
+
+
+@node Base 64
+@section Base 64エンコーディング
+@cindex base 64 encoding
+
+  Base64コードは8ビットシーケンスをより長い@acronym{ASCII}グラフィック文字シーケンスにエンコードするためにemail内で使用されます。これはインターネットRFC2045およびRFC4648でも定義されます@footnote{RFC(@dfn{Request
+for
+Comments}の略)とは標準を記述するナンバーが付与されたインターネット情報提供ドキュメントです。RFCは通常は自身が先駆的に活動する技術エキスパートによって記述され、伝統として現実的で経験主導で記述されます。}。このセクションでは、このコードへの変換および逆変換を行う関数について説明します。
+
+@deffn Command base64-encode-region beg end &optional no-line-break
+この関数は@var{beg}から@var{end}のリージョンをBase64コードに変換する。これはエンコードされたテキストの長さをリターンする。リージョン内の文字がマルチバイトならエラーをシグナルする(マルチバイトバッファーではリージョンにはASCIIとrawバイト以外の文字が含まれてはならない)。
+
+この関数は通常は行が長くなりすぎるのを防ぐために、エンコードされたテキストに改行を挿入する。しかしオプション引数@var{no-line-break}が非@code{nil}なら、これらの改行は追加されず出力は長い単一の行となる。
+@end deffn
+
+@deffn Command base64url-encode-region beg end &optional no-pad
+この関数は@code{base64-encode-region}と同様だがRFC4648にしたがいBase64エンコーディングのURLバリアントを実装する。エンコードされたテキストに改行を挿入しないので、出力は1行だけの長い行となる。
+
+オプション引数@var{no-pad}は非@code{nil}なら、この関数はパディング(@code{=})を生成しない。
+@end deffn
+
+@defun base64-encode-string string &optional no-line-break
+この関数は文字列@var{string}をBase64コードに変換する。これはエンコードされたテキストを含む文字列をリターンする。@code{base64-encode-region}と同じように文字列内の文字がマルチバイトならエラーをシグナルする。
+
+この関数は通常は行が長くなりすぎるのを防ぐためにエンコードされたテキストに改行を挿入する。しかしオプション引数@var{no-line-break}が非@code{nil}なら、これらの改行は追加されず結果となる文字列は長い単一の行となる。
+@end defun
+
+@defun base64url-encode-string string &optional no-pad
+@code{base64-encode-string}と同様だがBase64のURLバリアントを生成する。エンコードされたテキストに改行を挿入しないので、結果は1行だけの長い行となる。
+
+オプション引数@var{no-pad}は非@code{nil}なら、この関数はパディングを生成しない。
+@end defun
+
+@deffn Command base64-decode-region beg end &optional base64url ignore-invalid
+この関数は@var{beg}から@var{end}のリージョンのBase64コードを対応するデコードされたテキストに変換する。これはデコードされたテキストの長さをリターンする。
+
+デコード関数はエンコード済みテキスト内の改行文字を無視する。
+
+オプション引数@var{base64url}が非@code{nil}ならパディングはオプションであり、Base64エンコーディングのURLバリアントが使用される。オプション引数@var{ignore-invalid}が非@code{nil}の場合には、認識できない文字はすべて無視される。
+@end deffn
+
+@defun base64-decode-string string &optional base64url ignore-invalid
+この関数は文字列@var{string}を、Base64コードから対応するデコード済みテキストに変換する。これはデコード済みテキストを含むユニバイトをリターンする。
+
+デコード関数はエンコード済みテキスト内の改行文字を無視する。
+
+
+オプション引数@var{base64url}が非@code{nil}ならパディングはオプションであり、Base64エンコーディングのURLバリアントが使用される。オプション引数@var{ignore-invalid}が非@code{nil}の場合には、認識できない文字はすべて無視される。
+@end defun
+
+@node Checksum/Hash
+@section チェックサムとハッシュ
+@cindex MD5 checksum
+@cindex SHA hash
+@cindex hash, cryptographic
+@cindex cryptographic hash
+
+  Emacsには@dfn{暗号化ハッシュ(cryptographic
+hashes)}計算用のビルトインのサポートがあります。暗号化ハッシュ、または@dfn{チェックサム(checksum)}とはデータ断片にたいするデジタルな指紋(fingerprint)であり、そのデータが変更されていないかチェックするために使用できます。
+
+@cindex message digest
+  EmacsはMD5、SHA-1、SHA-2、SHA-224、SHA-256、SHA-384、SHA-512のような一般的な暗号化ハッシュアルゴリズムをサポートします。これらのアルゴリズムのうちMD5はもっとも古く、ネットワーク越しに転送されたメッセージの整合性をチェックするために一般的には@dfn{メッセージダイジェスト(message
+digests)}内で使用されています。MD5とSHA-1は`衝突耐性(collision
+resistant)をもたない(同じMD5またはSHA-1のハッシュをもつ異なるデータ片を故意にデザインすることが可能)ので、セキュリティに関連することに使用するべきではありません。セキュリティーに関するアプリケーションではSHA-2
+(@code{sha256}や@code{sha512})のような他のハッシュタイプを使用するべきです。
+
+@defun secure-hash-algorithms
+この関数は@code{secure-hash}が使用可能なアルゴリズムを表すシンボルのリストをリターンする。
+@end defun
+
+@defun secure-hash algorithm object &optional start end binary
+この関数は@var{object}にたいするハッシュをリターンする。引数@var{algorithm}はどのハッシュを計算するかを示すシンボルで@code{md5}、@code{sha1}、@code{sha224}、@code{sha256}、@code{sha384}、@code{sha512}のいずれか。引数@var{object}はバッファーまたは文字列であること。
+
+オプション引数@var{start}と@var{end}は、メッセージダイジェストを計算する@var{object}部分を指定する文字位置。これらが@code{nil}か省略なら、@var{object}全体にたいしてハッシュを計算する。
+
+引数@var{binary}が省略か@code{nil}なら、通常のLisp文字列としてハッシュの@dfn{テキスト形式(text
+form)}をリターンする。@var{binary}が非@code{nil}なら、ユニバイト文字列に格納されたバイトシーケンスとしてハッシュの@dfn{バイナリー形式(binary
+form)}をリターンする。リターンされる文字列の長さは@var{algorithm}に依存する:
+
+@itemize
+@item
+@code{md5}: 32文字(@var{binary}が非@code{nil}なら32バイト)
+@item
+@code{sha1}: 40文字(@var{binary}が非@code{nil}なら40バイト)
+@item
+@code{sha224}: 56文字(@var{binary}が非@code{nil}なら56バイト)
+@item
+@code{sha256}: 64文字(@var{binary}が非@code{nil}なら64バイト)
+@item
+@code{sha384}: 96文字(@var{binary}が非@code{nil}なら96バイト)"
+@item
+@code{sha512}: 128文字(@var{binary}が非@code{nil}なら128バイト)"
+@end itemize
+
+この関数は@var{object}のテキストの内部表現(@ref{Text
+Representations}を参照)からハッシュを直接計算しない。かわりにコーディングシステム(@ref{Coding
+Systems}を参照)を使用してテキストをエンコードして、そのエンコード済みテキストからハッシュを計算する。@var{object}がバッファーなら使用されているコーディングが、バッファーのテキストをファイルに書き込むためのデフォルトとして選択される。@var{object}が文字列ならユーザーの好むコーディングシステムが使用される(@ref{Recognize
+Coding,,, emacs, GNU Emacs Manual}を参照)。
+@end defun
+
+@defun md5 object &optional start end coding-system noerror
+この関数はMD5ハッシュをリターンする。これはほとんどの目的において、@var{algorithm}引数に@code{md5}を指定して@code{secure-hash}を呼び出すのと等価であり半ば時代遅れである。引数の@var{object}、@var{start}、@var{end}は@code{secure-hash}のときと同じ意味をもつ。この関数は32文字の文字列をリターンする。
+
+@var{coding-system}が非@code{nil}なら、それはテキストをエンコードするために使用するコーディングシステムを指定する。省略または@code{nil}なら、@code{secure-hash}と同様にデフォルトコーディングシステムが使用される。
+
+@code{md5}は通常は指定や選択されたコーディングシステムを使用してテキストをエンコードできなければエラーをシグナルする。しかし@var{noerror}が非@code{nil}なら、かわりに黙って@code{raw-text}コーディングシステムを使用する。
+@end defun
+
+@defun buffer-hash &optional buffer-or-name
+@c Note that we do not document what hashing function we're using, or
+@c even whether it's a cryptographic hash, since that may change
+@c according to what we find useful.  We also don't document the
+@c length of the hash string it returns, since that can be used to
+@c guess the hashing function being used.
+@var{buffer-or-name}のハッシュをリターンする。@code{nil}の場合のデフォルトはカレントバッファー。この関数は@code{secure-hash}とは対照的にコーディングシステムとは無関係にバッファーの内部表現にもとづいてハッシュを計算する。したがって同一のEmacs上で実行中の2つのバッファーを比較する際にのみ有用であり、異なるバージョンのEmacs間で同じハッシュをリターンする保証はない。これは巨大なバッファーにたいして@code{secure-hash}より幾分効果的であり、@code{secure-hash}ほど多くのメモリーを割り当てないはずである。
+@end defun
+
+@defun sha1 object &optional start end binary
+この関数は以下のように@code{secure-hash}を呼び出すことと同じ:
+
+@lisp
+(secure-hash 'sha1 object start end binary)
+@end lisp
+
+これは@var{binary}が@code{nil}なら40文字の文字列、それ以外の場合には40バイトのユニバイト文字列をリターンする。
+@end defun
+
+@node Suspicious Text
+@section 不審なテキスト
+@cindex suspicious text
+@cindex insecure text
+@cindex security vulnerabilities in text
+
+  Emacsでは電子メールやWebサイトのような多くの外部ソースを表示することができます。アタッカー(攻撃者)は難読化した@acronym{URL}や電子メールアドレスを使い、それらのテキストを読むユーザーを混乱させて、意図していないウェブページに誘導したり、誤ったアドレスにメールを送信するようユーザーを欺くのです。
+
+これには通常だと@acronym{ASCII}文字と似た外観をもつスクリプトの文字(homographs、すなわち綴りは同じでも意味の違う文字)が必要ですが、bdo(bidirectional
+override:
+双方向オーバーライド)や、何かを示す@acronym{HTML}の背後に別のどこかを指し示す@acronym{URL}を仕込むといった別のテクニックも存在します。
+
+@cindex suspicious text strings
+これら@dfn{不審なテキスト文字列(suspicious text
+strings)}の識別を助けるために、Emacsはテキストにたいしていくつかのチェックを行うライブラリーを提供します(利用可能なチェックの背景となる根拠に関する詳細については@url{https://www.unicode.org/reports/tr39/,
+UTS #39: Unicode Security
+Mechanisms}を参照)。疑わしい恐れのあるデータを提供するパッケージは、表示に際して不審なテキストにフラグを立てるためにこんなライブラリーを使う必要があります。
+
+@vindex textsec-check
+@defun textsec-suspicious-p object type
+この関数はパッケージが使用すべき高レベルのインターフェイス関数である。チェックの無効化をユーザーに許すユーザーオプション@code{textsec-check}を考慮する。
+
+この関数は@var{type}のオブジェクトとして@var{object}(データのタイプは@var{type}に依存)を評価した際に疑わしいかどうかをチェックする。利用できるタイプおよび対応する@var{object}のデータタイプは以下のとおり:
+
+@table @code
+@item domain
+不審なドメイン(例: @samp{www.gnu.org})かどうかをチェック。@var{object}はドメイン名(文字列)。
+
+@item url
+不審な@acronym{URL}(例:
+@samp{http://gnu.org/foo/bar})かどうかをチェック。@var{object}はチェックする@acronym{URL}(文字列)。
+
+@item link
+不審な@acronym{HTML}リンク(例: @samp{<a
+href='http://gnu.org'>fsf.org</a>})かどうかをチェック。この場合には@var{object}は@code{car}が@acronym{URL}文字列、@code{cdr}がリンクテキストであるような@code{cons}セルであること。リンクテキストにドメイン名が含まれていて、それが@acronym{URL}と異なるドメイン名を指す場合には不審なリンクとみなされる。
+
+@item email-address
+不審な電子メールアドレス(例: @samp{foo@@example.org})かどうかをチェック。@var{object}は文字列であること。
+
+@item local-address
+電子メールアドレスのローカル部分(@samp{@@}記号の前の部分が疑わしいかどうかをチェック。@var{object}は文字列であること。
+
+@item name
+名前(電子メールアドレスのヘッダーに使用される)が疑わしいかどうかをチェック。@var{object}は文字列であること。
+
+@item email-address-header
+RFC2822に完全準拠した電子メールアドレス(例: @samp{=?utf-8?Q?=C3=81?=
+<foo@@example.com>})が疑わしいかどうかをチェック。@var{object}は文字列であること。
+@end table
+
+この関数は@var{object}が疑わしい場合には、なぜそれが疑わしいかを説明する文字列をリターンする。@var{object}に不審な点がなければ、この関数は@code{nil}をリターンする。
+@end defun
+
+@vindex textsec-suspicious@r{ (face)}
+テキストが疑わしい場合には、アプリケーションは@code{textsec-suspicious}フェイスで疑わしいテキストファイルをマークするとともに、@code{textsec-suspicious-p}がリターンした説明を、何らかの手段(たとえばツールチップなど)でユーザーが利用できるようにする必要があります。疑わしい文字列にもとづいて何らかのアクション(たとえば疑わしい電子メールアドレスへのメール送信)を実行する前に、アプリケーションがユーザーに確認を求める場合もあります。
+
+@node GnuTLS Cryptography
+@section GnuTLS暗号化
+@cindex MD5 checksum
+@cindex SHA hash
+@cindex hash, cryptographic
+@cindex cryptographic hash
+@cindex AEAD cipher
+@cindex cipher, AEAD
+@cindex symmetric cipher
+@cindex cipher, symmetric
+
+  GnuTLSとともにコンパイルされていれば、Emacsはビルトインの暗号化サポートを提供します。GnuTLSのAPI用語にしたがいダイジェスト(digests)、MAC(メッセージ認証符号)、共通鍵暗号(symmetric
+ciphers)、認証付き暗号(AEAD ciphers)のツールが利用できます。
+
+ここで使用するIV(Initialization Vector:
+初期化ベクトル)のような暗号化にある程度親しんでいる必要のある用語は詳細には定義しません。GnuTLSライブラリーの用語や構造を理解する助けとなる特定のドキュメントについては@uref{https://www.gnutls.org/}を参照してください。
+
+@menu
+* Format of GnuTLS Cryptography Inputs:: GnuTLS暗号入力のフォーマット。
+* GnuTLS Cryptographic Functions::  
+@end menu
+
+@node Format of GnuTLS Cryptography Inputs
+@subsection GnuTLS暗号化入力のフォーマット
+@cindex format of gnutls cryptography inputs
+@cindex gnutls cryptography inputs format
+
+  GnuTLS暗号化関数への入力はEmacs Lispのプリミティブかリストのいずれかにより、複数の方法で指定できます。
+
+現在のところリストの形式は@code{md5}と@code{secure-hash}が動作する方法に似ています。
+
+@table @code
+@item @var{バッファー}
+入力として単にバッファーを渡すとバッファー全体が使用されることを意味する。
+
+@item @var{文字列}
+文字列は入力として直接使用される。(他のほとんどのEmacs
+Lisp関数とは異なり)関数の処理後に機密データ漏洩の機会を減少させるために関数が文字列を変更するかもしれない。
+
+@item (@var{buffer-or-string} @var{start} @var{end} @var{coding-system} @var{noerror})
+これは上述のようにバッファーか文字列を指定するが、オプションで@var{start}と@var{end}で範囲を指定できる。
+
+加えて必要ならオプションで@var{coding-system}を指定できる。
+
+最後のオプションのアイテム@var{noerror}は指定もしくは選択されたコーディングシステムを使用してテキストをエンコードできない際の通常のエラーをオーバーライドする。@var{noerror}が非@code{nil}なら関数は暗黙に@code{raw-text}コーディングシステムをかわりに使用する。
+
+@item (@code{iv-auto} @var{length})
+これは指定した長さのランダムなIV(Initialization Vector:
+初期化ベクトル)を生成して関数に渡す。これによってIVが予測不可能となり、かつ同一セッション内での再利用があり得なくなることが保証される。
+
+@end table
+
+@node GnuTLS Cryptographic Functions
+@subsection GnuTLS暗号化関数
+@cindex gnutls cryptographic functions
+
+@defun gnutls-digests
+この関数はGnuTLSダイジェストアルゴリズムのalistをリターンする。
+
+各エントリーはアルゴリズムを表すキーとアルゴリズムの内部的な詳細を表すplistをもつ。plistは結果となるダイジェストのバイトサイズを示す@code{:type
+gnutls-digest-algorithm}、および@code{:digest-algorithm-length 64}のキーももつだろう。
+
+GnuTLS MACとダイジェストアルゴリズムの間には類似した名前が存在するが、これらは内部的には別物であり混在させるべきではない。
+@end defun
+
+@defun gnutls-hash-digest digest-method input
+@var{digest-method}は@code{gnutls-digests}由来の完全なplist、単なるシンボルキー、またはシンボル名の文字列でもよい。
+
+@var{input}はバッファー、文字列、もしくは他の方法(@ref{Format of GnuTLS Cryptography
+Inputs}を参照)でも指定できる。
+
+この関数はエラー時には@code{nil}、@var{digest-method}か@var{input}が無効ならLispエラーをシグナルする。成功時にはバイナリー文字列(出力)と使用されるIVのリストをリターンする。
+@end defun
+
+@defun gnutls-macs
+この関数はGnuTLS MACアルゴリズムのalistをリターンする。
+
+各エントリーはアルゴリズムを表すキーとアルゴリズムの内部的な詳細を表すplistをもつ。このplistは結果となるハッシュ、キー、ナンスのバイトサイズを示すキー@code{:type
+gnutls-mac-algorithm}、@code{:mac-algorithm-length}、@code{:mac-algorithm-keysize}、@code{:mac-algorithm-noncesize}
+
+現在のところナンスは使用されておらず、いくつかのMACでのみサポートされる。
+
+GnuTLS MACとダイジェストアルゴリズムの間には類似した名前が存在するが、これらは内部的には別物であり混在させるべきではない。
+@end defun
+
+@defun gnutls-hash-mac hash-method key input
+@var{hash-method}は@code{gnutls-macs}由来の完全なplist、単なるシンボルキー、またはシンボル名の文字列でもよい。
+
+@var{key}はバッファー、文字列、あるいは他の方法(@ref{Format of GnuTLS Cryptography
+Inputs}を参照)でも指定できる。@var{key}が文字列なら使用後に消去される。
+
+@var{input}はバッファー、文字列、もしくは他の方法(@ref{Format of GnuTLS Cryptography
+Inputs}を参照)でも指定できる。
+
+この関数はエラー時には@code{nil}、@var{hash-method}や@var{key}、@var{input}が無効ならLispエラーをシグナルする。
+
+成功時にはバイナリー文字列(出力)と使用されるIVをリターンする。
+@end defun
+
+@defun gnutls-ciphers
+この関数はGnuTLS暗号のリストをリターンする。
+
+各エントリーは暗号を表すキーとそのアルゴリズムに関する内部的な詳細を表すplistをもつ。このplistは@code{:type
+gnutls-symmetric-cipher}、およびAEAD機能を示すために@code{nil}か@code{t}にセットされたキー@code{:cipher-aead-capable}、さらにタグ、結果データのブロックサイズ、キー、IVのバイトサイズを示すキー@code{:cipher-tagsize}、@code{:cipher-blocksize}、@code{:cipher-keysize}
+@code{:cipher-ivsize}ももつ。
+@end defun
+
+@defun gnutls-symmetric-encrypt cipher key iv input &optional aead_auth
+@var{cipher}は@code{gnutls-ciphers}由来の完全なplist、単なるシンボルキー、またはシンボル名の文字列でもよい。
+
+@var{key}はバッファー、文字列、あるいは他の方法(@ref{Format of GnuTLS Cryptography
+Inputs}を参照)でも指定できる。@var{key}が文字列なら使用後に消去される。
+
+@var{iv}、@var{input}、およびオプションの@var{aead_auth}はバッファー、文字列、または他の方法(@ref{Format
+of GnuTLS Cryptography Inputs}を参照)でも指定できる。
+
+@var{aead_auth}はAEAD暗号、すなわちplistが@code{:cipher-aead-capable
+t}をもつ暗号でのみチェックされて、他では無視される。
+
+この関数エラー時には@code{nil}、@var{cipher}や@var{key}、@var{iv}や@var{input}が無効だったり、AEAD暗号で@var{aead_auth}が指定されてそれが無効な場合にはLispエラーをシグナルする。
+
+成功時にはバイナリー文字列(出力)と使用されるIVをリターンする。
+@end defun
+
+@defun gnutls-symmetric-decrypt cipher key iv input &optional aead_auth
+@var{cipher}は@code{gnutls-ciphers}由来の完全なplist、単なるシンボルキー、またはシンボル名の文字列でもよい。
+
+@var{key}はバッファー、文字列、あるいは他の方法(@ref{Format of GnuTLS Cryptography
+Inputs}を参照)でも指定できる。@var{key}が文字列なら使用後に消去される。
+
+@var{iv}、@var{input}、およびオプションの@var{aead_auth}はバッファー、文字列、または他の方法(@ref{Format
+of GnuTLS Cryptography Inputs}を参照)でも指定できる。
+
+@var{aead_auth}はAEAD暗号、すなわちplistが@code{:cipher-aead-capable
+t}をもつ暗号でのみチェックされて、他では無視される。
+
+この関数は解読エラー時には@code{nil}、@var{cipher}や@var{key}、@var{iv}や@var{input}が無効だったり、AEAD暗号で指定された@var{aead_auth}が無効な場合にはLispエラーをシグナルする。
+
+成功時にはバイナリー文字列(出力)と使用されるIVをリターンする。
+@end defun
+
+@node Database
+@section データベース
+@cindex database access, SQLite
+
+  SQLiteデータベースへのアクセスにたいする組み込みサポートとともにEmacsをコンパイルできます。このセクションではLispプログラムからSQLiteデータベースへアクセスするために利用できる機能について説明します。
+
+@defun sqlite-available-p
+この関数はビルトインSQLiteサポートが利用可能なら非@code{nil}をリターンする。
+@end defun
+
+SQLiteサポートが利用可能なら、以下の関数を利用できます。
+
+@cindex database object
+@defun sqlite-open &optional file
+この関数は@var{file}をSQLiteのデータベースファイルとしてオープンする。@var{file}が存在しなければ、新たなデータベースを作成して指定されたファイルに格納する。@var{file}が省略または@code{nil}なら、かわりにインメモリーのデータベースを作成する。
+
+リターン値は@dfn{データベースオブジェクト(database object)}。これは以下に挙げるほとんどの関数の引数として利用できる。
+@end defun
+
+@defun sqlitep object
+この述語関数は@var{object}がSQLiteデータベースオブジェクトなら非@code{nil}をリターンする。@code{sqlite-open}がリターンしたデータベースオブジェクトは、この述語を満足する。
+@end defun
+
+@defun sqlite-close db
+データベース@var{db}を閉じる。通常はこの関数を明示的に呼び出す必要はない(Emacsのシャットダウンやデータベースオブジェクトがガーベージコレクトされればデータベースは自動的に閉じられる)。
+@end defun
+
+@defun sqlite-execute db statement &optional values
+@acronym{SQL}の命令文@var{statement}を実行時する。たとえば:
+
+@lisp
+(sqlite-execute db "insert into foo values ('bar', 2)")
+@end lisp
+
+オプション引数@var{values}を与える場合には、それは命令を実行する際に値としてバインドされるリストかベクターのいずれかであること。
+
+@lisp
+(sqlite-execute db "insert into foo values (?, ?)" '("bar" 2))
+@end lisp
+
+これは前の例とまったく同じ効果をもつが、より効率的かつ安全である(文字列の解析や挿入を何も行わないので)。
+
+@code{sqlite-execute}は通常は影響を受ける行数をリターンする。たとえば@samp{insert}文は通常だと@samp{1}をリターンするが、@samp{update}文は0、あるいはそれより大きい値をリターンするかもしれない。ただし@w{@samp{insert
+into @dots{} returning
+@dots{}}}やその類いの@acronym{SQL}文を使った際には、かわりに@w{@samp{returning
+@dots{}}}によって指定された値がリターンされる。
+
+SQLiteでの文字列は、デフォルトでは@code{utf-8}として格納されて、テキストの列をselectした場合にはその文字セット(charset)を使って文字列をデコードする。blobの列をselectした場合には、何もデコードせずにrawデータをリターンする(データベースに格納されているバイトを含んだユニバイトをリターンする)。バイナリーデータをblob列にinsertする場合には、デフォルトでは@code{sqlite-execute}はすべての文字列を@code{utf-8}と解釈するため注意を要する。
+
+したがってたとえば@var{gif}と呼ばれるユニバイト文字列として@acronym{GIF}データをもっている場合には、@code{sqlite-execute}にそれが判るように特別にマークする必要がある:
+
+@lisp
+(put-text-property 0 1 'coding-system 'binary gif)
+(sqlite-execute db "insert into foo values (?, ?)" (list gif 2))
+@end lisp
+
+@end defun
+
+@defun sqlite-select db query &optional values return-type
+@var{db}からデータをselectしてそれをリターンする。たとえば:
+
+@lisp
+(sqlite-select db "select * from foo where key = 2")
+  @result{} (("bar" 2))
+@end lisp
+
+@code{sqlite-execute}の場合と同様に、selectの実行前にバインドする値としてリストまたはベクターをオプションとして渡すことができる:
+
+@lisp
+(sqlite-select db "select * from foo where key = ?" [2])
+  @result{} (("bar" 2))
+@end lisp
+
+これは前の例で用いた手法に比べて、通常はより効果的かつ安全である。
+
+この関数はデフォルトではマッチした行のリストをリターンする(行は列の値のリスト)。@var{return-type}が@code{full}の場合には、リターン値の1つ目の要素として列の名前(文字列のリスト)をリターンする。
+
+@cindex statement object
+@var{return-type}が@code{set}なら、この関数はかわりに@dfn{ステートメントオブジェクト(statement
+object)}をリターンする。このオブジェクトは@code{sqlite-next}、@code{sqlite-columns}、@code{sqlite-more-p}といった関数を用いて調べることができる。結果セットが小さければ単に直接データをリターンするほうが便利な場合が多いが、結果セットが大きい場合(あるいはそのセットのデータすべてを使いたい場合)には、割り当てられるメモリーが大幅に小さくメモリー効率に優れた@code{set}メソッドを使用すること。
+@end defun
+
+@defun sqlite-next statement
+この関数は結果セット@var{statement}(通常は@code{sqlite-select}がリターンしたオブジェクト)の次の行をリターンする。
+
+@lisp
+(sqlite-next stmt)
+    @result{} ("bar" 2)
+@end lisp
+@end defun
+
+@defun sqlite-columns statement
+この関数は結果セット@var{statement} (通常は@code{sqlite-select}がリターンしたオブジェクト)の列名をリターンする。
+
+@lisp
+(sqlite-columns stmt)
+    @result{} ("name" "issue")
+@end lisp
+@end defun
+
+@defun sqlite-more-p statement
+結果セット@var{statement}(通常は@code{sqlite-select}がリターンしたオブジェクト)からfetchできるデータがまだあるかどうかを調べる述語である。
+@end defun
+
+@defun sqlite-finalize statement
+これ以上@var{statement}を使わない場合には、この関数を呼び出すことによって@var{statement}が使用していたリソースが解放される。この関数の呼び出しは通常は必要ない(@var{statement}オブジェクトがガーベージコレクトされれば、Emacsがそのオブジェクトのリソースを自動的に解放する)。
+@end defun
+
+@defun sqlite-transaction db
+@var{db}でトランザクションを開始する。トランザクションにおいては@code{sqlite-commit}によってそのトランザクションがコミットされるまでは、そのデータベースの他の読み取り手は結果にアクセスできない。
+@end defun
+
+@defun sqlite-commit db
+@var{db}のトランザクションを終了して、データベースのファイルにデータを書き込む。
+@end defun
+
+@defun sqlite-rollback db
+@var{db}のトランザクションを終了して、そのトランザクションによって行われたすべての変更を破棄する。
+@end defun
+
+@defmac with-sqlite-transaction db body@dots{}
+@code{progn}
+(@ref{Sequencing}を参照)と同様だが、トランザクションを保持した状態で@var{body}を実行して、@var{body}が正常に終了した場合には最後にそのトランザクションをコミットする。@var{body}がエラーをシグナルするかトランザクションのコミットに失敗すると、@var{body}で行われた@var{db}での変更はロールバックされる。このマクロは正常終了してコミットが成功すると@var{body}の値をリターンする。
+@end defmac
+
+@defun sqlite-pragma db pragma
+@var{db}において@var{pragma}を実行する。@dfn{pragma}とは特定のテーブルではなく、通常はデータベース全体に効果を及ぼすコマンドのこと。たとえば不要になったデータのガーベージコレクトをSQLiteに自動的に行わせるには、以下のようにすればよい:
+
+@lisp
+(sqlite-pragma db "auto_vacuum = FULL")
+@end lisp
+
+この関数はpragmaが成功すれば非@code{nil}、失敗すると@code{nil}をリターンする。pragmaの多くは空の新規データベースでのみ発行できる。
+@end defun
+
+@defun sqlite-load-extension db module
+名前つきエクステンション(拡張)である@var{module}をデータベース@var{db}にロードする。エクステンションは通常は共有ライブラリーであり、GNUおよびUnixのシステムではファイル名の拡張子として@file{.so}がつけられている。
+@end defun
+
+@defun sqlite-version
+使用中のSQLiteライブラリーのバージョンを表す文字列をリターンする。
+@end defun
+
+@findex sqlite-mode-open-file
+SQLiteファイルの内容を一覧したければ、@code{sqlite-mode-open-file}コマンドを使うことができます。これはSQLiteデータベースの調査(と変更)が可能な@code{sqlite-mode}のバッファーをポップアップします。
+
+@node Parsing HTML/XML
+@section HTMLとXMLの解析
+@cindex parsing html
+
+  ビルトインの@file{libxml2}サポートつきでEmacsをコンパイルできます。
+
+@defun libxml-available-p
+この関数はビルトインlibxml2サポートが利用可能なら非@code{nil}をリターンする。
+@end defun
+
+libxml2サポートが利用可能なら、HTMLやXMLのテキストをLispオブジェクトツリーにパースするために以下の関数を利用できます。
+
+@defun libxml-parse-html-region &optional start end base-url discard-comments
+この関数は@var{start}と@var{end}の間のテキストをHTMLとしてパースして、HTML@dfn{パースツリー(parse
+tree)}を表すリストをリターンする。これは構文誤りにたいして強力に対処することにより、現実世界のHTMLの処理を試みる。
+
+@var{start}または@var{end}が@code{nil}の場合のデフォルト値は、それぞれ@code{point-min}と@code{point-max}になる。
+
+オプション引数@var{base-url}が非@code{nil}なら、それは@file{libxml2}がレポートする警告とエラーに使用されるべきだが、現在のところEmacsはエラーと警告を無効にしてこのライブラリーを呼び出すのでこの引数は使用されていない。
+
+オプション引数@var{discard-comments}が非@code{nil}なら、すべてのトップレベルのコメントを破棄する(この引数は時代遅れでありEmacsの将来のバージョンで削除されるだろう。コメントの削除にはパース関数の呼び出し前にデータにユーティリティ関数@code{xml-remove-comments}を使用すること)。
+
+パースツリー内では各HTMLノードは1つ目の要素がノード名を表すシンボル、2つ目の要素がノード属性のalist、残りの要素はサブノードであるようなリストにより表される。
+
+以下の例でこれを示す。以下の(不正な)HTMLドキュメントを与えると:
+
+@example
+<html><head></head><body width=101><div class=thing>Foo<div>Yes
+@end example
+
+@noindent
+@code{libxml-parse-html-region}呼び出しにより以下の@acronym{DOM} (document object
+model)がリターンされる:
+
+@example
+(html nil
+ (head nil)
+ (body ((width . "101"))
+  (div ((class . "thing"))
+   "Foo"
+   (div nil
+    "Yes"))))
+@end example
+@end defun
+
+@cindex rendering html
+@defun shr-insert-document dom
+この関数は@var{dom}内のパース済みHTMLをカレントバッファー内に描画する。引数@var{dom}は@code{libxml-parse-html-region}で生成されるようなリストであること。この関数はたとえば@ref{Top,
+EWW,, eww, The Emacs Web Wowser Manual}により使用される。
+@end defun
+
+@cindex parsing xml
+@defun libxml-parse-xml-region &optional start end base-url discard-comments
+この関数は@code{libxml-parse-html-region}と同様だが、HTMLではなくXML(構文についてより厳格)としてテキストをパースする点が異なる。
+@end defun
+
+@menu
+* Document Object Model::    @acronym{DOM}にたいするアクセス、操作、検索。
+@end menu
+
+@node Document Object Model
+@subsection ドキュメントオブジェクトモデル
+@cindex HTML DOM
+@cindex XML DOM
+@cindex DOM
+@cindex Document Object Model
+
+  @code{libxml-parse-html-region}
+(およびその他の@acronym{XML}パース関数)がリターンする@acronym{DOM}はツリー構造です。このツリー構造ではそれぞれのノードがノード名(@dfn{タグ(tag)}と呼ばれる)をもち、オプションでkey/value値からなる@dfn{属性(attribute)}リスト、その後に@dfn{子ノード(child
+nodes)}が続きます。子ノードは文字列か@acronym{DOM}オブジェクトのいずれかです。
+
+@example
+(body ((width . "101"))
+ (div ((class . "thing"))
+  "Foo"
+  (div nil
+   "Yes")))
+@end example
+
+@defun dom-node tag &optional attributes &rest children
+この関数はタイプ@var{tag}の@acronym{DOM}ノードを作成する。もし@var{attributes}が与えられたら、それはkey/valueペアのリストであること。もし@var{children}が与えられたら、それは@acronym{DOM}ノードであること。
+@end defun
+
+この構造を処理するために以下の関数を使用できます。それぞれの関数は@acronym{DOM}ノードかノードのリストを受け取ります。後者の場合には、そのリストの最初のノードだけが使用されます。
+
+シンプルなアクセサー
+
+@table @code
+@item dom-tag @var{node}
+ノードの@dfn{タグ} (``ノード名''とも呼ばれる)をリターンする。
+
+@item dom-attr @var{node} @var{attribute}
+ノードの@var{属性}の値をリターンする。以下は一般的な使用例：
+
+@lisp
+(dom-attr img 'href)
+=> "https://fsf.org/logo.png"
+@end lisp
+
+@item dom-children @var{node}
+ノードのすべての子をリターンする。
+
+@item dom-non-text-children @var{node}
+ノードのすべての非文字列の子をリターンする。
+
+@item dom-attributes @var{node}
+ノードの属性のkey/valueペアのリストをリターンする。
+
+@item dom-text @var{node}
+ノードのすべてのテキスト的な要素を連結された文字列としてリターンする。
+
+@item dom-texts @var{node}
+ノードのすべてのテキスト的な要素、およびノードのすべての子のテキスト的な要素を、連結された文字列として再帰的にリターンする。この関数はテキスト的な要素の間に挿入するオプションのセパレーターも受け取る。
+
+@item dom-parent @var{dom} @var{node}
+@var{dom}内での@var{node}の親をリターンする。
+
+@item dom-remove @var{dom} @var{node}
+@var{dom}から@var{node}を削除する。
+@end table
+
+以下は@acronym{DOM}を変更するための関数です。
+
+@table @code
+@item dom-set-attribute @var{node} @var{attribute} @var{value}
+ノードの@var{attribute}に@var{value}をセットする。
+
+@item dom-remove-attribute @var{node} @var{attribute}
+@var{node}から@var{attribute}を削除する。
+
+@item dom-append-child @var{node} @var{child}
+@var{node}の最後の子として@var{child}を追加する。
+
+@item dom-add-child-before @var{node} @var{child} @var{before}
+@var{node}の子リストのノード@var{before}の前に@var{child}を追加する。@var{before}が@code{nil}なら、@var{child}が最初の子になる。
+
+@item dom-set-attributes @var{node} @var{attributes}
+ノードのすべての属性を新たなkey/valueリストに置き換える。
+@end table
+
+以下は@acronym{DOM}内の要素を検索する関数です。これらはマッチしたノードのリストをリターンします。
+
+@table @code
+@item dom-by-tag @var{dom} @var{tag}
+@var{dom}内のタイプが@var{tag}のすべてのノードをリターンする。典型的な使用例は:
+
+@lisp
+(dom-by-tag dom 'td)
+=> '((td ...) (td ...) (td ...))
+@end lisp
+
+@item dom-by-class @var{dom} @var{match}
+@var{dom}内のクラス名が正規表現@var{match}にマッチするすべてのノードをリターンする。
+
+@item dom-by-style @var{dom} @var{style}
+@var{dom}内のスタイルが正規表現@var{match}にマッチするすべてのノードをリターンする。
+
+@item dom-by-id @var{dom} @var{style}
+@var{dom}内のIDが正規表現@var{match}にマッチするすべてのノードをリターンする。
+
+@item dom-search @var{dom} @var{predicate}
+@var{predicate}が非@code{nil}値をリターンした@var{dom}内のすべてのノードをリターンする。@var{predicate}はテストされるノードをパラメーターとして呼び出される。
+
+@item dom-strings @var{dom}
+@var{dom}内のすべての文字列をリターンする。
+
+@end table
+
+ユーティリティ関数:
+
+@table @code
+@item dom-pp @var{dom} &optional @var{remove-empty}
+ポイント位置の@var{dom}にたいしてプリティプリント(pp:
+優雅なプリント)を行う。@var{remove-empty}なら空白文字だけを含むテキスト的ノードはプリントしない。
+
+@item dom-print @var{dom} &optional @var{pretty} @var{xml}
+ポイント位置の@var{dom}をプリントする。@var{xml}が非@code{nil}なら@acronym{XML}、それ以外なら@acronym{HTML}としてプリントする。@var{pretty}が非@code{nil}なら、@acronym{HTML}/@acronym{XML}を論理的にプリントする。
+@end table
+
+
+@node Parsing JSON
+@section JSON値の解析と生成
+@cindex JSON
+@cindex JavaScript Object Notation
+
+  @acronym{JSON} (@dfn{JavaScript Object
+Notation})のサポートつきでEmacsをコンパイルした場合には、LispオブジェクトとJSON値との間で変換を行う関数がいくつか提供されます。任意のJSON値をLispオブジェクトに変換できますが、その逆は成り立ちません。具体的には:
+
+@itemize
+@item
+JSONは@code{true}、@code{null}、@code{false}という3つのキーワードを使用する。@code{true}はシンボル@code{t}を表す。デフォルトでは残り2つのキーワードはそれぞれシンボル@code{:null}、@code{:false}で表される。
+
+@item
+JSONには浮動小数点数しかない。これらはLisp整数とLisp浮動小数点数の両方を表すことができる。
+
+@item
+JSON文字列は常にUTF-8でエンコードされたUnicode文字列になる。Lisp文字列は非Unicode文字を含むことができる。
+
+@item
+JSONのシーケンス型は配列のみ。JSON配列はLispベクターを使用して表される。
+
+@item
+JSONのマップ型はオブジェクトのみ。JSONオブジェクトはLispのハッシュテーブル、alist、plistsを使用して表される。alistやplistが同じキーで複数の要素を含む際には、Emacsは@code{assq}の挙動にしたがいシリアライズに最初の要素だけを使用する。
+@end itemize
+
+@noindent
+alistとplistの両方で有効な@code{nil}は、空のJSONオブジェクト@code{@{@}}を表すことに注意してください。@code{null}や@code{false}、空の配列はJSONではすべて異なる値です。
+
+@defun json-available-p
+この述語は@acronym{JSON}サポート付きでEmacsがビルドされていて、そのライブラリーがカレントシステムで利用可能なら非@code{nil}をリターンする。
+@end defun
+
+  JSONで何らかのLispオブジェクトを表現できなければ、シリアライゼーション関数はタイプ@code{wrong-type-argument}のエラーをシグナルします。パース関数も以下のエラーをシグナルする可能性があります:
+
+@table @code
+@item json-unavailable
+パース用ライブラリーが利用できない際にシグナルされる。
+
+@item json-end-of-file
+入力テキストの早すぎる終端に遭遇した際にシグナルされる。
+
+@item json-trailing-content
+パース済みの最初のJSONオブジェクトの後で予期せぬ入力に遭遇した際にシグナルされる。
+
+@item json-parse-error
+無効なJSON構文に遭遇した際にシグナルされる。
+@end table
+
+  トップレベルの値、およびそれらトップレベル値のサブオブジェクトをJSONにシリアライズできます。同様にパース関数は上述の利用可能なタイプをリターンします。
+
+@defun json-serialize object &rest args
+この関数は@var{object}のJSON表現を含むLisp文字列を新たにリターンする。引数@var{args}はキーワード/引数のペアからなるリスト。以下のキーワードが可能:
+
+@table @code
+@item :null-object
+値はJSONキーワードの@code{null}を表すために使用するLispオブジェクトを決定する。デフォルトはシンボル@code{:null}。
+
+@item :false-object
+値はJSONキーワードの@code{false}を表すために使用するLispオブジェクトを決定する。デフォルトはシンボル@code{:false}。
+@end table
+
+@end defun
+
+@defun json-insert object &rest args
+このコマンドはカレントバッファーのポイントの前に@var{object}のJSON表現を挿入する。引数@var{args}は@code{json-parse-string}の場合と同様に扱われる。
+@end defun
+
+@defun json-parse-string string &rest args
+この関数は@var{string}
+(Lisp文字列でなければならない)内のJSON値をパースする。@var{string}に有効なJSONオブジェクトが含まれていなければ、この関数は@code{json-parse-error}エラーをシグナルする。
+
+引数@var{args}はキーワード/引数のペアのリスト。以下のキーワードが許されている:
+
+@table @code
+@item :object-type
+値はJSONオブジェクトのキーと値のマッピングを表現するために使用するLispオブジェクトを決定する。文字列をキーとするハッシュテーブル@code{hash-table}
+(デフォルト)、シンボルをキーとするalistを使用する@code{alist}、キーワードシンボルをキーとするplistを使用する@code{plist}のいずれかが可能。
+
+@item :array-type
+値はJSON配列の表現に使用するLispオブジェクトを決定する。Lisp配列を使用する@code{array}
+(デフォルト)、またはリストを使用する@code{list}のいずれかが可能。
+
+@item :null-object
+値はJSONキーワードの@code{null}を表すために使用するLispオブジェクトを決定する。デフォルトはシンボル@code{:null}。
+
+@item :false-object
+値はJSONキーワードの@code{false}を表すために使用するLispオブジェクトを決定する。デフォルトはシンボル@code{:false}。
+@end table
+
+@end defun
+
+@defun json-parse-buffer &rest args
+この関数はカレントバッファーのポイント位置の文字列から、次のJSON値を読み取る。値に有効なJSONオブジェクトが含まれていれば値の直後にポイントを移動、それ以外なら@code{json-parse-error}エラーをシグナルしてポイントは移動しない。引数@var{args}は@code{json-parse-string}の場合と同様に解釈される。
+@end defun
+
+@node JSONRPC
+@section JSONRPCによる対話
+@cindex JSON remote procedure call protocol
+@cindex JSONRPC
+
+@code{jsonrpc}ライブラリーは@uref{https://www.jsonrpc.org/}に記載された@acronym{JSONRPC}仕様を実装します。JSONRPCはその名前が示すように、Lispとの間で相互に変換可能な@acronym{JSON}オブジェクトを中心に設計された、@dfn{遠隔手続呼出(Remote
+Procedure Call)}のための汎用プロトコルです。
+
+@menu
+* JSONRPC Overview::
+* Process-based JSONRPC connections::
+* JSONRPC JSON object format::
+* JSONRPC deferred requests::  
+@end menu
+
+@node JSONRPC Overview
+@subsection 概観
+
+@uref{https://www.jsonrpc.org/,
+spec}から引用するとJSONRPCは、"同一プロセス、ソケットやhttp、多くのさまざまなメッセージパッシング環境において使用可能という概念においてトランスポート非依存"です。
+
+@findex jsonrpc-connection
+この非依存性をモデル化するために、@code{jsonrpc}ライブラリーはリモートのJSONのエンドポイントへの接続の表現に@code{jsonrpc-connection}クラスのオブジェクトを使用します(Emacsのオブジェクトシステムの詳細は@ref{Top,EIEIO,,eieio,EIEIO}を参照)。これはオブジェクト指向の現代的な用語では``抽象的(abstract)''なクラス、すなわち有用な接続オブジェクトの実クラスは常に@code{jsonrpc-connection}のサブクラスになります。それにも関わらず、@code{jsonrpc-connection}クラスを中心に2つのAPIを個別に定義できます。
+
+@cindex JSONRPC application interfaces
+@enumerate
+
+@item JSONRPCアプリケーション構築用のユーザーインターフェース
+
+@findex :request-dispatcher
+@findex :notification-dispatcher
+@findex jsonrpc-notify
+@findex jsonrpc-request
+@findex jsonrpc-async-request
+このシナリオではJSONRPCアプリケーションは@code{jsonrpc-connection}の具象サブクラスを選択して、@code{make-instance}を使用することによりサブクラスのオブジェクト作成を行う。JSONRPCアプリケーションはリモートのエンドポイントとの対話を開始するために、関数@code{jsonrpc-notify}、@code{jsonrpc-request}、および/または@code{jsonrpc-async-request}にこのオブジェクトを渡す。一般的には非同期に到達するリモートで開始された対話を処理するために、インスタンス化には@code{:request-dispatcher}と@code{:notification-dispatcher}の初期化引数(initarg)を含める必要があり、これらはいずれも接続オブジェクト、リモートで呼び出されたJSONRPCメソッドを命名するシンボル、JSONRPCの@code{params}オブジェクトという3つの引数を受け取る関数である。
+
+@findex jsonrpc-error
+@code{:request-dispatcher}として渡された関数は、ローカルのエンドポイントからのリプライ(この場合では構築するプログラム)を除いた、リモートのエンドポイントのリクエストを処理する役目を担う。その関数の内部では局所的なリターン(通常のリターン)と非局所的なリターン(エラーによるリターン)が起こり得る。局所的なリターン値はJSONとしてシリアライズ可能なLispオブジェクトでなければならない(@ref{Parsing
+JSON}を参照)。これは成功レスポンスを決定するとともに、オブジェクトはJSONRPCの@code{result}オブジェクトとしてサーバーにフォワードされる。関数@code{jsonrpc-error}の呼び出しにより達成される非局所的なリターンは、エラーレスポンスをサーバーに送信する。JSONRPCの@code{error}に付随する詳細には、@code{jsonrpc-error}に渡されるものすべてが含まれる。他のタイプの予期せぬエラーからトリガーされた非局所的なリターンでも、(
+@code{debug-on-error}をセットしていなければ)エラーレスポンスを送信して、この場合にはLispデバッガが呼び出される。@ref{Error
+Debugging}を参照のこと。
+
+@item JSONRPCトランスポート実装構築用の継承インターフェース
+
+このシナリオでは基盤として異なるトランスポートストラテジーを実装するために@code{jsonrpc-connection}をサブクラス化する(サブクラス化する方法についての詳細は@ref{Inheritance,Inheritance,,eieio}を参照)。その後にアプリケーション構築インターフェースのユーザーは、(
+@code{make-instance}関数を使用して)その具象クラスのオブジェクトをインスタンス化して、そのストラテジーを使用してJSONRPCエンドポイントに接続できる。
+
+このAPIには必須部分とオプション部分がある。
+
+@findex jsonrpc-connection-send
+ユーザーがJSONRPCコンタクト(通知やリクエスト)を開始したり、エンドポイントにリプライできるようにするためには、そのサブクラスは@code{jsonrpc-connection-send}メソッドを実装しなければならない。
+
+@findex jsonrpc-connection-receive
+同様に3種類のリモートコンタクト(リクエスト、通知、ローカルリクエストへの応答)を処理するために、トランスポート実装はワイヤー(wire:
+通信ライン)上への新たなJSONRPCメッセージの通知後に、(その"ワイヤー"が何であれ)関数@code{jsonrpc-connection-receive}が呼び出されるように計らわなければならない。
+
+@findex jsonrpc-shutdown
+@findex jsonrpc-running-p
+最後にオプジョンとして@code{jsonrpc-shutdown}メソッドと@code{jsonrpc-running-p}メソッドの概念をトランスポートに適用する場合には、@code{jsonrpc-connection}サブクラスはそれらのメソッドを実装する必要がある。それらを行う場合には、ワイヤー上でメッセージをリッスン(listen)するために使用するシステムリソース(プロセス、タイマー等)は@code{jsonrpc-shutdown}で解放する必要がある(それらのリソースは@code{jsonrpc-running-p}が非@code{nil}の間だけ必要なはずなので)。
+
+@end enumerate
+
+@node Process-based JSONRPC connections
+@subsection プロセスベースのJSONRPC接続
+@cindex JSONRPC process-based connections
+
+@findex jsonrpc-process-connection
+@code{jsonrpc}ライブラリーには利便性のために、ローカルサブプロセス(標準入力と標準出力を使用)やTCPホスト(ソケットを使用)、またはEmacsのプロセスオブジェクトが表現可能な他のリモートのエンドポイント(@ref{Processes}を参照)と対話可能なビルトインの@code{jsonrpc-process-connection}トランスポート実装が付属しています。
+
+このトランスポートを使用することによりJSONRPCメッセージはワイヤー上にプレーンテキストとしてエンコードされて、``Content-Length''のように何らかの基本的なHTTPスタイルのエンベロープヘッダーが前置されます。
+
+このJSONRPC最上層のトランスポートスキームを使用したアプリケーションの例は、@uref{https://microsoft.github.io/language-server-protocol/specification,
+Language Server Protocol}を参照してください。
+
+@cindex JSONRPC connection initargs
+@code{:request-dispatcher}と@code{:notification-dispatcher}という必須の初期化引数(initarg)に加えて、@code{jsonrpc-process-connection}クラスのユーザーは@code{make-instance}へのキーワード/値ペアとして以下の初期化引数を渡す必要があります:
+
+@table @code
+@item :process
+値は生きたプロセスオブジェクト、またはそのようなオブジェクトを生成する引数のない関数でなければならない。プロセスオブジェクトを渡された場合には、そのオブジェクトには事前に確立された接続が含まれていることが期待される。それ以外の場合には、オブジェクトの作成直後に関数が呼び出される。
+
+@item :on-shutdown
+値は@code{jsonrpc-process-connection}オブジェクトを単一の引数とする関数でなければならない。この関数は背後にあるプロセスオブジェクトの削除(@code{jsonrpc-shutdown}による故意の削除、または何らかの外部要因による予期せぬ削除)の後に呼び出される。
+@end table
+
+@node JSONRPC JSON object format
+@subsection JSONRPCのJSONオブジェクトフォーマット
+@cindex JSONRPC object format
+
+JSONRPCのJSONとLispのplist(@ref{Property
+Lists}を参照)は交換することができます。JSON互換のplistをディスパッチャ関数に渡したり、同様にJSON互換のplistを@code{jsonrpc-notify}、@code{jsonrpc-request}、@code{jsonrpc-async-request}に渡すことができます。
+
+@findex jsonrpc-lambda
+plist処理を容易にするために、このライブラリーは@code{cl-lib}ライブラリー(@ref{Top,cl-lib,,cl,Common
+Lisp Extensions for GNU Emacs
+Lisp}を参照)の積極的に使用しており、そのクライアントにたいしてもこれを同じように提案します(強制ではない)。以下の例のようにJSONオブジェクトの非構造化用lambdaの作成にはマクロ@code{jsonrpc-lambda}を使用できます:
+
+@example
+(jsonrpc-async-request
+ myproc :frobnicate `(:foo "trix")
+ :success-fn (jsonrpc-lambda (&key bar baz &allow-other-keys)
+               (message "Server replied back with %s and %s!"
+                        bar baz))
+ :error-fn (jsonrpc-lambda (&key code message _data)
+             (message "Sadly, server reports %s: %s"
+                      code message)))
+@end example
+
+@node JSONRPC deferred requests
+@subsection 遅延されたJSONRPCリクエスト
+@cindex JSONRPC deferred requests
+
+多くの@acronym{RPC}状況下において、対話中の2つのエンドポイント間での同期は、RPCアプリケーションを正しくデザインするために問題となります。同期が必要な際にはリクエスト(ブロックする)、不必要なら通知で十分です。しかしこれらのエンドポイントのいずれかでEmacsが動作している際にはリモートエンドポイントの状態に不確実性が依然として残っているので、(タイマーやプロセスに関連する)非同期イベントがトリガーされる可能性があります。さらにこれらのイベントへの対応では、イベント固有の性質により、同期の要求が限定されるかもしれません。
+
+@findex :deferred@r{, JSONRPC keyword}
+@code{jsonrpc-request}や@code{jsonrpc-async-request}にたいするキーワード引数@code{:deferred}は特定のリクエストに同期が必要なことを呼び出し側が示せるようにして、リクエストの実際の発行は何らかの条件が満足されるまで遅延できるようにデザインされています。あるリクエストへの@code{:deferred}指定はリクエストが@emph{遅延される}のではなく、@emph{遅延される可能性がある}ことを意味します。リクエストが即座に送信されなければ、エンドポイントにたいして他のメッセージの受信や送信を行う際のように、通信中の特定タイミングで@code{jsonrpc}はリクエストを送る新たな試みを行います。
+
+@findex jsonrpc-connection-ready-p
+リクエストを送信するすべての試みの前にアプリケーション固有の条件がチェックされます。@code{jsonrpc}ライブラリーがこれらの条件を知ることはできないので、それらを指定するためにプログラムはジェネリック関数@code{jsonrpc-connection-ready-p}を使用できます(@ref{Generic
+Functions}を参照)。この関数のデフォルトメソッドは@code{t}をリターンしますが、これをオーバーライドして渡された引数(
+@code{jsonrpc-connection}オブジェクト。@ref{JSONRPC
+Overview}を参照)とキーワード引数@code{:deferred}として渡されたすべて値にもとづいて@code{nil}をリターンするメソッドを追加できます。
+
+@node Atomic Changes
+@section グループのアトミックな変更
+@cindex atomic changes
+
+  データベース用語においての@dfn{アトミック(atomic:
+原子的、不可分)}な変更とは、全体として成功か失敗をすることはできるが、部分的にはできない個別の変更のことです。Lispプログラムは単一もしくは複数のバッファーにたいする一連の変更を@dfn{アトミック変更グループ(atomic
+change
+group)}にすることができます。これはその一連の変更全体がそれらのバッファーに適用されるか、またはエラーの場合は何も適用されないかの、いずれかであることを意味します。
+
+  すでにカレントであるような単一のバッファーにたいしてこれを行うには、以下のように単に変更を行うコードの周囲に@code{atomic-change-group}の呼び出しを記述します:
+
+@example
+(atomic-change-group
+  (insert foo)
+  (delete-region x y))
+@end example
+
+@noindent
+@code{atomic-change-group}のbody内部でエラー(またはその他の非ローカルexit)が発生した場合には、そのbodyの実行の間にそのバッファーでのすべての変更が行われなかったことになります。この類の変更グループは他のバッファーには影響を与えず、それらのバッファーにたいする変更はそのまま残されます。
+
+  さまざまなバッファー内で行った変更から1つのアトミックグループを構成する等、より複雑な何かを必要とする場合には、@code{atomic-change-group}が使用する、より低レベルな関数を直接呼び出さなければなりません。
+
+@defun prepare-change-group &optional buffer
+この関数は@var{buffer}
+(デフォルトはカレントバッファー)にたいする変更グループをセットアップする。これはその変更グループを表すhandleをリターンする。変更グループをactivateしたり、その後でそれを完了するためにはこのhandleを使用しなければならない。
+@end defun
+
+  変更グループを使用するためには、それを@dfn{activate(アクティブ化)}しなければなりません。これは@var{buffer}のテキストを変更する前に行わなければなりません。
+
+@defun activate-change-group handle
+これは@var{handle}が指定する変更グループをactiveにする。
+@end defun
+
+  変更グループをactivateした後には、そのバッファー内で行ったすべての変更は変更グループの一部となります。そのバッファー内で目論んでいたすべての変更を行ったら、変更グループを@dfn{finish(完了)}しなければなりません。すべての変更を受け入れる(確定する)か、すべてをキャンセルするという2つの方法により、これを行うことができます。
+
+@defun accept-change-group handle
+この関数は@var{handle}により指定される変更グループ内のすべての変更にたいして、finalizeすることにより変更を受け入れる。
+@end defun
+
+@defun cancel-change-group handle
+この関数は@var{handle}により指定される変更グループ内のすべての変更をキャンセルしてundoする。
+@end defun
+
+  @code{undo-amalgamate-change-group}を使用すれば、いくつか、あるいはすべての変更を@code{undo}コマンド(@ref{Undo}を参照)の対象として単一の単位とみなせる変更グループにすることができます。
+
+@defun undo-amalgamate-change-group
+@var{handle}により識別される状態以降にお子なわれた変更グループへの変更をすべてまとめる。この関数は@var{handle}により記述された状態以降の変更にたいするアンドゥレコード間のアンドゥ境界すべてを削除する。@var{handle}は通常は@code{prepare-change-group}がリターンしたハンドルであり、この場合には変更先頭以降のすべての変更は、単一のアンドゥ単位にまとめられる。
+@end defun
+
+  グループが常に確実にfinishされるようにするために、コードでは@code{unwind-protect}を使用するべきです。@code{activate-change-group}の呼び出しは、実行直後にユーザーが@kbd{C-g}をタイプする場合に備えて@code{unwind-protect}内部にあるべきです(これが@code{prepare-change-group}と@code{activate-change-group}が別関数となっている1つの理由。なぜなら通常は@code{unwind-protect}開始前に@code{prepare-change-group}を呼び出すであろうから)。グループを一度finishしたら、そのhandleを再度使用してはなりません。特に同じ変更グループを2回finishしないでください。
+
+  複数バッファー変更グループ(multibuffer change
+group)を作成するためには、カバーしたいバッファーそれぞれで@code{prepare-change-group}を一度呼び出してから、以下のようにリターン値を結合するために@code{nconc}を使用してください:
+
+@example
+(nconc (prepare-change-group buffer-1)
+       (prepare-change-group buffer-2))
+@end example
+
+その後は1回の@code{activate-change-group}呼び出しで複数変更グループをアクティブにして、1回の@code{accept-change-group}か@code{cancel-change-group}呼び出しでそれをfinishしてください。
+
+  同一バッファーにたいするネストされた複数の変更グループ使用は、あなたが期待するであろう通りに機能します。同一バッファーにたいするネストされていない変更グループの使用によりEmacsが混乱した状態になるので、これが発生しないようにしてください。与えられた何らかのバッファーにたいして最初に開始した変更グループは最後にfinishする変更グループです。
+
+@node Change Hooks
+@section フックの変更
+@cindex change hooks
+@cindex hooks for text changes
+
+  以下のフック変数によりバッファー(これらをバッファーローカルにした場合には特定のバッファー)での変更にたいして、通知を受け取るようにアレンジすることができます。テキストの特定部分にたいする変更の検出方法については@ref{Special
+Properties}も参照してください。
+
+  これらのフック内で使用する関数は、もしそれらが正規表現を使用して何かを行う場合にはマッチしたデータの保存とリストアを行うべきです。さもないとそれらが呼び出す編集処理に奇妙な方法で干渉するでしょう。
+
+@defvar before-change-functions
+この変数はEmacsがバッファー変更を行おうとする際に呼び出す関数のリストを保持する。各関数は変更されようとするリージョンの先頭と終端を整数で表す2つの引数を受け取る。変更されようとするバッファーは関数の呼び出しの際には常にカレントバッファーである。
+@end defvar
+
+@defvar after-change-functions
+この変数はEmacsがバッファー変更を行った後に呼び出す関数のリストを保持する。各関数は正に変更されたリージョンの先頭と終端、およびその変更前に存在したテキストの長さという3つの引数を受け取る。これら3つの変数は、すべて整数。変更されたバッファーは関数の呼び出しの際には常にカレントバッファーである。
+
+古いテキストの長さは、変更される前のテキストでのテキストの前後のバッファー位置の差で与えられる。変更されたテキストでは、その長さは単に最初の2つの引数の差で与えられる。
+@end defvar
+
+  これらの関数は@file{*Messages*}バッファーへのメッセージの出力では呼び出されず、特定の処理用にEmacsが作成する内部的なバッファーのようなLispプログラムからは可視であるべきではないバッファーへの変更でも呼び出されません。
+
+バッファーを変更するプリミティブのほとんどは、釣り合いのとれたカッコ内でのそれぞれの変更にたいして@code{before-change-functions}と@code{after-change-functions}を1回呼び出し、これらのフックにたいする引数は行われた変更を正確に区切ります。しかしフック関数は常にこのように行われると信頼すべきではありません。なぜなら複雑なプリミティブのいくつかは変更を行う前に@code{before-change-functions}を呼び出してから、プリミティブが行なった個別の変更の数にもとづいて@code{after-change-functions}を0回以上呼び出すからです。これが発生した場合には、@code{before-change-functions}の引数は個別の変更が行われたリージョンを囲むでしょうが、そのようなリージョンが最小である必要はなく、連続した@code{after-change-functions}呼び出しそれぞれにたいする引数は変更されたテキスト部分を正確に区切るでしょう。一般的には、before-changeかafter-changeのいずれかのフックを使用して、両方は使用しないことを推奨します。
+
+@defmac combine-after-change-calls body@dots{}
+このマクロは普通に@var{body}を実行するが、もしそれが安全なように見えるなら一連の複数の変更にたいして正に一度、after-change関数を呼び出すようにアレンジする。
+
+そのバッファーの同じ領域内でプログラムが複数のテキスト変更を行う場合には、その部分のプログラムの周囲でマクロ@code{combine-after-change-calls}を使用することにより、after-changeフック使用中の実行がかなり高速になり得る。after-changeフックが最終的に呼び出される際には、その引数は@code{combine-after-change-calls}のbody内で行われたすべての変更にたいして含むバッファーの範囲を指定する。
+
+@strong{警告:}
+フォーム@code{combine-after-change-calls}のbody内で@code{after-change-functions}の値を変更してはならない。
+
+@strong{警告:}
+組み合わされた変更がバッファーの広い範囲に点在してに出現する場合でも、これは依然として機能するが推奨できない。なぜならこれは、ある変更フック関数を非効率的な挙動へと導くかもしれないからである。
+@end defmac
+
+@defmac combine-change-calls beg end body@dots{}
+これは通常のように@var{body}を実行するが、@code{before-change-functions}および@code{after-change-functions}の呼び出しをトリガーしないすべてのバッファー変更を除く。かわりに@var{beg}と@var{end}で囲まれるリージョンにたいしてこれらのフックそれぞれを1回呼び出し、@var{body}が変更するサイズを反映したパラメーターを@code{after-change-functions}に与える。
+
+このマクロの結果は@var{body}のリターンした結果。
+
+このマクロはある関数がバッファーにたいして繰り返し多数の変更を行う可能性があり、このマクロ以外では個別のバッファー変更ごとにそれらの変更フックを実行するために実行に長時間を要する際に有用。Emacs自身は、たとえばコマンド@code{comment-region}や@code{uncomment-region}の中でこのマクロを使用している。
+
+@strong{警告:}
+@var{body}内で@code{before-change-functions}や@code{after-change-function}の値を変更してはならない。
+
+@strong{警告:} @var{beg}と@var{end}で指定したリージョン外部でのバッファー変更は何も行ってはならない。
+@end defmac
+
+@defvar first-change-hook
+この変数は以前は未変更の状態だったバッファーが変更された際は常に実行されるノーマルフック。
+@end defvar
+
+@defvar inhibit-modification-hooks
+この変数が非@code{nil}ならすべての変更フックは無効。それらは何も実行されない。これはこのセクションで説明したすべてのフック変数、同様に特定のスペシャルテキストプロパティ(@ref{Special
+Properties}を参照)とオーバーレイプロパティ(@ref{Overlay Properties}を参照)にアタッチされたフックに影響を与える。
+
+これらの同一フック変数上の関数の実行の間、バッファー変更によるデフォルトの変更フックが他の変更フック実行中に実行されないように、この変数は非@code{nil}にバインドされる。それ自体が変更フックから実行される特定のコード断片内で変更フックを実行したければ、@code{inhibit-modification-hooks}を@code{nil}にローカルに再バインドすること。しかしこれを行うことで変更フックが再帰的に呼び出されるかもしれないのでそれに備えること(たとえばフックが何も行わないようにいくつかの変数をバインドする)。
+
+バッファーのテキストコンテンツに永続的な変更をもたらさない変更(たとえばフェイス変更や一時的な変更)だけにこの変数をバインドすることを推奨する。一連の変更の間は変更フックを遅延させる必要がある(通常は性能上な理由による)なら、かわりに@code{combine-change-calls}や@code{combine-after-change-calls}を使用すること。
+@end defvar
