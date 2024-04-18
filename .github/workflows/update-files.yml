@@ -1,0 +1,49 @@
+# 翻訳ツールのバージョンによって挙動が大きく異なるため、文書のビルドツールの
+# バージョンをGithub Actionsのubuntu-latestのaptでインストールされるパッケージ
+# のバージョンに準拠させる。
+# その際、中間処理で問題が発生した場合の対応に中間ファイルが必要になると思われる
+# ので、標石それぞれにおいて中間ファイルをコミットして残すように変更した。
+name: update-files
+on:
+  workflow_dispatch:
+jobs:
+  main:
+    name: Deploy Documents To Github Pages..
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare build environment.
+        run: |
+          sudo apt update
+          sudo apt-get install -y perl 
+          sudo apt-get install -y gettext
+          sudo apt-get install -y po4a
+          sudo apt-get install -y libintl-perl
+          sudo apt-get install -y coreutils
+          sudo apt-get install -y texinfo
+          sudo apt-get install -y texlive-full
+      # checkoutするリビジョンは**/original_texis/*.texiは既に更新されているものとする
+      - name: Checkout code.
+        uses: actions/checkout@v2
+      - name: Create pot files and update them by old po files
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          make update
+          git config --global user.email "ayanokoji.takesi@gmail.com"
+          git config --global user.name "ayatakesi"
+          git add -f emacs/*.pot
+          git add -f emacs/TITLES/ja/LC_MESSAGES/*.pot
+          git add -f lispref/*.pot
+          git add -f lispref/TITLES/ja/LC_MESSAGES/*.pot
+          git commit -m 'Generate/Update pot files by Texinfo files'
+          git push https://${GH_PAT}@github.com/ayatakesi/emacs-doc-ja.git
+      - name: Translate texinfo  files with merged po files
+        run: |
+          make emacs
+          git config --global user.email "ayanokoji.takesi@gmail.com"
+          git config --global user.name "ayatakesi"
+          git add -f emacs/japanese_texis/*.texi
+          make lispref
+          git add -f lispref/japanese_texis/*.texi
+          git commit -m 'Translate Texinfo files'
+          git push https://${GH_PAT}@github.com/ayatakesi/emacs-doc-ja.git
