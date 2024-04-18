@@ -50,7 +50,6 @@ function msgmerge_newtexi_and_oldpo () {
 		msgcat --no-wrap - > ${MERGED_TMP};
 	    
 	    cp -p ${MERGED_TMP} ${PO};
-	    rm -f ${MERGED_TMP} ${POT};
 	fi
     done
 }
@@ -93,7 +92,6 @@ EOT
 		msgcat --no-wrap - > ${MERGED_TMP};
 
 	    cp -p ${MERGED_TMP} ${PO};
-	    rm -f ${MERGED_TMP} ${POT}
 	    
 	fi
 
