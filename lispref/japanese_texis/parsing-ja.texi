@@ -1,0 +1,1499 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c -*- mode: texinfo; coding: utf-8 -*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 2021--2024 Free Software Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Parsing Program Source
+@chapter プログラムソースの解析
+
+@cindex syntax tree, from parsing program source
+Emacsではプログラムソースのテキストのパース(parse: 解析)や@dfn{構文ツリーまたは構文木(syntax
+tree)}を生成するためにさまざまな方法が提供されています。構文ツリーにおけるテキストはもはや1次元の文字ストリームではなく、ノードというそれぞれがテキストの一部を表現するようなものを構造化したツリーとみなされます。つまり構文ツリーによって正確なフォント表示(fontification)、インデント、ナビゲーション、構造化された編集等といった興味深い機能を有効にできるのです。
+
+Emacsには釣り合いのとれた式をパースするシンプルな機能があります(@ref{Parsing
+Expressions}を参照)。一般的なナビゲーションとインデントにたいするSMIEというライブラリーもあります(@ref{SMIE}を参照)。
+
+これらに加えて@uref{https://tree-sitter.github.io/tree-sitter,
+tree-sitterライブラリー}にたいするサポートがコンパイルされていれば、Emacsはtree-sitterとの統合も提供します。tree-sitterライブラリーはインクリメンタルパーサー(incremental
+parser: 増分解析ライブラリー)であり、幅広いプログラミング言語をサポートしています。
+
+@defun treesit-available-p
+この関数はカレントのEmacsセッションにおいてtree-sitter機能が利用可能なら非@code{nil}をリターンする。
+@end defun
+
+tree-sitterライブラリーを用いたプログラムソースのパースとプログラムの構文ツリーへのアクセスを可能にするためには、Lispプログラムがその言語のグラマーライブラリーをロードするとともにその言語とカレントバッファーにたいするパーサーを作成する必要があります。Lispプログラムがこれを行った後に、構文ツリーの特定のノードに関してパーサーへの問い合わせを行うことができるのです。その後はそれぞれのノードに関するさまざまな種類の情報にアクセスして、強力なパターンマッチングを用いたノードの検索が可能になります。このチャプターではこれらすべてをどのように行うのか、そして複数のプログラミング言語がミックスされているソースファイルにたいしてLispプログラムが処理する方法についても説明します。
+
+@menu
+* Language Grammar::         tree-sitter言語グラマーのロード。
+* Using Parser::             パーサー入門。
+* Retrieving Nodes::         構文ツリーからのノードの取得。
+* Accessing Node Information::  ノード情報へのアクセス。
+* Pattern Matching::         パターン問い合わせによるパターンマッチング。
+* Multiple Languages::       複数言語で記述されたテキストのパース。
+* Tree-sitter Major Modes::  tree-sitterを使用するメジャーモードの開発。
+* Tree-sitter C API::        C用APIとELisp用APIの比較。
+@end menu
+
+@node Language Grammar
+@section tree-sitterの言語グラマー
+@cindex language grammar, for tree-sitter
+
+@heading 言語グラマーのロード
+@cindex loading language grammar for tree-sitter
+
+@cindex language argument, for tree-sitter
+ある言語で記述されたテキストをパースするために、tree-sitterはその言語のグラマー(grammar:
+文法)に依存します。Emacsにおける言語グラマーはシンボルによって表現されます。たとえばC言語のグラマーはシンボル@code{c}として表現されます。この@code{c}というシンボルはtree-sitter関数の@var{language}引数として渡すことができます。
+
+@vindex treesit-extra-load-path
+@vindex treesit-load-language-error
+tree-sitterの言語グラマーはダイナミックライブラリーとして配布されています。ある言語のグラマーをEmacsで使用するためには、そのダイナミックライブラリーがシステム上にインストール済みかを確認する必要があります。Emacsは以下の順序で複数の場所から言語グラマーを探します:
+
+@itemize @bullet
+@item
+まず変数@code{treesit-extra-load-path}で指定されたディレクトリーのリストから;
+@item
+それから@code{user-emacs-directory}で指定されるディレクトリーのサブディレクトリー@file{tree-sitter}から(@ref{Init
+File}を参照);
+@item
+最後にシステムのダイナミックライブラリー用のデフォルト位置。
+@end itemize
+
+これらのディレクトリーそれぞれにおいて、Emacsは変数@code{dynamic-library-suffixes}が指定するファイル名拡張子をもつファイルを探すのです。
+
+Emacsがライブラリーを見つけられなかったりロードに問題がある場合には、Emacsが@code{treesit-load-language-error}エラーをシグナルします。このシグナルのデータは以下のいずれかです:
+
+@table @code
+@item (not-found @var{error-msg} @dots{})
+その言語のグラマーライブラリーをEmacsが見つけられなかったという意味。
+@item (symbol-error @var{error-msg})
+すべての言語のグラマーライブラリーでエクスポートされているべき関数を、そのライブラリーではEmacsが見つけられなかったという意味。
+@item (version-mismatch @var{error-msg})
+その言語のグラマーライブラリーとtree-sitterライブラリーのバージョンに互換性がないという意味。
+@end table
+
+@noindent
+上記すべてのケースにおいて、@var{error-msg}により失敗に関する追加の詳細が提供されるかもしれません。
+
+@defun treesit-language-available-p language &optional detail
+この関数は@var{language}にたいする言語グラマーが存在して、それがロード可能であれば非@code{nil}をリターンする。
+
+@var{detail}が非@code{nil}の場合には、@var{language}が利用可能なら@code{(t
+. nil)}、利用不可なら@code{(nil
+. @var{data})}をリターンする。@var{data}は@code{treesit-load-language-error}のシグナルデータ。
+@end defun
+
+@vindex treesit-load-name-override-list
+慣例により@var{language}用ダイナミックライブラリーのファイル名は@file{libtree-sitter-@var{language}.@var{ext}}です。ここで@var{ext}はダイナミックライブラリー用のシステム固有な拡張子です。同じく慣例により、そのライブラリーが提供する関数の名前は@code{tree_sitter_@var{language}}です。この慣例にしたがっていない言語グラマーライブラリーの場合には、
+
+@example
+(@var{language} @var{library-base-name} @var{function-name})
+@end example
+
+上記エントリーを変数@code{treesit-load-name-override-list}のリストに追加する必要があります。ここで@var{library-base-name}はダイナミックライブラリーのファイル名のベースネーム(basename:
+先行するディレクトリー部分を除外したファイル名のことで、通常だと@file{libtree-sitter-@var{language}})、@var{function-name}はそのライブラリーが提供する関数(通常だと@code{tree_sitter_@var{language}})です。たとえば、
+
+@example
+(cool-lang "libtree-sitter-coool" "tree_sitter_cooool")
+@end example
+
+@noindent
+これは慣例に屈するには自分があまりにも``cool''に過ぎると考える言語の例です。
+
+@cindex language grammar version, compatibility
+@defun treesit-library-abi-version &optional min-compatible
+この関数はtree-sitterライブラリーがサポートしている言語グラマーの@acronym{ABI} (Application Binary
+Interface:
+アプリケーションバイナリーインターフェイス)のバージョンをリターンする。デフォルトではそのライブラリーがサポートする最新のABIバージョンをリターンするが、@var{min-compatible}が非@code{nil}の場合にはそのライブラリーでまだサポートできる最古のABIバージョンをリターンする。言語グラマーライブラリーはtree-sitterライブラリーがサポートする最古と最新の間にあるABIバージョンにたいしてビルドしなければ、tree-sitterライブラリーがそれらをロードできなくなる。
+@end defun
+
+@defun treesit-language-abi-version language
+この関数はEmacsがロードした@var{language}用の言語グラマーライブラリーの@acronym{ABI}バージョンをリターンする。@var{language}が利用できなければ@code{nil}をリターンする。
+@end defun
+
+@heading 構文ツリーの具体例
+@cindex syntax tree, concrete
+
+構文ツリーはパーサーによって生成されます。構文ツリーにおけるノードはそれぞれがテキストのある部分を表し、お互いが親子関係というリレーションシップによって接続されています。たとえば以下のようなソーステキストがあるとします
+
+@example
+1 + 2
+@end example
+
+@noindent
+これは以下のような構文ツリーになるかもしれません
+
+@example
+@group
+                  +--------------+
+                  | root "1 + 2" |
+                  +--------------+
+                         |
+        +--------------------------------+
+        |       expression "1 + 2"       |
+        +--------------------------------+
+           |             |            |
++------------+   +--------------+   +------------+
+| number "1" |   | operator "+" |   | number "2" |
++------------+   +--------------+   +------------+
+@end group
+@end example
+
+これを以下のようにS式で表すことも可能です:
+
+@example
+(root (expression (number) (operator) (number)))
+@end example
+
+@subheading ノードタイプ
+@cindex node types, in a syntax tree
+
+@cindex type of node, tree-sitter
+@anchor{tree-sitter node type}
+@cindex named node, tree-sitter
+@anchor{tree-sitter named node}
+@cindex anonymous node, tree-sitter
+@code{root}、@code{expression}、@code{number}、@code{operator}のような名前はノードの@dfn{タイプ(type:
+型)}を指定します。ただし構文ツリーのすべてのノードがタイプをもつ訳ではありません。タイプをもっていないノードは@dfn{無名ノード(anonymous
+nodes)}、タイプをもつノードは@dfn{名前つきノード(named
+nodes)}と呼ばれています。無名ノードは角カッコ@samp{]}のような区切り文字や@code{return}のようなキーワードを含む、固定化された綴りのトークン(token:
+字句単位)です。
+
+@subheading フィールド名
+
+@cindex field name, tree-sitter
+@cindex tree-sitter node field name
+@anchor{tree-sitter node field name}
+構文ツリーの分析を容易にするために、多くの言語グラマーは子ノードに@dfn{フィールド名(field
+names)}を割り当てています。たとえば@code{function_definition}ノードは@code{declarator}と@code{body}のフィールド名をもつかもしれません:
+
+@example
+@group
+(function_definition
+ declarator: (declaration)
+ body: (compound_statement))
+@end group
+@end example
+
+@heading 構文ツリーの調査
+@cindex explore tree-sitter syntax tree
+@cindex inspection of tree-sitter parse tree nodes
+
+言語の構文の理解、および構文ツリー割り当て使用するLispプログラムのデバッグ支援のために、Emacsはカレントバッファーのソースの構文ツリーをリアルタイムで表示する``explore''モードを提供しています。更にEmacsにはポイント位置にあるノードの情報をモードラインに表示する``inspect''モードも付属しています。
+
+@deffn Command treesit-explore-mode
+このモードはカレントバッファーのソースの構文ツリーを表示するウィンドウをポップアップする。ソースバッファーでテキストを選択することによって、表示されている構文ツリーの対応する部分がハイライトされる。構文ツリーでノードをクリックすれば、ソースバッファーの対応するテキストがハイライトされる。
+@end deffn
+
+@deffn Command treesit-inspect-mode
+このマイナーモードはポイント位置で@emph{始まる}ノードをモードラインに表示する。たとえばモードラインに以下のように表示されるかもしれない
+
+@example
+@var{parent} @var{field}: (@var{node} (@var{child} (@dots{})))
+@end example
+
+@noindent
+ここで@var{node}、@var{child}、...等はポイント位置で始まるノード、@var{parent}は@var{node}の親である。@var{node}はbold書体で表示される。@var{field-name}は@var{node}、@var{child}、...等のフィールド名である。
+
+ポイント位置で始まるノードがない(ポイントがノードの中間にある)場合には、ポイントを跨ぐ(span)もっとも前のノード、およびそのノードの直近の親ノードがモードラインに表示される。
+
+このマイナーモード自身はパーサーを作成せず、@code{(treesit-parser-list)}の最初のパーサーを使用する(@ref{Using
+Parser}を参照)。
+@end deffn
+
+@heading グラマー定義を読む
+@cindex reading grammar definition, tree-sitter
+
+言語グラマーの製作者はプログラミング言語の@dfn{グラマー(grammar:
+文法)}を定義します。パーサーがどのようにしてプログラムテキストから具体的な構文ツリーを構築するかを決めるのがグラマーです。構文ツリーを効果的に使用するためには、@dfn{グラマーファイル(grammar
+file)}を調べる必要があります。
+
+グラマーファイルは通常だと言語グラマーのプロジェクトレポジトリにある@file{grammar.js}です。言語グラマーのホームページへのリンクは@uref{https://tree-sitter.github.io/tree-sitter,
+tree-sitter's homepage}で見つけることができるでしょう。
+
+グラマー定義はJavaScriptによって記述されます。たとえば@code{function_definition}ノードにマッチするようなルールは以下のようなものかもしれません
+
+@example
+@group
+function_definition: $ => seq(
+  $.declaration_specifiers,
+  field('declarator', $.declaration),
+  field('body', $.compound_statement)
+)
+@end group
+@end example
+
+@noindent
+ルールは単一の引数@var{$}を受け取る関数によって表現されます。この関数がグラマー全体を表すのです。この関数自体は他の関数によって構築されています。一連の子ノードをまとめるのが@code{seq}関数、子ノードにフィールド名の注釈をつけるのが@code{field}関数です。上記の定義を俗に@acronym{BNF}
+(@dfn{Backus-Naur Form: バッカス・ナウア記法})と呼ばれる構文で表せば以下のようになるでしょう
+
+@example
+@group
+function_definition :=
+  <declaration_specifiers> <declaration> <compound_statement>
+@end group
+@end example
+
+@noindent
+そしてパーサーがリターンするノードは以下のようになります
+
+@example
+@group
+(function_definition
+  (declaration_specifier)
+  declarator: (declaration)
+  body: (compound_statement))
+@end group
+@end example
+
+以下はグラマー定義で目にするかもしれない関数のリストです。これらの関数はいずれも引数として他のルールを受け取り新たなルールをリターンします。
+
+@table @code
+@item seq(@var{rule1}, @var{rule2}, @dots{})
+すべてのルールに逐一マッチする。
+@item choice(@var{rule1}, @var{rule2}, @dots{})
+引数のルールいずれかにマッチする。
+@item repeat(@var{rule})
+@var{rule}に@emph{0回以上}マッチする。正規表現の演算子@samp{*}に似ている。
+@item repeat1(@var{rule})
+@var{rule}に@emph{1回以上}マッチする。正規表現の演算子@samp{+}に似ている。
+@item optional(@var{rule})
+@var{rule}に@emph{0回または1回}マッチする。正規表現の演算子@samp{?}に似ている。
+@item field(@var{name}, @var{rule})
+@var{rule}にマッチする子ノードにフィールド名@var{name}を割り当てる。
+@item alias(@var{rule}, @var{alias})
+@var{rule}にマッチしたノードをパーサーが生成する構文ツリーで@var{alias}として表示する。たとえば、
+
+@example
+alias(preprocessor_call_exp, call_expression)
+@end example
+
+@noindent
+これにより@code{preprocessor_call_exp}がマッチしたノードが@code{call_expression}と表示される。
+@end table
+
+以下は言語グラマーを読むにあたってそれほど重要ではないグラマー関数です。
+
+@table @code
+@item token(@var{rule})
+単一の葉ノード(leaf
+node)として@var{rule}をマークする。つまり個別の子ノードをもつ親ノードではなく、その単一の葉ノードにすべてが収斂されるようなノードを生成する。@ref{Retrieving
+Nodes}を参照のこと。
+@item token.immediate(@var{rule})
+通常のグラマールールは先行する空白を無視するが、これは空白が前置されていない@var{rule}だけにマッチするよう変更する。
+@item prec(@var{n}, @var{rule})
+@var{rule}にたいしてレベル@var{n}の優先度を与える。
+@item prec.left([@var{n},] @var{rule})
+@var{rule}にたいしてオプションとしてレベル@var{n}を付与して左結合(left-associative)とマークする。
+@item prec.right([@var{n},] @var{rule})
+@var{rule}にたいしてオプションとしてレベル@var{n}を付与して右結合(right-associative)とマークする。
+@item prec.dynamic(@var{n}, @var{rule})
+@code{prec}と似ているが優先度は実行時に適用される。
+@end table
+
+tree-sitterプロジェクトには@uref{https://tree-sitter.github.io/tree-sitter/creating-parsers,
+more about writing a grammar}というドキュメントがあります。特に``The Grammar
+DSL''というセクションを読んでください。
+
+@node Using Parser
+@section tree-sitterパーサーの使用
+@cindex tree-sitter parser, using
+
+このセクションではtree-sitterパーサーをどのようにして作成して構成するかについて説明します。Emacsにおけるtree-sitterパーサーはそれぞれバッファーに関連付けられます。ユーザーによるバッファーの編集にしたがって、関連付けられているパーサーと構文ツリーは自動的に最新に保たれるのです。
+
+@defvar treesit-max-buffer-size
+この変数にはtree-sitterをアクティブにし得るバッファーの最大サイズが含まれる。メジャーモードはtree-sitter機能を有効にするかどうかを判断する際にはこの変数をチェックすること。
+@end defvar
+
+@cindex creating tree-sitter parsers
+@cindex tree-sitter parser, creating
+@defun treesit-parser-create language &optional buffer no-reuse
+指定された@var{buffer}および@var{language} (@ref{Language
+Grammar}を参照)にたいしてパーサーを作成する。バッファーが省略または@code{nil}の場合にはカレントバッファーを意味する。
+
+この関数は@var{buffer}の@var{language}にたいするパーサーがすでに存在していれば、デフォルトではそれを再利用するが@var{no-reuse}が非@code{nil}の場合には常に新たなパーサーを作成する。
+
+そのバッファーがインダイレクトバッファーなら、かわりにベースバッファーを使用する。つまりインダイレクトバッファーではそのベースバッファーのパーサーが使用される。ベースバッファーがナローイングされていると、インダイレクトバッファーがベースバッファーで不可視なバッファーテキスト部分の情報を取得できないかもしれない。Lispプログラムがインダイレクトバッファーでパーサーを使用するためには、必要に応じてwiden(訳注:
+カレントバッファーからナローイングによる制限を取り去る関数)する必要がある。
+@end defun
+
+パーサーが与えられれば、それに関する情報を問い合わせることができます。
+
+@defun treesit-parser-buffer parser
+この関数は@var{parser}に関連付けられているバッファーをリターンする。
+@end defun
+
+@defun treesit-parser-language parser
+この関数は@var{parser}が使用する言語をリターンする。
+@end defun
+
+@defun treesit-parser-p object
+この関数は@var{object}をチェックしてtree-sitterパーサーなら非@code{nil}、そうでなければ@code{nil}をリターンする。
+@end defun
+
+パースは自動的かつ遅延して行われるので、明示的にバッファーをパースする必要はありません。パーサーがパースを行うのは、Lispプログラムがパーサーの構文ツリーのノードにたいして問い合わせを行ったときだけです。したがって最初にパーサーが作成された際にはバッファーのパースは行われず、Lispプログラムがノードにたいする問い合わせを最初に行うまで待機します。同様に何らかの変更をバッファーに行った際にも、パーサーが即座に再パースする訳ではありません。
+
+@vindex treesit-buffer-too-large
+パーサーがパースを行う際にはバッファーのサイズをチェックします。tree-sitterが処理できるのはおよそ4GBまでです。サイズがそれを超えると、Emacsはそのバッファーサイズをシグナルデータとして@code{treesit-buffer-too-large}エラーをシグナルするでしょう。
+
+一度パーサーを作成すると、Emacsが自動的にそれを内部のパーサーリストに追加します。バッファーにたいして変更が行われるたびに、パーサーがインクリメンタルに構文ツリーを更新できるように、Emacsがこのリストにあるパーサーを更新するのです。
+
+@defun treesit-parser-list &optional buffer
+この関数は@var{buffer}のパーサーリストをリターンする。@var{buffer}が@code{nil}または省略の場合のデフォルトはカレントバッファー。そのバッファーがインダイレクトバッファーなら、かわりにベースバッファーを使用する。つまりインダイレクトバッファーではそのベースバッファーのパーサーが使用される。
+@end defun
+
+@defun treesit-parser-delete parser
+この関数は@var{parser}を削除する。
+@end defun
+
+@cindex tree-sitter narrowing
+@anchor{tree-sitter narrowing}
+パーサーは通常はバッファー全体を``見ている''ものですが、バッファーがナローイング(@ref{Narrowing}を参照)されているとパーサーが見るのはバッファーのアクセス可能範囲だけになります。パーサーが見る限りでは、隠されているリージョンは削除されたことになります。後刻バッファーがワイドニングされた際には、先頭と終端にテキストが挿入されたとパーサーは考えるでしょう。パーサーがナローイングを尊重するにしても、複数言語のバッファーを処理するという意味合いでモードはナローイングを使用するべきではありません。そのかわりにパーサーが処理する必要がある範囲をセットするべきです。@ref{Multiple
+Languages}を参照してください。
+
+パーサーはパースを遅延させるので、ユーザーやLispプログラムがバッファーをナローイングしてもパーサーはすぐに影響を受けないのです。バッファーをナローイングしていても、モードがノードについて問い合わせをするまでパーサーはナローイングを認識しません。
+
+@cindex tree-sitter parse string
+@cindex parse string, tree-sitter
+バッファーにたいしてパーサーを作成するだけではなく、Lispプログラムが文字列のパースを行うことも可能です。バッファーと違い文字列のパースは一度かぎりの操作であり、結果を更新する手段はありません。
+
+@defun treesit-parse-string string language
+この関数は@var{language}を使用して@var{string}のパースを行い、生成された構文ツリーのルートノードをリターンする。
+@end defun
+
+@heading パースツリーへの変更による通知
+@cindex update callback, for tree-sitter parse-tree
+@cindex after-change notifier, for tree-sitter parse-tree
+@cindex tree-sitter parse-tree, update and after-change callback
+@cindex notifiers, tree-sitter
+
+Lispプログラムはインクリメンタルなパースによって影響を受けるテキストにたいして通知してほしい場合があるかもしれません。たとえばコメントを閉じるtokenの挿入によって、そのtokenの手前にあるテキストを変換する場合です。たとえテキストが直接変更されなくても、それは``変更''とみなされるのです。
+
+Emacsではこれらの類いの変更にたいして、Lispプログラムにコールバック関数(別名@dfn{notifier})を登録できます。notifier関数は@var{ranges}、@var{parser}という2つの引数を受け取ります。@var{ranges}は@w{@code{(@var{start}
+.
+@var{end})}}という形式をもつコンスセルのリストです。ここで@var{start}、@var{end}は範囲の開始と終了をマークします。@var{parser}は通知を発行するパーサーです。
+
+パーサーはバッファーを再パースするたびに構文ツリーの新旧を比較して、変更されたノード範囲の計算を行いその範囲をnotifier関数に引き渡します。最初のパースも``変更''とみなされるので、最初のパースではバッファー全体を範囲としてnotifier関数が呼び出されることに注意してください。
+
+@defun treesit-parser-add-notifier parser function
+この関数は@var{parser}のnotifier関数のafter-changeリストに@var{function}を追加する。@var{function}はlambda関数ではなく、関数シンボルでなければならない(@ref{Anonymous
+Functions}を参照)。
+@end defun
+
+@defun treesit-parser-remove-notifier parser function
+この関数は@var{parser}のnotifier関数のafter-changeリストから@var{function}を削除する。@var{function}はlambda関数ではなく、関数シンボルでなければならない(@ref{Anonymous
+Functions}を参照)。
+@end defun
+
+@defun treesit-parser-notifiers parser
+この関数は@var{parser}のnotifier関数のリストをリターンする。
+@end defun
+
+@node Retrieving Nodes
+@section ノードの取得
+@cindex retrieve node, tree-sitter
+@cindex tree-sitter, find node
+@cindex get node, tree-sitter
+
+@cindex terminology, for tree-sitter functions
+以下はわたしたちがtree-sitter関数を文書化する際に用いる用語と慣習についてです。
+
+構文ツリーのノードは、バッファーのプログラムテキストのある部分に跨ります(span)。あるノードの跨ぐバッファーテキスト部分が、他のノードのそれより小さい(または大きい)場合には、わたしたちはそのノードが他のノードより``小さい''(または``大きい'')と表現します。ツリーにおいてより深い(``下位''の)ノードは、そのツリーのより``上位''ノードの子となるので、そのノード階層において下位のノードは常に上位のノードより小さくなります。構文ツリーの上位のノードには、その子として1つ以上の小さいノードが含まれており、したがってバッファーテキストのより大きい部分を跨ぐことになるのです。
+
+関数がノードを見つけられなかった場合には@code{nil}をリターンします。利便性のために、引数としてノードを受け取ってノードをリターンするすべての関数も@code{nil}の引数を許し、そのような場合には単に@code{nil}をリターンするようになっています。
+
+@vindex treesit-node-outdated
+関連付けられているバッファーが更新された際にノードが自動的に更新されることはなく、一度取得したノードを更新する術は存在しません。古くなってしまったノードを使用すると@code{treesit-node-outdated}エラーがシグナルされるでしょう。
+
+@heading 構文ツリーからのノードの取得
+@cindex retrieving tree-sitter nodes
+@cindex syntax tree, retrieving nodes
+
+@cindex leaf node, of tree-sitter parse tree
+@cindex tree-sitter parse tree, leaf node
+@defun treesit-node-at pos &optional parser-or-lang named
+この関数はバッファー位置@var{pos}にある@dfn{葉ノード(leaf
+node)}をリターンする。葉ノードとは子ノードを何ももたないノードのこと。
+
+この関数は@var{pos}を跨がって覆う(cover)ようなノードのリターンを試みる。これは開始位置が@var{pos}以下、かつ終了位置が@var{pos}以上であるノードのこと。
+
+@var{pos}を跨いで覆うような葉ノードがない(たとえば@var{pos}が2つの葉ノードの間にある空白にある)場合には、この関数は@var{pos}の後にある最初の葉ノードをリターンする。
+
+最後にもし@var{pos}の後に葉ノードがなければ、@var{pos}の前にある最初の葉ノードをリターンする。
+
+@var{parser-or-lang}がパーサーオブジェクトなら、この関数はそのパーサーを使用する。@var{parser-or-lang}が言語の場合には、この関数はカレントバッファーにおいてその言語用の最初のパーサー、もし存在しなければパーサーを作成してそれを使用する。@var{parser-or-lang}が@code{nil}なら、この関数は@code{treesit-language-at}
+(@ref{Multiple Languages}を参照)を呼び出して、@var{pos}の言語の推測を試みる。
+
+リターンする適切なノードが見つけられなかった場合には、この関数は@code{nil}をリターンする。
+
+@var{named}が非@code{nil}の場合には、この関数は名前つきのノードだけを探す(@ref{tree-sitter named node,
+named node}を参照)。
+
+例:
+
+@example
+@group
+;; Cパーサーの構文ツリーでポイント位置のノードを探す
+(treesit-node-at (point) 'c)
+  @result{} #<treesit-node (primitive_type) in 23-27>
+@end group
+@end example
+@end defun
+
+@defun treesit-node-on beg end &optional parser-or-lang named
+この関数は@var{beg}と@var{end}の間にあるバッファーテキストのリージョンを覆うような、@emph{もっとも小さい}ノードをリターンする。言い換えると開始が@var{beg}以前、かつ終了が@var{end}以降であるようなノードのこと。
+
+@emph{注意せよ:}
+トップレベル構文(関数定義等)の内部ではない空行でこの関数を呼び出すと、恐らくルートノードが取得される場合がほとんどだろう。その空行を覆うもっとも小さいノードがルートノードだというのがその理由だが、あなたが使いたいと望んでいる機能は、ほとんどの場合は@code{treesit-node-at}のほうだろう。
+
+@var{parser-or-lang}がパーサーオブジェクトなら、この関数はそのパーサーを使用する。@var{parser-or-lang}が言語の場合には、この関数はカレントバッファーにおいてその言語用の最初のパーサー、もし存在しなければパーサーを作成してそれを使用する。@var{parser-or-lang}が@code{nil}なら、この関数は@code{treesit-language-at}
+(@ref{Multiple Languages}を参照)を呼び出して、@var{beg}の言語の推測を試みる。
+
+@var{named}が非@code{nil}の場合には、この関数は名前つきのノードだけを探す(@ref{tree-sitter named node,
+named node}を参照)。
+@end defun
+
+@defun treesit-parser-root-node parser
+この関数は@var{parser}が生成した構文ツリーのルートノードをリターンする。
+@end defun
+
+@defun treesit-buffer-root-node &optional language
+この関数はカレントバッファーで@var{language}用の最初のパーサー、パーサーが存在しなければ作成して、そのパーサーが生成したルートノードをリターンする。@var{language}が省略された場合にはパーサーリストの最初のパーサーを使用する。適切なパーサーが見つからなければ@code{nil}をリターンする。
+@end defun
+
+Lispプログラムはノードが与えられれば、そこから始まる他のノードを取得したり、そのノードに関する情報を問い合わせることができます。
+
+@heading ノードからの他ノードの取得
+@cindex syntax tree nodes, retrieving from other nodes
+
+@subheading 親族関係から
+@cindex kinship, syntax tree nodes
+@cindex nodes, by kinship
+@cindex syntax tree nodes, by kinship
+
+@defun treesit-node-parent node
+この関数は@var{node}の直近の親をリターンする。
+
+パースツリー(parse tree:
+解析木)において@var{node}が1000を超える深さのレベルにある場合のリターン値は未定義。現在のところ@code{nil}をリターンするが、将来変更されるかもしれない。
+@end defun
+
+@defun treesit-node-child node n &optional named
+この関数は@var{node}の@var{n}番目の子をリターンする。@var{named}が非@code{nil}なら名前つきのノードだけを考慮する(@ref{tree-sitter
+named node, named node}を参照)。
+
+たとえば文字列@code{"text"}を表すノードの場合には開クォート@code{"}、文字列テキストの@code{text}、それに閉クォート@code{"}という3つの子ノードが存在する。これら3つのノードの中で最初の子は開クォート@code{"}、最初の名前つきの子は文字列テキストとなる。
+
+この関数は@var{n}番目の子が存在しなければ@code{nil}をリターンする。@var{n}は負でも可(@minus{}1は最後の子を表す)。
+@end defun
+
+@defun treesit-node-children node &optional named
+この関数は@var{node}のすべての子をリストでリターンする。@var{named}が非@code{nil}なら名前つきのノードだけを取得する。
+@end defun
+
+@defun treesit-node-next-sibling node &optional named
+この関数は@var{node}の次の兄弟を探す。@var{named}が非@code{nil}なら次の名前つきの兄弟を探す。
+@end defun
+
+@defun treesit-node-prev-sibling node &optional named
+この関数は@var{node}の前の兄弟を探す。@var{named}が非@code{nil}なら前の名前つきの兄弟を探す。
+@end defun
+
+@subheading フィールド名から
+@cindex nodes, by field name
+@cindex syntax tree nodes, by field name
+
+構文ツリーの分析をより容易にするために、多くの言語ではグラマーで子ノードに@dfn{フィールド名(field
+names)}を割り当てています(@ref{tree-sitter node field name, field
+name}を参照)。たとえば@code{function_definition}ノードには@code{declarator}や@code{body}というノードがあるかもしれません。
+
+@defun treesit-node-child-by-field-name node field-name
+この関数はフィールド名が@var{field-name}(文字列)であるような@var{node}の子を探す。
+
+@example
+@group
+;; フィールド名が"body"という子を取得
+(treesit-node-child-by-field-name node "body")
+  @result{} #<treesit-node (compound_statement) in 45-89>
+@end group
+@end example
+@end defun
+
+@subheading 位置から
+@cindex nodes, by position
+@cindex syntax tree nodes, by position
+
+@defun treesit-node-first-child-for-pos node pos &optional named
+この関数はバッファー位置@var{pos}を超えて広がるような@var{node}の最初の子をリターンする。``超えて広がる(extends
+beyond)''とは子ノードの終端が@var{pos}以降であることを意味する。この関数は@var{node}の直接の子だけを調べる(孫は調べない)。@var{named}が非@code{nil}の場合には最初の名前つきの子を探す(@ref{tree-sitter
+named node, named node}を参照)。
+@end defun
+
+@defun treesit-node-descendant-for-range node beg end &optional named
+これは位置@var{beg}と@var{end}の間にあるテキストリージョンを跨ぐような、@emph{もっとも小さい}@var{node}の子孫ノードを探す、@code{treesit-node-at}と似た関数。@var{named}が非@code{nil}の場合には、もっとも小さい名前つきの子を探す。
+@end defun
+
+@heading ノードの検索
+
+@defun treesit-search-subtree node predicate &optional backward all depth
+この関数は@var{node}のサブツリー(@var{node}自体を含む)を横断(traverse)して、@var{predicate}が非@code{nil}をリターンするようなノードを探す。@var{predicate}はノードそれぞれのタイプにたいしてマッチさせるregexp、あるいはノードを受け取りそのノードがマッチしたら非@code{nil}をリターンするような述語関数。この関数はマッチした最初のノード、何もマッチしなければ@code{nil}をリターンする。
+
+この関数が検索するのはデフォルトでは名前つきノードだけだが、@var{all}が非@code{nil}ならすべてのノードを横断して検索を行う。@var{backward}が非@code{nil}の場合には後方に横断して検索する(ツリーを下降して横断していく際に最後の子を最初に調べる)。@var{depth}が非@code{nil}なら、それはツリーを横断して下降できるレベル数を制限する数値でなければならない。@var{depth}が@code{nil}の場合のデフォルトは1000。
+@end defun
+
+@defun treesit-search-forward start predicate &optional backward all
+この関数は(@var{start}を除けば)@code{treesit-search-subtree}と同じようにパースツリーを横断して、@var{predicate}によりそれぞれのノードをマッチする(@var{predicate}はregexpまたは関数)。以下のようなツリー(@samp{S}マークは@var{start})の場合には、この関数は1から12の順に横断していく:
+
+@example
+@group
+              12
+              |
+     S--------3----------11
+     |        |          |
+o--o-+--o  1--+--2    6--+-----10
+|  |                  |        |
+o  o                +-+-+   +--+--+
+                    |   |   |  |  |
+                    4   5   7  8  9
+@end group
+@end example
+
+この関数は@var{start}のサブツリーを横断せず、常に上方に移動する前にまず葉ノードを横断することに注意。
+
+この関数が検索するのは@code{treesit-search-subtree}と同じようにデフォルトでは名前つきノードだけだが、@var{all}が非@code{nil}ならすべてのノードを検索する。@var{backward}が非@code{nil}の場合には後方に検索する。
+
+@code{treesit-search-subtree}はノードのサブツリーを横断するが、この関数はノード@var{start}から開始してバッファーの位置順でその後にあるすべてのノード(開始位置が@var{start}の終了位置より大きいノード)を横断する。
+
+上図で示すツリーにおいて、@code{treesit-search-subtree}はノード@samp{S}
+(@var{start})および@code{o}のマークがついたノードを横断するが、この関数は数字のマークがついたノードを横断する。この関数は``バッファーで@var{start}の後にあり何らかの条件を満足する最初のノードはどれ?''、のような問いの答えを求めるのに役に立つ。
+@end defun
+
+@defun treesit-search-forward-goto node predicate &optional start backward all
+この関数はバッファーで@var{node}の後にあり@var{predicate}にマッチする次のノードの開始または終了にポイントを移動する。@var{start}が非@code{nil}なら、ノードの終了ではなく開始で停止する。
+
+この関数がリターンするマッチしたノードは、バッファー位置という点において進行方向にある(リターンされたノードの開始/終了は@var{node}のそれより常に大きい)ことが保証されている。
+
+引数@var{predicate}、@var{backward}、@var{all}は@code{treesit-search-forward}の場合と同じ。
+@end defun
+
+@defun treesit-induce-sparse-tree root predicate &optional process-fn depth
+この関数は@var{root}のサブツリーからsparseツリー(疎らなツリー)を作成する。
+
+この関数は@var{root}配下のサブツリーを受け取って、@var{predicate}にマッチするノードだけが残るように間引く。前の関数と同じように@var{predicate}はノードそれぞれのタイプにマッチさせるためのregexp文字列、またはノードを受け取ってマッチした場合には非@code{nil}をリターンする。
+
+たとえば数字と文字の両方で構成される左側のサブツリーが与えられた場合に、``文字のみ''という@var{predicate}でリターンされるのが右側のツリー。
+
+@example
+@group
+    a                 a              a
+    |                 |              |
++---+---+         +---+---+      +---+---+
+|   |   |         |   |   |      |   |   |
+b   1   2         b   |   |      b   c   d
+    |   |     =>      |   |  =>      |
+    c   +--+          c   +          e
+    |   |  |          |   |
+ +--+   d  4       +--+   d
+ |  |              |
+ e  5              e
+@end group
+@end example
+
+この関数は@var{process-fn}が非@code{nil}の場合には、マッチしたノードではなくノードをそれぞれ@var{process-fn}に渡してリターン値を使用する。@var{depth}が非@code{nil}なら、それは@var{root}から下降できるレベル数制限であること。@var{depth}が@code{nil}の場合のデフォルトは1000。
+
+リターンされるツリーのノードはそれぞれ@w{@code{(@var{tree-sitter-node} . (@var{child}
+@dots{}))}}のようになる。このツリーのルートである@var{tree-sitter-node}は、@var{root}が@var{predicate}にマッチしなければ@code{nil}になる。@var{predicate}にマッチするノードがなければ、この関数は@code{nil}をリターンする。
+@end defun
+
+@heading より便利な関数
+
+@defun treesit-filter-child node predicate &optional named
+この関数は@var{predicate}を満足する@var{node}の直接の子を探す。
+
+@var{predicate}は引数としてノードを受け取り、そのノードを候補に残すべきなら非@code{nil}をリターンする関数であること。@var{named}が非@code{nil}なら、この関数は名前つきのノードだけを調べる。
+@end defun
+
+@defun treesit-parent-until node predicate &optional include-node
+この関数は@var{node}の親を順繰りに探して、@var{predicate}
+(引数としてノードを受け取りマッチを示すブーリーン値をリターンする関数)を満足する親をリターンする。@var{predicate}を満足する親がいなければ、この関数は@code{nil}をリターンする。
+
+この関数は通常だと@var{node}自体ではなく@var{node}の親だけを調べる。しかし、@var{include-node}が非@code{nil}の場合には、@var{node}が@var{predicate}を満足すれば@var{node}をリターンする。
+@end defun
+
+@defun treesit-parent-while node predicate
+この関数は@var{node}を開始点としてノードが@var{predicate}
+(引数としてノードを受け取る関数)を満足するかぎりツリーを上方に移動する。つまりこの関数は@var{predicate}を満足するもっとも高位にある@var{node}の親をリターンする。@var{node}が@var{pred}を満足して、かつ直近の親は@var{predicate}を満足しなければ、@var{node}自体がリターンされることに注意。
+@end defun
+
+@defun treesit-node-top-level node &optional predicate include-node
+この関数は@var{node}と同じタイプをもつ、もっとも高くにある親をリターンする。そのような親がいなければ@code{nil}をリターンする。したがってこの関数は@var{node}がトップレベルかどうかをテストするためにも役に立つ。
+
+この関数は@var{predicate}が@code{nil}なら@var{node}のタイプを用いて親を探し、@var{predicate}が非@code{nil}なら@var{predicate}を満足する親を検索する。@var{include-node}が非@code{nil}の場合には、この関数は@var{predicate}を満足する@var{node}をリターンする。
+@end defun
+
+@node Accessing Node Information
+@section ノード情報へのアクセス
+@cindex information of node, syntax trees
+@cindex syntax trees, node information
+
+@heading ノードの基本的な情報
+
+すべてのノードはパーサーに関連付けられていて、そのパーサーが関連付けられているのがバッファーです。以下はそれらを取得する関数です。
+
+@defun treesit-node-parser node
+この関数は@var{node}に関連付けられているパーサーをリターンする。
+@end defun
+
+@defun treesit-node-buffer node
+この関数は@var{node}のパーサーに関連付けられているバッファーをリターンする。
+@end defun
+
+@defun treesit-node-language node
+この関数は@var{node}に関連付けられている言語をリターンする。
+@end defun
+
+それぞれのノードはバッファー内のテキストのある範囲を表しています。そのテキストに関する情報を探すのが以下の関数です。
+
+@defun treesit-node-start node
+@var{node}の開始位置をリターンする。
+@end defun
+
+@defun treesit-node-end node
+@var{node}の終了位置をリターンする。
+@end defun
+
+@defun treesit-node-text node &optional object
+@var{node}が表しているバッファーテキストを文字列としてリターンする(@var{node}が文字列をパースすることによって取得されたものであれば、その文字列のテキストをリターンする)。
+@end defun
+
+@cindex predicates for syntax tree nodes
+以下はtree-sitterのノード用の述語の一部です:
+
+@defun treesit-node-p object
+@var{object}がtree-sitterの構文ノードかをチェックする。
+@end defun
+
+@cindex compare tree-sitter syntax nodes
+@cindex tree-sitter nodes, comparing
+@defun treesit-node-eq node1 node2
+tree-sitterの構文ツリーにおいて@var{node1}と@var{node2}が同じノードを参照しているかをチェックする。この関数は@code{equal}と等価なメトリックを用いる。@code{equal}を使用してノードを比較することも可能(@ref{Equality
+Predicates}を参照)。
+@end defun
+
+@heading プロパティ情報
+
+具体的な構文ツリーにおけるノードは一般的に@dfn{名前つきノード(named nodes)}と@dfn{無名ノード(anonymous
+nodes)}という2つのカテゴリーに大別されます。あるノードが名前つきか、それとも無名なのかは言語グラマーによって判断されます(@ref{tree-sitter
+named node, named node}を参照)。
+
+@cindex tree-sitter missing node
+@cindex missing node, tree-sitter
+ノードが名前つきか、あるいは無名かというプロパティに加えて、ノードは他のプロパティをもつことができます。ノードが``欠落(missing)''していることもあり得ます。このようなノードは特定の類の構文エラー(たとえばグラマーに照らせば恐らくそこにあるべき何らかが存在しない)から復帰するためにパーサーによって挿入されます。これはプログラムソースの編集中において、そのソースがまだ最終形になっていないときに発生し得るエラーです。
+
+@cindex tree-sitter extra node
+@cindex extra node, tree-sitter
+``余分(extra)''というノードもあります。このようなノードはテキスト内の任意の場所に出現し得る、コメントのようなオブジェクトを表しています。
+
+@cindex tree-sitter outdated node
+@cindex outdated node, tree-sitter
+パーサーがノードを作成した後に少なくとも1回再パースされた場合には、``期限切れ(outdated)''のノードになることがあります。
+
+@cindex tree-sitter node that has error
+@cindex has error, tree-sitter node
+ノードが跨ぐテキストに構文エラーが含まれていれば、``エラーあり(has
+error)''のノードです。ノード自体にエラーがあったり、子孫のいずれかのノードにエラーがあるのかもしれません。
+
+@cindex tree-sitter, live parsing node
+@cindex live node, tree-sitter
+ノードはそのノードのパーサーが削除されておらず、更にそのノードが生きているバッファー(@ref{Killing
+Buffers}を参照)であれば@dfn{生きている(live)}とみなされます。
+
+@defun treesit-node-check node property
+この関数は@var{node}が指定された@var{property}をもっていれば非@code{nil}をリターンする。@var{property}は@code{named}、@code{missing}、@code{extra}、@code{outdated}、@code{has-error}、@code{live}のいずれか。
+@end defun
+
+@defun treesit-node-type node
+名前つきノードは``タイプ(type)''をもつことができる(@ref{tree-sitter node type, node
+type}を参照)。たとえば名前つきノード@code{string_literal}のタイプを@code{string_literal}にすることができる。無名ノードは、単にそのノードが表すテキストがタイプとなる(たとえば@samp{,}ノードのタイプは単に@samp{,})。
+
+この関数は@var{node}のタイプを文字列としてリターンする。
+@end defun
+
+@heading 子や親としての情報
+
+@defun treesit-node-index node &optional named
+この関数は親から@var{node}を子ノードとして見た場合のインデックスをリターンする。@var{named}が非@code{nil}の場合には名前つきノードだけを考慮する(@ref{tree-sitter
+named node, named node}を参照)。
+@end defun
+
+@defun treesit-node-field-name node
+親をもつ子ノードはフィールド名をもつことができる(@ref{tree-sitter node field name, field
+name}を参照)。この関数は親から@var{node}を子ノードとして見た場合のフィールド名をリターンする。
+@end defun
+
+@defun treesit-node-field-name-for-child node n
+この関数は@var{node}の@var{n}番目の子のフィールド名をリターンする。@var{n}番目の子がいない、または@var{n}番目の子にフィールド名がなければ@code{nil}をリターンする。
+
+@var{n}は名前つきの子と無名の子の両方を考慮することに注意。また@var{n}は負でもよい(@minus{}1は最後の子を表す)。
+@end defun
+
+@defun treesit-node-child-count node &optional named
+この関数は@var{node}の子の数をリターンする。@var{named}が非@code{nil}の場合には名前つきの子だけを考慮する(@ref{tree-sitter
+named node, named node}を参照)。
+@end defun
+
+@node Pattern Matching
+@section tree-sitterノードにたいするパターンマッチング
+@cindex pattern matching with tree-sitter nodes
+
+@cindex capturing, tree-sitter node
+tree-sitterでは小さな宣言型言語を用いてLispプログラムによるパターンのマッチングができます。このパターンマッチングは2つのステップから構成されています。まずtree-sitterが構文ツリーのノードにたいする@dfn{パターン(pattern)}のマッチを行い、その後にパターンにマッチした特定のノードを@dfn{キャプチャー(capture)}してそのノードをリターンするのです。
+
+まずはもっとも基本的なクエリーパターンを記述してパターン内のノードをキャプチャーする方法、それからパターンマッチング関数、そして最後により上級のパターン構文について説明していきます。
+
+@heading 基本的なクエリー構文
+
+@cindex tree-sitter query pattern syntax
+@cindex pattern syntax, tree-sitter query
+@cindex query, tree-sitter
+@dfn{クエリー(query:
+問い合わせ)}は複数の@dfn{パターン(patterns)}によって構成されます。パターンはそれぞれ構文ノード内の特定ノードにマッチするS式です。パターンは@w{@code{(@var{type}
+(@var{child}@dots{}))}}という形式をもっています。
+
+たとえば子ノードを含んだノード@code{binary_expression}にマッチするのは以下のようなパターンでしょう
+
+@example
+(binary_expression (number_literal))
+@end example
+
+上記のクエリーパターンを用いてノードを@dfn{キャプチャー(capture)}するためには、キャプチャーしたいノードパターンの後に@code{@@@var{capture-name}}を追加します。たとえば、
+
+@example
+(binary_expression (number_literal) @@number-in-exp)
+@end example
+
+@noindent
+これはノード@code{binary_expression}にあるノード@code{number_literal}をキャプチャー名でキャプチャーします。
+
+同じようにして、たとえばキャプチャー名@code{biexp}でノード@code{binary_expression}をキャプチャーできます:
+
+@example
+(binary_expression
+ (number_literal) @@number-in-exp) @@biexp
+@end example
+
+@heading クエリー関数
+
+@cindex query functions, tree-sitter
+これで@dfn{クエリー関数(query functions)}を説明する準備ができました。
+
+@defun treesit-query-capture node query &optional beg end node-only
+この関数は@var{query}のパターンを@var{node}とマッチする。引数@var{query}はS式、文字列、またはコンパイル済みクエリーオブジェクトのいずれか。ここではS式構文に焦点を当てる。文字列構文およびコンパイル済みクエリーについては、このセクションの最後で説明しよう。
+
+引数@var{node}はパーサー、あるいは言語シンボルでもよい。パーサーの場合にはそのルートノードを、言語シンボルならまずカレントバッファーでその言語用のパーサーを探すか作成してそのルートノードを使用する。
+
+この関数はキャプチャーしたすべてのノードを、@w{@code{(@var{capture_name}
+.
+@var{node})}}という要素をもつalistでリターンする。@var{node-only}が非@code{nil}の場合には、かわりに@var{node}のリストをリターンする。デフォルトでは@var{node}のテキスト全体を検索するが、@var{beg}と@var{end}がいずれも非@code{nil}であれば、それはこの関数がノードをマッチするべきバッファーテキストのリージョンを指定する。@var{beg}と@var{end}の間のリージョンを跨いで重なるようなノードがマッチすればすべてキャプチャーされる(完全にそのリージョンに含まれている必要はない)。
+
+@vindex treesit-query-error
+@findex treesit-query-validate
+この関数は@var{query}が不正な形式であれば@code{treesit-query-error}エラーraiseする。シグナルデータには、その特定。エラーに関する説明が含まれている。クエリーの検証とデバッグには@code{treesit-query-validate}を使うことができる。
+@end defun
+
+たとえば@var{node}のテキストが@code{1 + 2}で、以下のクエリーを考えてみましょう
+
+@example
+@group
+(setq query
+      '((binary_expression
+         (number_literal) @@number-in-exp) @@biexp)
+@end group
+@end example
+
+このクエリーをマッチングすると以下がリターンされます
+
+@example
+@group
+(treesit-query-capture node query)
+    @result{} ((biexp . @var{<node for "1 + 2">})
+       (number-in-exp . @var{<node for "1">})
+       (number-in-exp . @var{<node for "2">}))
+@end group
+@end example
+
+前に言及したように、@var{query}に複数のパターンを含めることができます。たとえば以下のようにトップレベルのパターンを2つもつことができます:
+
+@example
+@group
+(setq query
+      '((binary_expression) @@biexp
+        (number_literal) @@number @@biexp)
+@end group
+@end example
+
+@defun treesit-query-string string query language
+この関数は@var{language}として@var{string}をパースして、そのルートノードにたいして@var{query}をマッチ、その結果をリターンする。
+@end defun
+
+@heading その他のクエリー構文
+
+ノードのタイプとキャプチャー名以外にも、tree-sitterのパターン構文により無名ノード、フィールド名、ワイルドカード、量化、グルーピング、選択、アンカー、述語を表現することができます。
+
+@subheading 無名ノード
+
+無名ノードはクォートで括ることで逐語的に記述されます。キーワード@code{return}にマッチ(してキャプチャー)するパターンは以下のようになるでしょう 
+
+@example
+"return" @@keyword
+@end example
+
+@subheading ワイルドカード
+
+パターンにおいて@samp{(_)}は任意の名前つきノード、@samp{_}は名前つきノードや無名ノードのすべてにマッチします。たとえば@code{binary_expression}ノードの名前つきの子をすべてキャプチャーするパターンは以下のようになるでしょう
+
+@example
+(binary_expression (_) @@in-biexp)
+@end example
+
+@subheading フィールド名
+
+特定のフィールド名をもつ子ノードをキャプチャーすることは可能です。以下のパターンでは、フィールド名であることを示すコロンが後置されている@code{declarator}と@code{body}がフィールド名です。
+
+@example
+@group
+(function_definition
+  declarator: (_) @@func-declarator
+  body: (_) @@func-body)
+@end group
+@end example
+
+特定のフィールドをもたないノード、たとえば@code{body}フィールドのない@code{function_definition}をキャプチャーすることも可能です:
+
+@example
+(function_definition !body) @@func-no-body
+@end example
+
+@subheading ノードの量化
+
+@cindex quantify node, tree-sitter
+tree-sitterは量化演算子(quantification
+operator)の@samp{:*}、@samp{:+},@samp{:?}を認識します。これらの演算子の意味は正規表現の場合と同じです。@samp{:*}と@samp{:+}はそれぞれ前にあるパターンの0個以またはは1個以上の繰り返し、@samp{:?}は前のパターンの0個または1個の繰り返しにマッチします。
+
+たとえば以下は@code{long}というキーワードの@emph{0個以上}の繰り返しにマッチするパターンです。
+
+@example
+(type_declaration "long" :*) @@long-type
+@end example
+
+こちらは@code{long}というキーワードをもつか、あるいはもたないかというタイプ宣言用のパターンです:
+
+@example
+(type_declaration "long" :?) @@long-type
+@end example
+
+@subheading グルーピング
+
+正規表現におけるグループと同じように、パターンをグループにまとめたり量化演算子を適用することができます。たとえばカンマで区切られた識別子を表現するには、以下のように記述できるでしょう
+
+@example
+(identifier) ("," (identifier)) :*
+@end example
+
+@subheading 選択
+
+繰り返しになりますが正規表現と同じように、パターンにおいて``これらのパターンのいずれかにマッチ''と表現することができます。この構文はパターンのベクターです。たとえばCのいくつかのキーワードをキャプチャーするパターンは、以下のように記述できるでしょう
+
+@example
+@group
+[
+  "return"
+  "break"
+  "if"
+  "else"
+] @@keyword
+@end group
+@end example
+
+@subheading アンカー
+
+たとえば2つのオブジェクトを隣接させるといったように、アンカー演算子@code{:anchor}を用いて並置させることができます。2つの``オブジェクト''には2つのノードや子ノードと最後の親などを指定できます。たとえば最初最後の子、あるいは2つの隣接した子をキャプチャーするには:
+
+@example
+@group
+;; 子と最後で親をアンカー
+(compound_expression (_) @@last-child :anchor)
+@end group
+
+@group
+;; 子と最初の親をアンカー
+(compound_expression :anchor (_) @@first-child)
+@end group
+
+@group
+;; 隣接する2つの子をアンカー
+(compound_expression
+ (_) @@prev-child
+ :anchor
+ (_) @@next-child)
+@end group
+@end example
+
+並置させる際には無名ノードは無視されることに注意してください。
+
+@subheading 述語
+
+パターンに述語による制約を追加することができます。たとえば以下のパターンでは:
+
+@example
+@group
+(
+ (array :anchor (_) @@first (_) @@last :anchor)
+ (:equal @@first @@last)
+)
+@end group
+@end example
+
+@noindent
+tree-sitterは配列の最初と最後の要素が等しい場合だけマッチします。パターンに述語を付加するためには、それらをグループにまとめる必要があります。現在のところ@code{:equal}、@code{:match}、@code{:pred}という3つの述語があります。
+
+@deffn Predicate :equal arg1 arg2
+@var{arg1}と@var{arg2}が等しければマッチ。引数は文字列またはキャプチャー名のいずれか。キャプチャー名とは、バッファーにおいてキャプチャーされたノードが跨ぐテキストを表す。
+@end deffn
+
+@deffn Predicate :match regexp capture-name
+バッファーにおいて@var{capture-name}のノードが跨ぐテキストと、文字列リテラルとして与えられた正規表現@var{regexp}がマッチすればマッチ。マッチは大文字小文字を区別する。
+@end deffn
+
+@deffn Predicate :pred fn &rest nodes
+関数@var{fn}に@var{nodes}内のノードそれぞれを渡して非@code{nil}がリターンされたらマッチ。
+@end deffn
+
+述語が参照できるのは、同じパターン内に出現するキャプチャー名だけであることに注意してください。実際問題として別のパターンからキャプチャー名を参照しても、意味はほとんどありません。
+
+@heading 文字列パターン
+
+@cindex tree-sitter patterns as strings
+@cindex patterns, tree-sitter, in string form
+S式の他にも、Emacsでは使用するtree-sitterのネイティブクエリー構文を文字列として記述することができます。これはS式の構文とよく似ています。たとえば以下のクエリーは
+
+@example
+@group
+(treesit-query-capture
+ node '((addition_expression
+         left: (_) @@left
+         "+" @@plus-sign
+         right: (_) @@right) @@addition
+
+         ["return" "break"] @@keyword))
+@end group
+@end example
+
+@noindent
+以下と等価です
+
+@example
+@group
+(treesit-query-capture
+ node "(addition_expression
+        left: (_) @@left
+        \"+\" @@plus-sign
+        right: (_) @@right) @@addition
+
+        [\"return\" \"break\"] @@keyword")
+@end group
+@end example
+
+ほとんどのパターンは文字列内部のS式として直接記述できます。変更が必要になるのはごく少数のパターンだけです:
+
+@itemize
+@item
+アンカー@code{:anchor}は@samp{.}と記述。
+@item
+@samp{:?}は@samp{?}と記述。
+@item
+@samp{:*}は@samp{*}と記述。
+@item
+@samp{:+}は@samp{+}と記述。
+@item
+@code{:equal}、@code{:match}、@code{:pred}はそれぞれ@code{#equal}、@code{#match}、@code{#pred}と記述。一般的には述語の@samp{:}を@samp{#}に変更する。
+@end itemize
+
+たとえば、
+
+@example
+@group
+'((
+   (compound_expression :anchor (_) @@first (_) :* @@rest)
+   (:match "love" @@first)
+   ))
+@end group
+@end example
+
+@noindent
+文字列形式では以下のように記述します
+
+@example
+@group
+"(
+  (compound_expression . (_) @@first (_)* @@rest)
+  (#match \"love\" @@first)
+  )"
+@end group
+@end example
+
+@heading クエリーのコンパイル
+
+@cindex compiling tree-sitter queries
+@cindex queries, compiling
+繰り返し使うことを意図したクエリー、とりわけタイトなループ(訳注
+:少ない命令を含み多数回実行されるループ)では、クエリーのコンパイルが重要になります。なぜならコンパイル済みのクエリーは、コンパイルされていないものと比較して非常に高速だからです。クエリーの使用が許されている場所ならどこでもコンパイル済みクエリーを使うことができます。
+
+@defun treesit-query-compile language query
+この関数は@var{language}の@var{query}をコンパイル済みクエリーオブジェクトにコンパイルして、それをリターンする。
+
+この関数は@var{query}が不正な形式であれば@code{treesit-query-error}エラーraiseする。シグナルデータには、その特定。エラーに関する説明が含まれている。クエリーの検証とデバッグには@code{treesit-query-validate}を使うことができる。
+@end defun
+
+@defun treesit-query-language query
+この関数は@var{query}の言語をリターンする。
+@end defun
+
+@defun treesit-query-expand query
+この関数はS式の@var{query}を文字列フォーマットに変換する。
+@end defun
+
+@defun treesit-pattern-expand pattern
+この関数はS式の@var{pattern}を文字列フォーマットに変換する。
+@end defun
+
+パターンマッチングに関する詳細については、@uref{https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries}にあるtree-sitterプロジェクトのドキュメントを参照してください。
+
+@node Multiple Languages
+@section 複数言語ののパース
+@cindex multiple languages, parsing with tree-sitter
+@cindex parsing multiple languages with tree-sitter
+プログラミング言語のソースの一部に他の言語のソースが含まれているときがあります。一例としては@acronym{HTML} + @acronym{CSS}
++
+JavaScriptが挙げられます。このような場合には、別の言語によって記述されたテキストセグメントには別のパーサーを割り当てる必要があります。伝統的にこれはナローイングの使用によって達成されてきました。tree-sitterはナローイング(@ref{tree-sitter
+narrowing,
+narrowing}を参照)とともに機能しますが、推奨される方法はバッファーテキストのリージョン(範囲)にそれを操作するパーサーを指定する方法です。このセクションではパーサーにたいして範囲のセットや取得を行う関数について説明します。
+
+Lispプログラムがバッファーでパーサーを使う前には、@code{treesit-update-ranges}の呼び出しによってパーサーそれぞれにたいする範囲が正しいか確認して、その位置にあるテキストにたいして任を負うパーサーを解決する必要があります。この2つの関数自身は作業を行わず、実際に作業を行うにはメジャーモードが@code{treesit-language-at-point-function}および@code{treesit-language-at-point-function}をセットする必要があります。これらの関数および変数については、このセクションの終わり近くで詳細に説明しましょう。
+
+@heading 範囲の取得とセット
+
+@defun treesit-parser-set-included-ranges parser ranges
+この関数は@var{ranges}にたいして処理を行なうために@var{parser}をセットアップする。@var{parser}が読み込むのは指定された範囲のテキストのみ。@var{ranges}内の範囲はそれぞれ@w{@code{(@var{beg}
+. @var{end})}}という形式のペアーである。
+
+@var{ranges}の範囲は、以下の疑似コードのように重複せず順番に並んでいなければならない。
+
+@example
+@group
+(cl-loop for idx from 1 to (1- (length ranges))
+         for prev = (nth (1- idx) ranges)
+         for next = (nth idx ranges)
+         should (<= (car prev) (cdr prev)
+                    (car next) (cdr next)))
+@end group
+@end example
+
+@vindex treesit-range-invalid
+@var{ranges}がこの制約に違反したり、何か他の問題が発生した場合には、この関数は@code{treesit-range-invalid}エラーをシグナルする。シグナルデータには特定のエラーメッセージ、セットを試みた範囲が含まれている。
+
+この関数は範囲を無効にするためにも使うことができる。@var{ranges}が@code{nil}の場合には、パーサーはバッファー全体をパースするようにセットされる。
+
+例:
+
+@example
+@group
+(treesit-parser-set-included-ranges
+ parser '((1 . 9) (16 . 24) (24 . 25)))
+@end group
+@end example
+@end defun
+
+@defun treesit-parser-included-ranges parser
+この関数は@var{parser}にセットされている範囲をリターンする。リターン値は@code{treesit-parser-included-ranges}の@var{ranges}引数と同じく@w{@code{(@var{beg}
+. @var{end})}}という形式のコンスセルのリスト。@var{parser}が範囲を何ももっていなければリターン値は@code{nil}。
+
+@example
+@group
+(treesit-parser-included-ranges parser)
+    @result{} ((1 . 9) (16 . 24) (24 . 25))
+@end group
+@end example
+@end defun
+
+@defun treesit-query-range source query &optional beg end
+この関数は@var{source}を@var{query}でマッチングしてキャプチャーされたノードをリターンする。リターン値は@w{@code{(@var{beg}
+. @var{end})}}という形式のコンスセルのリスト。ここで@var{beg}と@var{end}はそれぞれテキスト範囲の開始と終了をする。
+
+利便性のために@var{source}は言語シンボル、パーサー、あるいはノードでもよい。この関数はそれが言語シンボルならその言語を使用する最初のパーサーのルートノード、パーサーならそのパーサーのルートノード、ノードならそのノードでマッチを行なう。
+
+引数@var{query}はノードのキャプチャーに用いるクエリー(@ref{Pattern
+Matching}を参照)。引数@var{beg}と@var{end}がどちらも非@code{nil}なら、それはこの関数がクエリーを行なう範囲を制限する。
+
+他のクエリー関数と同じように、この関数は@var{query}が不正であれば@code{treesit-query-error}エラーをraiseする。
+@end defun
+
+@heading Lispプログラムで複数言語をサポートするには
+
+一般的なLispプログラムにおいて言語が複数ミックスされたプログラムをサポートするには、以下の2つの関数を呼び出すだけで十分です。
+
+@defun treesit-update-ranges &optional beg end
+この関数はバッファーのパーサーの範囲を更新する。この関数はパーサーの範囲が@var{beg}と@var{end}の間に正しくセットされているかを@code{treesit-range-settings}に照らして確認する。省略された場合のデフォルトは@var{beg}がバッファー先頭、@var{end}がバッファー終端となる。
+
+たとえばフォント表示(fontification)を行なう関数は、リージョン内のノードにクエリーを行う前にこの関数を使用する。
+@end defun
+
+@defun treesit-language-at pos
+この関数はバッファー位置@var{pos}にあるテキストの言語をリターンする。その背後では@code{treesit-language-at-point-function}を呼び出して、そのリターンされた値をリターンしている。@code{treesit-language-at-point-function}が@code{nil}の場合には、この関数は@code{treesit-parser-list}のリターン値から最初のパーサーの言語をリターンする。バッファーにパーサーがなければ@code{nil}をリターンする。
+@end defun
+
+@heading メジャーモードで複数の言語をサポートするには
+
+@cindex host language, tree-sitter
+@cindex tree-sitter host and embedded languages
+@cindex embedded language, tree-sitter
+ミックスされているかもしれない一連の言語では、@dfn{ホスト言語(host language)}と1つ以上の@dfn{埋め込み言語(embedded
+languages)}が存在することが珍しくありません。Lispプログラムはまずホスト言語のパーサーでドキュメント全体をパースすることで情報を得てから、それを用いて埋め込み言語の範囲をセット、その後に埋め込み言語をパースするのです。
+
+@acronym{HTML}、@acronym{CSS}、それにJavaScriptを含むバッファーを例にとります。Lispプログラムはまず@acronym{HTML}パーサーでバッファー全体をパースして、それからパーサーに@acronym{CSS}とJavaScriptに相当する@code{style_element}と@code{script_element}のノードをクエリーするのです。その後に@acronym{CSS}とJavaScriptそれぞれにたいして、対応するノードが跨がる範囲をセットします。
+
+シンプルな@acronym{HTML}ドキュメントが与えられると:
+
+@example
+@group
+<html>
+  <script>1 + 2</script>
+  <style>body @{ color: "blue"; @}</style>
+</html>
+@end group
+@end example
+
+@noindent
+Lispプログラムはまず@acronym{HTML}パーサーでパースを行い、それから@acronym{CSS}とJavaScriptそれぞれのパーサーにたいして範囲をセットします:
+
+@example
+@group
+;; パーサーの作成
+(setq html (treesit-parser-create 'html))
+(setq css (treesit-parser-create 'css))
+(setq js (treesit-parser-create 'javascript))
+@end group
+
+@group
+;; CSSの範囲をセット
+(setq css-range
+      (treesit-query-range
+       'html
+       '((style_element (raw_text) @@capture))))
+(treesit-parser-set-included-ranges css css-range)
+@end group
+
+@group
+;; JavaScriptの範囲をセット
+(setq js-range
+      (treesit-query-range
+       'html
+       '((script_element (raw_text) @@capture))))
+(treesit-parser-set-included-ranges js js-range)
+@end group
+@end example
+
+@code{treesit-update-ranges}によってEmacsがこのプロセスを自動化します。@code{treesit-update-ranges}がプロセスを自動化する方法を解決するためには、複数言語のメジャーモードが@code{treesit-range-settings}をセットする必要があります。@code{treesit-range-settings}に割り当てられる値を生成するためには、メジャーモードがヘルパー関数@code{treesit-range-rules}を使う必要があります。この操作を直接コード化したのが以下のセッティング例になります。
+
+@example
+@group
+(setq treesit-range-settings
+      (treesit-range-rules
+       :embed 'javascript
+       :host 'html
+       '((script_element (raw_text) @@capture))
+@end group
+
+@group
+       :embed 'css
+       :host 'html
+       '((style_element (raw_text) @@capture))))
+@end group
+@end example
+
+@defun treesit-range-rules &rest query-specs
+この関数は@code{treesit-range-settings}をセットするために用いる。クエリーのコンパイルやその他の後処理に注意を払い、@code{treesit-range-settings}にセットできるような値を出力する。
+
+この関数は引数として一連の@var{query-spec}を受け取る。ここで@var{query-spec}とは0個以上の@var{keyword}/@var{value}ペアーが前置された@var{query}のこと。@var{query}はそれぞれ文字列、S式、コンパイル済みフォーム、あるいは関数のいずれかによるtree-sitterクエリーである。
+
+@var{query}がtree-sitterクエリーなら@var{:keyword}/@var{value}のペアーを2つを前置すること(@var{:keyword}が@code{:embed}は埋め込み言語、@code{:host}はホスト言語)。
+
+@code{treesit-update-ranges}は埋め込み言語用のパーサーにたいして範囲をセットする方法の解決に@var{query}を使用する。ホスト言語パーサーに@var{query}を問い合わせてキャプチャーされたノードが跨ぐ範囲を計算、それらの範囲を埋め込み言語パーサーに適用するのである。
+
+@var{query}が関数の場合には@var{keyword}と@var{value}のペアーは必要ない。関数の場合には@var{start}、@var{end}という2つの引数を受け取り、カレントバッファーで@var{start}と@var{end}の間にあるリージョンでパーサー用の範囲をセットすること。その関数が@var{start}と@var{end}の間のリージョンを包むような広いリージョンに範囲をセットしても問題はない。
+@end defun
+
+@defvar treesit-range-settings
+これはバッファーで@code{treesit-update-ranges}がパーサーにたいする範囲を更新する際の助けとなる変数である。@var{setting}のリストであり、その正確なフォーマットは内部的な使用を意図している。この変数が保持できる値を生成するには@code{treesit-range-rules}を使うこと。
+
+@c Because the format is internal, we don't document them here.  Though
+@c we do have it explained in the docstring.  We also expose the fact
+@c that it is a list of settings, so one could combine two of them with
+@c append.
+@end defvar
+
+
+@defvar treesit-language-at-point-function
+この変数の値はバッファー位置@var{pos}を単一の引数として受け取り、@var{pos}にあるテキストの言語をリターンする関数であること。この変数は@code{treesit-language-at}により使用される。
+@end defvar
+
+@node Tree-sitter Major Modes
+@section tree-sitterを用いるメジャーモードの開発
+@cindex major mode, developing with tree-sitter
+
+このセクションではメジャーモード用にtree-sitterを統合した開発における一般的なガイドラインの一部について説明します。
+
+tree-sitter機能をサポートするメジャーモードは、大枠では以下のようなパターンにしたがう必要があります:
+
+@example
+@group
+(define-derived-mode woomy-mode prog-mode "Woomy"
+  "A mode for Woomy programming language."
+  (when (treesit-ready-p 'woomy)
+    (setq-local treesit-variables ...)
+    ...
+    (treesit-major-mode-setup)))
+@end group
+@end example
+
+@code{treesit-ready-p}はtree-sitterを有効にする条件が揃っていなければ、自動的に警告を発します。
+
+tree-sitterを使うメジャーモードは、その``ネイティブ''な相手先モードとセットアップを共有する場合には、以下のように共通のセットアップを含んだ``ベースモード''を作成することができます:
+
+@example
+@group
+(define-derived-mode woomy--base-mode prog-mode "Woomy"
+  "An internal mode for Woomy programming language."
+  (common-setup)
+  ...)
+@end group
+
+@group
+(define-derived-mode woomy-mode woomy--base-mode "Woomy"
+  "A mode for Woomy programming language."
+  (native-setup)
+  ...)
+@end group
+
+@group
+(define-derived-mode woomy-ts-mode woomy--base-mode "Woomy"
+  "A mode for Woomy programming language."
+  (when (treesit-ready-p 'woomy)
+    (setq-local treesit-variables ...)
+    ...
+    (treesit-major-mode-setup)))
+@end group
+@end example
+
+@defun treesit-ready-p language &optional quiet
+この関数はtree-sitterをアクティブにするための条件をチェックする。tree-sitterとともにEmacsがビルドされているか、tree-sitterが処理するにあたってカレントバッファーのサイズが大き過ぎないか、そのシステムで@var{language}にたいするグラマー(@ref{Language
+Grammar}を参照)が利用できるかどうかをチェックする。
+
+この関数はtree-sitterをアクティブにできなければ警告を発する。@var{quiet}が@code{message}なら、警告をメッセージに変更する。@var{quiet}が@code{t}の場合には警告やメッセージは何も表示されない。
+
+この関数は必要とされる条件すべてが適えば非@code{nil}、そうでなければ@code{nil}をリターンする。
+@end defun
+
+@defun treesit-major-mode-setup
+この関数はメジャーモードにたいしてtree-sitterに一部機能をアクティブにする。
+
+現在のところ以下の機能のセットアップを行う:
+@itemize
+@item
+@code{treesit-font-lock-settings} (@ref{Parser-based Font
+Lock}を参照)が非@code{nil}ならフォント表示(fontification)をセットアップ。
+
+@item
+@code{treesit-simple-indent-rules} (@ref{Parser-based
+Indentation}を参照)が非@code{nil}ならインデントをセットアップ。
+
+@item
+@code{treesit-defun-type-regexp}が非@code{nil}なら、@code{beginning-of-defun}と@code{end-of-defun}にたいしてナビゲーション関数をセットアップ。
+
+@item
+@code{treesit-defun-name-function}が非@code{nil}なら、@code{add-log-current-defun}によって使用されるadd-log関数をセットアップ。
+
+@item
+@code{treesit-simple-imenu-settings}が非@code{nil}ならImenuをセットアップ。
+@end itemize
+@end defun
+
+これらtree-sitter組み込み機能の詳細については@ref{Parser-based Font Lock}、@ref{Parser-based
+Indentation}、@ref{List Motion}を参照してください。
+
+メジャーモードにおける複数言語のミックスのサポートについては@ref{Multiple Languages}を参照してください。
+
+@code{beginning-of-defun}や@code{end-of-defun}の他にも、Emacsはdefunにたいして処理を行う追加の関数をいくつか提供します。@code{treesit-defun-at-point}はポイント位置のdefunノード、@code{treesit-defun-name}はdefunノードの名前をリターンする関数です。
+
+@c FIXME: Cross-reference to treesit-defun-tactic once we have it in
+@c the user manual.
+@defun treesit-defun-at-point
+この関数はポイント位置のdefunノードを、defunが見つからなければ@code{nil}をリターンする。この関数は@code{treesit-defun-tactic}に注意を払う。この変数の値が@code{top-level}ならトップレベルのdefunを、値が@code{nested}ならすぐ外側のdefunをリターンする。
+
+この関数が機能するためには@code{treesit-defun-type-regexp}が必要となる。この変数の値が@code{nil}であれば、この関数は単に@code{nil}をリターンする。
+@end defun
+
+@defun treesit-defun-name node
+この関数は@var{node}のdefun名をリターンする。@var{node}にたいするdefun名が存在しない、@var{node}がdefunノードではない、あるいは@var{node}が@code{nil}の場合は@code{nil}をリターンする。
+
+言語とメジャーモードに応じて関数、クラス、構造体等の名前がdefun名となる。
+
+@code{treesit-defun-name-function}が@code{nil}の場合には、この関数は常に@code{nil}をリターンする。
+@end defun
+
+@defvar treesit-defun-name-function
+この変数の値が非@code{nil}の場合には、ノードを引数として呼び出されてそのノードの名前をリターンする関数であること。この関数は意味合いとしては@code{treesit-defun-name}と同じである必要がある。つまりそのノードがdefunノードではない、defunノードだが名前がない、あるいはノードが@code{nil}の場合には@code{nil}をリターンすること。
+@end defvar
+
+@node Tree-sitter C API
+@section tree-sitterのC APIとの対応表
+
+Emacsのtree-sitter統合では、tree-sitterのCのAPIによって提供されるすべての機能が公開されている訳ではありません。欠落している機能には以下が含まれます:
+
+@itemize
+@item
+ツリーカーソル(tree cursor)の作成、およびそれを用いた構文ツリーのナビゲーション。
+@item
+パーサーにたいするタイムアウトおよびキャンセルのフラグのセッティング。
+@item
+パーサー用のロガー(logger: ログ機能)のセッティング。
+@item
+@acronym{DOT}グラフによるファイルへの構文ツリーのプリント。
+@item
+構文ツリーのコピーや変更(Emacsではツリーオブジェクトは非公開)。
+@item
+位置としての座標(行と列)の使用。
+@item
+変更によるノードの更新(Emacsでは既存ノードは更新せずに新たにノードを取得)。
+@item
+言語グラマーの統計問い合わせ。
+@end itemize
+
+更にEmacsでは、APIがより使いやすく慣れ親しんだ用語を用いるようにCのAPIの一部を変更しています:
+
+@itemize
+@item
+Emacs LispのAPIではバイト位置ではなく文字位置を使用。
+@item
+Nullノードを@code{nil}に変換。
+@end itemize
+
+CのすべてのAPIとELisp側での相方の対応を以下にまとめました。1つのElispがCの複数の関数に対応する場合もあるし、Elisp側の相方がいないC関数も沢山あります。
+
+@example
+ts_parser_new                           treesit-parser-create
+ts_parser_delete
+ts_parser_set_language
+ts_parser_language                      treesit-parser-language
+ts_parser_set_included_ranges           treesit-parser-set-included-ranges
+ts_parser_included_ranges               treesit-parser-included-ranges
+ts_parser_parse
+ts_parser_parse_string                  treesit-parse-string
+ts_parser_parse_string_encoding
+ts_parser_reset
+ts_parser_set_timeout_micros
+ts_parser_timeout_micros
+ts_parser_set_cancellation_flag
+ts_parser_cancellation_flag
+ts_parser_set_logger
+ts_parser_logger
+ts_parser_print_dot_graphs
+ts_tree_copy
+ts_tree_delete
+ts_tree_root_node
+ts_tree_language
+ts_tree_edit
+ts_tree_get_changed_ranges
+ts_tree_print_dot_graph
+ts_node_type                            treesit-node-type
+ts_node_symbol
+ts_node_start_byte                      treesit-node-start
+ts_node_start_point
+ts_node_end_byte                        treesit-node-end
+ts_node_end_point
+ts_node_string                          treesit-node-string
+ts_node_is_null
+ts_node_is_named                        treesit-node-check
+ts_node_is_missing                      treesit-node-check
+ts_node_is_extra                        treesit-node-check
+ts_node_has_changes
+ts_node_has_error                       treesit-node-check
+ts_node_parent                          treesit-node-parent
+ts_node_child                           treesit-node-child
+ts_node_field_name_for_child            treesit-node-field-name-for-child
+ts_node_child_count                     treesit-node-child-count
+ts_node_named_child                     treesit-node-child
+ts_node_named_child_count               treesit-node-child-count
+ts_node_child_by_field_name             treesit-node-child-by-field-name
+ts_node_child_by_field_id
+ts_node_next_sibling                    treesit-node-next-sibling
+ts_node_prev_sibling                    treesit-node-prev-sibling
+ts_node_next_named_sibling              treesit-node-next-sibling
+ts_node_prev_named_sibling              treesit-node-prev-sibling
+ts_node_first_child_for_byte            treesit-node-first-child-for-pos
+ts_node_first_named_child_for_byte      treesit-node-first-child-for-pos
+ts_node_descendant_for_byte_range       treesit-node-descendant-for-range
+ts_node_descendant_for_point_range
+ts_node_named_descendant_for_byte_range treesit-node-descendant-for-range
+ts_node_named_descendant_for_point_range
+ts_node_edit
+ts_node_eq                              treesit-node-eq
+ts_tree_cursor_new
+ts_tree_cursor_delete
+ts_tree_cursor_reset
+ts_tree_cursor_current_node
+ts_tree_cursor_current_field_name
+ts_tree_cursor_current_field_id
+ts_tree_cursor_goto_parent
+ts_tree_cursor_goto_next_sibling
+ts_tree_cursor_goto_first_child
+ts_tree_cursor_goto_first_child_for_byte
+ts_tree_cursor_goto_first_child_for_point
+ts_tree_cursor_copy
+ts_query_new
+ts_query_delete
+ts_query_pattern_count
+ts_query_capture_count
+ts_query_string_count
+ts_query_start_byte_for_pattern
+ts_query_predicates_for_pattern
+ts_query_step_is_definite
+ts_query_capture_name_for_id
+ts_query_string_value_for_id
+ts_query_disable_capture
+ts_query_disable_pattern
+ts_query_cursor_new
+ts_query_cursor_delete
+ts_query_cursor_exec                    treesit-query-capture
+ts_query_cursor_did_exceed_match_limit
+ts_query_cursor_match_limit
+ts_query_cursor_set_match_limit
+ts_query_cursor_set_byte_range
+ts_query_cursor_set_point_range
+ts_query_cursor_next_match
+ts_query_cursor_remove_match
+ts_query_cursor_next_capture
+ts_language_symbol_count
+ts_language_symbol_name
+ts_language_symbol_for_name
+ts_language_field_count
+ts_language_field_name_for_id
+ts_language_field_id_for_name
+ts_language_symbol_type
+ts_language_version
+@end example

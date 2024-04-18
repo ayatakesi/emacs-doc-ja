@@ -1,0 +1,88 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c This is part of the Emacs manual.
+@c Copyright (C) 2021--2024 Free Software Foundation, Inc.
+@c See file emacs-ja.texi for copying conditions.
+@node Haiku
+@appendix EmacsとHaiku
+@cindex Haiku
+
+  HaikuとはオペレーティングシステムBeOSの再実装に端を発するUnix風オペレーティングシステムのことです。
+
+  このセクションではHaiku固有のウィンドウシステムであるアプリケーションキットとともにビルドされたEmacs特有の使い方について説明します。ここで説明する特異性はウィンドウサポートのないHaikuでのEmacs、およびX11とともにビルドされたEmacsの使い方には当てはまりません。
+
+@menu
+* Haiku Basics::             Haikuにおける基本的なEmacsの使い方とインストール。
+* Haiku Fonts::              Haikuでのフォント表示にたいするさまざまなオプション。
+@end menu
+
+@node Haiku Basics
+@section Haiku特有なインストールと使い方
+@cindex haiku application
+@cindex haiku installation
+
+  HaikuでEmacsをインストールすると通常の実行可能形式である小文字の名前をもつ@code{emacs}、そしてHaiku固有のアプリケーションメタデータを含んだ@code{Emacs}という名前のバイナリー形式という2つの実行可能形式が個別にインストールされます。どちらが自分にもっとも適しているかを決めるのはユーザーに任されています。
+
+@cindex launching Emacs from the tracker
+@cindex tty Emacs in haiku
+  TrackerからEmacsを起動したり、Emacsを使用してTrackerにファイルをオープンさせたい場合には、@code{Emacs}という名前のバイナリーを使う必要があります。端末でEmacsを使いたい、Emacsのインスタンスを個別に起動したい、あるいは前述のシステム統合機能を考慮しない場合には、@code{emacs}という名前のバイナリーを使用してください。
+
+@cindex modifier keys and system keymap (Haiku)
+@cindex haiku keymap
+  HaikuではHyperキーのように特殊な修飾キーはサポートされていません。デフォルトではsuperキーはオペレーティングシステムによって定義されたoptionキー、metaキーはcommandキー、controlキーはシステムのcontrolキー、shiftキーはシステムのshiftキーに対応しています。標準的なPCキーボードでは、HaikuはこれらのキーをGNUシステムで慣れ親しんだ位置へとマップする必要がありますが、これを機能させるためにはシステム構成に幾らか調節を要するかもしれません。
+
+  システムのsuperキーのマップを用いてアクセントつき文字をタイプすることは不可能です。
+
+  システムが認識している修飾キーとEmacsが認識しているキーの対応づけは、以下に記述する変数によってカスタマイズすることができます。
+
+@cindex modifier key customization (Haiku)
+@table @code
+@vindex haiku-meta-keysym
+@item haiku-meta-keysym
+EmacsがMetaキーとして扱うシステムの修飾キー。デフォルトは@code{command}。
+
+@vindex haiku-control-keysym
+@item haiku-control-keysym
+EmacsがControlキーとして扱うシステムの修飾キー。デフォルトは@code{control}。
+
+@vindex haiku-super-keysym
+@item haiku-super-keysym
+EmacsがSuperキーとして扱うシステムの修飾キー。デフォルトは@code{option}。
+
+@vindex haiku-shift-keysym
+@item haiku-shift-keysym
+EmacsがShiftキーとして扱うシステムの修飾キー。デフォルトは@code{shift}。
+@end table
+
+これらの変数それぞれにたいする値としては@code{command}、@code{control}、@code{option}、@code{shift}、あるいは@code{nil}のいずれかのシンボルを指定できます。@code{nil}やこれら以外のすべての値にたいしてはデフォルト値が使用されます。
+
+@cindex tooltips (haiku)
+@cindex haiku tooltips
+  HaikuでのEmacsは、デフォルトではシステムのツールチップメカニズムを使用します。これにより通常はツールチップの応答性が向上しますが、このツールチップではテキストのプロパティやフェイスの表示はできません。これらの機能が必要な場合には、変数@code{use-system-tooltips}を@code{nil}値にカスタマイズすることによって、Emacs自身で実装されたツールチップを使うことができます。
+
+@cindex X resources on Haiku
+  Xウィンドウシステムとは異なり、Haikuにはシステムワイドなリソースデータベースがありません。重要なオプションの多くはXリソースを通じて指定されるオプションなので、それのエミュレーションが提供されています。Emacsは起動時にユーザーの構成ディレクトリー(通常は@file{/boot/home/config/settings})にある@file{GNU
+Emacs}という名前のファイルをロードします。このファイルはフラット構造のシステムメッセージでキーと値(どちらも文字列)はそれぞれ属性とその属性の値に対応しています。
+
+@command{xmlbmessage}ツールによって、このようなファイルを作成することができます。
+
+@subsection Emacsがクラッシュしたら
+@cindex crashes, Haiku
+@cindex haiku debugger
+@vindex haiku-debug-on-fatal-error
+  変数@code{haiku-debug-on-fatal-error}が非@code{nil}の場合には、致命的シグナルの受信時にEmacsがシステムデバッガを起動します。この変数のデフォルトは@code{t}です。システムでGDBを使えない場合には、システムデバッガによって生成されたレポートをバグの報告時に添付してください。
+
+@node Haiku Fonts
+@section Haikuにおけるフォントとフォントバックエンドの選択。
+@cindex font backend selection (Haiku)
+
+  HaikuのウィンドウサポートとともにEmacsをビルドする場合には、複数の異なるフォントバックエンドとともにビルドすることができます。Emacsを呼び出すコマンドラインで@kbd{-xrm
+Emacs.fontBackend:BACKEND}
+(@kbd{BACKEND}とは以下のバックエンドのいずれか)を指定するか、あるいはフレームごとにフレームパラメーター@code{font-backend}を変更することによってフォントのバックエンドを指定できます。
+
+  @code{ftcr}および@code{ftcrhb}という2つのバックエンドは、それぞれXウィンドウシステムの対応するバックエンドと同じです。App
+Serverを使用してフォントを描画する@code{haiku}という名前のHaiku固有のバックエンドも存在しますが、現在のところカラーフォントとemojiの表示はサポートしていません。

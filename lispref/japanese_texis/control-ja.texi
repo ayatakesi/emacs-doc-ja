@@ -1,0 +1,1784 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c -*- mode: texinfo; coding: utf-8 -*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2024 Free Software
+@c Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Control Structures
+@chapter 制御構造
+@cindex special forms for control structures
+@cindex forms for control structures
+@cindex control structures
+
+  Lispプログラムは一連の@dfn{式}、あるいは@dfn{フォーム}
+(@ref{Forms}を参照)により形成されます。これらのフォームの実行順は@dfn{制御構造(control
+structures)}で囲むことによって制御します。制御構造とはその制御構造が含むフォームをいつ、どのような条件で、何回実行するかを制御するスペシャルフォームです。
+
+@cindex textual order
+  もっとも単純な実行順は1番目は@var{a}、2番目は@var{b}、...というシーケンシャル実行(sequential execution:
+順番に実行)です。これは関数のbody内の連続する複数のフォームや、Lispコードのファイル内のトップレベルを記述したときに発生します ---
+つまりフォームは記述した順に実行されます。わたしたちはこれを@dfn{テキスト順(textual
+order)}と呼びます。たとえば関数のbodyが2つのフォーム@var{a}と@var{b}から構成される場合、関数の評価は最初に@var{a}、次に@var{b}を評価します。@var{b}を評価した結果がその関数の値となります。
+
+  明示的に制御構造を使用することにより、非シーケンシャルな順番での実行が可能になります。
+
+  Emacs
+Lispは他の様々な順序づけ、条件、繰り返し、(制御された)ジャンプを含む複数の種類の制御構造を提供しており、以下ではそれらのすべてを記述します。ビルトインの制御構造は制御構造のサブフォームが評価される必要がなかったり、順番に評価される必要がないのでスペシャルフォームです。独自の制御構造を構築するためにマクロを使用することができます(@ref{Macros}を参照)。
+
+@menu
+* Sequencing::               テキスト順の評価。
+* Conditionals::             @code{if}、@code{cond}、@code{when}、@code{unless}。
+* Combining Conditions::     @code{and}、@code{or}、@code{not}とその仲間達。
+* Pattern-Matching Conditional::  @code{pcase}類の使用方法。
+* Iteration::                @code{while}ループ。
+* Generators::               汎用のシーケンスとコルーチン。
+* Nonlocal Exits::           シーケンスの外へのジャンプ。
+@end menu
+
+@node Sequencing
+@section 順序
+@cindex sequencing
+@cindex sequential execution
+@cindex forms for sequential execution
+
+  フォームを出現順に評価するのは、あるフォームから別のフォームに制御を渡すもっとも一般的な制御です。関数のbodyのようなコンテキストにおいては自動的にこれが行なわれます。他の場所ではこれを行なうために制御構造を使用しなければなりません。Lispで一単純な制御構造は@code{progn}です。
+
+  スペシャルフォーム@code{progn}は以下のようなものです:
+
+@example
+@group
+(progn @var{a} @var{b} @var{c} @dots{})
+@end group
+@end example
+
+@noindent
+これは順番に@var{a}、@var{b}、@var{c}、...を実行するよう指定します。これらは@code{progn}フォームの@dfn{body}と呼ばれます。body内の最後のフォームの値が@code{progn}全体の値になります。@code{(progn)}は@code{nil}をリターンします。
+
+@cindex implicit @code{progn}
+  初期のLispでは@code{progn}は、連続で複数のフォームを実行して最後のフォームの値を使用する唯一の方法でした。しかしプログラマーは関数のbodyの、(その時点では)1つのフォームだけが許される場所で@code{progn}を使用する必要が多いことに気づきました。そのため関数のbodyを暗黙の@code{progn}にして、@code{progn}のbodyのように複数のフォームを記述できるようにしました。他の多くの制御構造も暗黙の@code{progn}を同様に含みます。結果として昔ほど@code{progn}は多用されなくなりました。現在では@code{progn}が必要になるのは@code{unwind-protect}、@code{and}、@code{or}、または@code{if}の@var{then}パートの中であることがほとんどです。
+
+@defspec progn forms@dots{}
+このスペシャルフォームは@var{forms}のすべてをテキスト順に評価してフォームの結果をリターンする。
+
+@example
+@group
+(progn (print "The first form")
+       (print "The second form")
+       (print "The third form"))
+     @print{} "The first form"
+     @print{} "The second form"
+     @print{} "The third form"
+@result{} "The third form"
+@end group
+@end example
+@end defspec
+
+  他の2つの構文は一連のフォームを同様に評価しますが、異なる値をリターンします:
+
+@defspec prog1 form1 forms@dots{}
+このスペシャルフォームは@var{form1}と@var{forms}のすべてをテキスト順に評価して@var{form1}の結果をリターンする。
+
+@example
+@group
+(prog1 (print "The first form")
+       (print "The second form")
+       (print "The third form"))
+     @print{} "The first form"
+     @print{} "The second form"
+     @print{} "The third form"
+@result{} "The first form"
+@end group
+@end example
+
+以下の例は変数@code{x}のリストから1番目の要素を削除して、削除した1番目の要素の値をリターンする:
+
+@example
+(prog1 (car x) (setq x (cdr x)))
+@end example
+@end defspec
+
+@defspec prog2 form1 form2 forms@dots{}
+このスペシャルフォームは@var{form1}、@var{form2}、その後の@var{forms}のすべてをテキスト順で評価して@var{form2}の結果をリターンする。
+
+@example
+@group
+(prog2 (print "The first form")
+       (print "The second form")
+       (print "The third form"))
+     @print{} "The first form"
+     @print{} "The second form"
+     @print{} "The third form"
+@result{} "The second form"
+@end group
+@end example
+@end defspec
+
+@node Conditionals
+@section 条件
+@cindex conditional evaluation
+@cindex forms, conditional
+
+  条件による制御構造は候補の中から選択を行ないます。Emacs
+Lispは5つの条件フォームをもちます。@code{if}は他の言語のものとほとんど同じです。@code{when}と@code{unless}は@code{if}の変種です。@code{cond}は一般化されたcase命令です。@code{cond}を汎用化したものが@code{pcase}です(@ref{Pattern-Matching
+Conditional}を参照)。
+
+@defspec if condition then-form else-forms@dots{}
+@code{if}は@var{condition}の値にもとづき@var{then-form}と@var{else-forms}を選択する。評価された@var{condition}が非@code{nil}なら@var{then-form}が評価されて結果がリターンされる。それ以外なら@var{else-forms}がテキスト順に評価されて最後のフォームの値がリターンされる(@code{if}の@var{else}パートは暗黙の@code{progn}の例である。@ref{Sequencing}を参照)。
+
+@var{condition}の値が@code{nil}で@var{else-forms}が与えられなければ、@code{if}は@code{nil}をリターンする。
+
+選択されなかったブランチは決して評価されない --- 無視される ---
+ので、@code{if}はスペシャルフォームである。したがって以下の例では@code{print}が呼び出されることはないので@code{true}はプリントされない。
+
+@example
+@group
+(if nil
+    (print 'true)
+  'very-false)
+@result{} very-false
+@end group
+@end example
+@end defspec
+
+@defmac when condition then-forms@dots{}
+これは@var{else-forms}がなく、複数の@var{then-forms}が可能な@code{if}の変種である。特に、
+
+@example
+(when @var{condition} @var{a} @var{b} @var{c})
+@end example
+
+@noindent
+は以下と完全に等価である
+
+@example
+(if @var{condition} (progn @var{a} @var{b} @var{c}) nil)
+@end example
+@end defmac
+
+@defmac unless condition forms@dots{}
+これは@var{then-form}がない@code{if}の変種です:
+
+@example
+(unless @var{condition} @var{a} @var{b} @var{c})
+@end example
+
+@noindent
+は以下と完全に等価である
+
+@example
+(if @var{condition} nil
+   @var{a} @var{b} @var{c})
+@end example
+@end defmac
+
+@defspec cond clause@dots{}
+@code{cond}は任意個数の選択肢から選択を行なう。@code{cond}内の各@var{clause}はリストでなければならない。このリストの@sc{car}は@var{condition}で、(もしあれば)残りの要素は@var{body-forms}となる。したがってclauseは以下のようになる:
+
+@example
+(@var{condition} @var{body-forms}@dots{})
+@end example
+
+@code{cond}は各clauseの@var{condition}を評価することにより、テキスト順でclauseを試みる。@var{condition}の値が非@code{nil}ならそのclauseは成り立つ。その後に@code{cond}はそのclauseの@var{body-forms}を評価して、@var{body-forms}の最後の値をリターンする。残りのclauseは無視される。
+
+@var{condition}の値が@code{nil}ならそのclauseは失敗して、@code{cond}は次のclauseに移動してそれの@var{condition}を試みる。
+
+clauseは以下のようにも見えるかもしれない:
+
+@example
+(@var{condition})
+@end example
+
+@noindent
+@var{condition}がテストされたときに非@code{nil}なら、@code{cond}フォームは@var{condition}の値をリターンする。
+
+すべての@var{condition}が@code{nil}に評価された場合 ---
+つまりすべてのclauseが不成立なら、@code{cond}は@code{nil}をリターンする。
+
+以下の例は@code{x}の値が数字、文字列、バッファー、シンボルなのかをテストする4つのclauseをもつ:
+
+@example
+@group
+(cond ((numberp x) x)
+      ((stringp x) x)
+      ((bufferp x)
+       (setq temporary-hack x) ; @r{1つのclauseに}
+       (buffer-name x))        ; @r{複数bodyフォーム}
+      ((symbolp x) (symbol-value x)))
+@end group
+@end example
+
+前のclauseが不成立のとき最後の条項を実行したいときがよくある。これを行なうには@code{(t
+@var{body-forms})}のように、@var{condition}の最後のclauseに@code{t}を使用する。フォーム@code{t}は@code{t}に評価され決して@code{nil}にならないので、このclauseが不成立になることはなく最終的に@code{cond}はこのclauseに到達する。たとえば:
+
+@example
+@group
+(setq a 5)
+(cond ((eq a 'hack) 'foo)
+      (t "default"))
+@result{} "default"
+@end group
+@end example
+
+@noindent
+この@code{cond}式は@code{a}の値が@code{hack}なら@code{foo}、それ以外は文字列@code{"default"}をリターンする。
+@end defspec
+
+すべての条件構文は@code{cond}か@code{if}のいずれかで表すことができます。したがってどちらを選択するかはスタイルの問題になります。たとえば:
+
+@example
+@group
+(if @var{a} @var{b} @var{c})
+@equiv{}
+(cond (@var{a} @var{b}) (t @var{c}))
+@end group
+@end example
+
+変数のバインドとあわせて条件を使うと便利かもしれません。変数の計算を行って、その後もし値が非@code{nil}なら何かしたいというのはよくあることです。これを行うには、たとえば以下のように単にそのまま記述すればよいのです:
+
+@example
+(let ((result1 (do-computation)))
+  (when result1
+    (let ((result2 (do-more result1)))
+      (when result2
+        (do-something result2)))))
+@end example
+
+これはパターンとしては非常に一般的なのでEmacsではこれを簡単に行って、かつ可読性を向上させるためのマクロがいくつか提供されています。上記のコードは以下のように記述することができます:
+
+@example
+(when-let ((result1 (do-computation))
+           (result2 (do-more result1)))
+  (do-something result2))
+@end example
+
+このテーマにはバリエーションがいくつかあり、以下にそれらを概略します。
+
+@defmac if-let spec then-form else-forms...
+@var{spec}内のバインディングを、@code{let*} (@ref{Local
+Variables}を参照)のようにそれぞれ順番に評価して、値が@code{nil}になるバインディングがあれば停止する。すべて非@code{nil}なら@var{then-form}、それ以外では@var{else-forms}の最後のフォームの値をリターンする。
+@end defmac
+
+@defmac when-let spec then-forms...
+@code{if-let}と同様だが@var{else-forms}がない。
+@end defmac
+
+@defmac while-let spec then-forms...
+@code{when-let}と同様だが、@var{spec}内のバインディングが@code{nil}になるまで繰り返す。リターン値は常に@code{nil}。
+@end defmac
+
+@node Combining Conditions
+@section 組み合わせ条件の構築
+@cindex combining conditions
+
+  このセクションでは複雑な条件を表現するために@code{if}や@code{cond}とともによく使用される構文を説明します。@code{and}と@code{or}の構文は、ある種の複数条件の構文として個別に使用することもできます。
+
+@defun not condition
+この関数は@var{condition}が偽であることをテストする。この関数は@var{condition}が@code{nil}なら@code{t}、それ以外は@code{nil}をリターンする。関数@code{not}は@code{null}と等価であり、空のリストや@code{nil}値をテストする場合は@code{null}の使用を推奨する。
+@end defun
+
+@defspec and conditions@dots{}
+スペシャルフォーム@code{and}は、すべての@var{conditions}が真かどうかをテストする。この関数は@var{conditions}を記述順に1つずつ評価することにより機能する。
+
+ある@var{conditions}が@code{nil}に評価されると、残りの@var{conditions}に関係なく、@code{and}は@code{nil}をリターンしなければならない。この場合@code{and}は即座に@code{nil}をリターンして、残りの@var{conditions}は無視される。
+
+すべての@var{conditions}が非@code{nil}なら、それらの最後の値が@code{and}フォームの値になる。@var{conditions}がない単独の@code{(and)}は@code{t}をリターンする。なぜならすべての@var{conditions}が非@code{nil}となるので、これは適切である(考えてみてみよ、非@code{nil}でない@var{conditions}はどれか?)。
+
+以下に例を示す。1番目の条件は整数1をリターンし、これは@code{nil}ではない。同様に2番目の条件は整数2をリターンし、これも@code{nil}ではない。3番目の条件は@code{nil}なので、のこりの条件が評価されることは決してない。
+
+@example
+@group
+(and (print 1) (print 2) nil (print 3))
+     @print{} 1
+     @print{} 2
+@result{} nil
+@end group
+@end example
+
+以下は@code{and}を使用した、より現実的な例である:
+
+@example
+@group
+(if (and (consp foo) (eq (car foo) 'x))
+    (message "foo is a list starting with x"))
+@end group
+@end example
+
+@noindent
+@code{(consp foo)}が@code{nil}をリターンすると、@code{(car
+foo)}は実行されないのでエラーにならないことに注意。
+
+@code{if}か@code{cond}のいずれかを使用して、@code{and}式を記述することもできる。以下にその方法を示す:
+
+@example
+@group
+(and @var{arg1} @var{arg2} @var{arg3})
+@equiv{}
+(if @var{arg1} (if @var{arg2} @var{arg3}))
+@equiv{}
+(cond (@var{arg1} (cond (@var{arg2} @var{arg3}))))
+@end group
+@end example
+@end defspec
+
+@defspec or conditions@dots{}
+スペシャルフォーム@code{or}は、少なくとも1つの@var{conditions}が真かどうかをテストする。この関数はすべての@var{conditions}を1つずつ、記述された順に評価することにより機能する。
+
+ある@var{conditions}が非@code{nil}値に評価されたら、@code{or}の結果は非@code{nil}でなければならない。この場合@code{or}は即座にリターンし、残りの@var{conditions}は無視される。この関数がリターンする値は、非@code{nil}値に評価された条件の値そのものである。
+
+すべての@var{conditions}が@code{nil}なら、@code{or}式は@code{nil}をリターンします。@var{conditions}のない単独の@code{(or)}は@code{nil}をリターンする。なぜならすべての@var{conditions}が@code{nil}になるのでこれは適切である(考えてみよ、@code{nil}でない@var{conditions}はどれか?)。
+
+たとえば以下の式は、@code{x}が@code{nil}か整数0かどうかをテストする:
+
+@example
+(or (eq x nil) (eq x 0))
+@end example
+
+@code{and}構文と同様に、@code{or}を@code{cond}に置き換えて記述することができる。たとえば:
+
+@example
+@group
+(or @var{arg1} @var{arg2} @var{arg3})
+@equiv{}
+(cond (@var{arg1})
+      (@var{arg2})
+      (@var{arg3}))
+@end group
+@end example
+
+ほとんどの場合は、@code{or}を@code{if}に置き換えて記述できるが完全ではない:
+
+@example
+@group
+(if @var{arg1} @var{arg1}
+  (if @var{arg2} @var{arg2}
+    @var{arg3}))
+@end group
+@end example
+
+@noindent
+これは完全に同一ではない。なぜなら@var{arg1}か@var{arg2}を2回評価するかもしれないからである。対照的に@code{(or
+@var{arg1} @var{arg2} @var{arg3})}が2回以上引数を評価することは決してない。
+@end defspec
+
+@defun xor condition1 condition2
+この関数は@var{condition1}と@var{condition2}の排他的論理和をリターンする。つまり@code{xor}は引数がいずれも@code{nil}あるいは非@code{nil}なら@code{nil}をリターンする。それ以外なら非@code{nil}の引数の値をリターンする。
+
+@code{or}とは対照的に引数はどちらも常に評価されることに注意。
+@end defun
+
+@node Pattern-Matching Conditional
+@section パターンマッチングによる条件
+@cindex pcase
+@cindex pattern matching, programming style
+
+4つの基本的な条件フォームとは別に、Emacs Lispには@code{cond}と@code{cl-case}
+(@ref{Conditionals,,,cl,Common Lisp
+Extensions}を参照)の合成物とも言うべき、@code{pcase}マクロというパターンマッチングによる条件フォームがあります。これは@code{cond}と@code{cl-case}の制限を克服して、@dfn{パターンマッチングによるプログラミングスタイル(pattern
+matching programming style)}を導入するものです。その@code{pcase}が克服する制限とは:
+
+@itemize
+@item
+@code{cond}フォームはclauseそれぞれにたいして述語@var{condition}を評価して候補から選択を行う(@ref{Conditionals}を参照)。@var{condition}内でのletバインドされた変数がclauseの@var{body-forms}で利用できないのが主な制限。
+
+もう1つの煩しい(制限というより不便な)点は一連の@var{condition}述語が等価なテストを実装する際にはコードが多数回繰り返されること(@code{cl-case}はこの不便さを解決している)。
+
+@item
+@code{cl-case}マクロは最初の引数と特定の値セットの等価性を評価することにより候補から選択を行う。
+
+制限は2つ:
+
+@enumerate
+@item
+等価性のテストに@code{eql}を使用。
+@item
+値は既知でありあらかじめ記述されていなければならない。
+@end enumerate
+
+@noindent
+これらの制限は文字列や複合データ構造にたいして@code{cl-case}を不適格にする(このような制限は@code{cond}にはないが上述のように別の制限をもつ)。
+@end itemize
+
+@noindent
+@code{pcase}マクロは@dfn{パターンマッチング(pattern
+matching)}の変種であるような等価性テストを汎化したものによる@var{condition}の置き換え、clauseの述語を簡潔に表現できるような機能の追加、clauseの述語と@var{body-forms}の間でletバインディングを共有するようなアレンジにより、概念的には最初の引数のフォーカスでは@code{cl-case}、clauseの処理フローでは@code{cond}を借用しています。
+
+この述語の簡潔な表現は@dfn{パターン(pattern)}として知られています。最初の引数の値にたいして呼び出される述語が非@code{nil}をリターンしたときには、``パターンが値にマッチした''といいます(``値がパターンにマッチした''ということもある)。
+
+@menu
+* The @code{pcase} macro: pcase Macro.  例と注意を含む。
+* Extending @code{pcase}: Extending pcase.  新種パターンの定義。
+* Backquote-Style Patterns: Backquote Patterns.  構造的パターンマッチング。
+* Destructuring with pcase Patterns::  pcaseパターンによるサブフィールド抽出。
+@end menu
+
+@node pcase Macro
+@subsection @code{pcase}マクロ
+
+背景は@ref{Pattern-Matching Conditional}を参照してください。
+
+@defmac pcase expression &rest clauses
+@var{clauses}内のclauseは@w{@code{(@var{pattern}
+@var{body-forms}@dots{})}}という形式をもつ。
+
+@var{expression}の値( @var{expval}
+)を決定するために評価する。@var{pattern}が@var{expval}にマッチするような最初のclauseを探して、そのclauseの@var{body-forms}に制御を渡す。
+
+マッチが存在すれば@code{pcase}の値はマッチが成功したclauseの@var{body-forms}の最後の値、それ以外なら@code{pcase}は@code{nil}に評価される。
+@end defmac
+
+@cindex pcase pattern
+各@var{pattern}は@dfn{pcaseパターン(pcase
+pattern)}である必要があります。これは以下に定義されるコアパターンのいずれか、または@code{pcase-defmacro}
+(@ref{Extending pcase}を参照)を通じて定義されるパターンの1つを使用できます。
+
+このサブセクションの残りの部分ではコアパターンの異なるフォームをいくつかの例を交えて説明して、いくつかのパターンフォームが提供するletバイディング機能を使用する上で重要な注意点で締めくくります。コアパターンは以下のフォームをもつことができます:
+
+@table @code
+
+@item _@r{ (アンダースコア)}
+任意の@var{expval}にマッチ。これは@dfn{don't care}、あるいは@dfn{ワイルドカード(wildcard)}としても知られる。
+
+@item '@var{val}
+@var{expval}と@var{val}が等しければマッチ。比較は@code{equal}のように行われる(@ref{Equality
+Predicates}を参照)。
+
+@item @var{keyword}
+@itemx @var{integer}
+@itemx @var{string}
+@var{expval}がリテラルオブジェクトと等しければマッチ。これは上述の@code{'@var{val}}の特殊なケースであり、これらのタイプのリテラルオブジェクトが自己クォート(self-quoting)を行うために可能となる。
+
+@item @var{symbol}
+任意の@var{expval}にマッチするとともに、追加で@var{symbol}を@var{expval}にletバインドする。このようなバインディングは@var{body-forms}内でも利用できる(@ref{Dynamic
+Binding}を参照)。
+
+@var{symbol}が(以下の@code{and}を使用することにより)シーケンスパターン@var{seqpat}の一部なら、@var{symbol}に後続する@var{seqpat}部分でもバインディングは利用可能。この使用法にはいくつかの注意点がある。@ref{pcase-symbol-caveats,,caveats}を参照のこと。
+
+使用を避けるべき2つのシンボルは@code{_}
+(上述)と同様に振る舞う非推奨の@code{t}と@code{nil}(エラーをシグナルする)。同様にキーワードシンボルへのバインドは無意味(@ref{Constant
+Variables}を参照)。
+
+@item `@var{qpat}
+バッククォートスタイルのパターン。詳細については@ref{Backquote Patterns}を参照のこと。
+
+@item (cl-type @var{type})
+@var{expval}がタイプ@var{type} ( @code{cl-typep}が許す型記述子。 @ref{Type
+Predicates,,,cl,Common Lisp Extensions}を参照)ならマッチ。たとえば:
+
+@lisp
+(cl-type integer)
+(cl-type (integer 0 10))
+@end lisp
+
+@item (pred @var{function})
+@var{expval}にたいして述語@var{function}が非@code{nil}をリターンしたらマッチ。このテストは構文@code{(pred
+(not @var{function}))}で否定となる。述語@var{function}は以下のフォームのいずれかが可能:
+
+@table @asis
+@item 関数名(シンボル)
+@var{expval}を単一の引数として名前つきの関数を呼び出す。
+
+例: @code{integerp}
+
+@item lambda式
+@var{expval}を単一の引数として無名関数を呼び出す(@ref{Lambda Expressions}を参照)。
+
+例: @code{(lambda (n) (= 42 n))}
+
+@item @var{n}個の引数での関数呼び出し
+関数(関数呼び出しの1つ目の要素)を@var{n}個の引数(残りの要素)、および@var{expval}を@var{n}+1番目の追加の引数としてで呼び出す。
+
+例: @code{(= 42)}@* この例では関数が@code{=}、@var{n}が1であり、実際の関数呼び出しは@w{@code{(= 42
+@var{expval})}}になる。
+@end table
+
+@item (app @var{function} @var{pattern})
+@var{expval}にたいして呼び出した@var{function}が@var{pattern}にマッチする値をリターンすればマッチ。@var{function}は上述の@code{pred}で説明したフォームのいずれかが可能。しかし@code{pred}とは異なり、@code{app}はブーリーンの真値ではなく@var{pattern}にたいして結果をテストする点が異なる。
+
+@item (guard @var{boolean-expression})
+@var{boolean-expression}が非@code{nil}に評価されればマッチ。
+
+@item (let @var{pattern} @var{expr})
+@var{exprval}を取得するために@var{expr}を評価して、@var{exprval}が@var{pattern}にマッチすればマッチ(@var{pattern}は@var{symbol}を使用することでシンボルに値をバインドできるので@code{let}と呼ばれる)。
+@end table
+
+@cindex sequencing pattern
+@var{seqpat}としても知られる@dfn{シーケンスパターン(sequencing
+pattern)}はサブパターンを順に処理するパターンです。@code{pcase}にたいしては@code{and}と@code{or}の2つが存在します。これらは同じ名前のスペシャルフォーム(@ref{Combining
+Conditions}を参照)と同様の方式で振る舞いますが、値ではなくサブパターンを処理します。
+
+@table @code
+@item (and @var{pattern1}@dots{})
+@var{pattern1}@dots{}のいずれかがマッチに失敗するまで順にマッチを試みる。この場合には@code{and}もマッチに失敗して、残りのサブパターンはテストしない。すべてのサブパターンがマッチすれば@code{and}はマッチする。
+
+@item (or @var{pattern1} @var{pattern2}@dots{})
+@var{pattern1}、@var{pattern2}、@dots{}のいずれかがマッチに成功するまで順にマッチを試みる。この場合には@code{or}もマッチして、残りのサブパターンはテストしない。
+
+@var{body-forms}にたいして一貫した環境
+@ifnottex
+(@ref{Intro Eval}を参照)
+@end ifnottex
+を与える(マッチでの評価エラーを回避できる)ために、パターンがバインドする変数セットは各サブパターンがバインドする変数を結合したものになる。ある変数がマッチしたサブパターンにバインドされない場合には@code{nil}にバインドされる。
+
+@ifnottex
+@anchor{rx in pcase}
+@item (rx @var{rx-expr}@dots{})
+@code{string-match}が行うように@code{rx}正規表現表記を使用して文字列を正規表現@var{rx-expr}@dots{}にマッチする(@ref{Rx
+Notation}を参照)。
+
+通常の@code{rx}構文に加えて、@var{rx-expr}@dots{}には以下の構文を含めることができる:
+
+@table @code
+@item (let @var{ref} @var{rx-expr}@dots{})
+シンボル@var{ref}を@var{rx-expr}@enddots{}にマッチする部分マッチにバインドする。@var{ref}は@var{body-forms}内で部分マッチの文字列か@code{nil}にバインドされるが、@code{backref}でも使用可能。
+
+@item (backref @var{ref})
+標準の@code{backref}構文と同様だが、@var{ref}は前の@code{(let @var{ref}
+@dots{})}構文で導入された名前にもなる。
+@end table
+@end ifnottex
+
+@end table
+
+@anchor{pcase-example-0}
+@subheading 例: @code{cl-case}にたいする利点
+
+以下は@code{cl-case} (@ref{Conditionals,,,cl,Common Lisp
+Extensions}を参照)にたいする@code{pcase}の利点のいくつかを強調する例です。
+
+@example
+@group
+(pcase (get-return-code x)
+  ;; 文字列
+  ((and (pred stringp) msg)
+   (message "%s" msg))
+@end group
+@group
+  ;; symbol
+  ('success       (message "Done!"))
+  ('would-block   (message "Sorry, can't do it now"))
+  ('read-only     (message "The schmilblick is read-only"))
+  ('access-denied (message "You do not have the needed rights"))
+@end group
+@group
+  ;; default
+  (code           (message "未知のリターンコード %S" code)))
+@end group
+@end example
+
+@noindent
+@code{cl-case}では@code{get-return-code}のリターン値を保持するためにローカル変数@code{code}を宣言する必要があります。さらに@code{cl-case}は比較に@code{eql}を使用するので文字列の使用も難しくなります。
+
+@anchor{pcase-example-1}
+@subheading 例: @code{and}の使用
+
+後続のサブパターン(と同様にbodyフォーム)にバインディングを提供する1つ以上の@var{symbol}サブパターンをもつ@code{and}で開始するのが、パターンを記述する際の一般的なイディオムです。たとえば以下のパターンは1桁の整数にマッチします。
+
+@example
+@group
+(and
+  (pred integerp)
+  n                     ; @r{@code{n}に@var{expval}をバインド}
+  (guard (<= -9 n 9)))
+@end group
+@end example
+
+@noindent
+まず@code{pred}は@w{@code{(integerp
+@var{expval})}}が非@code{nil}に評価されればマッチになります。次に@code{n}はすべてにマッチする@var{symbol}パターンであり、@code{n}に@var{expval}がバインドされます。最後に@code{guard}はブーリーン式@w{@code{(<=
+-9 n
+9)}}が非@code{nil}に評価されればマッチになります(@code{n}への参照に注意)。これらすべてのサブパターンがマッチすれば@code{and}がマッチになります。
+
+@anchor{pcase-example-2}
+@subheading 例: @code{pcase}による書き換え
+
+以下はシンプルなマッチングタスクを伝統的な実装(関数@code{grok/traditional}から、@code{pcase}を使用する実装(関数@code{grok/pcase})に書き換える別の例です。これらの関数のdocstringはいずれも``If
+OBJ is a string of the form "key:NUMBER", return NUMBER (a
+string). Otherwise, return the list ("149"
+default).''です。最初は伝統的な実装です(@ref{Regular Expressions}を参照):
+
+@example
+@group
+(defun grok/traditional (obj)
+  (if (and (stringp obj)
+           (string-match "^key:\\([[:digit:]]+\\)$" obj))
+      (match-string 1 obj)
+    (list "149" 'default)))
+@end group
+
+@group
+(grok/traditional "key:0")   @result{} "0"
+(grok/traditional "key:149") @result{} "149"
+(grok/traditional 'monolith) @result{} ("149" default)
+@end group
+@end example
+
+@noindent
+この書き換えでは@var{symbol}バインディング、および@code{or}、@code{and}、@code{pred}、@code{app}、@code{let}を実演します。
+
+@example
+@group
+(defun grok/pcase (obj)
+  (pcase obj
+    ((or                                     ; @r{L1}
+      (and                                   ; @r{L2}
+       (pred stringp)                        ; @r{L3}
+       (pred (string-match                   ; @r{L4}
+              "^key:\\([[:digit:]]+\\)$"))   ; @r{L5}
+       (app (match-string 1)                 ; @r{L6}
+            val))                            ; @r{L7}
+      (let val (list "149" 'default)))       ; @r{L8}
+     val)))                                  ; @r{L9}
+@end group
+
+@group
+(grok/pcase "key:0")   @result{} "0"
+(grok/pcase "key:149") @result{} "149"
+(grok/pcase 'monolith) @result{} ("149" default)
+@end group
+@end example
+
+@noindent
+@code{grok/pcase}は主に1つの@code{pcase}フォームのclause、L1からL8のパターン、L9の(1つの)フォームからなります。パターンは引数であるサブパターンにたいして順にマッチを試みる@code{or}です。これは最初に@code{and}
+(L2からL7)、次に@code{let} (L8)のように、いずれかが成功するまで順にマッチを試みます。
+
+前出の例(@ref{pcase-example-1,,Example
+1}を参照)のように、@code{and}は以降のサブパターンが正しいタイプのオブジェクト(この場合は文字列)に作用することを保証するために@code{pred}サブパターンで始まります。@w{@code{(stringp
+@var{expval})}}が@code{nil}なら@code{pred}は失敗となり、したがって@code{and}も失敗となります。
+
+次の@code{pred} (L4からL5)は@w{@code{(string-match RX
+@var{expval})}}を評価して結果が非@code{nil} (
+@var{expval}が期待するフォーム@code{key:NUMBER}であることを意味する)ならマッチになります。これが失敗すると再び@code{pred}は失敗となり、したがって@code{and}も失敗となります。
+
+(@code{and}の一連のサブパターンでは)最後の@code{app}は一時的な値@var{tmp} (部分文字列
+``NUMBER'')を取得するために@w{@code{(match-string 1 @var{expval})}}
+(L6)を評価して、パターン@code{val}
+(L7)と@var{tmp}のマッチを試みます。これは@var{symbol}パターンなので無条件でマッチして、@code{val}に@var{tmp}を追加でバインドします。
+
+ついに@code{app}がマッチしたので、@code{and}のすべてのサブパターンがマッチして、@code{and}がマッチとなります。同じように一度@code{and}がマッチすれば@code{or}がマッチするので、サブパターン@code{let}
+(L8)の処理が試みられることはありません。
+
+@code{obj}が文字列以外、あるいは間違った形式の文字列の場合を考えてみましょう。この場合にはいずれかの@code{pred}
+(L3からL5)がマッチに失敗するので、@code{and} (L2)がマッチに失敗して、@code{or} (L1)がサブパターン@code{let}
+(L8)の処理を試みます。
+
+まず@code{let}は@w{@code{("149" default)}}を取得するために@w{@code{(list "149"
+'default)}}を評価して、それからパターン@code{val}にたいして@var{exprval}のマッチを試みます。これは@var{symbol}パターンなので無条件にマッチして、追加で@code{val}に@var{exprval}をバインドします。これで@code{let}がマッチしたので、@code{or}がマッチとなります。
+
+@code{and}と@code{let}のサブパターンはどちらも同じ方法、すなわち@code{val}をバインドする過程で@var{symbol}パターンの@code{val}に(常に成功する)マッチを試みることにより完了することに注意してください。したがって@code{or}は常にマッチして、常に制御をbodyフォーム(L9)に渡します。マッチが成功した@code{pcase}のclauseとしては最後のbodyなので、これは@code{pcase}の値となり、同様に@code{grok/pcase}のリターン値になります(@ref{What
+Is a Function}を参照)。
+
+@anchor{pcase-symbol-caveats}
+@subheading シーケンスパターンにおける@var{symbol}の注意点
+
+前出の例のすべてでは、何らかの方法により@var{symbol}サブパターンが含まれるシーケンスパターンが使用されています。以下に使用法に関する重要な詳細をいくつか挙げます。
+
+@enumerate
+@item @var{seqpat}内に@var{symbol}が複数回出現する場合には、
+2回目以降に出現してもリバインドには展開されないが、かわりに@code{eq}を使用した等価性テストに展開される。
+
+以下の例には2つのclauseと2つの@var{seqpat}
+(AとB)を使用している。AとBはいずれも最初に(@code{pred}を使用することにより)@var{expval}がペアであることをチェックして、それから(それぞれにたいして@code{app}を使用することにより)
+@var{expval}の@code{car}と@code{cdr}にシンボルをバインドする。
+
+Aではシンボル@code{st}が2回記述されているので、2つ目の記述は@code{eq}を使用した等価性チェックになる。一方でBは@code{s1}と@code{s2}という別個のシンボルを使用するので、独立したバインディングになる。
+
+@example
+@group
+(defun grok (object)
+  (pcase object
+    ((and (pred consp)        ; seqpat A
+          (app car st)        ; st: 1回目
+          (app cdr st))       ; st: 2回目
+     (list 'eq st))
+@end group
+@group
+    ((and (pred consp)        ; seqpat B
+          (app car s1)        ; s1: 1回目
+          (app cdr s2))       ; s2: 1回目
+     (list 'not-eq s1 s2))))
+@end group
+
+@group
+(let ((s "yow!"))
+  (grok (cons s s)))      @result{} (eq "yow!")
+(grok (cons "yo!" "yo!")) @result{} (not-eq "yo!" "yo!")
+(grok '(4 2))             @result{} (not-eq 4 (2))
+@end group
+@end example
+
+@item @var{symbol}を参照するコードの副作用は未定義。
+無視する。たとえば以下2つの関数は類似している。いずれの関数も@code{and}、@var{symbol}、@code{guard}を使用する:
+
+@example
+@group
+(defun square-double-digit-p/CLEAN (integer)
+  (pcase (* integer integer)
+    ((and n (guard (< 9 n 100))) (list 'yes n))
+    (sorry (list 'no sorry))))
+
+(square-double-digit-p/CLEAN 9) @result{} (yes 81)
+(square-double-digit-p/CLEAN 3) @result{} (no 9)
+@end group
+
+@group
+(defun square-double-digit-p/MAYBE (integer)
+  (pcase (* integer integer)
+    ((and n (guard (< 9 (incf n) 100))) (list 'yes n))
+    (sorry (list 'no sorry))))
+
+(square-double-digit-p/MAYBE 9) @result{} (yes 81)
+(square-double-digit-p/MAYBE 3) @result{} (yes 9)  ; @r{WRONG!}
+@end group
+@end example
+
+@noindent
+違いは@code{guard}内の@var{boolean-expression}である。@code{CLEAN}は単に直接@code{n}を参照するのにたいして、@code{MAYBE}は式@code{(incf
+n)}の中で副作用により@code{n}を参照している。@code{integer}の際には以下のようなことが発生している:
+
+@itemize
+@item 最初の@code{n}は@var{expval}
+(評価した結果である@code{(* 3 3)}、つまり9)にバインドされる。
+
+@item @var{boolean-expression}が評価される:
+
+@example
+@group
+start:   (< 9 (incf n)        100)
+becomes: (< 9 (setq n (1+ n)) 100)
+becomes: (< 9 (setq n (1+ 9)) 100)
+@end group
+@group
+becomes: (< 9 (setq n 10)     100)
+                                   ; @r{ここで副作用!}
+becomes: (< 9       n         100) ; @r{@code{n}は10にバインドされている}
+becomes: (< 9      10         100)
+becomes: t
+@end group
+@end example
+
+@item 結果は非@code{nil}なので
+@code{guard}がマッチして@code{and}がマッチとなり、制御はそのclauseのbodyフォームに渡される。
+@end itemize
+
+@noindent
+@code{MAYBE}には9が2桁の整数だと判定してしまう数学的な誤り以外にも問題がある。bodyフォームは@code{n}の更新された値(10)を確認せずに参照を複数回行う。するとどうなるか?
+
+要約すると( @code{guard}での) @var{boolean-expression}だけではなく( @code{let}での)
+@var{expr}、( @code{pred}と@code{app}での)
+@var{function}でも副作用をもつ@var{symbol}パターンにたいする参照は完全に避けることが最良である。
+
+@item マッチではclauseのbodyフォームはletバインドされたパターンのシンボルセットを参照できる。
+このシンボルセットは@var{seqpat}が@code{and}の際には、各サブパターンでletバインドされるすべてのシンボルそれぞれを結合したものになる。@code{and}のマッチではすべてのサブパターンがマッチしなければならないので、これには意味がある。
+
+@var{seqpat}が@code{or}なら事情は異なる。@code{or}は最初にマッチしたサブパターンでマッチとなり、残りのサブパターンは無視される。bodyフォームにはどのサブパターンがマッチして異なるセットの中からどれが選択されたかを知る術はないので、各シンボルが異なるシンボルセットをletバインドすることに意味はない。たとえば以下は無効:
+
+@example
+@group
+(require 'cl-lib)
+(pcase (read-number "Enter an integer: ")
+  ((or (and (pred cl-evenp)
+            e-num)      ; @r{@code{e-num}を@var{expval}にバインド}
+       o-num)           ; @r{@code{o-num}を@var{expval}にバインド}
+   (list e-num o-num)))
+@end group
+
+@group
+Enter an integer: 42
+@error{} Symbol’s value as variable is void: o-num
+@end group
+@group
+Enter an integer: 149
+@error{} Symbol’s value as variable is void: e-num
+@end group
+@end example
+
+@noindent
+bodyフォーム@w{@code{(list e-num
+o-num)}}の評価によりエラーがシグナルされる。サブパターンを区別するために、すべてのサブパターンごとに異なる値をもつ同一名のシンボルを使用できる。上記の例を書き換えると:
+
+@example
+@group
+(require 'cl-lib)
+(pcase (read-number "Enter an integer: ")
+  ((and num                                ; @r{L1}
+        (or (and (pred cl-evenp)           ; @r{L2}
+                 (let spin 'even))         ; @r{L3}
+            (let spin 'odd)))              ; @r{L4}
+   (list spin num)))                       ; @r{L5}
+@end group
+
+@group
+Enter an integer: 42
+@result{} (even 42)
+@end group
+@group
+Enter an integer: 149
+@result{} (odd 149)
+@end group
+@end example
+
+@noindent
+L1では@var{expval}のバインディング(この場合は@code{num}
+)を@code{and}と@var{symbol}で``分解''している。L2では前と同じ方法で@code{or}は始まるが、異なるシンボルにバインドするかわりに、両方のサブパターン内で同一のシンボル@code{spin}に回バインドするために2回@code{let}を使用している(L3からL4)。@code{spin}の値によりサブパターンは区別される。そしてbodyフォームでは両方のシンボルを参照している(L5)。
+@end enumerate
+
+@node Extending pcase
+@subsection @code{pcase}の拡張
+@cindex pcase, defining new kinds of patterns
+
+@code{pcase}マクロは数種類のパターンをサポートします(@ref{Pattern-Matching
+Conditional}を参照)。@code{pcase-defmacro}を使用すれば違う種類のパターンにたいするサポートを追加できます。
+
+@defmac pcase-defmacro name args [doc] &rest body
+@w{@code{(@var{name}
+@var{actual-args})}}のように呼び出すために新たな種類の@code{pcase}用のパターンを定義する。@code{pcase}マクロは@var{body}を評価する呼び出しへと展開する。このマクロの役割は@var{args}を@var{actual-args}にバインドした環境下において、呼び出されたパターンを別の何らかのパターンに書き換えることである。
+
+さらに@code{pcase}のドキュメント文字列とともに@var{doc}が表示されるように計らう。@var{doc}では慣例により@var{expression}の評価結果を示すために@code{EXPVAL}を使用すること。
+@end defmac
+
+@noindent
+@var{body}は通常はより基本的なパターンを使用して呼び出されたパターンを書き換える。最終的にはすべてのパターンはコアパターンに絞り込まれるが、@code{body}がすぐにコアパターンを使用する必要はない。以下の例では@code{less-than}と@code{integer-less-than}という2つのパターンを定義している。
+
+@example
+@group
+(pcase-defmacro less-than (n)
+  "Matches if EXPVAL is a number less than N."
+  `(pred (> ,n)))
+@end group
+
+@group
+(pcase-defmacro integer-less-than (n)
+  "Matches if EXPVAL is an integer less than N."
+  `(and (pred integerp)
+        (less-than ,n)))
+@end group
+@end example
+
+@noindent
+@var{args}
+(このケースでは@code{n}の1つだけ)に言及するdocstringは通常の方法、@code{EXPVAL}では慣例にもとづく方法であることに注意してください。1つ目の書き換え(
+@code{less-than}の@var{body}
+)では@code{pred}というコアパターンだけが使用されていて、2つ目では2つのコアパターン@code{and}と@code{pred}と新たに定義したパターン@code{less-than}が使用されています。そしていずれの書き換えにおいてもシングルバッククォート構文が使用されています(@ref{Backquote}を参照)。
+
+@node Backquote Patterns
+@subsection バッククォートスタイルパターン
+@cindex backquote-style patterns
+@cindex matching, structural
+@cindex structural matching
+
+このサブセクションでは構造化マッチングを容易にするビルトインパターンである@dfn{バッククォートスタイルパターン(backquote-style
+patterns)}について説明します。背景については@ref{Pattern-Matching Conditional}を参照してください。
+
+バッククォートスタイルパターンは(@code{pcase-defmacro}を使用して作成された)強力な@code{pcase}パターン拡張であり、その@emph{構造(structure)}の仕様にたいする@var{expval}のマッチを容易にします。
+
+たとえば1つ目の要素が特定の文字列、2つ目の要素が任意の値であるような2要素リストの@var{expval}にたいするマッチはコアパターンを使用して記述できます:
+
+@example
+@group
+(and (pred listp)
+     ls
+@end group
+@group
+     (guard (= 2 (length ls)))
+     (guard (string= "first" (car ls)))
+     (let second-elem (cadr ls)))
+@end group
+@end example
+
+@noindent
+しかし等価なバッククォートスタイルパターンで記述することもできます:
+
+@example
+`("first" ,second-elem)
+@end example
+
+@noindent
+バッククォートスタイルパターンはより簡潔かつ@var{expval}の構造と似ており、@code{ls}のバインドを要しません。
+
+バッククォートスタイルパターンは@code{`@var{qpat}}のような形式をもちます。ここで@var{qpat}は以下の形式をもつことができます:
+
+@table @code
+
+@item (@var{qpat1} . @var{qpat2})
+@var{expval}が(
+@code{car}が@var{qpat1}、@code{cdr}が@var{qpat2}にマッチする)コンスセルならマッチ。@w{@code{(@var{qpat1}
+@var{qpat2} @dots{})}}のように容易に一般化できる。
+
+@item [@var{qpat1} @var{qpat2} @dots{} @var{qpatm}]
+@var{expval}が長さ@var{m}の(@code{0}から@code{(@var{m}-1)}番目の要素が@var{qpat1}、@var{qpat2}、@dots{}、@var{qpatm}にマッチする)ベクターならマッチ。
+
+@item @var{symbol}
+@itemx @var{keyword}
+@itemx @var{number}
+@itemx @var{string}
+@var{expval}の対応する要素が指定されたリテラルオブジェクトと@code{equal}ならマッチ。
+
+@item ,@var{pattern}
+@var{expval}の対応する要素が@var{pattern}にマッチすればマッチ。@var{pattern}は@code{pcase}がサポートするすべての種類のパターンであることに注意(上記の例では@code{second-elem}は@var{symbol}コアパターンであり、これはすべてにマッチして@code{second-elem}をletでバインドする)。
+@end table
+
+@dfn{対応する要素(corresponding
+element)}とはバッククォートスタイルパターン@var{qpat}にたいする構造的な位置に等しいような@var{expval}の構造的な位置部分のことです(上記の例では@code{second-elem}の対応する要素は@var{expval}の2つ目の要素)。
+
+以下は小さな式言語用の単純なインタープリターの実装用に@code{pcase}を使用する例です(@code{body}と@code{arg}を正しくキャプチャーするには@code{fn}のclause内でlambda式にレキシカルバインディングが必要なことに注意):
+
+@example
+@group
+(defun evaluate (form env)
+  (pcase form
+    (`(add ,x ,y)       (+ (evaluate x env)
+                           (evaluate y env)))
+@end group
+@group
+    (`(call ,fun ,arg)  (funcall (evaluate fun env)
+                                 (evaluate arg env)))
+    (`(fn ,arg ,body)   (lambda (val)
+                          (evaluate body (cons (cons arg val)
+                                               env))))
+@end group
+@group
+    ((pred numberp)     form)
+    ((pred symbolp)     (cdr (assq form env)))
+    (_                  (error "Syntax error: %S" form))))
+@end group
+@end example
+
+@noindent
+最初の3つのclauseではバッククォートスタイルパターンが使用されています。@code{`(add ,x
+,y)}は@code{form}がリテラルシンボル@code{add}から始まる3要素リストであることをチェックしてから2つ目と3つ目の要素を取り出してシンボル@code{x}と@code{y}にバインドします。これは@dfn{分解(destructuring)}と呼ばれています。@ref{Destructuring
+with pcase
+Patterns}を参照してください。clauseのbodyでは@code{x}と@code{y}を評価して結果を加算します。同じように@code{call}
+clauseは関数呼び出しを実装して、@code{fn} clauseは無名関数定義を実装します。
+
+残りのclauseではコアパターンが使用されています。@code{(pred
+numberp)}は@code{form}が数値ならマッチします。マッチした場合にはbodyがそれを評価します。@code{(pred
+symbolp)}は@code{form}がシンボルならマッチします。マッチした場合にはbodyは@code{env}内のシンボルを照合して、それの連想値をリターンします。最後の@code{_}はすべてにマッチするcatch-allパターンなので、構文エラーの報告に適しています。
+
+以下は評価した結果を含む、この小さな言語のサンプルプログラムの例です:
+
+@example
+(evaluate '(add 1 2) nil)                 @result{} 3
+(evaluate '(add x y) '((x . 1) (y . 2)))  @result{} 3
+(evaluate '(call (fn x (add 1 x)) 2) nil) @result{} 3
+(evaluate '(sub 1 2) nil)                 @result{} error
+@end example
+
+@node Destructuring with pcase Patterns
+@subsection @code{pcase}パターンによる分解
+@cindex destructuring with pcase patterns
+
+pcaseのパターンはあるオブジェクトがマッチ可能なフォーム上の条件を表現するだけではなく、それらのオブジェクトのサブフィールドの抽出もできます。たとえば以下のコードにより、変数@code{my-list}の値であるリストから2つの要素を抽出できます:
+
+@example
+  (pcase my-list
+    (`(add ,x ,y)  (message "Contains %S and %S" x y)))
+@end example
+
+これは@code{x}と@code{y}を抽出するだけではなく、加えて@code{my-list}が正確に3つの要素を含むリストであり、最初の要素がシンボル@code{add}かどうかをテストします。これらのテストのいずれかが失敗したら、@code{pcase}は@code{message}を呼び出さずに即座に@code{nil}をリターンします。
+
+あるオブジェクトから格納された複数の値を抽出する処理は@dfn{分割(destructuring)}という処理としても知られています。@code{pcase}パターンの使用により@dfn{バインディングの分割(destructuring
+binding)}を処理することが可能になります。これはローカルバインディング(@ref{Local
+Variables}を参照)と似ていますが、互換性のあるオブジェクトから値を抽出することにより、変数の複数要素に値を与えることができます。
+
+このセクションで説明したマクロはバインディングを分割するために@code{pcase}パターンを使用しています。オブジェクト構造に互換性があるという条件は、そのオブジェクトがパターンにマッチしなければならないことを意味しています。なぜならマッチした場合のみオブジェクトのサブフィールドが抽出可能になるからです。たとえば:
+
+@example
+  (pcase-let ((`(add ,x ,y) my-list))
+    (message "Contains %S and %S" x y))
+@end example
+
+@noindent
+これは最初に@code{my-list}が正しい個数の要素をもつリストであり、かつ1つ目の要素が@code{add}か検証せずに、@code{my-list}から直接@code{x}と@code{y}の抽出を行う点を除いて前の例と同じことを行います。実際にオブジェクトがパターンにマッチしない場合には、たとえbodyが暗黙にスキップされることはないとしても、その振る舞いは未定義でありエラーがシグナルされるか、あるいはいくつかの変数が@code{nil}のような任意の値にバインドされた状況でbodyが実行されるかもしれません。
+
+バインディングの分割に有用なpcaseパターンとしては、マッチされるオブジェクト構造の仕様を表現する@ref{Backquote
+Patterns}で説明したパターンが一般的です。
+
+バインディングの分割にたいする代替え機能については@ref{seq-let}を参照してください。
+
+@defmac pcase-let bindings body@dots{}
+@var{bindings}に応じて変数のバインディング分割を行い、それから@var{body}を評価する。
+
+@var{bindings}は@w{@code{(@var{pattern}
+@var{exp})}}という形式のバインディングのリスト。ここで@var{exp}は評価する式、@var{pattern}は@code{pcase}パターン。
+
+@var{exp}はすべて最初に評価されて、その後で対応する@var{pattern}にマッチされて、@var{body}の内部で使用可能な変数バインディングが導入される。この変数バインディングは@var{pattern}の要素を、評価された@var{exp}の対応する要素の値に分割してのバインディングすることにより生成される。
+
+以下はその例:
+
+@example
+(pcase-let ((`(,major ,minor)
+	     (split-string "image/png" "/")))
+  minor)
+     @result{} "png"
+@end example
+@end defmac
+
+@defmac pcase-let* bindings body@dots{}
+@var{bindings}に応じて変数のバインディング分割を行い、それから@var{body}を評価する。
+
+@var{bindings}は@code{(@var{pattern}
+@var{exp})}という形式のバインディングのリスト。ここで@var{exp}は評価する式、@var{pattern}は@code{pcase}パターン。この変数バインディングは@var{pattern}の要素を、評価された@var{exp}の対応する要素の値に分割してバインディングすることにより生成される。
+
+@code{pcase-let}とは異なり(しかし@code{let*}と同じように)、各@var{exp}は@var{bindings}の次要素の処理前に対応する@var{pattern}にたいしてマッチされるので、各@var{bindings}のいずれかによって導入される変数バインディングは@var{body}内で利用可能になるのに加えて、その後に続く@var{bindings}の@var{exp}内で利用可能になる。
+@end defmac
+
+@defmac pcase-dolist (pattern list) body@dots{}
+繰り返しごとに@var{pattern}の変数を@var{list}の要素の対応するサブフィールドに分割バインディングしながら、@var{list}の各要素ごとに一度@var{body}を実行する。このバインディングは@code{pcase-let}の場合のように行われる。@var{pattern}が単なる変数なら@code{dolist}と等価(@ref{Iteration}を参照)。
+@end defmac
+
+@defmac pcase-setq pattern value@dots{}
+@var{pattern}に応じて各@var{value}の分割を行い、@code{setq}フォーム内の変数に値を割り当てる。
+@end defmac
+
+@defmac pcase-lambda lambda-list &rest body
+@code{lambda}と同様だが、各引数はパターンでも良い。たとえば以下は引数としてコンスセルを受け取る単純な関数の例:
+
+@example
+(setq fun
+      (pcase-lambda (`(,key . ,val))
+        (vector key (* val 10))))
+(funcall fun '(foo . 2))
+    @result{} [foo 20]
+@end example
+@end defmac
+
+@node Iteration
+@section 繰り返し
+@cindex iteration
+@cindex recursion
+@cindex forms, iteration
+
+  繰り返し(iteration)とは、プログラムの一部を繰り返し実行することを意味します。たとえばリストの各要素、または0から@var{n}の整数にたいして、繰り返し一度ずつ何らかの計算を行いたいとしましょう。Emacs
+Lispではスペシャルフォーム@code{while}でこれを行なうことができます:
+
+@defspec while condition forms@dots{}
+@code{while}は最初に@var{condition}を評価する。結果が非@code{nil}なら@var{forms}をテキスト順に評価する。その後に@var{condition}を再評価して結果が非@code{nil}なら、再度@var{forms}を評価する。この処理は@var{condition}が@code{nil}に評価されるまで繰り返される。
+
+繰り返し回数に制限はない。このループは@var{condition}が@code{nil}に評価されるか、エラーになるか、または@code{throw}で抜け出す(@ref{Nonlocal
+Exits}を参照)まで継続される。
+
+@code{while}フォームの値は常に@code{nil}である。
+
+@example
+@group
+(setq num 0)
+     @result{} 0
+@end group
+@group
+(while (< num 4)
+  (princ (format "Iteration %d." num))
+  (setq num (1+ num)))
+     @print{} Iteration 0.
+     @print{} Iteration 1.
+     @print{} Iteration 2.
+     @print{} Iteration 3.
+     @result{} nil
+@end group
+@end example
+
+各繰り返しごとに何かを実行して、その後も終了テストを行なうrepeat-untilループを記述するには、以下のように@code{while}の1番目の引数としてbodyの後に終了テストを記述して、それを@code{progn}の中に配置する:
+
+@example
+@group
+(while (progn
+         (forward-line 1)
+         (not (looking-at "^$"))))
+@end group
+@end example
+
+@noindent
+これは1行前方に移動して、空行に達するまで行単位の移動を継続する。独特な点は@code{while}がbodyをもたず、終了テスト(これはポイント移動という実処理も行なう)だけを行うことである。
+@end defspec
+
+  マクロ@code{dolist}および@code{dotimes}は、2つの一般的な種類のループを記述する、便利な方法を提供します。
+
+@defmac dolist (var list [result]) body@dots{}
+この構文は@var{list}の各要素に一度@var{body}を実行して、カレント要素をローカルに保持するように、変数@var{var}にバインドする。その後に@var{result}を評価した値、@var{result}が省略された場合は@code{nil}をリターンする。たとえば以下は@code{reverse}関数を定義するために@code{dolist}を使用する方法の例である:
+
+@example
+(defun reverse (list)
+  (let (value)
+    (dolist (elt list value)
+      (setq value (cons elt value)))))
+@end example
+@end defmac
+
+@defmac dotimes (var count [result]) body@dots{}
+この構文は0以上@var{count}未満の各整数にたいして、一度@var{body}を実行してから、繰り返しのカレント回数となる整数を変数@var{var}にバインドする。その後に@var{result}の値、@var{result}が省略された場合は@code{nil}をリターンする。@var{result}の使用は推奨しない。以下は@code{dotimes}を使用して、何らかの処理を100回行なう例:
+
+@example
+(dotimes (i 100)
+  (insert "I will not obey absurd orders\n"))
+@end example
+@end defmac
+
+@node Generators
+@section ジェネレーター
+@cindex generators
+
+  @dfn{ジェネレーター(generator)}とは、潜在的に無限な値ストリームを生成する関数です。毎回その関数が値を生成するごとに、呼び出し側が次の値を要求するまで、自身をサスペンドします。
+
+@defmac iter-defun name args [doc] [declare] [interactive] body@dots{}
+@code{iter-defun}はジェネレーター関数を定義する。ジェネレーター関数は通常の関数と同様のsignatureをもつが、異なるように機能する。ジェネレーター関数は呼び出し時に@var{body}を実行するのではなく、かわりにiteratorオブジェクトをリターンする。このiteratorは値を生成するために@var{body}を実行、値を発行すると@code{iter-yield}か@code{iter-yield-from}が出現するまで一時停止する。@var{body}が正常にリターンした際に、@code{iter-next}がコンディションデータとなる@var{body}の結果とともに、@code{iter-end-of-sequence}をシグナルする。
+
+@var{body}内部では任意の種類のLispコードが有効だが、@code{iter-yield}と@code{iter-yield-from}は@code{unwind-protect}フォームの内部にあってはならない。
+
+@end defmac
+
+@defmac iter-lambda args [doc] [interactive] body@dots{}
+@code{iter-lambda}は@code{iter-defun}で生成されたジェネレーター関数と同様な、無名のジェネレーター関数を生成する。
+@end defmac
+
+@defmac iter-yield value
+@code{iter-yield}がジェネレーター関数内部で出現した際には、カレントiteratorが一時停止して@code{iter-next}から@var{value}をリターンすることを示す。@code{iter-yield}は、次回@code{iter-next}呼び出しの@code{value}パラメーターへと評価される。
+@end defmac
+
+@defmac iter-yield-from iterator
+@code{iter-yield-from}は@var{iterator}が生成するすべての値を生成して、その@var{iterator}のジェネレーター関数が通常リターンする値へと評価される。これが制御を得ている間、@var{iterator}は@code{iter-next}を使用して送信された値を受け取る。
+@end defmac
+
+  ジェネレーター関数を使用するには、まずそれを普通に呼び出して@dfn{iterator}オブジェクトを生成します。iteratorはジェネレーターの固有のインスタンスです。その後でこのiteratorから値を取得するために@code{iter-next}を使用します。iteratorから取得する値がなくなると、@code{iter-next}はそのiteratorの最終値とともに@code{iter-end-of-sequence}のコンディションをraisesします。
+
+ジェネレーター関数のbodyは、@code{iter-next}の呼び出しの内側でのみ実行されることに注意することが重要です。@code{iter-defun}で定義された関数の呼び出しはiteratorを生成します。何か興味があることが発生したら、@code{iter-next}でこのiteratorを制御しなければなりません。ジェネレーター関数の個々の呼び出しは、それぞれが独自に状態をもつ@emph{別個}のiteratorを生成します。
+
+@defun iter-next iterator &optional value
+@var{iterator}から次の値を取得する。(@var{iterator}のジェネレーター関数がリターンしていて)生成される値が存在しない場合、@code{iter-next}はコンディション@code{iter-end-of-sequence}をシグナルする。このコンディションに関連付けられるデータ値は、@var{iterator}のジェネレーター関数がリターンした値である。
+
+@var{value}はiteratorに送信されて、@code{iter-yield}を評価した値になる。@var{iterator}のジェネレーター関数の開始時には、ジェネレーター関数は@code{iter-yield}フォームを何も評価していないので、与えられたiteratorにたいする最初の@code{iter-next}呼び出しでは@var{value}は無視される。
+@end defun
+
+@defun iter-close iterator
+@var{iterator}が@code{unwind-protect}の@code{bodyform}フォーム内でサスペンドされていたら、ガーベージコレクション処理後にEmacsが最終的にunwindハンドラーを実行する(@code{unwind-protect}の@code{unwindforms}内部では@code{iter-yield}は不当であることに注意)。その前に確実にこれらのハンドラーを実行するには、@code{iter-close}を使用すること。
+@end defun
+
+iteratorを簡単に連携できるように、便利な関数がいくつか提供されています:
+
+@defmac iter-do (var iterator) body @dots{}
+@var{iterator}が生成する各値を@var{var}にバインドしつつ@var{body}を実行する。
+@end defmac
+
+Common Lispのループ機能にはiteratorとともに機能も含まれています。@ref{Loop Facility,,,cl,Common
+Lisp Extensions}を参照してください。
+
+以下のコード片はiteratorとの連携における重要な原則を示すものです。
+
+@example
+(require 'generator)
+(iter-defun my-iter (x)
+  (iter-yield (1+ (iter-yield (1+ x))))
+   ;; 普通にリターンする
+  -1)
+
+(let* ((iter (my-iter 5))
+       (iter2 (my-iter 0)))
+  ;; 6をプリント
+  (print (iter-next iter))
+  ;; 9をプリント
+  (print (iter-next iter 8))
+  ;; 1をプリント
+  ;; iterとiterは異なる状態をもつ
+  (print (iter-next iter2 nil))
+
+  ;; ここでiterシーケンスの終了を待機
+  (condition-case x
+      (iter-next iter)
+    (iter-end-of-sequence
+      ;; my-iterが通常の方法でリターンした-1をプリント
+      (print (cdr x)))))
+@end example
+
+@node Nonlocal Exits
+@section 非ローカル脱出
+@cindex nonlocal exits
+
+  @dfn{非ローカル脱出(nonlocal exit)}とは、プログラム内のある位置から別の離れた位置へ制御を移します。Emacs
+Lispではエラーの結果として非ローカル脱出が発生することがあります。明示的な制御の下で非ローカル脱出を使用することもできます。非ローカル脱出は脱出しようとしている構文により作成された、すべての変数バインディングのバインドを解消します。
+
+@menu
+* Catch and Throw::          プログラム自身の目的による非ローカル脱出。
+* Examples of Catch::        このような非ローカル脱出が記述される方法。
+* Errors::                   エラーのシグナルと処理される方法。
+* Cleanups::                 エラーが発生した場合のクリーンアップフォーム実行のアレンジ。
+@end menu
+
+@node Catch and Throw
+@subsection 明示的な非ローカル脱出: @code{catch}と@code{throw}
+@cindex forms for nonlocal exits
+
+  ほとんどの制御構造は、その構文自身の内部の制御フローだけに影響します。関数@code{throw}は、この通常のプログラム実行でのルールの例外です。これはリクエストにより非ローカル脱出を行ないます(他にも例外はあるがそれらはエラー処理用のものだけ)。@code{throw}は@code{catch}の内部で使用され、@code{catch}に制御を戻します。たとえば:
+
+@example
+@group
+(defun foo-outer ()
+  (catch 'foo
+    (foo-inner)))
+
+(defun foo-inner ()
+  @dots{}
+  (if x
+      (throw 'foo t))
+  @dots{})
+@end group
+@end example
+
+@noindent
+@code{throw}フォームが実行されると、対応する@code{catch}に制御を移して、@code{catch}は即座にリターンします。@code{throw}の後のコードは実行されません。@code{throw}の2番目の引数は@code{catch}のリターン値として使用されます。
+
+  関数@code{throw}は1番目の引数にもとづいて、それにマッチする@code{catch}を探します。@code{throw}は1番目の引数が、@code{throw}で指定されたものと@code{eq}であるような@code{catch}を検索します。複数の該当する@code{catch}がある場合には、最も内側にあるものが優先されます。したがって上記の例では@code{throw}が@code{foo}を指定していて、@code{foo-outer}内の@code{catch}が同じシンボルを指定しているので、(この間に他のマッチする@code{catch}は存在しないと仮定するなら)その@code{catch}が該当します。
+
+  @code{throw}の実行により、マッチする@code{catch}までのすべてのLisp構文(関数呼び出しを含む)を脱出します。この方法により@code{let}や関数呼び出しのようなバインディング構文を脱出する場合には、これらの構文を正常にexitしたときのように、そのバインディングは解消されます(@ref{Local
+Variables}を参照)。同様に@code{throw}は@code{save-excursion}(@ref{Excursions}を参照)によって保存されたバッファーと位置を復元します。@code{throw}がスペシャルフォーム@code{unwind-protect}を脱出した場合には、@code{unwind-protect}により設定されたいくつかのクリーンアップも実行されます。
+
+  ジャンプ先となる@code{catch}内にレキシカル(局所的)である必要はありません。@code{throw}は@code{catch}内で呼び出された別の関数から、同じようにに呼び出すことができます。@code{throw}が行なわれたのが、時系列的に@code{catch}に入った後で、かつexitする前である限り、その@code{throw}は@code{catch}にアクセスできます。エディターのコマンドループから戻る@code{exit-recursive-edit}のようなコマンドで、@code{throw}が使用されるのはこれが理由です。
+
+@cindex CL note---only @code{throw} in Emacs
+@quotation
+@b{Common Lispに関する注意: }Common
+Lispを含む、他のほとんどのバージョンのLispは非シーケンシャルに制御を移すいくつかの方法 ---
+たとえば@code{return}、@code{return-from}、@code{go} --- をもつ。Emacs
+Lispは@code{throw}のみ。@file{cl-lib}ライブラリーはこれらのうちいくつかを提供する。@ref{Blocks and
+Exits,,,cl,Common Lisp Extensions}を参照のこと。
+@end quotation
+
+@defspec catch tag body@dots{}
+@cindex tag on run time stack
+@code{catch}は@code{throw}関数にたいするリターン位置を確立する。リターン位置は@var{tag}により、この種の他のリターン位置と区別される。@var{tag}は@code{nil}以外の任意のLispオブジェクト。リターン位置が確立される前に、引数@var{tag}は通常どおり評価される。
+
+リターン位置が有効な場合、@code{catch}は@var{body}のフォームをテキスト順に評価する。フォームが(エラーや非ローカル脱出なしで)通常に実行されたなら、bodyの最後のフォームの値が@code{catch}からリターンされる。
+
+@var{body}の実行の間に@code{throw}が実行された場合、@var{tag}と同じ値を指定すると@code{catch}フォームは即座にexitする。リターンされる値は、それが何であれ@code{throw}の2番目の引数に指定された値である。
+@end defspec
+
+@defun throw tag value
+@code{throw}の目的は、以前に@code{catch}により確立されたリターン位置に戻ることである。引数@var{tag}は、既存のさまざまなリターン位置からリターン位置を選択するために使用される。複数のリターン位置が@var{tag}にマッチしたら、最も内側のものが使用される。
+
+引数@var{value}は@code{catch}からリターンされる値として使用される。
+
+@kindex no-catch
+タグ@var{tag}のリターン位置が存在しなければ、データ@code{(@var{tag}
+@var{value})}とともに@code{no-catch}エラーがシグナルされます。
+@end defun
+
+@node Examples of Catch
+@subsection @code{catch}と@code{throw}の例
+
+  2重にネストされたループから脱出する1つの方法は、@code{catch}と@code{throw}を使うことです(これはほとんどの言語では@code{goto}により行なわれるだろう)。ここでは@var{i}と@var{j}を0から9に変化させて、@code{(foo
+@var{i} @var{j})}を計算します:
+
+@example
+@group
+(defun search-foo ()
+  (catch 'loop
+    (let ((i 0))
+      (while (< i 10)
+        (let ((j 0))
+          (while (< j 10)
+            (if (foo i j)
+                (throw 'loop (list i j)))
+            (setq j (1+ j))))
+        (setq i (1+ i))))))
+@end group
+@end example
+
+@noindent
+@code{foo}が非@code{nil}をリターンしたら即座に処理を中止して、@var{i}と@var{j}のリストをリターンしています。@code{foo}が常に@code{nil}をリターンする場合には、@code{catch}は通常どおりリターンして、その値は@code{while}の結果である@code{nil}となります。
+
+  以下では2つのリターン位置を一度に表す、微妙に異なるトリッキーな例を2つ示します。まず同じタグ@code{hack}にたいして2つのリターン位置があります:
+
+@example
+@group
+(defun catch2 (tag)
+  (catch tag
+    (throw 'hack 'yes)))
+@result{} catch2
+@end group
+
+@group
+(catch 'hack
+  (print (catch2 'hack))
+  'no)
+@print{} yes
+@result{} no
+@end group
+@end example
+
+@noindent
+どちらのリターン位置も@code{throw}にマッチするタグをもつので内側のもの、つまり@code{catch2}で確立されたcatchへgotoします。したがって@code{catch2}は通常どおり値@code{yes}をリターンして、その値がプリントされます。最後に外側の@code{catch}の2番目のbody、つまり@code{'no}が評価されて外側の@code{catch}からそれがリターンされます。
+
+  ここで@code{catch2}に与える引数を変更してみましょう:
+
+@example
+@group
+(catch 'hack
+  (print (catch2 'quux))
+  'no)
+@result{} yes
+@end group
+@end example
+
+@noindent
+この場合も2つのリターン位置がありますが、今回は外側だけがタグ@code{hack}で、内側はかわりにタグ@code{quux}をもちます。したがって@code{throw}により、外側の@code{catch}が値@code{yes}をリターンします。関数@code{print}が呼び出されることはなくbodyのフォーム@code{'no}も決して評価されません。
+
+@node Errors
+@subsection エラー
+@cindex errors
+
+  Emacs
+Lispが何らかの理由で評価できないようなフォームの評価を試みると、@dfn{エラー(error)}が@dfn{シグナル(signal)}されます。
+
+  エラーがシグナルされるとエラーメッセージを表示して、カレントコマンドの実行を終了するのがEmacsデフォルトの反応です。たとえばバッファーの最後で@kbd{C-f}とタイプしたときのように、ほとんどの場合にはこれは正しい反応になります。
+
+  複雑なプログラムでは単なる終了が望ましくない場合もあるでしょう。たとえばそのプログラムがデータ構造に一時的に変更を行なっていたり、プログラム終了前に削除する必要がある一時バッファーを作成しているかもしれません。このような場合には、エラー時に評価される@dfn{クリーンアップ式(cleanup
+expressions)}を設定するために、@code{unwind-protect}を使用するでしょう(@ref{Cleanups}を参照)。サブルーチン内のエラーにもかかわらずに、プログラムの実行を継続したいときがあるかもしれません。このような場合には、エラー時のリカバリーを制御する@dfn{エラーハンドラー(error
+handlers)}を設定するために@code{condition-case}を使用するでしょう。
+
+  カレントコマンドの実行を終了せずに問題を報告するためには、かわりに警告の発行を考慮しましょう。@ref{Warnings}を参照してください。
+
+  エラーハンドラーを使用せずにプログラムの一部から別の部分へ制御を移すためには、@code{catch}と@code{throw}を使用します。@ref{Catch
+and Throw}を参照してください。
+
+@menu
+* Signaling Errors::         エラーを報告する方法。
+* Processing of Errors::     エラーを報告するときEmacsが何を行なうか。
+* Handling Errors::          エラーをトラップして実行を継続する方法。
+* Error Symbols::            エラートラプのためにエラーをクラス分けする方法。
+@end menu
+
+@node Signaling Errors
+@subsubsection エラーをシグナルする方法
+@cindex signaling errors
+
+   エラーの@dfn{シグナリング(signaling)}とは、エラーの処理を開始することを意味します。エラー処理は通常は実行中のプログラムのすべて、または一部をアボート(abort)してエラーをハンドルするためにセットアップされた位置にリターンします。ここではエラーをシグナルする方法を記述します。
+
+  ほとんどのエラーは、たとえば整数にたいして@sc{car}の取得を試みたり、バッファーの最後で1文字前方に移動したときなどのように、他の目的のために呼び出したLispプリミティブ関数の中で自動的にシグナルされます。関数@code{error}と@code{signal}で明示的にエラーをシグナルすることもできます。
+
+  ユーザーが@kbd{C-g}をタイプしたときに発生するquitはエラーとは判断されませんが、ほとんどはエラーと同様に扱われます。@ref{Quitting}を参照してください。
+
+  すべてのエラーメッセージはそれぞれ、何らかのエラーメッセージを指定します。そのメッセージはどうであるべきか(``File must
+exist'')ではなく、何が悪いのか(``File does not exist'')を示すべきです。Emacs
+Lispの慣習ではエラーメッセージは大文字で開始され、区切り文字で終わるべきではありません。
+
+@defun error format-string &rest args
+この関数は@var{format-string}と@var{args}にたいして、@code{format-message}
+(@ref{Formatting Strings}を参照)を適用して構築されたエラーメッセージとともに、エラーをシグナルする。
+
+以下は@code{error}を使用する典型的な例である:
+
+@example
+@group
+(error "That is an error -- try something else")
+     @error{} That is an error -- try something else
+@end group
+
+@group
+(error "Invalid name `%s'" "A%%B")
+     @error{} Invalid name ‘A%%B’
+@end group
+@end example
+
+2つの引数 --- エラーシンボル@code{error}と@code{format-message}がリターンする文字列を含むリスト ---
+で@code{signal}を呼び出すことにより@code{error}は機能する。
+
+@t{"Missing `%s'"}が@t{"Missing ‘foo’"}となるように、通常はフォーマット内のgrave
+accentとapostropheはマッチするcurved quotesに変換される。この変換の効果や抑制については@ref{Text Quoting
+Style}を参照のこと。
+
+@strong{警告: }エラーメッセージとして固定の文字列を使用したい場合、単に@code{(error
+@var{string})}とは記述しないこと。もし@var{string}が@samp{%}、@samp{`}、@samp{'}を含んでいると、再フォーマットされて望む結果は得られないだろう。かわりに、@code{(error
+"%s" @var{string})}を使用すること。
+
+この関数は@code{noninteractive} (@ref{Batch
+Mode}を参照)が非@code{nil}の場合には、シグナルされたエラーにハンドラーがなければEmacsをkillする。
+@end defun
+
+@defun signal error-symbol data
+@anchor{Definition of signal}
+この関数は@var{error-symbol}で命名されるエラーをシグナルする。引数@var{data}はエラー状況に関連する追加のLispオブジェクトのリスト。
+
+引数@var{error-symbol}は@dfn{エラーシンボル(error symbol)} ---
+@code{define-error}で定義されたシンボル --- でなければならない。これはEmacs
+Lispが異なる種類のエラーをクラス分けする方法である。エラーシンボル(error symbol)、エラーコンディション(error
+condition)、コンディション名(condition name)の説明については@ref{Error Symbols}を参照のこと。
+
+エラーが処理されない場合には、エラーメッセージをプリントするために2つの引数が使用される。このエラーメッセージは通常、@var{error-symbol}の@code{error-message}プロパティにより提供される。@var{data}が非@code{nil}なら、その後にコロンと@var{data}の未評価の要素をカンマで区切ったリストが続く。@code{error}にたいするエラーメッセージは@var{data}の@sc{car}である(文字列であること)。サブカテゴリー@code{file-error}は特別に処理される。
+
+@var{data}内のオブジェクトの数と意味は@var{error-symbol}に依存する。たとえば@code{wrong-type-argument}エラーではリスト内に2つのオブジェクト
+--- 期待する型を記述する述語とその型への適合に失敗したオブジェクト --- であること。
+
+エラーを処理する任意のエラーハンドラーにたいして@var{error-symbol}と@var{data}の両方を利用できる。@code{condition-case}はローカル変数を@code{(@var{error-symbol}
+.@: @var{data})}というフォームでバインドする(@ref{Handling Errors}を参照)。
+
+@c (though in older Emacs versions it sometimes could).
+この@code{signal}関数は決してリターンしない。エラー@var{error-symbol}にたいするハンドラーがなく、@code{noninteractive}
+(@ref{Batch Mode}を参照)が非@code{nil}なら、結果としてこの関数がEmacsをkillすることになる。
+
+@example
+@group
+(signal 'wrong-number-of-arguments '(x y))
+     @error{} Wrong number of arguments: x, y
+@end group
+
+@group
+(signal 'no-such-error '("My unknown error condition"))
+     @error{} peculiar error: "My unknown error condition"
+@end group
+@end example
+@end defun
+
+@cindex user errors, signaling
+@defun user-error format-string &rest args
+この関数は、@code{error}とまったく同じように振る舞うが、@code{error}ではなくエラーシンボル@code{user-error}を使用する。名前が示唆するように、このエラーはコード自身のエラーではなく、ユーザー側のエラーの報告を意図している。たとえばInfoの閲覧履歴の開始を超えて履歴を遡るためにコマンド@code{Info-history-back}
+(@kbd{l})を使用した場合、Emacsは@code{user-error}をシグナルする。このようなエラーでは、たとえ@code{debug-on-error}が非@code{nil}であっても、デバッガーへのエントリーは発生しない。@ref{Error
+Debugging}を参照のこと。
+@end defun
+
+@cindex CL note---no continuable errors
+@quotation
+@b{Common Lispに関する注意: }Emacs LispにはCommon Lispのような継続可能なエラーのような概念は存在しない。
+@end quotation
+
+@node Processing of Errors
+@subsubsection Emacsがエラーを処理する方法
+@cindex processing of errors
+
+エラーがシグナルされたとき、@code{signal}はそのエラーにたいするアクティブな@dfn{ハンドラー(handler)}を検索します。ハンドラーとは、Lispプログラムの一部でエラーが発生したときに実行するよう意図されたLisp式のシーケンスです。そのエラーが適切なハンドラーをもっていればそのハンドラーが実行され、そのハンドラーの後から実行が再開されます。ハンドラーはそのハンドラーが設定された@code{condition-case}の環境内で実行されます。@code{condition-case}内のすべての関数呼び出しはすでに終了しているので、ハンドラーがそれらにリターンすることはありません。
+
+そのエラーにたいする適切なハンドラーが存在しなければ、カレントコマンドを終了してエディターのコマンドループに制御をリターンします(コマンドループにはすべての種類のエラーにたいする暗黙のハンドラーがある)。コマンドループのハンドラーは、エラーメッセージをプリントするためにエラーシンボルと、それに関連付けられたデータを使用します。変数@code{command-error-function}を使用して、これが行なわれる方法を制御できます:
+
+@defvar command-error-function
+この変数が非@code{nil}なら、それはEmacsのコマンドループに制御をリターンしたエラーの処理に使用する関数を指定する。この関数は3つの引数を受け取る。1つ目の@var{data}は、@code{condition-case}が自身の変数にバインドするのと同じフォーム。2つ目の@var{context}はエラーが発生した状況を記述する文字列か、(大抵は)@code{nil}。3つ目の@var{caller}はエラーをシグナルしたプリミティブ関数を呼び出したLisp関数。
+@end defvar
+
+@cindex @code{debug-on-error} use
+明示的なハンドラーがないエラーは、Lispデバッガーを呼び出すかもしれません(@ref{Invoking the
+Debugger}を参照)。変数@code{debug-on-error} (@ref{Error
+Debugging}を参照)が非@code{nil}ならデバッガーが有効です。エラーハンドラーと異なり、デバッガーはそのエラーの環境内で実行されるので、エラー時の変数の値を正確に調べることができます。バッチモード(@ref{Batch
+Mode}を参照)の場合には、Emacsプロセスは非0のexitステータスとともに通常どおりexitします。
+
+@node Handling Errors
+@subsubsection エラーを処理するコードの記述
+@cindex error handler
+@cindex handling errors
+@cindex handle Lisp errors
+@cindex forms for handling errors
+
+  エラーをシグナルすることによる通常の効果は、実行されていたコマンドを終了してEmacsエディターのコマンドループに即座にリターンすることです。スペシャルフォーム@code{condition-case}を使用してエラーハンドラーを設定することにより、プログラム内の一部で発生するエラーのをトラップを調整することができます。以下は単純な例です:
+
+@example
+@group
+(condition-case nil
+    (delete-file filename)
+  (error nil))
+@end group
+@end example
+
+@noindent
+これは@var{filename}という名前のファイルを削除して、任意のエラーをcatch、エラーが発生した場合は@code{nil}をリターンします(このような単純なケースではマクロ@code{ignore-errors}を使用することもできる。以下を参照のこと)。
+
+  @code{condition-case}構文は、@code{insert-file-contents}呼び出しによるファイルオープンの失敗のような、予想できるエラーをトラップするために多用されます。@code{condition-case}構文はユーザーから読み取った式を評価するプログラムのような、完全には予測できないエラーのトラップにも使用されます。
+
+  @code{condition-case}の2番目の引数は@dfn{保護されたフォーム(protected
+form)}と呼ばれます(上記の例では保護されたフォームは@code{delete-file}の呼び出し)。このフォームの実行が開始されるとエラーハンドラーが効果をもち、このフォームがリターンすると不活性になります。その間のすべてにおいてエラーハンドラーは効果をもちます。特にこのフォームで呼び出された関数とそのサブルーチン等を実行する間、エラーハンドラーは効果をもちます。厳密にいうと保護されたフォーム自身ではなく、保護されたフォームから呼び出されたLispプリミティブ関数(@code{signal}と@code{error}を含む)だけがシグナルされるというのは、よいことと言えます。
+
+  保護されたフォームの後の引数はハンドラーです。各ハンドラーはそれぞれ、どのエラーを処理するかを指定する1つ以上の@dfn{コンディション名}(シンボル)をリストします。エラーがシグナルされたとき、エラーシンボルはコンディション名のリストも定義します。エラーが共通のコンディション名をもつ場合、そのハンドラーがそのエラーに適用されます。上記の例では1つのハンドラーがあり、それはすべてのエラーをカバーするコンディション名@code{error}を指定しています。
+
+  適切なハンドラーの検索は、もっとも最近に設定されたハンドラーから始まり、設定されたすべてのハンドラーをチェックします。したがってネストされた@code{condition-case}フォームに同じエラー処理がある場合には、内側のハンドラーがそれを処理します。
+
+  何らかの@code{condition-case}によりエラーが処理されると、@code{debug-on-error}でエラーによりデバッガーが呼び出されるようにしていても、通常はデバッガーの実行が抑制されます。
+
+  @code{condition-case}で補足されるようなエラーをデバッグできるようにしたいなら、変数@code{debug-on-signal}に非@code{nil}値をセットします。以下のようにコンディション内に@code{debug}を記述することにより、最初にデバッガーを実行するような特定のハンドラーを指定することもできます:
+
+@example
+@group
+(condition-case nil
+    (delete-file filename)
+  ((debug error) nil))
+@end group
+@end example
+
+@noindent
+ここでの@code{debug}の効果は、デバッガー呼び出しを抑制する@code{condition-case}を防ぐことだけです。@code{debug-on-error}とその他のフィルタリングメカニズムがデバッガーを呼び出すように指定されているときだけ、エラーによりデバッガーが呼び出されます。@ref{Error
+Debugging}を参照してください。
+
+@defmac condition-case-unless-debug var protected-form handlers@dots{}
+マクロ@code{condition-case-unless-debug}は、そのようなフォームのデバッギングを処理する、別の方法を提供する。このマクロは変数@code{debug-on-error}が@code{nil}、つまり任意のエラーを処理しないようなケース以外は、@code{condition-case}とまったく同様に振る舞う。
+@end defmac
+
+  特定のハンドラーがそのエラーを処理するとEmacsが判断すると、Emacsは制御をそのハンドラーにreturnします。これを行うために、Emacsはそのとき脱出しつつあるバインディング構成により作成されたすべての変数のバインドを解き、そのとき脱出しつつあるすべての@code{unwind-protect}フォームを実行します。制御がそのハンドラーに達すると、そのハンドラーのbodyが通常どおり実行されます。
+
+  そのハンドラーのbodyを実行した後、@code{condition-case}フォームから実行がreturnされます。保護されたフォームは、そのハンドラーの実行の前に完全にexitしているので、そのハンドラーはそのエラーの位置から実行を再開することはできず、その保護されたフォーム内で作られた変数のバインディングを調べることもできません。ハンドラーが行なえることは、クリーンアップと、処理を進行させることだけです。
+
+  エラーのシグナルとハンドルには@code{throw}と@code{catch} (@ref{Catch and
+Throw}を参照)に類似する点がいくつかありますが、これらは完全に別の機能です。エラーは@code{catch}でキャッチできず、@code{throw}をエラーハンドラーで処理することはできません(しかし対応する@code{catch}が存在しないときに@code{throw}を使用することによりシグナルされるエラーは処理できる)。
+
+@defspec condition-case var protected-form handlers@dots{}
+このスペシャルフォームは@var{protected-form}の実行を囲い込むエラーハンドラー@var{handlers}を確立する。エラーなしで@var{protected-form}が実行されると、リターンされる値は@code{condition-case}フォームの値になる(成功ハンドラー不在時。以下参照)。この場合には@code{condition-case}は効果をもたない。@var{protected-form}の間にエラーが発生すると、@code{condition-case}フォームは違いを生じる。
+
+@var{handlers}はそれぞれ、@code{(@var{conditions}
+@var{body}@dots{})}というフォームのリストである。ここで@var{conditions}はハンドルされるエラーコンディション名、またはそのハンドラーの前にデバッガーを実行するためのコンディション名(@code{debug}を含む)。@code{t}というコンディション名はすべてのコンディションにマッチする。@var{body}はこのハンドラーがエラーを処理するときに実行される1つ以上のLisp式。
+
+@example
+@group
+(error nil)
+
+(arith-error (message "Division by zero"))
+
+((arith-error file-error)
+ (message
+  "Either division by zero or failure to open a file"))
+@end group
+@end example
+
+発生するエラーはそれぞれ、それが何の種類のエラーかを記述する@dfn{エラーシンボル(error
+symbol)}をもち、これはコンディション名のリストも記述する(@ref{Error
+Symbols}を参照)。Emacsは1つ以上のコンディション名を指定するハンドラーにたいして、すべてのアクティブな@code{condition-case}フォームを検索する。@code{condition-case}の最も内側のマッチがそのエラーを処理する。@code{condition-case}内では、最初に適合したハンドラーがそのエラーを処理する。
+
+ハンドラーのbodyを実行した後、@code{condition-case}は通常どおりリターンして、ハンドラーのbodyの最後の値をハンドラー全体の値として使用する。
+
+@cindex error description
+引数@var{var}は変数である。@var{protected-form}を実行するとき、@code{condition-case}はこの変数をバインドせず、エラーを処理するときだけバインドする。その場合には、@var{var}を@dfn{エラー記述(error
+description)}にバインドする。これはエラーの詳細を与えるリストである。このエラー記述は@code{(@var{error-symbol}
+.
+@var{data})}というフォームをもつ。ハンドラーは何を行なうか決定するために、このリストを参照することができる。たとえばファイルオープンの失敗にたいするエラーなら、ファイル名が@var{data}(エラー記述の3番目の要素)の2番目の要素になる。
+
+@var{var}が@code{nil}なら、それはバインドされた変数がないことを意味する。この場合、エラーシンボルおよび関連するデータは、そのハンドラーでは利用できない。
+
+@cindex success handler
+特殊なケースとして@var{handlers}のいずれか1つが@code{(:success
+@var{body}@dots{})}形式のリストの場合がある。ここで@var{body}は@var{protected-form}がエラーなしで終了した際のリターン値(非@code{nil}の場合)にバインドされた@var{var}とともに実行される。
+
+@cindex rethrow a signal
+より外側のレベルのハンドラーにcatchさせるために、@code{condition-case}によりcatchされたシグナルを再度throwする必要がある場合もある。以下はこれを行なう方法である:
+
+@example
+  (signal (car err) (cdr err))
+@end example
+
+@noindent
+ここで@code{err}はエラー記述変数(error description
+variable)で、@code{condition-case}の1番目の引数は、再throwしたいエラーコンディション。@ref{Definition
+of signal}を参照のこと。
+@end defspec
+
+@defun error-message-string error-descriptor
+この関数は与えられたエラー記述子(error
+descriptor)にたいするエラーメッセージ文字列をリターンする。これはそのエラーにたいする通常のエラーメッセージをプリントすることにより、エラーを処理したい場合に有用。@ref{Definition
+of signal}を参照のこと。
+@end defun
+
+@cindex @code{arith-error} example
+以下は0除算の結果によるエラーを処理するために、@code{condition-case}を使用する例です。このハンドラーは、(beepなしで)エラーメッセージを表示して、非常に大きい数をリターンします。
+
+@example
+@group
+(defun safe-divide (dividend divisor)
+  (condition-case err
+      ;; @r{保護されたフォーム}
+      (/ dividend divisor)
+@end group
+@group
+    ;; @r{ハンドラー}
+    (arith-error                        ; @r{コンディション}
+     ;; @r{このエラーにたいする、通常のメッセージを表示する}
+     (message "%s" (error-message-string err))
+     1000000)))
+@result{} safe-divide
+@end group
+
+@group
+(safe-divide 5 0)
+     @print{} Arithmetic error: (arith-error)
+@result{} 1000000
+@end group
+@end example
+
+@noindent
+このハンドラーはコンディション名@code{arith-error}を指定するので、division-by-zero(0除算)エラーだけを処理します。他の種類のエラーは(この@code{condition-case}によっては)、処理されません。したがって:
+
+@example
+@group
+(safe-divide nil 3)
+     @error{} Wrong type argument: number-or-marker-p, nil
+@end group
+@end example
+
+  以下は@code{error}によるエラーを含む、すべての種類のエラーをcatchする@code{condition-case}です:
+
+@example
+@group
+(setq baz 34)
+     @result{} 34
+@end group
+
+@group
+(condition-case err
+    (if (eq baz 35)
+        t
+      ;; @r{関数@code{error}の呼び出し}
+      (error "Rats!  The variable %s was %s, not 35" 'baz baz))
+  ;; @r{フォームではないハンドラー}
+  (error (princ (format "The error was: %s" err))
+         2))
+@print{} The error was: (error "Rats!  The variable baz was 34, not 35")
+@result{} 2
+@end group
+@end example
+
+@defmac ignore-errors body@dots{}
+この構文は、それの実行中に発生する任意のエラーを無視して@var{body}を実行する。その実行中にエラーがなければ、@code{ignore-errors}は@var{body}内の最後のフォームの値を、それ以外は@code{nil}をリターンする。
+
+以下はこのセクションの最初の例を@code{ignore-errors}を使用して記述する例である:
+
+@example
+@group
+  (ignore-errors
+   (delete-file filename))
+@end group
+@end example
+@end defmac
+
+@defmac ignore-error condition body@dots{}
+このマクロは@code{ignore-errors}と同様だが、指定した特定のエラーコンディションだけを無視する点が異なる。
+
+@example
+  (ignore-error end-of-file
+    (read ""))
+@end example
+
+@var{condition}はエラーコンディションのリストでも可。
+@end defmac
+
+@defmac with-demoted-errors format body@dots{}
+このマクロはいわば@code{ignore-errors}の穏やかなバージョンである。これはエラーを完全に抑止するのではなく、エラーをメッセージに変換する。これはメッセージのフォーマットに、文字列@var{format}を使用する。@var{format}は@code{"Error:
+%S"}のように、単一の@samp{%}シーケンスを含むこと。エラーをシグナルするとは予測されないが、もし発生した場合は堅牢であるべきようなコードの周囲に@code{with-demoted-errors}を使用する。このマクロは@code{condition-case}ではなく、@code{condition-case-unless-debug}を使用することに注意。
+@end defmac
+
+@node Error Symbols
+@subsubsection エラーシンボルとエラー条件
+@cindex error symbol
+@cindex error name
+@cindex condition name
+@cindex user-defined error
+@kindex error-conditions
+@kindex define-error
+
+  エラーをシグナルするとき、想定するエラーの種類を指定するために@dfn{エラーシンボル(error
+symbol)}を指定します。エラーはそれぞれ、それをカテゴリー分けするために単一のエラーシンボルをもちます。これはEmacs
+Lisp言語で定義されるエラーを分類する、もっともよい方法です。
+
+  これらの狭義の分類は@dfn{エラー条件(error
+conditions)}と呼ばれる、より広義のクラス階層にグループ化され、それらは@dfn{コンディション名(condition
+names)}により識別されます。そのようなもっとも狭義なクラスは、エラーシンボル自体に属します。つまり各エラーシンボルは、コンディション名でもあるのです。すべての種類のエラー(@code{quit}を除く)を引き受けるコンディション名@code{error}に至る、より広義のクラスにたいするコンディション名も存在します。したがって各エラーは1つ以上のコンディション名をもちます。つまり@code{error}、@code{error}とは区別されるエラーシンボル、もしかしたらその中間に分類されるものかもしれません。
+
+@defun define-error name message &optional parent
+  シンボルをエラーシンボルとするために、シンボルは親コンディションを受け取る@code{define-error}で定義されなければならない。この親はその種のエラーが属するコンディションを定義する。親の推移的な集合は、常にそのエラーシンボルとシンボル@code{error}を含む。quitはエラーと判断されないので、@code{quit}の親の集合は単なる@code{(quit)}である。
+@end defun
+
+@cindex peculiar error
+  親のコンディションに加えてエラーシンボルは@var{メッセージ(message)}をもち、これは処理されないエラーがシグナルされたときプリントされる文字列です。そのメッセージが有効でなければ、エラーメッセージ@samp{peculiar
+error}が使用されます。@ref{Definition of signal}を参照してください。
+
+内部的には親の集合はエラーシンボルの@code{error-conditions}プロパティに格納され、メッセージはエラーシンボルの@code{error-message}プロパティに格納されます。
+
+  以下は新しいエラーシンボル@code{new-error}を定義する例です:
+
+@example
+@group
+(define-error 'new-error "A new error" 'my-own-errors)
+@end group
+@end example
+
+@noindent
+このエラーは複数のコンディション名 ---
+もっとも狭義の分類@code{new-error}、より広義の分類を想定する@code{my-own-errors}、および@code{my-own-errors}のコンディションすべてを含む@code{error}であり、これはすべての中でもっとも広義なものです。
+
+  エラー文字列は大文字で開始されるべきですが、ピリオドで終了すべきではありません。これはEmacsの他の部分との整合性のためです。
+
+  もちろんEmacs自身が@code{new-error}をシグナルすることはありません。あなたのコード内で明示的に@code{signal}
+(@ref{Definition of signal}を参照)を呼び出すことにより、これを行なうことができます。
+
+@example
+@group
+(signal 'new-error '(x y))
+     @error{} A new error: x, y
+@end group
+@end example
+
+  このエラーは、エラーの任意のコンディション名により処理することができます。以下の例は@code{new-error}とクラス@code{my-own-errors}内の他の任意のエラーを処理します:
+
+@example
+@group
+(condition-case foo
+    (bar nil t)
+  (my-own-errors nil))
+@end group
+@end example
+
+  エラーが分類される有効な方法はコンディション名による方法で、その名前はハンドラーのエラーのマッチに使用されます。エラーシンボルは意図されたエラーメッセージと、コンディション名のリストを指定する便利な方法であるという役割をもつだけです。1つのエラーシンボルではなく、コンディション名のリストを@code{signal}に与えるのは面倒でしょう。
+
+  対照的にコンディション名を伴わずにエラーシンボルだけを使用すると、それは@code{condition-case}の効果を著しく減少させるでしょう。コンディション名はエラーハンドラーを記述するとき、一般性のさまざまなレベルにおいて、エラーをカテゴリー分けすることを可能にします。エラーシンボルを単独で使用することは、もっとも狭義なレベルの分類を除くすべてを捨ててしまうことです。
+
+  主要なエラーシンボルとそれらのコンディションについては、@ref{Standard Errors}を参照してください。
+
+@node Cleanups
+@subsection 非ローカル脱出のクリーンアップ
+@cindex nonlocal exits, cleaning up
+@cindex forms for cleanup
+
+  @code{unwind-protect}構文は、データ構造を一時的に不整合な状態に置くときに重要です。これはエラーやthrouのイベントにより、再びデータを整合された状態にすることができます(バッファー内容の変更だけに使用される他のクリーンアップ構成はアトミックな変更グループである。@ref{Atomic
+Changes}を参照)。
+
+@defspec unwind-protect body-form cleanup-forms@dots{}
+@cindex cleanup forms
+@cindex protected forms
+@cindex error cleanup
+@cindex unwinding
+@code{unwind-protect}は制御が@var{body-form}を離れる場合に、@var{cleanup-forms}が評価されるという保証の下において、何が起こったかに関わらず@var{body-form}を実行する。@var{body-form}は通常どおり完了するかもしれず、@code{unwind-protect}の外側で@code{throw}の実行やエラーが発生するかもしれないが、@var{cleanup-forms}は評価される。
+
+@var{body-form}が正常に終了したら、@code{unwind-protect}は@var{cleanup-forms}を評価した後に、@var{body-form}の値をリターンする。@var{body-form}が終了しなかったら、@code{unwind-protect}は通常の意味におけるような値はリターンしない。
+
+@code{unwind-protect}で保護されるのは@var{body-form}だけである。@var{cleanup-forms}自体の任意のフォームが、(@code{throw}またはエラーにより)非ローカルにexitすると、@code{unwind-protect}は残りのフォームが評価されることを@emph{保証しない}。@var{cleanup-forms}の中の1つが失敗することが問題となるようなら、そのフォームの周囲に他の@code{unwind-protect}を配置して保護すること。
+@end defspec
+
+  たとえば以下は一時的な使用のために不可視のバッファーを作成して、終了する前に確実にそのバッファーをkillする例です:
+
+@example
+@group
+(let ((buffer (get-buffer-create " *temp*")))
+  (with-current-buffer buffer
+    (unwind-protect
+        @var{body-form}
+      (kill-buffer buffer))))
+@end group
+@end example
+
+@noindent
+@code{(kill-buffer
+(current-buffer))}のように記述して、変数@code{buffer}を使用せずに同様のことを行えると思うかもしれません。しかし上の例は、別のバッファーにスイッチしたときに@var{body-form}でエラーが発生した場合、より安全なのです(一時的なバッファーをkillするとき、そのバッファーがカレントとなることを確実にするために、かわりに@var{body-form}の周囲に@code{save-current-buffer}を記述することもできる)。
+
+  Emacsには上のコードとおおよそ等しいコードに展開される、@code{with-temp-buffer}という標準マクロが含まれます(@ref{Definition
+of with-temp-buffer,, Current
+Buffer}を参照)。このマニュアル中で定義されるいくつかのマクロは、この方法で@code{unwind-protect}を使用します。
+
+@findex ftp-login
+  以下はFTPパッケージ由来の実例です。これはリモートマシンへの接続の確立を試みるために、プロセス(@ref{Processes}を参照)を作成しています。関数@code{ftp-login}は関数の作成者が予想できない多くの問題から非常に影響を受け易いので、失敗イベントでプロセスの削除を保証するフォームで保護されています。そうしないとEmacsは無用なサブプロセスで一杯になってしまうでしょう。
+
+@example
+@group
+(let ((win nil))
+  (unwind-protect
+      (progn
+        (setq process (ftp-setup-buffer host file))
+        (if (setq win (ftp-login process host user password))
+            (message "Logged in")
+          (error "Ftp login failed")))
+    (or win (and process (delete-process process)))))
+@end group
+@end example
+
+  この例には小さなバグがあります。ユーザーがquitするために@kbd{C-g}とタイプすると、関数@code{ftp-setup-buffer}のリターン後に即座にquitが発生しますが、それは変数@code{process}がセットされる前なので、そのプロセスはkillされないでしょう。このバグを簡単に訂正する方法はありませんが、少なくともこれは非常に稀なことだと言えます。

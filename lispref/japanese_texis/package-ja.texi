@@ -1,0 +1,285 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 2010--2024 Free Software Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Packaging
+@chapter 配布用Lispコードの準備
+@cindex package
+@cindex Lisp package
+
+  Emacs
+Lispコードをユーザーに配布するために、Emacsは標準的な方法を提供します。@dfn{パッケージ(package)}はユーザーが簡単にダウンロード、インストール、アンインストール、および更新できるような方法でフォーマットと同梱された1つ以上のファイルのコレクションです。
+
+  以降のセクションではパッケージを作成する方法、およびそれを他の人がダウンロードできるように@dfn{パッケージアーカイブ(package
+archive)}に配置する方法を説明します。パッケージングシステムのユーザーレベル機能の説明は@ref{Packages,,, emacs, The
+GNU Emacs Manual}を参照してください。
+
+  これらのセクションは主にパッケージアーカイブのメンテナー向けであり、情報の多くはパッケージ作成者(これらのアーカイブを介して配布されるコードを記述した人)には関係ありません。
+
+@menu
+* Packaging Basics::         Emacs Lispパッケージの基本的概念。
+* Simple Packages::          単一.elファイルをパッケージする方法。
+* Multi-file Packages::      複数ファイルをパッケージする方法。
+* Package Archives::         パッケージアーカイブの保守。
+* Archive Web Server::       アーカイブウェブサーバーへのインターフェース。
+@end menu
+
+@node Packaging Basics
+@section パッケージ化の基礎
+@cindex package attributes
+@cindex package name
+@cindex package version
+@cindex dependencies
+@cindex package dependencies
+
+  パッケージは@dfn{シンプルパケージ(simple package)}か@dfn{複数ファイルパッケージ(multi-file
+package)}のいずれかです。シンプルパッケージは単一のEmacs
+Lispファイル内に格納される一方、複数ファイルパッケージはtarファイル(複数のLispファイルとマニュアルのような非Lispファイルが含まれる可能性がある)に格納されます。
+
+  通常の使い方ではシンプルパッケージと複数ファイルパッケージとの違いは比較的重要ではありません。Package
+Menuインターフェースでは、それらの間に差異はありません。しかし以降のセクションで説明するように作成する手順は異なります。
+
+  パッケージ(シンプルか複数ファイル)はそれぞれ特定の@dfn{属性(attributes)}をもっています:
+
+@table @asis
+@item Name
+短い単語(たとえば@samp{auctex})。これは通常はそのプログラム内でシンボルプレフィクスとしても使用される(@ref{Coding
+Conventions}を参照)。
+
+@item Version
+関数@code{version-to-list}が理解できる形式のバージョン番号(たとえば@samp{11.86})。パッケージの各リリースではユーザーがパッケージアーカイブの問い合わせでアップグレードとして認識できるようにバージョン番号のアップも行うこと。
+
+@item Brief description
+そのパッケージがPackage Menuにリストされる際にが表示される。理想的には36文字以内の単一行であること。
+
+@item Long description
+これは@kbd{C-h P}
+(@code{describe-package})により作成されたバッファーに表示されて、その後にそのパッケージの簡単な説明(brief
+description)とインストール状態(installation
+status)が続く。これには通常はパッケージの能力とインストール後に使用を開始する方法を複数行に渡って完全に記述すること。
+
+@item Dependencies
+そのパッケージが依存する他のパッケージ(恐らく最低のバージョン番号を含む)。このリストは空でもよく、その場合にはパッケージに依存パッケージがないことを意味する。それ以外ならパッケージをインストールすることにより依存パッケージも自動的かつ再帰的にインストールされる。依存パッケージのいずれかが見つからなければパッケージをインストールすることはできない。
+@end table
+
+@cindex content directory, package
+  コマンド@code{package-install-file}、またはPackage
+Menuのいずれかを介したパッケージのインストールでは、@code{package-user-dir}に@file{@var{name}-@var{version}}という名前のサブディレクトリーが作成されます。ここで@var{name}はパッケージ名、@var{version}はバージョン番号です(たとえば@file{~/.emacs.d/elpa/auctex-11.86/})。わたしたちはこれをパッケージの@dfn{コンテンツディレクトリー(content
+directory)}と呼んでいます。これはEmacsがパッケージのコンテンツ(シンプルパッケージでは単一のLispファイル、または複数ファイルパッケージから抽出されたファイル)を配置する場所です。
+
+@cindex package autoloads
+  その後にEmacsはautoloadマジックコメント(@ref{Autoload}を参照)にたいしてコンテンツディレクトリー内のすべてのLispファイルを検索します。これらのautoload定義はコンテンツディレクトリーの@file{@var{name}-autoloads.el}という名前のファイルに保存されます。これらは通常はパッケージ内で定義された主要なユーザーコマンドのautoloadに使用されますが、@code{auto-mode-alist}への要素の追加(@ref{Auto
+Major
+Mode}を参照)等の別のタスクを行うこともできます。パッケージは通常はその中で定義された関数と変数のすべてをautoload@emph{しない}ことに注意してください
+---
+通常はそのパッケージの使用を開始するために呼び出される一握りのコマンドだけがautoloadされます。それからEmacsはそのパッケージ内のすべてのLispファイルをバイトコンパイルします。
+
+  インストール後はインストールされたパッケージは@dfn{ロード済み(loaded)}になります。Emacsは@code{load-path}にコンテンツディレクトリーを追加して@file{@var{name}-autoloads.el}内のautoload定義を評価します。
+
+  Emacsのスタートアップ時には、カレントセッションでインストール済みパッケージを利用可能にするために、自動的に関数@code{package-activate-all}を呼び出します。これは早期initファイルロード後、かつ通常initファイルロード後に行われます(@ref{Startup
+Summary}を参照)。早期initファイルでユーザーオプション@code{package-enable-at-startup}が@code{nil}にセットされている場合には、パッケージは自動的に利用可能にはなりません。
+
+@defun package-activate-all
+この関数はカレントセッションでパッケージを利用可能にする。ユーザーオプション@code{package-load-list}は利用可能にするパッケージを指定する。デフォルトではインストール済みのパッージすべてが利用可能になる。@ref{Package
+Installation,,, emacs, The GNU Emacs Manual}を参照のこと。
+
+ほとんどの場合には、スタートアップの間に自動的に行われるので@code{package-activate-all}を呼び出す必要はないはずである。単に早期initファイル内に@code{package-activate-all}の前に実行される必要のあるコードを配置するとともに、@code{package-activate-all}の後に実行される必要のあるコードを主linitファイルに配置することを確実に行なえばよい(@ref{Init
+File,,, emacs, The GNU Emacs Manual}を参照)。
+@end defun
+
+@deffn Command package-initialize &optional no-activate
+この関数は何のパッケージがインストール済みかに関するEmacsの内部レコードを初期化してから@code{package-activate-all}を呼び出す。
+
+オプション引数@var{no-activate}が非@code{nil}なら、インストール済みパッケージを実際に利用可能にせずにこのレコードを更新する。これは内部でのみ使用される。
+@end deffn
+
+@node Simple Packages
+@section 単純なパッケージ
+@cindex single file package
+@cindex simple package
+
+  シンプルパッケージは単一のEmacs Lispソースファイルで構成されます。このファイルはEmacs
+Lispライブラリーのヘッダー規約に準拠していなればなりません(@ref{Library
+Headers}を参照)。以下の例に示すようにパッケージの属性は種々のヘッダーから取得されます:
+
+@example
+@group
+;;; superfrobnicator.el --- Frobnicate and bifurcate flanges  -*- lexical-binding:t -*-
+
+;; Copyright (C) 2022 Free Software Foundation, Inc.
+@end group
+
+;; Author: J. R. Hacker <jrh@@example.com>
+;; Version: 1.3
+;; Package-Requires: ((flange "1.0"))
+;; Keywords: multimedia, hypermedia
+;; URL: https://example.com/jrhacker/superfrobnicate
+
+@dots{}
+
+;;; Commentary:
+
+;; This package provides a minor mode to frobnicate and/or
+;; bifurcate any flanges you desire.  To activate it, just type
+@dots{}
+
+;;;###autoload
+(define-minor-mode superfrobnicator-mode
+@dots{}
+@end example
+
+  そのパッケージの名前は1行目のファイル名の拡張子を除いた部分と同じです。ここでは@samp{superfrobnicator}です。
+
+  brief description(簡単な説明)も1行目から取得されます。ここでは@samp{Frobnicate and bifurcate
+flanges}です(訳注:
+@samp{flangeをフロブニケートして二股化する}のフロブニケートとはある技術にたいする無目的で非生産的な具体的行為を意味する)。
+
+  バージョン番号は、もしあれば@samp{Package-Version}ヘッダー、それ以外は@samp{Version}ヘッダーから取得されます。これらのヘッダーのいずれかが@emph{提供されていなればなりません}。ここでのバージョン番号は1.3です。
+
+  そのファイルに@samp{;;; Commentary:}セクションがあれば、そのセクションは長い説明(long
+description)として使用されます(その説明を表示する際にはEmacsは@samp{;;;
+Commentary:}の行とコメント内のコメント文字列を省略する)。
+
+  そのファイルに@samp{Package-Requires}ヘッダーがあればパッケージの依存関係(package
+dependencies)として使用されます。上の例ではパッケージはバージョン1.0以上の@samp{flange}パッケージに依存します。@samp{Package-Requires}ヘッダーの説明は@ref{Library
+Headers}を参照してください。このヘッダーが省略された場合にはパッケージに依存関係はありません。
+
+  ヘッダー@samp{Keywords}と@samp{URL}はオプションですが含めることを推奨します。コマンド@code{describe-package}は出力にリンクを追加するためにこれらを使用します。@samp{Keywords}ヘッダーには@code{finder-known-keywords}リストからの標準的キーワードを少なくとも1つ含めるべきです。
+
+  ファイルには@ref{Packaging
+Basics}で説明したように1つ以上のautoloadマジックコメントも含めるべきです。上の例ではマジックコメントにより@code{superfrobnicator-mode}が自動ロードされます。
+
+  パッケージアーカイブに単一ファイルのパッケージを追加する方法は@ref{Package Archives}を参照してください。
+
+@node Multi-file Packages
+@section 複数ファイルのパッケージ
+@cindex multi-file package
+
+  複数ファイルパッケージは単一ファイルパッケージより作成の手軽さが少し劣りますが、より多くの機能を提供します。複数ファイルパッケージには複数のEmacs
+Lispファイル、Infoマニュアル、および(イメージのような)他のファイルタイプを含めることができます。
+
+  インストールに先立ち複数パッケージはファイルとしてパッケージアーカイブに含まれます。このtarファイルは@file{@var{name}-@var{version}.tar}という名前でなければなりません。ここで@var{name}はパッケージ名、@var{version}はバージョン番号です。tarのコンテンツは一度解凍されたなら、@dfn{コンテンツディレクトリcontent
+directory)}である@file{@var{name}-@var{version}}という名前のディレクトリーにすべて解凍されなければなりません(@ref{Packaging
+Basics}を参照)。このコンテンツディレクトリーのサブディレクトリーにもファイルが抽出されるかもしれません。
+
+  このコンテンツディレクトリー内のファイルのうち1つは@file{@var{name}-pkg.el}という名前のファイルでなければなりません。このファイルには、以下で説明する関数@code{define-package}の呼び出しから構成される単一のLispフォームを含まなければなりません。これはパッケージの属性、簡単な説明(brief
+description)、必要条件(requirements)を定義します。
+
+  たとえば、複数ファイルパッケージとしてsuperfrobnicatorのバージョン1.3を配布する場合のtarファイルは@file{superfrobnicator-1.3.tar}になります。これのコンテンツは@file{superfrobnicator-1.3}に解凍されて、そのうちの1つはファイル@file{superfrobnicator-pkg.el}になるでしょう。
+
+@defun define-package name version &optional docstring requirements
+この関数はパッケージを定義する。@var{name}はパッケージの名前(文字列)、@var{version}は関数@code{version-to-list}が理解できる形式のバージョン(文字列)、@var{docstring}は簡単な説明(brief
+description)。
+
+@var{requirements}は必要となるパッケージとバージョン番号。このリスト内の各要素は@code{(@var{dep-name}
+@var{dep-version})}という形式であること。ここで@var{dep-name}はその依存するパッケージ名が名前であるようなシンボル、@var{dep-version}は依存するパッケージのバージョン番号(文字列)。
+@end defun
+
+  コンテンツディレクトリーに@file{README}という名前のファイルがあれば、(すべての@samp{;;;
+Commentary:}セクションをオーバーライドして)長い説明(long description)として使用されます。
+
+  コンテンツディレクトリーに@file{dir}という名前のファイルがあれば、@command{install-info}で作成されるInfoディレクトリーファイル名とみなされます。@ref{Invoking
+install-info, Invoking install-info, Invoking install-info, texinfo,
+Texinfo}を参照してください。関係のあるInfoファイルもコンテンツディレクトリー内に解凍される必要があります。この場合には、パッケージがアクティブ化されたときにEmacsが自動的に@code{Info-directory-list}にコンテンツディレクトリーを追加します。
+
+  パッケージ内に@file{.elc}ファイルを含めないでください。これらはパッケージのインストール時に作成されます。ファイルがバイトコンパイルされる順序を制御する方法は存在しないことに注意してください。
+
+  @file{@var{name}-autoloads.el}という名前のファイルを含めてはなりません。このファイルはパッケージのautoload定義のために予約済みです(@ref{Packaging
+Basics}を参照)。これはパッケージのインストール時にパッケージ内のすべてのLispファイルからautoloadマジックコメントを検索する際に自動的に作成されます。
+
+  複数パッケージファイルが、(イメージのような)補助的なデータファイルを含む場合には、パッケージ内のLispファイルは変数@code{load-file-name}を通じてそれらのファイルを参照できます(@ref{Loading}を参照)。以下は例です:
+
+@smallexample
+(defconst superfrobnicator-base (file-name-directory load-file-name))
+
+(defun superfrobnicator-fetch-image (file)
+  (expand-file-name file superfrobnicator-base))
+@end smallexample
+
+@cindex @file{.elpaignore} file
+  パッケージにユーザーに配布したくないファイル(たとえば回帰テストなど)が含まれている場合には、それらを@file{.elpaignore}ファイルに追加できます。このファイルの行にはそれぞれファイルのリスト、あるいはファイルにマッチするワイルドカードを記述します。ここで記述したファイルは、ELPA
+(@ref{Package
+Archives}を参照)であなたのパッケージのtarballを生成する際に無視されます(ELPAがダウンロード用にパッケージを準備する際にファイルはコマンドラインオプション@option{-X}を通じて@command{tar}コマンドに渡されることになる)。
+
+@node Package Archives
+@section パッケージアーカイブの作成と保守
+@cindex package archive
+
+@cindex GNU ELPA
+@cindex non-GNU ELPA
+  Package Menuを通じて@dfn{パッケージアーカイブ(package
+archives)}からユーザーはパッケージをダウンロードできます。このようなアーカイブは変数@code{package-archives}で指定されます。この変数のデフォルト値は@url{https://elpa.gnu.org,
+GNU ELPA}と@url{https://elpa.nongnu.org, non-GNU
+ELPA}でホストされるアーカイブのリストです。このセクションではパッケージアーカイブのセットアップと保守の方法について説明します。
+
+@cindex base location, package archive
+@defopt package-archives
+この変数の値はEmacsパッケージマネージャーが認識するパッケージアーカイブのリスト。
+
+このalistの要素はそれぞれが1つのアーカイブに対応する@code{(@var{id}
+.
+@var{location})}という形式であること。ここで@var{id}はパッケージ名(文字列)、@var{location}は文字列であるような@dfn{ベースロケーション(base
+location)}。
+
+ベースロケーションが@samp{http:}か@samp{https:}で始まる場合にはHTTP(S)のURLとして扱われて、(デフォルトのGNUアーカイブのように)HTTP(S)を介してこのアーカイブからパッケージがダウンロードされる。
+
+それ以外ならベースロケーションはディレクトリー名であること。この場合にはEmacsは通常のファイルアクセスを通じて、そのアーカイブからパッケージを取得する。localのようなアーカイブは主としてテストに有用。
+@end defopt
+
+  パッケージアーカイブはパッケージ、および関連するファイルが格納された単なるディレクトリーです。HTTPを介してそのアーカイブに到達できるようにしたければ、このディレクトリーがウェブサーバーにアクセスできなければなりません。@ref{Archive
+Web Server}を参照してください。
+
+  手軽なのは@code{package-x}を通じてパッケージアーカイブのセットアップと更新を行う方法です。これはEmacsに含まれていますがデフォルトではロードされません。ロードするには@kbd{M-x
+load-library @key{RET} package-x @key{RET}}、または@code{(require
+'package-x)}をinitファイルに追加します。@ref{Lisp Libraries,, Lisp Libraries, emacs, The
+GNU Emacs Manual}を参照してください。
+
+@noindent
+アーカイブ作成後に、それが@code{package-archives}内になければPackage
+Menuインターフェースからアクセスできないことを忘れないでください。
+
+@cindex package archive security
+@cindex package signing
+公的なパッケージアーカイブの保守には責任が併ないます。アーカイブからEmacsユーザーがパッケージをインストールする際には、それらのパッケージはそのユーザーの権限において任意のコードを実行できるようになります(これはパッケージにたいしてだけでなく一般的なEmacsコードにたいしても真といえる)。そのためアーカイブの保守を保つとともにホスティングシステムが安全であるよう維持するべきです。
+
+  暗号化されたキーを使用してパッケージに@dfn{サイン(sign)}するのがパッケージのセキュリティーを向上する1つの方法です。gpgのprivateキーとpublicキーを生成してあれば以下のようにそのパッケージにサインするためにgpgを使用できます:
+
+@c FIXME EasyPG / package-x way to do this.
+@example
+gpg -ba -o @var{file}.sig @var{file}
+@end example
+
+@noindent
+単一ファイルパッケージにたいしては、@var{file}はそのパッケージのLispファイルです。複数ファイルパッケージではそのパッケージのtarファイルです。同じ方法によりアーカイブのコンテンツファイルにもサインできます。これを行うにはパッケージと同じディレクトリーで@file{.sig}ファイルを利用可能できるようにしてください。ダウンロードする人にたいしても、@url{https://pgp.mit.edu/}のようなキーサーバーにアップロードすることによりpublicキーを利用できるようにするべきです。その人がアーカイブからパッケージをインストールする際には署名の検証にpublicキーを使用できます。
+
+これらの方法についての完全な説明はマニュアルの範囲を超えます。暗号化キーとサインに関する詳細は@ref{Top,, GnuPG, gnupg, The
+GNU Privacy Guard Manual}、Emacsに付属するGNU Privacy
+Guardへのインターフェースについては@ref{Top,, EasyPG, epa, Emacs EasyPG Assistant
+Manual}を参照してください。
+
+@node Archive Web Server
+@section アーカイブウェブサーバーとのインターフェイス
+@cindex archive web server
+
+パッケージアーカイブへのアクセスを提供するウェブサーバーは、以下のクエリーをサポートしなければなりません:
+
+@table @asis
+@item archive-contents
+アーカイブ内容を記述するlispフォーム。このフォームはリストの最初の要素がアーカイブバージョンであることを除けば'package-desc'構造(@file{package.el}を参照)のリストである。
+
+@item <package name>-readme.txt
+パッケージの長い説明(long description)をリターンする。
+
+@item <file name>.sig
+そのファイルの署名をリターンする。
+
+@item <file name>
+そのファイルをリターンする。これは複数ファイルパッケージではtarball、シンプルパッケージでは単一ファイルかもしれない。
+
+@end table

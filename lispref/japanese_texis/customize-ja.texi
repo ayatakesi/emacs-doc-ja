@@ -1,0 +1,1094 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1997--2024 Free Software Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Customization
+@chapter カスタマイゼーション設定
+
+@cindex customization item
+  EmacsのユーザーはCustomizeインターフェースにより、Lispコードを記述することなく変数とフェースをカスタマイズできます。@ref{Easy
+Customization,,, emacs, The GNU Emacs
+Manual}を参照してください。このチャプターではCustomizeインターフェースを通じて、ユーザーとやりとりするための@dfn{カスタマイズアイテム（customization
+items）}を定義する方法を説明します。
+
+  カスタマイズアイテムには@code{defcustom}マクロ
+@ifinfo
+(@ref{Variable Definitions}を参照)で定義されるカスタマイズ可能変数
+@end ifinfo
+@ifnotinfo
+で定義されるカスタマイズ可能変数
+@end ifnotinfo
+@code{defface}(@ref{Defining
+Faces}で個別に説明)で定義されるカスタマイズ可能フェイス、および@code{defgroup}
+@ifinfo
+(@ref{Group Definitions}を参照)で定義される
+@end ifinfo
+@ifnotinfo
+で定義される
+@end ifnotinfo
+@dfn{カスタマイゼーショングループ(customization
+groups)}が含まれ、これは関連するカスタマイゼーションアイテムのコンテナとして振る舞います。
+
+@menu
+* Common Keywords::          すべての種類のカスタマイゼーション宣言に共通なキーワード引数。
+* Group Definitions::        カスタマイゼーショングループ定義の記述。
+* Variable Definitions::     ユーザーオプションの宣言。
+* Customization Types::      ユーザーオプションの型指定。
+* Applying Customizations::  カスタマイゼーションセッティングを適用する関数。
+* Custom Themes::            Customテーマの記述。
+@end menu
+
+@node Common Keywords
+@section 一般的なキーワードアイテム
+
+@cindex customization keywords
+   以降のセクションで説明するカスタマイゼーション宣言(customization declaration) ---
+@code{defcustom}、@code{defgroup}などはすべてさまざまな情報を指定するためのキーワード引数(@ref{Constant
+Variables}を参照)を受け取ります。このセクションではカスタマイゼーション宣言のすべての種類に適用されるキーワードを説明します。
+
+  @code{:tag}以外のすべてのキーワードは、与えられたアイテムにたいして複数回使用できます。キーワードの使用はそれぞれ独立した効果をもちます。例外は@code{:tag}で、これはすべての与えられたアイテムは1つの名前だけを表示できるからです。
+
+@table @code
+@item :tag @var{label}
+@kindex tag@r{, customization keyword}
+@var{label}を使用すると、カスタマイゼーションメニュー(customization
+menu)とカスタマイゼーションバッファー(customization
+buffer)のアイテムのラベルづけに、そのアイテムの名前のかわりに指定された文字列を使用します。@strong{混乱を招くのでそのアイテムの実際の名前と大きく異なる名前は使用しないでください}。
+
+@kindex group@r{, customization keyword}
+@item :group @var{group}
+このカスタマイゼーションアイテムをグループ@var{group}にputする。カスタマイゼーションアイテムからこのキーワードが欠落していると、アイテムは最後に定義された同じグループ内に配置されるだろう。
+
+@code{defgroup}内で@code{:group}を使用すると、そのアイテムは新しいグループ(@code{:group}のサブグループ)になる。
+
+このキーワードを複数回使用すると、1つのアイテムを複数のグループに配置することができる。それらのグループのいずれかを表示すると、このアイテムが表示される。煩雑になるので多用しないこと。
+
+@item :link @var{link-data}
+@kindex link@r{, customization keyword}
+このアイテムのドキュメント文字列の後に外部リンクを含める。これは他のドキュメントを参照するセンテンスを含んだボタンである。
+
+@var{link-data}に使用できる複数の選択肢がある:
+
+@table @code
+@item (custom-manual @var{info-node})
+infoノードへのリンク。@var{info-node}は@code{"(emacs)Top"}のような、ノード名を示す文字列である。このリンクはカスタマイゼーションバッファーの@samp{[Manual]}に表示され、@var{info-node}にたいしてビルトインのinfoリーダーを起動する。
+
+@item (info-link @var{info-node})
+@code{custom-manual}と同様だが、カスタマイゼーションバッファーにはそのinfoノード名が表示される。
+
+@item (url-link @var{url})
+ウェブページヘのリンク。@var{url}は@acronym{URL}を指定する文字列である。カスタマイゼーションバッファーに表示されるリンクは@code{browse-url-browser-function}で指定されたWWWブラウザーを呼び出す。
+
+@item (emacs-commentary-link @var{library})
+ライブラリーのコメントセクション(commentary
+section)へのリンク。@var{library}はライブラリー名を指定する文字列である。@ref{Library Headers}を参照のこと。
+
+@item (emacs-library-link @var{library})
+Emacs Lispライブラリーファイルへのリンク。@var{library}はライブラリー名を指定する文字列である。
+
+@item (file-link @var{file})
+ファイルへのリンク。@var{file}はユーザーがこのリンクを呼び出したときに@code{find-file}でvisitするファイルの名前を指定する文字列である。
+
+@item (function-link @var{function})
+関数のドキュメントへのリンク。@var{function}はユーザーがこのリンクを呼び出したときに@code{describe-function}で説明を表示する関数の名前を指定する文字列である。
+
+@item (variable-link @var{variable})
+変数のドキュメントへのリンク。@var{variable}はユーザーがこのリンクを呼び出したときに@code{describe-variable}で説明を表示する変数の名前を指定する文字列である。
+
+@item (face-link @var{face})
+フェイスのドキュメントへのリンク。@var{face}はユーザーがこのリンクを呼び出したときに@code{describe-face}で説明を表示する関数の名前を指定する文字列である。
+
+@item (custom-group-link @var{group})
+他のカスタマイゼーショングループへのリンク。このリンクを呼び出すことにより@var{group}にたいする新たなカスタマイゼーションバッファーが作成される。
+@end table
+
+@var{link-data}の1つ目の要素の後に@code{:tag
+@var{name}}を追加することにより、カスタマイゼーションバッファーで使用するテキストを指定できます。たとえば@code{(info-link
+:tag "foo" "(emacs)Top")}は、そのバッファーで@samp{foo}と表示されるEmacs manualへのリンクを作成します。
+
+複数のリンクを追加するために、このキーワードを複数回使用することができます。
+
+@item :load @var{file}
+@kindex load@r{, customization keyword}
+そのカスタマイゼーションアイテムを表示する前にファイル@var{file}をロードする(@ref{Loading}を参照)。ロードは@code{load}により行われ、そのファイルがまだロードされていないときだけロードを行う。
+
+@item :require @var{feature}
+@kindex require@r{, customization keyword}
+保存したカスタマイゼーションがこのアイテム値をセットするとき、@code{(require
+'@var{feature})}が実行される。@var{feature}はシンボル。
+
+@code{:require}を使用するもっとも一般的な理由は、ある変数がマイナーモードのような機能を有効にするとき、そのモードを実装するコードがロードされていなければ、変数のセットだけでは効果がないからである。
+
+@item :version @var{version}
+@kindex version@r{, customization keyword}
+このキーワードはそのアイテムが最初に導入されたEmacsバージョン@var{version}か、そのアイテムのデフォルト値がそのバージョンで変更されたことを指定する。値@var{version}は文字列でなければならない。
+
+@item :package-version '(@var{package} . @var{version})
+@kindex package-version@r{, customization keyword}
+このキーワードはそのアイテムが最初に導入された@var{package}のバージョン@var{version}か、アイテムの意味(またはデフォルト値)が変更されたバージョンを指定する。このキーワードは@code{:version}より優先される。
+
+@var{package}にはそのパッケージの公式名をシンボルとして指定すること(たとえば@code{MH-E})。@var{version}には文字列であること。パッケージ@var{package}がEmacsの一部としてリリースされたなら、@var{package}と@var{version}の値は@code{customize-package-emacs-version-alist}の値に表示されるはずである。
+@end table
+
+Emacsの一部として配布された@code{:package-version}キーワードを使用するパッケージは、@code{customize-package-emacs-version-alist}変数も更新しなければなりません。
+
+@defvar customize-package-emacs-version-alist
+これは@code{:package-version}キーワード内でリストされたパッケージのバージョンに関連付けられたEmacsのバージョンにたいして、マッピングを提供するalistである。このalistの要素は:
+
+@example
+(@var{package} (@var{pversion} . @var{eversion})@dots{})
+@end example
+
+それぞれの@var{package}(シンボル)にたいして、パッケージバージョン@var{pversion}を含む1つ以上の要素と、それに関連付けられるEmacsバージョン@var{eversion}が存在する。これらのバージョンは文字列である。たとえばMH-Eパッケージは以下によりalistを更新する:
+
+@c Must be small else too wide.
+@c FIXME obviously this is out of date (in the code).
+@smallexample
+(add-to-list 'customize-package-emacs-version-alist
+             '(MH-E ("6.0" . "22.1") ("6.1" . "22.1") ("7.0" . "22.1")
+                    ("7.1" . "22.1") ("7.2" . "22.1") ("7.3" . "22.1")
+                    ("7.4" . "22.1") ("8.0" . "22.1")))
+@end smallexample
+
+@var{package}の値は一意である必要があり、@code{:package-version}キーワード内に現れる@var{package}の値とマッチする必要がある。おそらくユーザーはエラーメッセージからこの値を確認するので、MH-EやGnusのようなパッケージの公式名を選択するのがよいだろう。
+@end defvar
+
+@node Group Definitions
+@section カスタマイゼーショングループの定義
+@cindex define customization group
+@cindex customization groups, defining
+
+  Emacs Lispパッケージはそれぞれ、1つのメインのカスタマイゼーショングループ(main customization
+group)をもち、それにはすべてのオプションとフェイス、そのパッケージ内の他のグループが含まれるべきです。そのパッケージに少数のオプションとフェイスしかなければ、1つのグループだけを使用してその中にすべてを配置します。20以上のオプションやフェイスがあるなら、それらをサブグループ内に構造化して、そのサブグループをメインのカスタマイゼーショングループの下に配置します。そのパッケージ内の任意のオプションやフェイスを、サブグループと並行してメイングループに配置しても問題はありません。
+
+  そのパッケージのメイングループ(または唯一のグループ)は、1つ以上の標準カスタマイゼーショングループ(standard customization
+group)のメンバーであるべきです(これらの完全なリストを表示するには@kbd{M-x
+customize}を使用する)。それらの内から1つ以上(多すぎないこと)を選択して、@code{:group}を使用してあなたのグループをそれらに追加します。
+
+  新しいカスタマイゼーショングループは@code{defgroup}で宣言します。
+
+@defmac defgroup group members doc [keyword value]@dots{}
+@var{members}を含むカスタマイゼーショングループとして@var{group}を宣言する。シンボル@var{group}はクォートしない。引数@var{doc}はそのグループにたいするドキュメント文字列を指定する。
+
+引数@var{members}はそのグループのメンバーとなるカスタマイゼーションアイテムの初期セットを指定するリストである。しかしほとんどの場合は@var{members}を@code{nil}にして、メンバーを定義するときに@code{:group}キーワードを使用することによってそのグループのメンバーを指定する。
+
+@var{members}を通じてグループのメンバーを指定したければ、要素はそれぞれ@code{(@var{name}
+@var{widget})}という形式で指定すること。ここで@var{name}はシンボル、@var{widget}はそのシンボルを編集するウィジェット型(widget
+type)である。変数には@code{custom-variable}、フェイスにはる@code{custom-face}、グループには@code{custom-group}が有用なウィジェットである。
+
+Emacsに新しいグループを導入するときは@code{defgroup}内で@code{:version}キーワードを使用する。そうすればグループの個別のメンバーにたいしてそれを使用する必要がなくなる。
+
+一般的なキーワード(@ref{Common Keywords}を参照)に加えて、@code{defgroup}内では以下のキーワードも使用できる:
+
+@table @code
+@item :prefix @var{prefix}
+@kindex prefix@r{, @code{defgroup} keyword}
+グループ内のアイテムの名前が@var{prefix}で始まり、カスタマイズ変数@code{custom-unlispify-remove-prefixes}が非@code{nil}なら、そのアイテムのタグから@var{prefix}が省略される。グループは任意の数のプレフィクスをもつことができる。
+@end table
+
+@cindex @code{custom-group} property
+変数およびグループのサブグループはグループのシンボルの@code{custom-group}プロパティに格納される。@ref{Symbol
+Plists}を参照のこと。このプロパティの値は@code{car}が変数、フェイスまたはサブグループのシンボル、@code{cdr}はそれぞれ@code{custom-variable}、@code{custom-face}、または@code{custom-group}のうちいずれかに対応するシンボルであるようなリスト。
+@end defmac
+
+@defopt custom-unlispify-remove-prefixes
+この変数が非@code{nil}ならグループの@code{:prefix}キーワードで指定されたプレフィクスは、ユーザーがグループをカスタマイズするときは常にタグ名から省略される。
+
+デフォルト値は@code{nil}、つまりプレフィクス省略(prefix-discarding)の機能は無効となる。これはオプションやフェイスの名前にたいするプレフィクスの省略が混乱を招くことがあるからである。
+@end defopt
+
+@node Variable Definitions
+@section カスタマイゼーション変数の定義
+@cindex define customization options
+@cindex customizable variables, how to define
+@cindex user options, how to define
+
+  @dfn{カスタマイズ可能変数(customizable variable)}は@dfn{ユーザーオプション(user
+option)}とも呼ばれ、これはCustomizeインターフェースを通じてセットできるグローバルなLisp変数です。@code{defvar}(@ref{Defining
+Variables}を参照)デ定義される他のグローバル変数と異なり、カスタマイズ可能変数は@code{defcustom}マクロを使用して定義されます。サブルーチンとして@code{defvar}を呼び出すことに加えテ、@code{defcustom}はCustomizeインターフェースでその変数が表示される方法や、その変数がとることができる値などを明示します。
+
+@defmac defcustom option standard doc [keyword value]@dots{}
+このマクロはユーザーオプション(かカスタマイズ可能変数)として@var{option}を宣言する。@var{option}はクォートしないこと。
+
+引数@var{standard}は@var{option}の標準値を指定する式である。@code{defcustom}フォームの評価により@var{standard}が評価されるが、その値にそのオプションをバインドする必要はない。@var{option}がすでにデフォルト値をもつなら、それは変更されずに残る。ユーザーがすでに@var{option}にたいするカスタマイゼーションを保存していれば、ユーザーによりカスタマイズされた値がデフォルト値としてインストールされる。それ以外なら@var{standard}を評価した結果がデフォルト値としてインストールされる。
+
+@code{defvar}と同様、このマクロは@code{option}をスペシャル変数 --- 常にダイナミックにバインドされることを意味する ---
+としてマークする。@var{option}がすでにレキシカルバインドをもつなら、そのレキシカルバインドはバインディング構文を抜けるまで効果をもつ。@ref{Variable
+Scoping}を参照のこと。
+
+式@var{standard}は別の様々な機会 --- カスタマイゼーション機能が@var{option}の標準値を知る必要があるときは常に ---
+にも評価される可能性がある。そのため任意回数の評価を行ても安全な式を使用するように留意されたい。
+
+引数@var{doc}はその変数にたいするドキュメント文字列を指定する。
+
+@code{defcustom}が何も@code{:group}を指定しなければ、同じファイル内で@code{defgroup}によって最後に定義されたグループが使用される。この方法ではほとんどの@code{defcustom}は明示的な@code{:group}が不必要になる。
+
+@cindex @code{eval-defun}, and @code{defcustom} forms
+Emacs
+Lispモードで@kbd{C-M-x}(@code{eval-defun})で@code{defcustom}フォームを評価するとき、@code{eval-defun}の特別な機能は変数の値がvoidかどうかテストせずに、無条件に変数をセットするよう段取りする(同じ機能は@code{defvar}にも適用される。@ref{Defining
+Variables}を参照)。すでに定義されたdefcustomで@code{eval-defun}を使用することにより、(もしあれば)@code{:set}関数(以下参照)が呼び出される。
+
+事前ロード(pre-loaded)されたEmacs Lispファイル(@ref{Building
+Emacs}を参照)に@code{defcustom}を配置すると、ダンプ時にインストールされた標準値は正しくない ---
+たとえば依存している他の変数がまだ正しい値を割り当てられていない
+---　かもしれない。この場合はEmacs起動後に標準値を再評価するために、以下で説明する@code{custom-reevaluate-setting}を使用する。
+@end defmac
+
+  @ref{Common Keywords}にリストされたキーワードに加えて、このマクロには以下のキーワードを指定できる
+
+@table @code
+@item :type @var{type}
+このオプションのデータ型として@var{type}を使用する。これはどんな値が適正なのか、その値をどのように表示するかを指定する(@ref{Customization
+Types}を参照)。@code{defcustom}はそれぞれこのキーワードにたいする値を指定すること。
+
+@item :options @var{value-list}
+@kindex options@r{, @code{defcustom} keyword}
+このオプションに使用する適正な値のリストを指定する。ユーザーが使用できる値はこれらの値に限定されないが、これらは便利な値の選択肢を提示する。
+
+これは特定の型にたいしてのみ意味をもち現在のところ@code{hook}、@code{plist}、@code{alist}が含まれる。@code{:options}を使用する方法は個別の型の定義を参照のこと。
+
+異なる@code{:options}値による@code{defcustom}フォームの再評価では以前の評価で追加された値や、@code{custom-add-frequent-value}
+(以下参照)呼び出しで追加された値はクリアーされない。
+
+@item :set @var{setfunction}
+@kindex set@r{, @code{defcustom} keyword}
+Customizeインターフェースを使用してこのオプションの値を変更する方法として@var{setfunction}を指定する。関数@var{setfunction}は2つの引数
+--- シンボル(オプション名)と新しい値 ---
+を受け取り、このオプションにたいして正しく値を更新するために必要なことは何であれ行うこと(これはおそらくLisp変数として単にオプションをセットすることを意味しない)。この関数は引数の値を破壊的に変更しないことが望ましい。@var{setfunction}のデフォルトは@code{set-default-toplevel-value}。
+
+定義された場合にはEmacs
+Lispモードから@kbd{C-M-x}により@code{defcustom}が評価されたとき、あるいは@code{setopt}マクロ(@ref{Setting
+Variables, setopt}を参照)を介して@var{option}の値が変更された際にも@var{setfunction}が呼び出される。
+
+このキーワードを指定すると、その変数のドキュメント文字列には@var{setfunction}を直接呼び出すか、@code{setopt}を用いることによって手入力のLispコードで同じことを行う方法が記載されていること。
+
+@item :get @var{getfunction}
+@kindex get@r{, @code{defcustom} keyword}
+このオプションの値を抽出する方法として@var{getfunction}を指定する。関数@var{getfunction}は1つの引数(シンボル)を受け取り、カスタマイズがそのシンボル(シンボルのLisp値である必要はない)にたいするカレント値としてそれを使うべきかどうかをリターンすること。デフォルトは@code{default-toplevel-value}。
+
+@code{:get}を正しく使用するためには、Customの機能を真に理解する必要がある。これは変数としてCustom内で扱われる値のためのものだが、実際にはLisp変数には格納されない。実際にLisp変数に格納されている値に@var{getfunction}を指定するのは、ほとんどの場合は誤りである。
+
+@item :initialize @var{function}
+@kindex initialize@r{, @code{defcustom} keyword}
+@var{function}は@code{defcustom}が評価されるときに変数を初期化するために使用される関数であること。これは2つの引数 ---
+オプション名(シンボル)と値を受け取る。この方法での使用のために事前定義された関数がいくつかある:
+
+@table @code
+@item custom-initialize-set
+変数の初期化にその変数の@code{:set}関数を使用するが、値がすでに非voidなら再初期化を行わない。
+
+@item custom-initialize-default
+@code{custom-initialize-set}と同様だが、その変数の@code{:set}のかわりに関数@code{set-default-toplevel-value}を使用して変数をセットする。これは変数の@code{:set}関数がマイナーモードを有効または無効にする場合の通常の選択である。この選択により変数の定義ではマイナーモード関数を呼び出しは行わないが、変数をカスタマイズしたときはマイナーモード関数を呼び出すだろう。
+
+@item custom-initialize-reset
+変数の初期化に常に@code{:set}関数を使用する。変数がすでに非voidなら、(@code{:get}メソッドでリターンされる)カレント値を使用して@code{:set}関数を呼び出して変数をリセットする。これはデフォルトの@code{:initialize}関数である。
+
+@item custom-initialize-changed
+変数がすでにセットされている、またはカスタマイズされていれば@code{:set}関数、それ以外なら単に@code{set-default-toplevel-value}を使用して変数の初期化を行う。
+
+@item custom-initialize-delay
+この関数は@code{custom-initialize-set}と同様に振る舞うが、実際の初期化をEmacsの次回起動時に遅延させる。これはビルド時ではなく実行時のコンテキストで初期化を行わせるように、事前ロードされるファイル(やautoloadされる変数)で使用すること。これは(遅延された)初期化が@code{:set}関数で処理されるという副作用ももつ。@ref{Building
+Emacs}を参照のこと。
+@end table
+
+@item :local @var{value}
+@kindex local@r{, @code{defcustom} keyword}
+@var{value}が@code{t}なら@var{option}をバッファーローカルと自動的にマークする。値が@code{permanent}なら@var{option}の@code{permanent-local}プロパティも@code{t}にセットする。@ref{Creating
+Buffer-Local}を参照のこと。
+
+@item :risky @var{value}
+@kindex risky@r{, @code{defcustom} keyword}
+その変数の@code{risky-local-variable}プロパティを@var{value}にセットする(@ref{File Local
+Variables}を参照)。
+
+@item :safe @var{function}
+@kindex safe@r{, @code{defcustom} keyword}
+その変数の@code{safe-local-variable}プロパティを@var{function}にセットします(@ref{File Local
+Variables}を参照)。
+
+@item :set-after @var{variables}
+@kindex set-after@r{, @code{defcustom} keyword}
+保存されたカスタマイゼーションに合わせて変数をセッティングするときは、その前に変数@var{variables}確実にセット ---
+つまりこれら他のものが処理される後までセッティングを遅延 ---
+すること。これら他の変数が意図された値をもっていない場合に、この変数のセッティングが正しく機能しなければ@code{:set-after}を使用すること。
+@end table
+
+  特定の機能をオンに切り替えるオプションには、@code{:require}キーワードを指定すると便利です。これはその機能がまだロードされていないときには、そのオプションがセットされればEmacsがその機能をロードするようにします。@ref{Common
+Keywords}を参照してください。以下は例です:
+
+@example
+(defcustom frobnicate-automatically nil
+  "Non-nil means automatically frobnicate all buffers."
+  :type 'boolean
+  :require 'frobnicate-mode
+  :group 'frobnicate)
+@end example
+
+あるカスタマイゼーションアイテムが@code{:options}がサポートする@code{hook}や@code{alist}のような型をもつなら、@code{custom-add-frequent-value}を呼び出すことによって@code{defcustom}宣言の外部から別途値を追加できます。たとえば@code{emacs-lisp-mode-hook}から呼び出されることを意図した関数@code{my-lisp-mode-initialization}を定義する場合は、@code{emacs-lisp-mode-hook}にたいする正当な値として、その定義を編集することなくその関数をリストに追加したいと思うかもしれません。これは以下のようにして行うことができます:
+
+@example
+(custom-add-frequent-value 'emacs-lisp-mode-hook
+   'my-lisp-mode-initialization)
+@end example
+
+@defun custom-add-frequent-value symbol value
+カスタマイズオプション@var{symbol}にたいして正当な値のリストに@var{value}を追加する。
+
+追加による正確な効果は@var{symbol}のカスタマイズ型に依存する。
+
+以前に追加した値は@code{defcustom}フォームの評価ではクリアーされないので、Lispプログラムは未定義のユーザーおっしゃるへの値追加にこの関数を使用できる。
+@end defun
+
+@code{defcustom}は内部的に、標準値にたいする式の記録にシンボルプロパティ@code{standard-value}、カスタマイゼーションバッファーでユーザーが保存した値の記録に@code{saved-value}、カスタマイゼーションバッファーでユーザーがセットして未保存の値の記録に@code{customized-value}を使用します。@ref{Symbol
+Properties}を参照してください。加えてテーマによりセットされた値の記録に使用される@code{themed-value}も存在します(@ref{Custom
+Themes}を参照)。これらのプロパティは、carがその値を評価する式であるようなリストです。
+
+@defun custom-reevaluate-setting symbol
+この関数は@code{defcustom}を通じて宣言されたユーザーオプション@var{symbol}の標準値を再評価する。変数がカスタマイズされたなら、この関数はかわりに保存された値を再評価する。それからこの関数はその値に、(もし定義されていればそのオプションの@code{:set}プロパティを使用して)ユーザーオプションをセットする。
+
+これは値が正しく計算される前に定義されたカスタマイズ可能オプションにたいして有用である。たとえばstartupの間、Emacsは事前ロードされたEmacs
+Lispファイルで定義されたユーザーオプションにたいしてこの関数を呼び出すが、これらの初期値は実行時だけ利用可能な情報に依存する。
+@end defun
+
+@defun custom-variable-p arg
+この関数は@var{arg}がカスタマイズ可能変数なら非@code{nil}をリターンする。カスタマイズ可能変数とは、@code{standard-value}か@code{custom-autoload}プロパティをもつ(通常は@code{defcustom}で宣言されたことを意味する)変数、または別のカスタマイズ可能変数にたいするエイリアスのことである。
+@end defun
+
+@node Customization Types
+@section カスタマイゼーション型
+
+@cindex customization types
+  @code{defcustom}でユーザーオプションを定義するときは、ユーザーオプションの@dfn{カスタマイゼーション型(customization
+type)}を指定しなければなりません。これは(1)どの値が適正か、および(2)編集のためにカスタマイゼーションバッファーで値を表示する方法を記述するLispオブジェクトです。
+
+@kindex type@r{, @code{defcustom} keyword}
+  カスタマイゼーション型は@code{defcustom}内の@code{:type}キーワードで指定します。@code{:type}の引数は評価されますが、@code{defcustom}が実行されるときに1回だけ評価されるので、さまざまな値をとる場合には有用でありません。通常はクォートされた定数を使用します。たとえば:
+
+@example
+(defcustom diff-command "diff"
+  "The command to use to run diff."
+  :type '(string)
+  :group 'diff)
+@end example
+
+  一般的にカスタマイゼーション型は最初の要素が以降のセクションで定義されるカスタマイゼーション型の1つであるようなリストです。このシンボルの後にいくつかの引数があり、それはそのシンボルに依存します。型シンボルと引数の間にはオプションでkeyword-valueペアー(@ref{Type
+Keywords}を参照)を記述できます。
+
+  いくつかの型シンボルは引数を使用しません。これらは@dfn{シンプル型(simple
+types)}と呼ばれます。シンプル型ではkeyword-valueペアーを使用しないなら、型シンボルの周囲のカッコ(parentheses)を省略できます。たとえばカスタマイゼーション型として単に@code{string}と記述すると、それは@code{(string)}と等価です。
+
+  すべてのカスタマイゼーション型はウィジェットとして実装されます。詳細は、@ref{Top, , Introduction, widget, The
+Emacs Widget Library}を参照してください。
+
+@menu
+* Simple Types::             シンプルなカスタマイゼーション型(sexp、integerなど)。
+* Composite Types::          他の型やデータから新しい型を構築する。
+* Splicing into Lists::      @code{:inline}で要素をリストに結合する。
+* Type Keywords::            カスタマイゼーション型でのキーワード／引数ペアー
+* Defining New Types::       型に名前をつける。
+@end menu
+
+@node Simple Types
+@subsection 単純型
+
+  このセクションではすべてのシンプルデータ型を説明します。これらのカスタマイゼーション型のうちのいくつかにたいして、カスタマイゼーションウィジェットは@kbd{C-M-i}か@kbd{M-@key{TAB}}によるインライン補完を提供します。
+
+@table @code
+@item sexp
+値はプリントと読み込みができる任意のLispオブジェクト。より特化した型を使用するために時間をとりたくなければ、すべてのオプションにたいするフォールバックとして@code{sexp}を使用することができる。
+
+@item integer
+値は整数でなければならない。
+
+@item natnum
+値は非負の整数でなければならない。
+
+@item number
+値は数(浮動小数点数か整数)でなければならない。
+
+@item float
+値は浮動小数点数でなければならない。
+
+@item string
+値は文字列でなければならない。カスタマイゼーションバッファーはその文字列を区切り文字@samp{"}文字と@samp{\}クォートなしで表示する。
+
+@item regexp
+@code{string}文字と同様だがその文字列は有効な正規表現でなければならない。
+
+@item character
+値は文字コードでなければならない。文字コードは実際には整数だが、この型は数字を表示せずにバッファー内にその文字を挿入することにより値を表示する。
+
+@item file
+値はファイル名でなければならない。ウィジェットは補完を提供する。
+
+@item (file :must-match t)
+値は既存のファイル名でなければならない。ウィジェットは補完を提供する。
+
+@item directory
+値はディレクトリーでなければならない。ウィジェットは補完を提供する。
+
+@item hook
+値は関数のリストでなければならない。このカスタマイゼーション型はフック変数にたいして使用される。フック内で使用を推奨される関数のリストを指定するために、フック変数の@code{defcustom}内で@code{:options}キーワードを使用できる。@ref{Variable
+Definitions}を参照のこと。
+
+@item symbol
+値はシンボルでなければならない。これはカスタマイゼーションバッファー内でシンボル名として表示される。ウィジェットは補完を提供する。
+
+@item function
+値はラムダ式か関数名でなければならない。ウィジェットは関数名にたいする補完を提供する。
+
+@item variable
+値は変数名でなければならない。ウィジェットは補完を提供する。
+
+@item face
+値はフェイス名のシンボルでなければならない。ウィジェットは補完を提供する。
+
+@item boolean
+値は真偽値 ---
+@code{nil}か@code{t}である。@code{choice}と@code{const}を合わせて使用することにより(次のセクションを参照)、値は@code{nil}か@code{t}でなければならないが、それら選択肢に固有の意味に適合する方法でそれぞれの値を説明するテキストを指定することもできる。
+
+@item key
+@kbd{key-valid-p}に照らして有効となるような、たとえば@code{keymap-set}に用いるのに適した値。
+
+@item key-sequence
+値はキーシーケンス。カスタマイゼーションバッファーは@kbd{kbd}関数と同じ構文を使用してキーシーケンスを表示する。このタイプは過去の遺物であり、かわりに@kbd{kbd}関数を使うこと。@ref{Key
+Sequences}を参照されたい。
+
+@item coding-system
+値はコーディングシステム名でなければならず、@kbd{M-@key{TAB}}で補完することができる。
+
+@item color
+値は有効なカラー名でなければならない。ウィジェットはカラー名にたいする補完と、同様に@file{*Colors*}バッファーに表示されるカラーサンプルとカラー名のリストからカラー名を選択するボタンを提供する。
+
+@item fringe-bitmap
+値はフリンジビットマップ名でなければならない。ウィジェットは補完を提供する。
+@end table
+
+@node Composite Types
+@subsection 複合型
+@cindex composite types (customization)
+
+  適切なシンプル型がなければ複合型(composite
+types)を使用することができます。複合型は特定のデータにより、他の型から新しい型を構築します。指定された型やデータは、その複合型の@dfn{引数(argument)}と呼ばれます。複合型は通常は以下のようなものです:
+
+@example
+(@var{constructor} @var{arguments}@dots{})
+@end example
+
+@noindent
+しかし以下のように引数の前にkeyword-valueペアーを追加することもできます。
+
+@example
+(@var{constructor} @r{@{}@var{keyword} @var{value}@r{@}}@dots{} @var{arguments}@dots{})
+@end example
+
+  以下のテーブルに、コンストラクター(constructor)と複合型を記述するためにそれらを使用する方法を示します:
+
+@table @code
+@item (cons @var{car-type} @var{cdr-type})
+値はコンスセルでなければならず@sc{car}は@var{car-type}、@sc{cdr}は@var{cdr-type}に適合していなければならない。たとえば@code{(cons
+string symbol)}は、@code{("foo" . foo)}のような値にマッチするデータ型となる。
+
+カスタマイゼーションバッファーでは、@sc{car}と@sc{cdr}はそれぞれ特定のデータ型に応じて個別に表示と編集が行われる。
+
+@item (list @var{element-types}@dots{})
+値は@var{element-types}で与えられる要素と数が正確に一致するリストでなければならず、リストの各要素はそれぞれ対応する@var{element-type}に適合しなければならない。
+
+たとえば@code{(list integer string
+function)}は3つの要素のリストを示し、1つ目の要素は整数、2つ目の要素は文字列、3つ目の要素は関数である。
+
+カスタマイゼーションバッファーでは、各要素はそれぞれ特定のデータ型に応じて個別に表示と編集が行われる。
+
+@item (group @var{element-types}@dots{})
+これは@code{list}と似ているが、Customバッファー内でのテキストのフォーマットが異なる。@code{list}は各要素の値をそのタグでラベルづけするが、@code{group}はそれを行わない。
+
+@item (vector @var{element-types}@dots{})
+これは@code{list}と似ているが、リストではなくベクターでなければならない。各要素は@code{list}の場合と同様に機能する。
+
+@item (alist :key-type @var{key-type} :value-type @var{value-type})
+値はコンスセルのリストでなければならず、各セルの@sc{car}はカスタマイゼーション型@var{key-type}のキーを表し、同じセルの@sc{cdr}はカスタマイゼーション型@var{value-type}の値を表す。ユーザーはkey/valueペアーの追加や削除ができ、各ペアのキーと値の両方を編集することができる。
+
+省略された場合の@var{key-type}と@var{value-type}のデフォルトは@code{sexp}。
+
+ユーザーは指定されたkey-typeにマッチする任意のキーを追加できるが、@code{:options}(@ref{Variable
+Definitions}を参照)で指定することにより、あるキーを優先的に扱うことができる。指定されたキーは、(適切な値とともに)常にカスタマイゼーションバッファーに表示される。またalistにkey/valueを含めるか、除外するか、それとも無効にするかを指定するチェックボックスも一緒に表示される。ユーザーは@code{:options}キーワード引数で指定された値を変更できない。
+
+@code{:options}キーワードにたいする引数は、alist内の適切なキーにたいする仕様のリストであること。これらは通常は単純なアトムであり、それらは自身を意味します。たとえば:
+
+@example
+:options '("foo" "bar" "baz")
+@end example
+
+@noindent
+これは名前が@code{"foo"}、@code{"bar"}、@code{"baz"}であるような3つの既知のキーがあることを指定し、それらは常に最初に表示される。
+
+たとえば@code{"bar"}キーに対応する値を整数だけにするというように、特定のキーに対して値の型を制限したいときがあるかもしれない。これはリスト内でアトムのかわりにリストを使用することにより指定することができる。前述のように1つ目の要素はそのキー、2つ目の要素は値の型を指定する。たとえば:
+
+@example
+:options '("foo" ("bar" integer) "baz")
+@end example
+
+最後にキーが表示される方法を変更したいときもあるだろう。デフォルトでは@code{:options}キーワードで指定された特別なキーはユーザーが変更できないので、キーは単に@code{const}として表示される。しかしたとえばそれが関数バインディングをもつシンボルであることが既知なら、@code{function-item}のようにあるキーの表示のためにより特化した型を使用したいと思うかもしれない。これはキーにたいしてシンボルを使うかわりに、カスタマイゼーション型指定を使用することにより行うことができる。
+
+@example
+:options '("foo"
+           ((function-item some-function) integer)
+           "baz")
+@end example
+
+多くのalistはコンスセルのかわりに2要素のリストを使用する。たとえば、
+
+@example
+(defcustom cons-alist
+  '(("foo" . 1) ("bar" . 2) ("baz" . 3))
+  "Each element is a cons-cell (KEY . VALUE).")
+@end example
+
+@noindent
+のかわりに以下を使用する
+
+@example
+(defcustom list-alist
+  '(("foo" 1) ("bar" 2) ("baz" 3))
+  "Each element is a list of the form (KEY VALUE).")
+@end example
+
+リストはコンスセルの最上位に実装されているため、上記の@code{list-alist}をコンスセルのalist(値の型が実際の値を含む1要素のリスト)として扱うことができる。
+
+@example
+(defcustom list-alist '(("foo" 1) ("bar" 2) ("baz" 3))
+  "Each element is a list of the form (KEY VALUE)."
+  :type '(alist :value-type (group integer)))
+@end example
+
+@code{list}のかわりに@code{group}を使用するのは、それが目的に適したフォーマットだという理由だけである。
+
+同様に以下のようなトリックの類を用いることにより、より多くの値が各キー連づけられたalistを得ることができる:
+
+@example
+(defcustom person-data '(("brian"  50 t)
+                         ("dorith" 55 nil)
+                         ("ken"    52 t))
+  "Alist of basic info about people.
+Each element has the form (NAME AGE MALE-FLAG)."
+  :type '(alist :value-type (group integer boolean)))
+@end example
+
+@item (plist :key-type @var{key-type} :value-type @var{value-type})
+このカスタマイゼーション型は@code{alist}(上記参照)と似ているが、(1)情報がプロパティリスト(@ref{Property
+Lists}を参照)に格納されていて、(2)@var{key-type}が省略された場合のデフォルトは@code{sexp}ではなく@code{symbol}になる。
+
+@item (choice @var{alternative-types}@dots{})
+値は@var{alternative-types}のうちのいずれかに適合しなければならない。たとえば@code{(choice integer
+string)}では整数か文字列が許容される。
+
+カスタマイゼーションバッファーでは、ユーザーはメニューを使用して候補を選択して、それらの候補にたいして通常の方法で値を編集できる。
+
+通常はこの選択からメニューの文字列が自動的に決定される。しかし候補の中に@code{:tag}キーワードを含めることにより、メニューにたいして異なる文字列を指定できる。たとえば空白の数を意味する整数と、その通りに使用したいテキストにたいする文字列なら、以下のような方法でカスタマイゼーション型を記述したいと思うかもしれない
+
+@example
+(choice (integer :tag "Number of spaces")
+        (string :tag "Literal text"))
+@end example
+
+@noindent
+この場合のメニューは@samp{Number of spaces}と@samp{Literal text}を提示する。
+
+@code{const}以外の@code{nil}が有効な値ではない選択肢には、@code{:value}キーワードを使用して有効なデフォルト値を指定すること。@ref{Type
+Keywords}を参照のこと。
+
+複数の候補によりいくつかの値が提供されるなら、カスタマイズは適合する値をもつ最初の候補を選択する。これは常にもっとも特有な型が最初で、もっとも一般的な型が最後にリストされるべきことを意味する。以下は適切な使い方の例である
+
+@example
+(choice (const :tag "Off" nil)
+        symbol (sexp :tag "Other"))
+@end example
+
+@noindent
+この使い方では特別な値@code{nil}はその他のシンボルとは別に扱われ、シンボルは他のLisp式とは別に扱われる。
+
+@cindex radio, customization types
+@item (radio @var{element-types}@dots{})
+これは@code{choice}と似ているが、選択はメニューではなくラジオボタンで表示される。これは該当する選択にたいしてドキュメントを表示できる利点があるので、関数定数(@code{function-item}カスタマイゼーション型)の選択に適している場合がある。
+
+@item (const @var{value})
+値は@var{value}でなければならず他は許容されない。
+
+@code{const}は主に@code{choice}の中で使用される。たとえば@code{(choice integer (const
+nil))}では整数か@code{nil}が選択できる。
+
+@code{choice}の中では@code{:tag}とともに@code{const}が使用される場合がある。たとえば、
+
+@example
+(choice (const :tag "Yes" t)
+        (const :tag "No" nil)
+        (const :tag "Ask" foo))
+@end example
+
+@noindent
+これは@code{t}がyes、@code{nil}がno、@code{foo}が``ask''を意味することを示す。
+
+@item (other @var{value})
+この選択肢は任意のLisp値にマッチできるが、ユーザーがこの選択肢を選択したら値@var{value}が選択される。
+
+@code{other}は主に@code{choice}の最後の要素に使用される。たとえば、
+
+@example
+(choice (const :tag "Yes" t)
+        (const :tag "No" nil)
+        (other :tag "Ask" foo))
+@end example
+
+@noindent
+これは@code{t}がyes、@code{nil}がno、それ以外は``ask''を意味することを示す。ユーザーが選択肢メニューから@samp{Ask}を選択したら、値@code{foo}が指定される。しかしその他の値(@code{t}、@code{nil}、@code{foo}を除く)なら@code{foo}と同様に@samp{Ask}が表示される。
+
+@item (function-item @var{function})
+@code{const}と同様だが値が関数のときに使用される。これはドキュメント文字列も関数名と同じように表示する。ドキュメント文字列は@code{:doc}で指定した文字列か@var{function}自身のドキュメント文字列。
+
+@item (variable-item @var{variable})
+@code{const}と同様だが値が変数名のときに使用される。これはドキュメント文字列も変数名と同じように表示する。ドキュメント文字列は@code{:doc}で指定した文字列か@var{variable}自身のドキュメント文字列。
+
+@item (set @var{types}@dots{})
+値はリストでなければならず指定された@var{types}のいずれかにマッチしなければならない。
+
+これはカスタマイゼーションバッファーではチェックリストとして表示されるので、@var{types}はそれぞれ対応する要素を1つ、あるいは要素をもたない。同じ1つの@var{types}にマッチするような、異なる2つの要素を指定することはできない。たとえば@code{(set
+integer
+symbol)}はリスト内で1つの整数、および/または1つのシンボルが許容されて、複数の整数や複数のシンボルは許容されない。結果として@code{set}内で@code{integer}のような特化していない型を使用するのは稀である。
+
+以下のように@code{const}型は@code{set}内の@var{types}でよく使用される:
+
+@example
+(set (const :bold) (const :italic))
+@end example
+
+alist内で利用できる要素を示すために使用されることもある:
+
+@example
+(set (cons :tag "Height" (const height) integer)
+     (cons :tag "Width" (const width) integer))
+@end example
+
+@noindent
+これによりユーザーにオプションでheightとwidthの値を指定させることができる。
+
+@item (repeat @var{element-type})
+値はリストでなければならず、リストの各要素は型@var{element-type}に適合しなければならない。カスタマイゼーションバッファーでは要素のリストとして表示され、@samp{[INS]}と@samp{[DEL]}ボタンで要素の追加や削除が行われる。
+
+@cindex restricted-sexp, customization types
+@item (restricted-sexp :match-alternatives @var{criteria})
+これはもっとも汎用的な複合型の構築方法である。値は@var{criteria}を満足する任意のLispオブジェクト。@var{criteria}はリストで、リストの各要素は以下のうちのいずれかを満たす必要がある:
+
+@itemize @bullet
+@item
+述語 ---
+つまり引数は1つで、引数に応じて@code{nil}か非@code{nil}のどちらかをリターンする関数。リスト内での述語の使用により、その述語が非@code{nil}をリターンするようなオブジェクトが許されることを意味する。
+
+@item
+クォートされた定数 ---
+つまり@code{'@var{object}}。リスト内でこの要素は@var{object}自身が許容される値であることを示す。
+@end itemize
+
+たとえば、
+
+@example
+(restricted-sexp :match-alternatives
+                 (integerp 't 'nil))
+@end example
+
+@noindent
+これは整数、@code{t}、@code{nil}を正当な値として受け入れる。
+
+カスタマイゼーションバッファーは適切な値をそれらの入力構文de表示して、ユーザーはこれらをテキストとして編集できる。
+@end table
+
+  以下は複合型でキーワード/値ペアーとして使用できるキーワードのテーブルです:
+
+@table @code
+@item :tag @var{tag}
+@var{tag}はユーザーとのコミュニケーションのために、その候補の名前として使用される。@code{choice}内に出現する型にたいして有用。
+
+@item :match-alternatives @var{criteria}
+@kindex match-alternatives@r{, customization keyword}
+@var{criteria}は可能な値とのマッチに使用される。@code{restricted-sexp}内でのみ有用。
+
+@item :args @var{argument-list}
+@kindex args@r{, customization keyword}
+型構築の引数として@var{argument-list}の要素を使用する。たとえば@code{(const :args
+(foo))}は@code{(const
+foo)}と等価である。明示的に@code{:args}と記述する必要があるのは稀である。なぜなら最後のキーワード/値ペアーの後に続くものは何であれ、引数として認識されるからである。
+@end table
+
+@node Splicing into Lists
+@subsection リストへのスプライス
+
+  @code{:inline}機能により可変個の要素を、カスタマイゼーション型の@code{list}や@code{vector}の途中にスプライス(splice:
+継ぎ足す)することができます。@code{list}や@code{vector}記述を含む型にたいして@code{:inline
+t}を追加することによってこれを使用します。
+
+  @code{list}や@code{vector}型の仕様は、通常は単一の要素型を表します。しかしエントリーが@code{:inline
+t}を含むなら、マッチする値は含まれるシーケンスに直接マージされます。たとえばエントリーが3要素のリストにマッチするなら、全体が3要素のシーケンスになります。これはバッククォート構文(@ref{Backquote}を参照)の@samp{,@@}に類似しています。
+
+  たとえば最初の要素が@code{baz}で、残りの引数は0個以上の@code{foo}か@code{bar}でなければならないようなリストを指定するには、以下のカスタマイゼーション型を使用します:
+
+@example
+(list (const baz) (set :inline t (const foo) (const bar)))
+@end example
+
+@noindent
+これは@code{(baz)}、@code{(baz foo)}、@code{(baz bar)}、@code{(baz foo
+bar)}のような値にマッチします。
+
+@cindex choice, customization types
+  要素の型が@code{choice}なら、@code{choice}自身の中で@code{:inline}を使用せずに、@code{choice}の選択肢(の一部)の中で使用します。たとえば最初がファイル名で始まり、その後にシンボル@code{t}か2つの文字列を続けなければならないようなリストにマッチさせるには、以下のカスタマイゼーション型を使用します:
+
+@example
+(list file
+      (choice (const t)
+              (list :inline t string string)))
+@end example
+
+@noindent
+選択においてユーザーが選択肢の1つ目を選んだ場合はリスト全体が2つの要素をもち、2つ目の要素は@code{t}になります。ユーザーが2つ目の候補を選んだ場合にはリスト全体が3つの要素をもち、2つ目と3つ目の要素は文字列でなければなりません。
+
+  ウィジェットは@code{:match-inline}要素でインライン値がウィジェットにマッチするかどうかを告げる述語を指定できます。
+
+@node Type Keywords
+@subsection 型キーワード
+
+カスタマイゼーション型内の型名シンボルの後にキーワード/引数ペアーを指定できます。以下は使用できるキーワードとそれらの意味です:
+
+@table @code
+@item :value @var{default}
+デフォルト値を提供する。
+
+その候補にたいして@code{nil}が有効な値でなければ、@code{:value}に有効なデフォルトを指定することが必須となる。
+
+@code{choice}の内部の選択肢として出現する型にたいしてこれを使用するなら、ユーザーがカスタマイゼーションバッファー内のメニューでその選択肢を選択したときに使用するデフォルト値を最初に指定する。
+
+もちろんオプションの実際の値がこの選択肢に適合するなら、@var{default}ではなく実際の値が表示される。
+
+@item :format @var{format-string}
+@kindex format@r{, customization keyword}
+この文字列はその型に対応する値を記述するために、バッファーに挿入される。@var{format-string}内では以下の@samp{%}エスケープが利用できる:
+
+@table @samp
+@item %[@var{button}%]
+ボタンとしてマークされたテキスト@var{button}を表示する。@code{:action}属性はユーザーがそれを呼び出したときに、そのボタンが何を行うか指定する。この属性の値は2つの引数
+--- ボタンが表示されるウィジェットとイベント --- を受け取る関数である。
+
+異なるアクションを行う2つの異なるボタンを指定する方法はない。
+
+@item %@{@var{sample}%@}
+@code{:sample-face}により指定されたスペシャルフェイス内の@var{sample}を表示する。
+
+@item %v
+そのアイテムの値を代替えする。その値がどのように表示されるかはアイテムの種類と、(カスタマイゼーション型にたいしては)カスタマイゼーション型にに依存する。
+
+@item %d
+そのアイテムのドキュメント文字列を代替えする。
+
+@item %h
+@samp{%d}と同様だが、ドキュメント文字列が複数行なら、ドキュメント文字列全体か最初の行だけかを制御するボタンを追加する。
+
+@item %t
+その位置でタグに置き換える。@code{:tag}キーワードでタグを指定する。
+
+@item %%
+リテラル@samp{%}を表示する。
+@end table
+
+@item :action @var{action}
+@kindex action@r{, customization keyword}
+ユーザーがボタンをクリックしたら@var{action}を実行する。
+
+@item :button-face @var{face}
+@kindex button-face@r{, customization keyword}
+@samp{%[@dots{}%]}で表示されたボタンテキストにたいして、フェイス@var{face}(フェイス名、またはフェイス名のリスト)を使用する。
+
+@item :button-prefix @var{prefix}
+@itemx :button-suffix @var{suffix}
+@kindex button-prefix@r{, customization keyword}
+@kindex button-suffix@r{, customization keyword}
+これらはボタンの前か後に表示されるテキストを指定する。以下が指定できる:
+
+@table @asis
+@item @code{nil}
+テキストは挿入されない。
+
+@item 文字列
+その文字列がリテラルに挿入される。
+
+@item シンボル
+そのシンボルの値が使用される。
+@end table
+
+@item :tag @var{tag}
+この型に対応する値(または値の一部)にたいするタグとして@var{tag}(文字列)を使用する。
+
+@item :doc @var{doc}
+@kindex doc@r{, customization keyword}
+この型に対応する値(か値の一部)にたいするドキュメント文字列として@var{doc}を使用する。これが機能するためには@code{:format}にたいする値を指定して、その値にたいして@samp{%d}か@samp{%h}を使用しなければならない。
+
+ある型にたいしてドキュメント文字列を指定するのは@code{choice}内の選択肢の型や、他の複合型の一部について情報を提供するのが通常の理由。
+
+@item :help-echo @var{motion-doc}
+@kindex help-echo@r{, customization keyword}
+@code{widget-forward}や@code{widget-backward}でこのアイテムに移動したときに、エコーエリアに文字列@var{motion-doc}を表示する。さらにマウスの@code{help-echo}文字列として@var{motion-doc}が使用され、これには実際には」ヘルプ文字列を生成するために評価される関数かフォームを指定できる。もし関数ならそれは1つの引数(そのウィジェット)で呼び出される。
+
+@item :match @var{function}
+@kindex match@r{, customization keyword}
+値がその型にマッチするか判断する方法を指定する。対応する値@var{function}は2つの引数(ウィジェットと値)を受け取る関数であり、値が適切なら非@code{nil}をリターンすること。
+
+@item :match-inline @var{function}
+@kindex match-inline@r{, customization keyword}
+インライン値がその型にマッチするか判断する方法を指定する。対応する値@var{function}は2つの引数(ウィジェットとインライン値)を受け取る関数であり、値が適切なら非@code{nil}をリターンすること。インライン値に関する詳細な情報は@ref{Splicing
+into Lists}を参照のこと。
+
+@item :validate @var{function}
+入力にたいして検証を行う関数を指定する。@var{function}は引数としてウィジェットを受け取り、そのウィジェットのカレント値がウィジェットにたいして有効なら@code{nil}をリターンすること。それ以外なら無効なデータを含むウィジェットをリターンして、そのウィジェットの@code{:error}プロパティに、そのエラーを記述する文字列をセットすること。
+
+@item :type-error @var{string}
+@kindex type-error@r{, customization keyword}
+@var{string}は値がなぜ@code{:match}関数で判定されるような値にマッチしないかを説明する文字列であること。@code{:match}関数が@code{nil}をリターンした際には、ウィジェットの@code{:error}プロパティが@var{string}にセットされる。
+
+@ignore
+@item :indent @var{columns}
+Indent this item by @var{columns} columns.  The indentation is used for
+@samp{%n}, and automatically for group names, for checklists and radio
+buttons, and for editable lists.  It affects the whole of the
+item except for the first line.
+
+@item :offset @var{extra}
+Indent the subitems of this item @var{extra} columns more than this
+item itself.  By default, subitems are indented the same as their
+parent.
+
+@item :extra-offset @var{n}
+Add @var{n} extra spaces to this item's indentation, compared to its
+parent's indentation.
+
+@item :notify @var{function}
+Call @var{function} each time the item or a subitem is changed.  The
+function gets two or three arguments.  The first argument is the item
+itself, the second argument is the item that was changed, and the
+third argument is the event leading to the change, if any.
+
+@item :menu-tag @var{tag-string}
+Use @var{tag-string} in the menu when the widget is used as an option
+in a @code{menu-choice} widget.
+
+@item :menu-tag-get
+A function used for finding the tag when the widget is used as an option
+in a @code{menu-choice} widget.  By default, the tag used will be either the
+@code{:menu-tag} or @code{:tag} property if present, or the @code{princ}
+representation of the @code{:value} property if not.
+
+@item :tab-order
+Specify the order in which widgets are traversed with
+@code{widget-forward} or @code{widget-backward}.  This is only partially
+implemented.
+
+@enumerate a
+@item
+Widgets with tabbing order @code{-1} are ignored.
+
+@item
+(Unimplemented) When on a widget with tabbing order @var{n}, go to the
+next widget in the buffer with tabbing order @var{n+1} or @code{nil},
+whichever comes first.
+
+@item
+When on a widget with no tabbing order specified, go to the next widget
+in the buffer with a positive tabbing order, or @code{nil}
+@end enumerate
+
+@item :parent
+The parent of a nested widget (e.g., a @code{menu-choice} item or an
+element of a @code{editable-list} widget).
+
+@item :sibling-args
+This keyword is only used for members of a @code{radio-button-choice} or
+@code{checklist}.  The value should be a list of extra keyword
+arguments, which will be used when creating the @code{radio-button} or
+@code{checkbox} associated with this item.
+@end ignore
+@end table
+
+@node Defining New Types
+@subsection 新たな型の定義
+@cindex customization types, define new
+@cindex define new customization types
+
+前のセクションでは、@code{defcustom}にたいして型の詳細な仕様を作成する方法を説明しました。そのような型仕様に名前を与えたい場合があるかもしれません。理解しやすいケースとしては、多くのユーザーオプションに同じ型を使用する場合などです。各オプションにたいして仕様を繰り返すよりその型に名前を与えて、@code{defcustom}それぞれにその名前を使用することができます。他にもユーザーオプションの値が再帰的なデータ構造のケースがあります。あるデータ型がそれ自身を参照できるようにするためには、それが名前をもつ必要があります。
+
+カスタマイゼーション型はウィジェットとして実装されているめ、新しいカスタマイゼーション型を定義するには、新たにウィジェット型を定義します。ここではウィジェットインターフェイスの詳細は説明しません。@ref{Top,
+, Introduction, widget, The Emacs Widget
+Library}を参照してください。かわりにシンプルな例を用いて、カスタマイゼーション型を新たに定義するために必要な最小限の機能について説明します。
+
+@example
+(define-widget 'binary-tree-of-string 'lazy
+  "A binary tree made of cons-cells and strings."
+  :offset 4
+  :tag "Node"
+  :type '(choice (string :tag "Leaf" :value "")
+                 (cons :tag "Interior"
+                       :value ("" . "")
+                       binary-tree-of-string
+                       binary-tree-of-string)))
+
+(defcustom foo-bar ""
+  "Sample variable holding a binary tree of strings."
+  :type 'binary-tree-of-string)
+@end example
+
+新しいウィジェットを定義するための関数は@code{define-widget}と呼ばれます。1つ目の引数は新たなウィジェット型にしたいシンボルです。2つ目の引数は既存のウィジェットを表すシンボルで、新しいウィジェットではこの既存のウィジェットと異なる部分を定義することになります。新たなカスタマイゼーション型を定義する目的にたいしては@code{lazy}ウィジェットが最適です。なぜならこれは@code{defcustom}にたいするキーワード引数と同じ構文と名前でキーワード引数@code{:type}を受け取るからです。3つ目の引数は新しいウィジェットにたいするドキュメント文字列です。この文字列は@kbd{M-x
+widget-browse @key{RET} binary-tree-of-string @key{RET}}コマンドで参照することができます。
+
+これらの必須の引数の後にキーワード引数が続きます。もっとも重要なのは@code{:type}で、これはこのウィジェットにマッチさせたいデータ型を表します。上記の例では@code{binary-tree-of-string}は文字列、またはcarとcdrが@code{binary-tree-of-string}であるようなコンスセルです。この定義中でのウィジェット型への参照に注意してください。@code{:tag}属性はユーザーインターフェイスでウィジェット名となる文字列、@code{:offset}引数はカスタマイゼーションバッファーでのツリー構造の外観で，子ノードと関連する親ノードの間に4つのスペースを確保します。
+
+@code{defcustom}は通常のカスタマイゼーション型に使用される方法で新しいウィジェットを表示します。
+
+@code{lazy}という名前の由来は、他のウィジェットではそれらがバッファーでインスタンス化されるとき、他の合成されたウィジェットが下位のウィジェットを内部形式に変換するからです。この変換は再帰的なので、下位のウィジェットは@emph{それら自身}の下位ウィジェットへと変換されます。データ構造自体が再帰的なら、その変換は無限再帰(infinite
+recursion)となります。@code{lazy}ウィジェットは、@code{:type}引数を必要なときだけ変換することによってこの再帰を防ぎます。
+
+@node Applying Customizations
+@section カスタマイゼーションの適用
+@cindex applying customizations
+
+以下の関数には変数とフェイスにたいして、そのユーザーのカスタマイゼーション設定をインストールする役目をもちます。それらの関数はユーザーがCustomizeインターフェイスで@samp{Save
+for future
+sessions}を呼び出したとき、次回のEmacs起動時に評価されるように@code{custom-set-variables}フォーム、および/または@code{custom-set-faces}フォームがカスタムファイルに書き込まれることによって効果をもちます。
+
+@defun custom-set-variables &rest args
+この関数は@var{args}により指定された変数のカスタマイゼーションをインストールする。@var{args}内の引数はそれぞれ、以下のようなフォームであること
+
+@example
+(@var{var} @var{expression} [@var{now} [@var{request} [@var{comment}]]])
+@end example
+
+@noindent
+@var{var}は変数名(シンボル)、@var{expression}はカスタマイズされた値に評価される式である。
+
+この@code{custom-set-variables}呼び出しより前に@var{var}にたいして@code{defcustom}フォームが評価されたら即座に@var{expression}が評価されて、その変数の値にその結果がセットされる。それ以外ならその変数の@code{saved-value}プロパティに@var{expression}が格納されて、これに関係する@code{defcustom}が呼び出されたとき(通常はその変数を定義するライブラリーがEmacsにロードされたとき)に評価される。
+
+@var{now}、@var{request}、@var{comment}エントリーは内部的な使用に限られており、省略されるかもしれない。@var{now}がもし非@code{nil}なら、たとえその変数の@code{defcustom}フォームが評価されていなくても、その変数の値がそのときセットされる。@var{request}は即座にロードされる機能のリストである(@ref{Named
+Features}を参照)。@var{comment}はそのカスタマイゼーションを説明する文字列。
+@end defun
+
+@defun custom-set-faces &rest args
+この関数は@var{args}により指定されたフェイスのカスタマイゼーションをインストールする。@var{args}内の引数はそれぞれ以下のようなフォームであること
+
+@example
+(@var{face} @var{spec} [@var{now} [@var{comment}]])
+@end example
+
+@noindent
+@var{face}はフェイス名(シンボル)、@var{spec}はそのフェイスにたいするカスタマイズされたフェイス仕様(@ref{Defining
+Faces}を参照)。
+
+@var{now}、@var{request}、@var{comment}エントリーは内部的な使用に限られており、省略されるかもしれない。@var{now}がもし非@code{nil}なら、たとえ@code{defface}フォームが評価されていなくても、そのフェイス仕様がそのときセットされる。@var{comment}はそのカスタマイズを説明する文字列。
+@end defun
+
+@node Custom Themes
+@section Customテーマ
+
+@cindex custom themes
+  @dfn{Customテーマ(Custom themes)}とはユニットとして有効や無効にできるセッティングのコレクションです。@ref{Custom
+Themes,,, emacs, The GNU Emacs Manual}を参照してください。CustomテーマはそれぞれEmacs
+Lispソースファイルにより定義され、それらはこのセクションで説明する慣習にしたがう必要があります(Customテーマを手作業で記述するかわりに、Customize風のインターフェイスを使用して作成することもできる。@ref{Creating
+Custom Themes,,, emacs, The GNU Emacs Manual}を参照)。
+
+  Customテーマファイルは@file{@var{foo}-theme.el}のように命名すること。ここで@var{foo}はテーマの名前。このファイルでの最初のLispフォームは@code{deftheme}の呼び出しで、最後のフォームは@code{provide-theme}にすること。
+
+@defmac deftheme theme &optional doc &rest properties
+このマクロはCustomテーマの名前として@var{theme}(シンボル)を宣言する。オプション引数@var{doc}は、そのテーマを説明する文字列であること。この文字列はユーザーが@code{describe-theme}コマンドを呼び出したり、@samp{*Custom
+Themes*}バッファーで@kbd{?}をタイプしたときに表示される。残りの引数@var{properties}テーマの属性を含んだプロパティリストを渡すために使用される。
+
+サポートされている属性は以下のとおり:
+
+@table @code
+@item :family
+テーマがどの``ファミリー(family)''に属すかを示すシンボル。テーマの@dfn{ファミリー}とは、フレームのバックグラウンドのライト(light:
+明るい)とダーク(dark: 暗い)を意図したフェイスカラーのように、似ているがマイナーな側面は異なるテーマセットのこと。
+@item :kind
+シンボル。テーマが有効かつこのプロパティの値が@code{color-scheme}なら、テーマを切り替えるためにコマンド@code{theme-choose-variant}は同じファミリーに属する他のの利用可能なテーマを探す。現在のところ他の値は指定されておらず、使用するべきではない。
+@item :background-mode
+@code{light}か@code{dark}いずれかのシンボル。この属性は現在のところ使用されていないが依然として指定はする必要がある。
+@end table
+
+2つの特別なテーマ名は禁止されている(使用するとエラーになる)。@code{user}はそのユーザーの直接的なカスタマイズ設定を格納するためのダミーのテーマである。そし@code{changed}はCustomizeシステムの外部で行われた変更を格納するためのダミーのテーマである。
+@end defmac
+
+@defmac provide-theme theme
+このマクロは完全に仕様が定められたテーマ名@var{theme}を宣言する。
+@end defmac
+
+  @code{deftheme}と@code{provide-theme}の違いは、そのテーマセッティングを規定するLispフォームです(通常は@code{custom-theme-set-variables}の呼び出し、および/または@code{custom-theme-set-faces}の呼び出し)。
+
+@defun custom-theme-set-variables theme &rest args
+この関数はCustomテーマ@var{theme}の変数のセッティングを規定する。@var{theme}はシンボル。@var{args}内の各引数はフォームのリスト。
+
+@example
+(@var{var} @var{expression} [@var{now} [@var{request} [@var{comment}]]])
+@end example
+
+@noindent
+ここでリストエントリーは@code{custom-set-variables}のときと同じ意味をもつ。@ref{Applying
+Customizations}を参照のこと。
+@end defun
+
+@defun custom-theme-set-faces theme &rest args
+この関数はCustomテーマ@var{theme}のフェイスのセッティングを規定する。@var{theme}はシンボル。@var{args}内の各引数はフォームのリスト。
+
+@example
+(@var{face} @var{spec} [@var{now} [@var{comment}]])
+@end example
+
+@noindent
+ここでリストエントリーは@code{custom-set-faces}のときと同じ意味をもつ。@ref{Applying
+Customizations}を参照のこと。
+@end defun
+
+  原則的にテーマファイルは他のLispフォームを含むこともでき、それらはそのテーマがロードされるときに評価されるでしょうが、これは悪いフォームです。悪意のあるコードを含むテーマのロードを防ぐために最初に非ビルトインテーマをロードする前に、Emacsはソースファイルを表示してユーザーに確認を求めます。このようにテーマは通常のバイトコンパイルは行わずに、Emacsがテーマをロードする際には通常はソースファイルが優先されます。
+
+  以下の関数は、テーマをプログラム的に有効または無効にするのに有用です:
+
+@defun custom-theme-p theme
+この関数は@var{theme}(シンボル)がCustomテーマの名前(たとえばそのテーマが有効かどうかにかかわらず、CustomテーマがEmacsにロードされている)なら非@code{nil}をリターンする。それ以外は@code{nil}をリターンする。
+@end defun
+
+@defvar custom-known-themes
+この変数の値はEmacsにロードされたテーマのリストである。テーマはそれぞれLispシンボル(テーマ名)により表される。この変数のデフォルト値は2つのダミーテーマ@code{(user
+changed)}を含む。@code{changed}テーマにはCustomテーマが適用される前に行われたセッティング(たとえばCustomの外部での変数のセット)が格納されている。@code{user}テーマにはそのユーザーがカスタマイズして保存したセッティングが格納されている。@code{deftheme}マクロで宣言されたすべての追加テーマは、このリストの先頭に追加される。
+@end defvar
+
+@deffn Command load-theme theme &optional no-confirm no-enable
+この関数は@var{theme}という名前のCustomテーマを、変数@code{custom-theme-load-path}で指定されたディレクトリーから探して、ソースファイルからロードする。@ref{Custom
+Themes,,, emacs, The GNU Emacs
+Manual}を参照のこと。またそのテーマの変数とフェイスのセッティングが効果を及ぼすようにテーマを@dfn{enables}にする(オプション引数@var{no-enable}が@code{nil}の場合)。さらにオプション引数@var{no-confirm}が@code{nil}なら、そのテーマをロードする前にユーザーに確認を求める。
+@end deffn
+
+@defun require-theme feature &optional noerror
+この関数は@var{feature}をprovideするファイルを@code{custom-theme-load-path}から検索してロードする。これは関数@code{require}
+(@ref{Named Features}を参照)と似ているが、@code{load-path} (@ref{Library
+Search}を参照)ではなく@code{custom-theme-load-path}を検索する点が異なるこれはLispサポートファイルおロードを要するCustomテーマにおいて、@code{require}が不適切な際に有用かもしれない。
+
+カレントのEmacsセッションにおいて@code{featurep}に照らして@var{feature}
+(シンボル)がまだ与えられていなければ、@code{require-theme}は@code{custom-theme-load-path}で指定されたディレクトリー内から、@var{feature}に@samp{.elc}、次に@samp{.el}のサフィックスを追加した名前をもつファイルを検索する。
+
+@var{feature}をprovideするファイルが見つかりロードに成功すると、@code{require-theme}は@var{feature}をリターンする。オプション引数@var{noerror}は検索やロードの失敗時に何が発生するかを決定する。@code{nil}ならこの関数はエラーをシグナルして、それ以外なら@code{nil}をリターンする。ファイルのロードには成功しても@var{feature}をlprovideしない場合には、@code{require-theme}はエラーをシグナルする(これは抑止不可)。
+@end defun
+
+@deffn Command enable-theme theme
+この関数は@var{theme}という名前のCustomテーマを有効にする。そのようなテーマがロードされていなければ、エラーをシグナルする。
+@end deffn
+
+@deffn Command disable-theme theme
+この関数は@var{theme}という名前のCustomテーマを無効にする。テーマはロードされたまま残るので、続けて@code{enable-theme}を呼び出せばテーマは再び有効になる。
+@end deffn

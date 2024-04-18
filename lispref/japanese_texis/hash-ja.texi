@@ -1,0 +1,267 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1999, 2001--2024 Free Software Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Hash Tables
+@chapter ハッシュテーブル
+@cindex hash tables
+@cindex lookup tables
+
+  ハッシュテーブル(hash
+table)は非常に高速なルックアップテーブルの一種で、キーに対応する値をマップするという点ではalist(@ref{Association
+Lists}を参照)に似ています。ハッシュテーブルは以下の点でalistと異なります:
+
+@itemize @bullet
+@item
+ハッシュテーブルでのルックアップ(lookup: 照合)は、巨大なテーブルにたいして非常に高速である ---
+実際のところルックアップに必要な時間は、そのテーブルに格納されている要素数とは基本的に@emph{無関係}である。ハッシュテーブルには一定のオーバーヘッドが多少あるので、小さいテーブル(数十の要素)ではalistのほうが高速だろう。
+
+@item
+ハッシュテーブル内の対応関係に特定の順序はない。
+
+@item
+2つのalistで共通の末尾(tail)を共有させるような、2つのハッシュテーブル間で構造を共有する方法はない。
+@end itemize
+
+  Emacs
+Lispは一般的な用途のハッシュテーブルデータ型とともに、それらを処理する一連の関数を提供します。ハッシュテーブルは@samp{#s}、その後にハッシュテーブルのプロパティと内容を指定するリストが続く、特別なプリント表現をもちます。@ref{Creating
+Hash}を参照してください(ハッシュ表記の最初に使用される@samp{#}文字は、読み取り表現をもたないオブジェクトのプリント表現であり、これはハッシュテーブルに何も行わない。@ref{Printed
+Representation}を参照のこと)。
+
+  obarray(オブジェクト配列)もハッシュテーブルの一種ですが、これらは異なる型のオブジェクトであり、intern(インターン)されたシンボルを記録するためだけに使用されます(@ref{Creating
+Symbols}を参照)。
+
+@menu
+* Creating Hash::            ハッシュテーブルを作成する関数。
+* Hash Access::              ハッシュテーブルの内容の読み書き。
+* Defining Hash::            新たな比較方法の定義。
+* Other Hash::               その他。
+@end menu
+
+@node Creating Hash
+@section ハッシュテーブルの作成
+@cindex creating hash tables
+
+  ハッシュテーブルを作成する基本的な関数は@code{make-hash-table}です。
+
+@defun make-hash-table &rest keyword-args
+この関数は指定された引数に対応する新しいハッシュテーブルを作成する。引数はキーワード(特別に認識される独自のシンボル)と、それに対応する値を交互に指定することで構成される。
+
+@code{make-hash-table}ではいくつかのキーワードが意味をもつが、実際に知る必要があるのは@code{:test}と@code{:weakness}の2つだけである。
+
+@table @code
+@item :test @var{test}
+これはそのハッシュテーブルにたいしてキーを照合する方法を指定する。デフォルトは@code{eql}であり他の代替としては@code{eq}や@code{equal}がある:
+
+@table @code
+@item eql
+キーが数字ならそれらが@code{equal}、つまりそれらの値が等しくどちらも整数か浮動小数点数なら同一。それ以外なら別の2つのオブジェクトは決して同一とならない。
+
+@item eq
+別の2つのLispオブジェクトはすべて別のキーになる。
+
+@item equal
+別の2つのLispオブジェクトで、それらが@code{equal}なら同一のキーである。
+@end table
+
+@var{test}にたいして追加の選択肢を定義するために、@code{define-hash-table-test} (@ref{Defining
+Hash}を参照)を使用することができる。
+
+@item :weakness @var{weak}
+ハッシュテーブルのweakness(強度)は、ハッシュテーブル内に存在するキーと値をガーベージコレクションから保護するかどうかを指定する。
+
+値@var{weak}には@code{nil}、@code{key}、@code{value}、@code{key-or-value}、@code{key-and-value}、または@code{t}(@code{key-and-value}のエイリアス)のいずれかを指定しなければならない。@var{weak}が@code{key}ならそのハッシュテーブルは、(キーが他の場所で参照されていなければ)ハッシュテーブルのキーがガーベージコレクトされるのを妨げられない。ある特定のキーがガーベージコレクトされると、それに対応する連想はハッシュテーブルから削除される。
+
+@var{weak}が@code{value}ならそのハッシュテーブルは、(値が他の場所で参照されていなければ)ハッシュテーブルの値がガベージコレクトされるのを妨げられない。ある特定の値がガーベージコレクトされると、それに対応する連想はハッシュテーブルから削除される。
+
+@var{weak}が@code{key-and-value}(か@code{t})なら、その連想を保護するためにはキーと値の両方が生きていなければならない。したがってそのハッシュテーブルは、キーと値の一方だけをガーベージコレクトから守ることはしない。キーか値のどちらか一方がガーベージコレクトされたら、その連想は削除される。
+
+@var{weak}が@code{key-or-value}nara、キーか値のどちらか一方で、その連想を保護することができる。したがってキーと値の両方がガベージコレクトされたときだけ(それがハッシュテーブル自体にたいする参照でなければ)、ハッシュテーブルからその連想が削除される。
+
+@var{weak}のデフォルトは@code{nil}なので、ハッシュテーブルから参照されているキーと値はすべてガーベージコレクションから保護される。
+
+@item :size @var{size}
+これはそのハッシュテーブルに保管しようとしている、連想の数にたいするヒントを指定する。数が概算で判っていれば、この方法でそれを指定して処理を若干効率的にすることができる。小さすぎるサイズを指定すると、そのハッシュテーブルは必要に応じて自動的に拡張されるが、これを行なうために時間が余計にかかる。
+
+デフォルトのサイズは65。
+
+@item :rehash-size @var{rehash-size}
+ハッシュテーブルに連想を追加するとき、そのテーブルが満杯ならテーブルを自動的に拡張する。この値はその際にどれだけハッシュテーブルを拡張するかを指定する。
+
+@var{rehash-size}が整数(正であること)なら、通常のサイズに@var{rehash-size}に近い値を加えることによりハッシュテーブルが拡張される。@var{rehash-size}が浮動小数(1より大きい方がよい)なら、古いサイズにその数に近い値を乗じることによりハッシュテーブルが拡張される。
+
+デフォルト値は1.5。
+
+@item :rehash-threshold @var{threshold}
+これはハッシュテーブルが一杯(なのでもっと大きく拡張する必要がある)だと判断される基準を指定する。@var{threshold}の値は1以下の正の浮動小数点数であること。実際のエントリー数が通常のサイズにたいする指定した割合に近い値を超えるとハッシュテーブルは一杯(full)になる。@var{threshold}のデフォルトは0.8125。
+@end table
+@end defun
+
+ハッシュテーブルのプリント表現を使用してハッシュテーブルを作成することもできます。指定されたハッシュテーブル内の各要素が、有効な入力構文(@ref{Printed
+Representation}を参照)をもっていれば、Lispリーダーはこのプリント表現を読み取ることができます。たとえば以下は値@code{val1}
+(シンボル)と@code{300} (数字)に関連づけられた、キー@code{key1}と@code{key2}
+(両方ともシンボル)をハッシュテーブルに指定します。
+
+@example
+#s(hash-table size 30 data (key1 val1 key2 300))
+@end example
+
+しかしこれをEmacs
+Lispコードで使用する際には、ハッシュテーブルを新たに作成するかどうかは未定義であることに注意してください。ハッシュテーブルを新たに作成したければ、常に@code{make-hash-table}を使う必要があります(@ref{Self-Evaluating
+Forms}を参照)。
+
+@noindent
+ハッシュテーブルのプリント表現は@samp{#s}と、その後の@samp{hash-table}で始まるリストにより構成されます。このリストの残りの部分はそのハッシュテーブルのプロパティと初期内容を指定する、0個以上のプロパティと値からなるペアで構成されるべきです。プロパティと値はそのまま読み取られます。有効なプロパティ名は@code{size}、@code{test}、@code{weakness}、@code{rehash-size}、@code{rehash-threshold}、@code{data}です。@code{data}プロパティは、初期内容にたいするキーと値のペアからなるリストであるべきです。他のプロパティは、上記で説明した@code{make-hash-table}のキーワード(@code{:size}、@code{:test}など)と同じ意味をもちます。
+
+バッファーやフレームのような、入力構文をもたないオブジェクトを含んだ初期内容をもつハッシュテーブルを指定できないことに注意してください。そのようなオブジェクトは、ハッシュテーブルを作成した後に追加します。
+
+@node Hash Access
+@section ハッシュテーブルへのアクセス
+@cindex accessing hash tables
+@cindex hash table access
+
+  このセクションではハッシュテーブルにアクセスしたり、連想を保管する関数を説明します。比較方法による制限がない限り、一般的には任意のLispオブジェクトをハッシュキーとして使用できます。
+
+@defun gethash key table &optional default
+この関数は@var{table}の@var{key}を照合してそれに関連づけられた@var{value}、@var{table}内に@var{key}をもつ連想が存在しなければ@var{default}をリターンする。
+@end defun
+
+@defun puthash key value table
+この関数は@var{table}内に値@var{value}をもつ@var{key}の連想を挿入します。@var{table}がすでに@var{key}の連想をもつなら、@var{value}で古い連想値を置き換える。この関数は常に@var{value}をリターンする。
+@end defun
+
+@defun remhash key table
+この関数は@var{table}に@var{key}の連想があればそれを削除する。@var{key}が連想をもたなければ@code{remhash}は何も行なわない。
+
+@b{Common Lispに関する注意: }Common
+Lispでは@code{remhash}が実際に連想を削除したときは非@code{nil}、それ以外は@code{nil}をリターンする。Emacs
+Lispでは@code{remhash}は常に@code{nil}をリターンする。
+@end defun
+
+@defun clrhash table
+この関数はハッシュテーブル@var{table}からすべての連想を削除するので、そのハッシュテーブルは空になる。これはハッシュテーブルの@dfn{クリーニング(clearing)}とも呼ばれる。@code{clrhash}は空の@var{table}をリターンする。
+@end defun
+
+@defun maphash function table
+@anchor{Definition of maphash}
+この関数は@var{table}内の各連想にたいして一度ずつ@var{function}を呼び出す。関数@var{function}は2つの引数 ---
+@var{table}にリストされた@var{key}と、それに関連づけられた@var{value} ---
+を受け取ること。@code{maphash}は@code{nil}をリターンする。
+@end defun
+
+@node Defining Hash
+@section ハッシュの比較の定義
+@cindex hash code
+@cindex define hash comparisons
+
+  @code{define-hash-table-test}でキーを照合する新しい方法を定義できます。この機能を使用するにはハッシュテーブルの動作方法と、@dfn{ハッシュコード(hash
+code)}の意味を理解する必要があります。
+
+  概念的にはハッシュテーブルを1つの連想を保持できるスロットがたくさんある巨大な配列として考えることができます。キーを照合するにはまず、@code{gethash}がキーから整数(ハッシュコード)を計算します。配列の長さを法(modulo)としてこの整数を縮小して(訳注:配列の長さで割った余りの整数にして)、配列内のインデックスを生成することができます。それから探しているキーが見つかったかどうか確認するためにそのスロット、必要なら近くのスロットを調べます。
+
+  したがってキーを照合する新たな方法を定義するにはキーからハッシュコードを計算する関数、および2つのキーを直接比較する関数の両方を指定する必要があります。この2つの関数は互いに一貫性をもつ必要があります。すなわちキーを比較してequalなら、2つのキーのハッシュコードは同一であるべきです。さらに(ガーベージコレクターからの呼び出しのように)2つの関数は任意のタイミングで呼び出される可能性があるので、関数が副作用をもたないこと、すぐにリターンすること、そしてこれらの関数の挙動はそのキーの不変の性質だけに依存する必要があります。
+
+@defun define-hash-table-test name test-fn hash-fn
+この関数は@var{name}という名前の新たなハッシュテーブルテストを定義します。
+
+この方法で@var{name}を定義した後は、@code{make-hash-table}の引数@var{test}にこれを使用することができる。これを行なう際は、そのハッシュテーブルのキー値の比較に@var{test-fn}、キー値からハッシュコードを計算するために@var{hash-fn}を使用することになる。
+
+関数@var{test-fn}は2つの引数(2つのキー)をとり、それらが同一と判断されたときは非@code{nil}をリターンする。
+
+関数@var{hash-fn}は1つの引数(キー)を受け取り、そのキーのハッシュコード(整数)をリターンすること。よい結果を得るために、その関数は負のfixnumを含むfixnumの全範囲をハッシュコードに使用すること。
+
+指定された関数は、プロパティ@code{hash-table-test}の配下の、@var{name}というプロパティリストに格納される。そのプロパティの値形式は@code{(@var{test-fn}
+@var{hash-fn})}。
+@end defun
+
+@defun sxhash-equal obj
+この関数はLispオブジェクト@var{obj}のハッシュコードをリターンする。リターン値は@var{obj}と、それが指す別のLispオブジェクトの内容を表す整数。
+
+2つのオブジェクト@var{obj1}と@var{obj2}が@code{equal}ならば@code{(sxhash-equal
+@var{obj1})}と@code{(sxhash-equal @var{obj2})}は同じ整数になる。
+
+2つのオブジェクトが@code{equal}でなければ、通常なら@code{sxhash-equal}がリターンする値は異なるが常に異なるとも限らない。@code{sxhash-equal}はネストされた構造体を深く再帰しないことによって十分高速になるようデザインされている(ハッシュテーブルのインデックス作成に使用するため)。加えて稀に(運次第)ではあるが@code{sxhash-equal}が同じ結果を与える、2つの異なって見えるシンプルなオブジェクトに出会うことがあるかもしれない。したがって一般的にはオブジェクトが変更されたかどうかのチェックに@code{sxhash-equal}を用いることはできない。
+
+@b{Common Lispに関する注意: }Common
+Lispではこれに似た関数は@code{sxhash}と呼ばれる。Emacsは互換性のために@code{sxhash-equal}にたいするエイリアスとしてこの名前を提供している。
+@end defun
+
+@defun sxhash-eq obj
+この関数はLispオブジェクト@var{obj}にたいするハッシュコードをリターンする。結果は@var{obj}の識別値であり内容が反映されているわけではない。
+
+2つのオブジェクト@var{obj1}と@var{obj2}が@code{eq}なら@code{(sxhash-eq
+@var{obj1})}と@code{(sxhash-eq @var{obj2})}は同じ整数になる。
+@end defun
+
+@defun sxhash-eql obj
+この関数は@code{eql}による比較に適したLispオブジェクト@var{obj}にたいするハッシュコードをリターンする。つまり浮動小数点数とbignum以外の@var{obj}なら、それにたいする識別値(浮動小数点数ならその値にたいするハッシュコード)を生成する。
+
+2つのオブジェクト@var{obj1}と@var{obj2}が@code{eql}なら@code{(sxhash-eql
+@var{obj1})}と@code{(sxhash-eql @var{obj2})}は同じ整数になる。
+@end defun
+
+  以下はcaseを区別しない文字列のキーをもつハッシュテーブルを作成する例です。
+
+@example
+(defun string-hash-ignore-case (a)
+  (sxhash-equal (upcase a)))
+
+(define-hash-table-test 'ignore-case
+  'string-equal-ignore-case 'string-hash-ignore-case)
+
+(make-hash-table :test 'ignore-case)
+@end example
+
+  以下は事前に定義されたテスト値@code{equal}と等価なテストを行なうハッシュテーブルを定義できるという例です。キーは任意のLispオブジェクトで、equalに見えるオブジェクトは同じキーと判断されます。
+
+@example
+(define-hash-table-test 'contents-hash 'equal 'sxhash-equal)
+
+(make-hash-table :test 'contents-hash)
+@end example
+
+ハッシュ関数の実装はセッション間や異なるアークテクチャー間で変わる可能性のあるオブジェクトストレージのいくつかの詳細を使用するので、LispプログラムはEmacsセッションの間はハッシュコードが保存されることに@emph{依存するべきではありません}。
+
+@node Other Hash
+@section ハッシュテーブルのためのその他関数
+
+  以下はハッシュテーブルに作用する他の関数です。
+
+@defun hash-table-p table
+この関数は@var{table}がハッシュテーブルオブジェクトなら非@code{nil}をリターンする。
+@end defun
+
+@defun copy-hash-table table
+この関数は@var{table}のコピーを作成してリターンする。そのテーブル自体がコピーされたものである場合のみ、キーと値が共有される。
+@end defun
+
+@defun hash-table-count table
+この関数は@var{table}内の実際のエントリー数をリターンする。
+@end defun
+
+@defun hash-table-test table
+この関数はハッシュを行なう方法と、キーを比較する方法を指定するために、@var{table}作成時に与えられた@var{test}の値をリターンする。@ref{Creating
+Hash}の@code{make-hash-table}を参照されたい。
+@end defun
+
+@defun hash-table-weakness table
+この関数はハッシュテーブル@var{table}に指定された@var{weak}の値をリターンする。
+@end defun
+
+@defun hash-table-rehash-size table
+この関数は@var{table}のrehash-sizeをリターンする。
+@end defun
+
+@defun hash-table-rehash-threshold table
+この関数は@var{table}のrehash-thresholdをリターンする。
+@end defun
+
+@defun hash-table-size table
+この関数は@var{table}の現在の定義されたサイズをリターンする。
+@end defun
