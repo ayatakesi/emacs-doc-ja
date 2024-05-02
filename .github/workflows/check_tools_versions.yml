@@ -21,8 +21,34 @@ jobs:
       - name: Check po4a version
         run: |
           po4a --version
-  alternate:
-    name: Check versions on ubuntu-NOT-latest
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Check po4a can process tindex
+        run: |
+          # po4a v66 should be able to process @tindex,
+          #  so grep should return #. type: tindex
+          po4a-gettextize -M utf8 \
+                          -f texinfo \
+                          -m lispref/original_texis/internals.texi \
+                          -p lispref/internals.texi.pot;
+          grep tindex lispref/internals.texi.pot
+          msgmerge --previous \
+                    --compendium lispref/internals.texi.po \
+                    -o - /dev/null lispref/internals.texi.pot |
+            msgcat --no-wrap - > lispref/internals.texi.po.temp;
+          mv -f lispref/internals.texi.po.temp lispref/internals.texi.po
+          grep tindex lispref/internals.texi.po
+          # po4a-translate already could process @tindex at version v57
+          po4a-translate -f texinfo \
+                         -k 0 \
+                         -M utf8 \
+                         -m lispref/original_texis/internals.texi \
+                         -p lispref/internals.texi.po \
+                         -l lispref/japanese_texis/internals.texi;
+          # grep should return @tindex emacs_function
+          grep tindex lispref/japanese_texis/internals.texi
+  previous:
+    name: Check versions on last ubuntu-latest
     runs-on: ubuntu-20.04
     steps:
       - name: Prepare build environment
