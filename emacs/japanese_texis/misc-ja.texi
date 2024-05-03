@@ -1233,7 +1233,7 @@ File}を参照)。
 @end menu
 
 @node TCP Emacs server
-@subsection TCP Emacs server
+@subsection EmacsのTCPサーバー
 @cindex TCP Emacs server
 
 @vindex server-use-tcp
@@ -1417,30 +1417,33 @@ Terminals}を参照してください)。
 MS-Windowsでは、Emacsサーバーがグラフィカルなディスプレイを使っている場合は@samp{-c}のように振る舞いますが、Emacsサーバーがテキスト端末で実行されている場合は、カレントテキスト端末に新たなフレームを作成します。
 
 @item -T @var{tramp-prefix}
-@itemx --tramp-prefix=@var{tramp-prefix}
-Set the prefix to add to filenames for Emacs to locate files on remote
-machines (@pxref{Remote Files}) using TRAMP (@pxref{Top, The Tramp Manual,,
-tramp, The Tramp Manual}).  This is mostly useful in combination with using
-the Emacs server over TCP (@pxref{TCP Emacs server}).  By ssh-forwarding the
-listening port and making the @var{server-file} available on a remote
-machine, programs on the remote machine can use @command{emacsclient} as the
-value for the @env{EDITOR} and similar environment variables, but instead of
-talking to an Emacs server on the remote machine, the files will be visited
-in the local Emacs session using TRAMP.
+@itemx --tramp=@var{tramp-prefix}
+EmacsがTRAMP (@ref{Top, The Tramp Manual,, tramp, The Tramp
+Manual}を参照)を使用してリモートマシンにファイルを配すとき(@ref{Remote
+Files}を参照)、ファイル名に追加されるプレフィクスをセットします。これは主にリモートサーバーからのEmacsサーバーの使用と組み合わせた場合に役に立ちます。listenするソケットあるいはlistenするポートのsshフォワードしてリモートホストの@var{server-file}を利用可能にすることによって(@ref{TCP
+Emacs
+server}を参照)、リモートマシン上のプログラムは@env{EDITOR}、および同種の環境変数にたいする値に@command{emacsclient}を使用できますが、リモートマシンからEmacsサーバーと通信するかわりに、そのファイルはTRAMPを使用してローカルのEmacsセッションによりvisitされます。
 
 @vindex EMACSCLIENT_TRAMP@r{, environment variable}
 環境変数@env{EMACSCLIENT_TRAMP}は、@samp{-T}オプションと同じ効果をもちます。両方が指定された場合は、コマンドラインのオプションが優先されます。
 
-For example, assume two hosts, @samp{local} and @samp{remote}, and that the
-local Emacs listens on tcp port 12345.  Assume further that @file{/home} is
-on a shared file system, so that the server file
-@file{~/.emacs.d/server/server} is readable on both hosts.
+たとえば@samp{local}と@samp{remote}という2つのホストがあるとします。
+
+@example
+local$ ssh -R "/home/%r/.emacs.socket":"$@{XDG_RUNTIME_DIR:-$@{TMPDIR:-/tmp@}/emacs%i@}$@{XDG_RUNTIME_DIR:+/emacs@}/server" remote
+remote$ export EMACS_SOCKET_NAME=$HOME/.emacs.socket
+remote$ export EMACSCLIENT_TRAMP=/ssh:remote:
+remote$ export EDITOR=emacsclient
+remote$ $EDITOR /tmp/foo.txt #Should open in local emacs.
+@end example
+
+Unixドメインソケットを使用しない@command{emacsclient}バージョンのプラットフォーム(MS-Windows)、あるいはUnixドメインソケットをフォワードできないSSH実装(6.7より前のバージョンのOpenSSH)を使用している場合には、かわりにTCPポートをフォワードできます。この例では、ローカルのEmacsがTCPポート12345をlistenしているとします。さらに@file{/home}が共有ファイルシステム上にあるとすると、serverファイル@file{~/.emacs.d/server/server}は両方のホストから読み込めることになります。
 
 @example
 local$ ssh -R12345:localhost:12345 remote
-remote$ export EDITOR="emacsclient \
-        --server-file=server \
-        --tramp=/ssh:remote:"
+remote$ export EMACS_SERVER_FILE=server
+remote$ export EMACSCLIENT_TRAMP=/ssh:remote:
+remote$ export EDITOR=emacsclient
 remote$ $EDITOR /tmp/foo.txt #Should open in local emacs.
 @end example
 
