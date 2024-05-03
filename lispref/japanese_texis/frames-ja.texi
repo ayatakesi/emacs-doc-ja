@@ -1,0 +1,3488 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2024 Free Software
+@c Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Frames
+@chapter フレーム
+@cindex frame
+
+  @dfn{フレーム(frame)}とは、1つ以上のEmacsウィンドウを含むスクリーンオブジェクトです(@ref{Windows}を参照)。これはグラフィカル環境では``ウィンドウ''と呼ばれる類のオブジェクトです。しかしEmacsはこの単語を異なる方法で使用しているので、ここではそれを``ウィンドウ''と呼ぶことはできません。Emacs
+Lispにおいて@dfn{フレームオブジェクト(frame
+object)}とは、スクリーン上のフレームを表すLispオブジェクトです。@ref{Frame Type}を参照してください。
+
+  フレームには最初は1つのメインウィンドウおよび/またはミニバッファーウィンドウが含まれます。メインウィンドウは、より小さいウィンドウに垂直か水平に分割することができます。@ref{Splitting
+Windows}を参照してください。
+
+@cindex terminal
+  @dfn{端末(terminal)}とは1つ以上のEmacsフレームを表示する能力のあるデバイスのことです。Emacs
+Lispにおいて@dfn{端末オブジェクト(terminal object)}とは端末を表すLispオブジェクトです。@ref{Terminal
+Type}を参照してください。
+
+@cindex text terminal
+@cindex graphical terminal
+@cindex graphical display
+  端末には@dfn{テキスト端末(text terminals)}と@dfn{グラフィカル端末(graphical
+terminals)}という2つのクラスがあります。テキスト端末はグラフィック能力をもたないディスプレイであり、@command{xterm}やその他の端末エミュレーターが含まれます。テキスト端末上ではそれぞれのEmacsフレームはその端末のスクリーン全体を占有します。たとえ追加のフレームを作成してそれらを切り替えることができたとしても、端末が表示するのは一度に1つのフレームだけです。一方でグラフィカル端末はXウィンドウシステムのようなグラフィカルディスプレイシステムにより管理されています。これによりEmacsは同一ディスプレイ上に複数のフレームを同時に表示することができます。
+
+  GNUおよびUnix
+systemsシステムでは、単一のEmacsセッション内でそのEmacsがテキスト端末とグラフィカル端末のいずれで開始されたかに関わらず、任意の利用可能な端末上で追加のフレームを作成することができます。Emacsは、グラフィカル端末とテキスト端末の両方を同時に表示することができます。
+これはたとえばリモートから同じセッションに接続する際などに便利でしょう。@ref{Multiple Terminals}を参照してください。
+
+@defun framep object
+この述語(predicate)は@var{object}がフレームなら非@code{nil}、それ以外は@code{nil}をリターンする。フレームにたいしてはフレームが使用するディスプレイの種類が値:
+
+@table @code
+@item t
+そのフレームはテキスト端末上で表示されている。
+@item x
+そのフレームはXグラフィカル端末上で表示されている。
+@item w32
+そのフレームはMS-Windowsグラフィカル端末上で表示されている。
+@item ns
+そのフレームはGNUstepかMacintosh Cocoaグラフィカル端末上で表示されている。
+@item pc
+そのフレームはMS-DOS端末上で表示されている。
+@item haiku
+そのフレームはHaikuアプリケーションキットを使って表示されている。
+@item pgtk
+そのフレームはpure GTK機能を使って表示されている。
+@item android
+そのフレームはAndroidデバイス上で表示されている。
+@end table
+@end defun
+
+@defun frame-terminal &optional frame
+この関数は@var{frame}を表示する端末オブジェクトをリターンする。@var{frame}が@code{nil}または未指定の場合のデフォルトは選択されたフレーム。
+@end defun
+
+@defun terminal-live-p object
+この述語は@var{object}が生きた(削除されていない)端末なら非@code{nil}、それ以外は@code{nil}をリターンする。生きた端末にたいしては、リターン値はその端末上で表示されているフレームの種類を示す。可能な値は上述の@code{framep}と同様。
+@end defun
+
+@cindex top-level frame
+グラフィカルな端末ではフレームを2つのタイプに区別しています。通常の@dfn{トップレベルフレーム(top-level
+frame)}は、ウィンドウ(ウィンドウシステム)としては端末にたいするルートウィンドウ(ウィンドウシステム)の子であるようなフレームです。子フレーム(child
+frame)は、ウィンドウ(ウィンドウシステム)としてはEmacsの別フレームのウィンドウ(ウィンドウシステム)の子であるようなフレームです。@ref{Child
+Frames}を参照してください。
+
+@menu
+* Creating Frames::          追加のフレームの作成。
+* Multiple Terminals::       異なる複数デバイス上での表示。
+* Frame Geometry::           Geometric properties of frames.
+* Frame Parameters::         フレームのサイズと位置、フォント等の制御。
+* Terminal Parameters::      端末上のすべてのフレームにたいして一般的なパラメーター。
+* Frame Titles::             フレームタイトルの自動的な更新。
+* Deleting Frames::          明示的に削除されるまでフレームは存続する。
+* Finding All Frames::       すべての既存フレームを調べる方法。
+* Minibuffers and Frames::   フレームが使用するミニバッファーを見つける方法。
+* Input Focus::              選択されたフレームの指定。
+* Visibility of Frames::     フレームは可視や不可視、またはアイコン化されているかもしれない。
+* Raising and Lowering::     フレームの前面や背面への移動。
+* Frame Configurations::     すべてのフレームの状態の保存。
+* Child Frames::             フレームを他のフレームの子供にする。
+* Mouse Tracking::           マウス移動時のイベントの取得。
+* Mouse Position::           マウスの場所や移動を問い合わせる。
+* Pop-Up Menus::             ユーザーに選択させるためのメニューの表示。
+* On-Screen Keyboards::      仮想キーボードの表示。
+* Dialog Boxes::             yes/noを問い合わせるためのボックスの表示。
+* Pointer Shape::            マウスポインターのシェイプの指定。
+* Window System Selections::  他のXクライアントとのテキストの転送。
+* Accessing Selections::     異なる複数タイプの選択。
+* Yanking Media::            平文テキスト以外のオブジェクトのyank。
+* Drag and Drop::            ドラッグアンドドロップの実装の内部。
+* Color Names::              カラー名定義の取得。
+* Text Terminal Colors::     テキスト端末のカラーの定義。
+* Resources::                サーバーからのリソース値の取得。
+* Display Feature Testing::  端末の機能の判定。
+@end menu
+
+
+@node Creating Frames
+@section フレームの作成
+@cindex frame creation
+
+新たにフレームを作成するためには関数@code{make-frame}を呼び出します。
+
+@deffn Command make-frame &optional parameters
+この関数はカレントバッファーを表示するフレームを作成してそれをリターンする。
+
+@var{parameters}引数は新たなフレームのフレームパラメーターを指定するalist。@ref{Frame
+Parameters}を参照のこと。@var{alist}内で@code{terminal}パラメーターを指定すると新たなフレームはその端末上で作成される。それ以外の場合には、@var{alist}内で@code{window-system}フレームパラメーターを指定すると、それはフレームがテキスト端末とグラフィカル端末のどちらで表示されるべきかを決定する。@ref{Window
+Systems}を参照のこと。どちらも指定しなければ新たなフレームは選択されたフレームと同じ端末上に作成される。
+
+@var{parameters}で指定されなかったパラメーターのデフォルトは連想リスト@code{default-frame-alist}内の値となる。そこでも指定されないパラメーターのデフォルトはXリソース、またはそのオペレーティングシステムで同等なものの値(@ref{X
+Resources,, X Resources, emacs, The GNU Emacs
+Manual}を参照)。フレームが作成された後に、この関数は@code{frame-inherited-parameters}
+(以下参照)内で指定されたパラメーターのうち未割り当てのパラメーターにたいして、@code{make-frame}呼び出し時に選択されていたフレームから値を取得して適用する。
+
+マルチモニターディスプレイ(@ref{Multiple
+Terminals}を参照)では、ウィンドウマネージャーが@var{parameters}内の位置パラメーター(@ref{Position
+Parameters}を参照)の指定とは異なる位置にフレームを配置するかもしれないことに注意。たとえばウィンドウの大きな部分、いわゆる@dfn{支配モニター(dominating
+monitor)}上のフレームを表示するポリシーをもつウィンドウマネージャーがいくつかある。
+
+この関数自体が新たなフレームを選択されたフレームにする訳ではない。@ref{Input
+Focus}を参照のこと。以前に選択されていたフレームは選択されたままである。しかしグラフィカル端末上ではウィンドウシステム自身の理由によって新たなフレームが選択されるかもしれない。
+@end deffn
+
+@defvar before-make-frame-hook
+@code{make-frame}がフレームを作成する前に、それにより実行されるノーマルフック。
+@end defvar
+
+@defvar after-make-frame-functions
+@code{make-frame}がフレームを作成した後に実行するアブノーマルフック。@code{after-make-frame-functions}内の各関数は作成された直後のフレームを単一の引数として受け取る。
+@end defvar
+
+initファイルでこれらのフックに追加した関数は、初期フレームの作成後にEmacsがinitファイルを読み込むために、通常は初期フレームにたいして実行されないことに注意してください。しかし別のミニバッファーフレーム(@ref{Minibuffers
+and
+Frames}を参照)を使用して初期フレームを指定すれば、これらの関数はミニバッファーなしのフレームとミニバッファーフレームの両方にたいして実行されます。かわりに``早期initファイル(early
+init file)''でこれらのフックに関数を追加することができます(@ref{Init
+File}を参照)。この場合には初期フレームにも同じように効果があります。
+
+@defvar frame-inherited-parameters
+この変数はカレントで選択されているフレームから継承して新たに作成されたフレームのフレームパラメーターのリストを指定する。リスト内の各要素は@code{make-frame}の処理において前に割り当てられていないパラメーター(シンボル)であり、@code{make-frame}は新たに作成されたフレームのそのパラメーターに選択されたフレームの値をセットする。
+@end defvar
+
+@defopt server-after-make-frame-hook
+Emacsサーバーがクライアントフレームを使用する際に実行されるノーマルフック。このフックの呼び出し時には、そのクライアントフレームが選択されたフレームとなる。@command{emacsclient}の呼び出され方(@ref{Invoking
+emacsclient,,, emacs, The GNU Emacs
+Manual}を参照)によっては、そのクライアントフレームはクライアント用に新たに作成されたフレームかもしれないし、サーバーがクライアントコマンドを処理するために再利用する既存のフレームかもしれない。@ref{Emacs
+Server,,, emacs, The GNU Emacs Manual}を参照のこと。
+@end defopt
+
+
+@node Multiple Terminals
+@section 複数の端末
+@cindex multiple terminals
+@cindex multi-tty
+@cindex multiple X displays
+@cindex displays, multiple
+
+  Emacsはそれぞれの端末を@dfn{端末オブジェクト(terminal object)}というデータ型で表します(@ref{Terminal
+Type}を参照)。GNUおよびUnixシステムではEmacsはそれぞれのセッション内で複数の端末を同時に実行できます。その他のシステムでは単一の端末だけが使用できます。端末オブジェクトはそれぞれ以下の属性をもちます:
+
+@itemize @bullet
+@item
+その端末により使用されるデバイスの名前(たとえば@samp{:0.0}や@file{/dev/tty} )。
+
+@item
+その端末により使用される端末とキーボードのコーディングシステム。@ref{Terminal I/O Encoding}を参照のこと。
+
+@item
+その端末に関連付けられたディスプレイの種類。これは関数@code{terminal-live-p}によりリターンされるシンボル(たとえば@code{x}、@code{t}、@code{w32}、@code{ns}、@code{pc}、@code{haiku}、@code{pgtk}、@code{android})。@ref{Frames}を参照のこと。
+
+@item
+端末パラメーターのリスト。@ref{Terminal Parameters}を参照のこと。
+@end itemize
+
+  端末オブジェクトを作成するプリミティブはありません。@code{make-frame-on-display}
+(以下参照)を呼び出したときなどに、Emacsが必要に応じてそれらを作成します。
+
+@defun terminal-name &optional terminal
+この関数は@var{terminal}により使用されるデバイスのファイル名をリターンする。@var{terminal}が省略または@code{nil}の場合のデフォルトは選択されたフレームの端末。@var{terminal}はフレームでもよく、その場合はそのフレームの端末。
+@end defun
+
+@defun terminal-list
+この関数はすべての生きた端末オブジェクトのリストをリターンする。
+@end defun
+
+@defun get-device-terminal device
+この関数は@var{device}により与えられたデバイス名の端末をリターンする。@var{device}が文字列なら端末デバイス名、または@samp{@var{host}:@var{server}.@var{screen}}という形式のXディスプレイのいずれかを指定できる。@var{device}ならこの関数はそのフレームの端末をリターンする。@code{nil}は選択されたフレームを意味する。最後にもし@var{device}が生きた端末を表す端末オブジェクトなら、その端末がリターンされる。引数がこれらのいずれとも異なれば、この関数はエラーをシグナルする。
+@end defun
+
+@defun delete-terminal &optional terminal force
+この関数は@var{terminal}上のすべてのフレームを削除して、それらが使用していたリソースを解放する。これらはアブノーマルフック@code{delete-terminal-functions}を実行して、各関数の引数として@var{terminal}を渡す。
+
+@var{terminal}が省略または@code{nil}の場合のデフォルトは選択されたフレームの端末。@var{terminal}はフレームでもよく、その場合はそのフレームの端末を意味する。
+
+この関数は通常は唯一アクティブな端末の削除を試みるとエラーをシグナルするが、@var{force}が非@code{nil}ならこれを行うことができる。端末上で最後のフレームを削除した際には、Emacsは自動的にこの関数を呼び出す(@ref{Deleting
+Frames}を参照)。
+@end defun
+
+@defvar delete-terminal-functions
+@code{delete-terminal}により実行されるアブノーマルフック。各関数は@code{delete-terminal}に渡された@var{terminal}を唯一の引数として受け取る。技術的な詳細により、この関数は端末の削除の直前または直後のいずれかに呼び出される。
+@end defvar
+
+@cindex terminal-local variables
+  数は多くありませんが、Lisp変数のいくつかは@dfn{端末ローカル(terminal-local)}です。つまりそれらは端末それぞれにたいして個別にバインディングをもちます。いかなるときも実際に効果をもつバインディングはカレントで選択されたフレームに属する端末にたいして1つだけです。これらの変数には@code{default-minibuffer-frame}、@code{defining-kbd-macro}、@code{last-kbd-macro}、@code{system-key-alist}が含まれます。これらは常に端末ローカルであり、決してバッファーローカル(@ref{Buffer-Local
+Variables}を参照)にはできません。
+
+  GNUおよびUnixシステムでは、Xディスプレイはそれぞれ別のグラフィカル端末になります。Xウィンドウシステム内でEmacsが開始された際は環境変数@env{DISPLAY}、または@samp{--display}オプション(@ref{Initial
+Options,,, emacs, The GNU Emacs
+Manual}を参照)により指定されたXディスプレイを使用します。Emacsはコマンド@code{make-frame-on-display}を通じて別のXディスプレイに接続できます。それぞれのXディスプレイは、それぞれが選択されたフレームとミニバッファーをもちます。しかしあらゆる瞬間(@ref{Input
+Focus}を参照)において、それらのフレームのうちの1つだけが、@emph{いわゆる}選択されたフレームになります。@command{emacsclient}との対話により、Emacsが別のテキスト端末と接続することさえ可能です。@ref{Emacs
+Server,,, emacs, The GNU Emacs Manual}を参照してください。
+
+@cindex X display names
+@cindex display name on X
+  1つのXサーバーが1つ以上のディスプレイを処理できます。各Xディスプレイには@samp{@var{hostname}:@var{displaynumber}.@var{screennumber}}という3つの部分からなる名前があります。1つ目の部分の@var{hostname}はその端末が物理的に接続されるマシン名です。2つ目の部分の@var{displaynumber}は同じキーボードとポインティングデバイス(マウスやタブレット等)を共有するマシンに接続された1つ以上のモニターを識別するための0基準の番号です。3つ目の部分の@var{screennumber}は、そのXサーバー上の単一のモニターコレクション(a
+single monitor
+collection)の一部である0基準のスクリーン番号(個別のモニター)です。1つのサーバー配下にある2つ以上のスクリーンを使用する際には、Emacsはそれらの名前の同一部分から、それらが単一のキーボードを共有することを知ることができるのです。
+
+  MS-WindowsのようにXウィンドウシステムを使用しないシステムはXディスプレイの概念をサポートせず、各ホスト上には1つのディスプレイだけがあります。これらのシステム上のディスプレイ名は上述したような3つの部分からなる名前にしたがいません。たとえばMS-Windowsシステム上のディスプレイ名は文字列定数@samp{w32}です。これは互換性のために存在するものであり、ディスプレイ名を期待する関数にこれを渡すことができます。
+
+@deffn Command make-frame-on-display display &optional parameters
+この関数は@var{display}上に新たにフレームを作成してそれをリターンする。その他のフレームパラメーターは、@var{parameters}というalistから取得する。@var{display}はXディスプレイの名前(文字列)であること。
+
+この関数はフレーム作成前にEmacsがグラフィックを表示するためにセットアップされることを保証する。(テキスト端末上で開始された等で)たとえばEmacsがXリソースを未処理ならこの時点で処理を行う。他のすべての点においては、この関数は@code{make-frame}(@ref{Creating
+Frames}を参照)と同様に振る舞う。
+@end deffn
+
+@defun x-display-list
+この関数はEmacsがどのXディスプレイに接続したかを識別するリストをリターンする。このリストの要素は文字列で、それぞれがディスプレイ名を表す。
+@end defun
+
+@defun x-open-connection display &optional xrm-string must-succeed
+この関数はディスプレイ上にフレームを作成することなく、Xディスプレイ@var{display}への接続をオープンする。通常は@code{make-frame-on-display}が自動的に呼び出すので、Emacs
+Lispプログラムがこの関数を呼び出す必要はない。これを呼び出す唯一の理由は、与えられたXディスプレイにたいして通信を確立できるかどうかチェックするためである。
+
+オプション引数@var{xrm-string}が非@code{nil}なら、それは@file{.Xresources}ファイル内で使用されるフォーマットと同一なリソース名とリソース値。@ref{X
+Resources,, X Resources, emacs, The GNU Emacs
+Manual}を参照のこと。これらの値はそのXサーバー上で記録されたリソース値をオーバーライドして、このディスプレイ上で作成されるすべてのEmacsフレームにたいして適用される。以下はこの文字列がどのようなものかを示す例:
+
+@example
+"*BorderWidth: 3\n*InternalBorder: 2\n"
+@end example
+
+@var{must-succeed}が非@code{nil}なら、接続オープンの失敗によりEmacsが終了させられる。それ以外なら通常のLispエラーとなる。
+@end defun
+
+@defun x-close-connection display
+この関数はディスプレイ@var{display}への接続をクローズする。これを行う前には、まずそのディスプレイ上でオープンしたすべてのフレームを削除しなければならない(@ref{Deleting
+Frames}を参照)。
+@end defun
+
+@cindex multi-monitor
+  マルチモニターのセットアップにおいて、単一のXディスプレイが複数の物理モニターに出力される場合があります。そのようなセットアップを取得するために関数@code{display-monitor-attributes-list}と@code{frame-monitor-attributes}を使用できます。
+
+@defun display-monitor-attributes-list &optional display
+この関数は@var{display}上の物理モニターの属性のリストをリターンする。@var{display}にはディスプレイ名(文字列)、端末、フレームを指定でき、省略または@code{nil}の場合のデフォルトは選択されたフレームのディスプレイ。このリストの各要素は物理モニターの属性を表す連想リスト。1つ目の要素はプライマリーモニターである。以下は属性のキーと値:
+
+@table @samp
+@item geometry
+@samp{(@var{x} @var{y} @var{width}
+@var{height})}のようなピクセル単位でのそのモニターのスクリーンの左上隅の位置とサイズ。そのモニターがプライマリーモニターでなければ、いくつかの座標が負になり得る。
+
+@item workarea
+@samp{(@var{x} @var{y} @var{width}
+@var{height})}のようなピクセル単位でのワークエリア(使用可能なスペース)の左上隅の位置とサイズ。ウィンドウマネージャーのさまざまな機能(dock、taskbar等)によりそのスペースが占有される@samp{geometry}とは異なり、これはワークエリアから除外され得る。そのような機能が実際にワークエリアから差し引かれるかどうかは、そのプラットフォームと環境に依存する。繰り返しになるが、そのモニターがプライマリーモニターでなければ、いくつかの座標は負になり得る。
+
+@item mm-size
+@samp{(@var{width} @var{height})}<のようなミリメートル単位での幅と高さ。
+
+@item frames
+その物理モニターが支配(dominate)するフレームのリスト(以下参照)。
+
+@item name
+@var{string}のようなその物理モニターの名前。
+
+@item source
+@var{string}のようなマルチモニターの情報ソース(例: @samp{XRandR
+1.5}、@samp{XRandr}、@samp{Xinerama}等)。
+@end table
+
+@var{x}、@var{y}、@var{width}、@var{height}は整数。@samp{name}と@samp{source}は欠落しているかもしれない。
+
+あるモニター内にフレームの最大領域がある、または(フレームがどの物理モニターにも跨がらないなら)そのモニターがフレームに最も近いとき、フレームは物理モニターにより@dfn{支配(dominate)}される。グラフィカルなディスプレイ内の(ツールチップではない)すべてのフレームは、たとえそのフレームが複数の物理モニターに跨がる(または物理モニター上にない)としても、(可視か否かによらず)正確に1つの物理モニターにより支配される。
+
+以下は2つのモニターディスプレイ上でこの関数により生成されたデータの例:
+
+@lisp
+  (display-monitor-attributes-list)
+  @result{}
+  (((geometry 0 0 1920 1080) ;; @r{左手側プライマリーモニター}
+    (workarea 0 0 1920 1050) ;; @r{タスクバーが幾分かの高さを占有}
+    (mm-size 677 381)
+    (name . "DISPLAY1")
+    (frames #<frame emacs@@host *Messages* 0x11578c0>
+            #<frame emacs@@host *scratch* 0x114b838>))
+   ((geometry 1920 0 1680 1050) ;; @r{右手側モニター}
+    (workarea 1920 0 1680 1050) ;; @r{スクリーン全体を使用可}
+    (mm-size 593 370)
+    (name . "DISPLAY2")
+    (frames)))
+@end lisp
+
+@end defun
+
+@defun frame-monitor-attributes &optional frame
+この関数は@var{frame}を支配(上記参照)する物理モニターの属性をリターンする。 @var{frame}のデフォルトは選択されたフレーム。
+@end defun
+
+マルチモニターディスプレイではフレームを指定したモニター上にするためにコマンド@code{make-frame-on-monitor}を使用することが可能です。
+
+@deffn Command make-frame-on-monitor monitor &optional display parameters
+この関数は@var{display}上に配置される@var{monitor}に新たにフレームを作成してそれをリターンする。その他のフレームパラメーターは、@var{parameters}というalistから取得する。@var{monitor}は物理モニター名であり、@code{display-monitor-attributes-list}関数のリターン値の属性@code{name}の文字列と同一の文字列であること。@var{display}はXディスプレイの名前(文字列)であること。
+@end deffn
+
+@cindex monitor change functions
+@defvar display-monitors-changed-functions
+この変数はモニター構成が変更された際に実行されるアブノーマルフック。モニター構成の変更はモニターのローテート(rotate:
+回転)、移動、マルチモニターセットアップへの追加や削除、プライマリーモニターの変更、モニター解像度の変更によって起こり得る。フックの関数はモニター構成が変更された端末で構成された単一の引数とともに呼び出される。プログラムは端末の新たなモニター構成を取得するために、その端末を引数として@code{display-monitor-attributes-list}を呼び出すこと。
+@end defvar
+
+@node Frame Geometry
+@section フレームのジオメトリー
+@cindex frame geometry
+@cindex frame position
+@cindex position of frame
+@cindex frame size
+@cindex size of frame
+
+フレームのジオメトリー(geometry)は、そのEmacsインスタンスのビルドに使用されたツールキット、およびそのフレームを表示する端末に依存します。このチャプターではこれらの依存関係とそれらを処理するいくつかの関数を説明します。これらの関数すべてにたいして、@var{frame}引数には生きたフレームを指定する必要があることに注意してください(@ref{Deleting
+Frames}を参照)。省略または@code{nil}なら選択されたフレーム(@ref{Input Focus}を参照)が指定されます。
+
+@menu
+* Frame Layout::             フレームの基本的なレイアウト。
+* Frame Font::               フレームのデフォルトフォントとセット方法。
+* Frame Position::           ディスプレイ上のフレームの位置。
+* Frame Size::               フレームサイズの指定と取得。
+* Implied Frame Resizing::   フレームの暗黙なリサイズと予約方法。
+@end menu
+
+
+@node Frame Layout
+@subsection フレームのレイアウト
+@cindex frame layout
+@cindex layout of frame
+
+可視なフレームは端末のディスプレイの矩形(rectangular)の領域を占有します。この領域にはそれぞれが異なる用途をサービスする、いくつかのネストされた矩形を含むことができます。以下のスケッチはグラフィカル端末上でのレイアウトを描いたものです:
+@smallexample
+@group
+
+        <------------ Outer Frame Width ----------->
+        ____________________________________________
+     ^(0)  ________ External/Outer Border _______   |
+     | |  |_____________ Title Bar ______________|  |
+     | | (1)_____________ Menu Bar ______________|  | ^
+     | | (2)_____________ Tool Bar ______________|  | ^
+     | | (3)_____________ Tab Bar _______________|  | ^
+     | |  |  _________ Internal Border ________  |  | ^
+     | |  | |   ^                              | |  | |
+     | |  | |   |                              | |  | |
+Outer  |  | | Inner                            | |  | Native
+Frame  |  | | Frame                            | |  | Frame
+Height |  | | Height                           | |  | Height
+     | |  | |   |                              | |  | |
+     | |  | |<--+--- Inner Frame Width ------->| |  | |
+     | |  | |   |                              | |  | |
+     | |  | |___v______________________________| |  | |
+     | |  |___________ Internal Border __________|  | |
+     | | (4)__________ Bottom Tool Bar __________|  | v
+     v |___________ External/Outer Border __________|
+           <-------- Native Frame Width -------->
+
+@end group
+@end smallexample
+
+実際のところ上図で示した領域すべてが存在するわけではありません。これらの領域については以下で説明します。
+
+@table @asis
+@item アウターフレーム(Outer Frame)
+@cindex outer frame
+@cindex outer edges
+@cindex outer width
+@cindex outer height
+@cindex outer size
+@dfn{アウターフレーム(outer
+frame)}とは上図で示すすべての領域を網羅する矩形。この矩形の端はそのフレームの@dfn{アウターエッジ(outer
+edges)}と呼ばれる。フレームの@dfn{アウター幅(outer width)}と@dfn{アウター高さ(outer
+height)}は併せて矩形の@dfn{アウターサイズ(outer size)}を指定する。
+
+フレームのアウターサイズを把握することはフレームのディスプレイの作業領域にフレームをフィットさせたり、スクリーンで2つのフレームを隣接して配置するのに有用である(@ref{Multiple
+Terminals}を参照)。アウターサイズは通常はフレームが少なくとも1回マップ(可視にすること。@ref{Visibility of
+Frames}を参照)された後でなければ利用できない。初期フレームやまだ作成されていないフレームにたいするアウターサイズは予想するかウィンドウシステムやウィンドウマネージャーのデフォルトから計算しなければならない。回避策としてはマップ済みフレームのアウターサイズとネイティブサイズを取得して、新たなフレームのアウターサイズの計算に使用すればよい。
+
+@cindex outer position
+(上図@samp{(0)}で示される)アウターフレームの左上隅の位置はフレームの@dfn{アウター位置(outer
+position)}と呼ばれる。グラフィカルなフレームのアウター位置は、ディスプレイではフレームのリサイズやレイアウト変更では未変更のままなので、そのフレームの``位置''としても参照される。
+
+アウター位置はフレームパラメーター@code{left}と@code{top}を通じて指定とセットができる(@ref{Position
+Parameters}を参照)。これらのパラメーターは通常のトップレベルのフレームにたいして、通常はフレームのディスプレイの原点からみた絶対位置(以下参照)を表す。子フレーム(@ref{Child
+Frames}を参照)にたいしては親フレームのネイティブ位置(以下参照)から相対的な位置を表す。これらのパラメーターの値はテキスト端末のフレームでは意味がなく常に0である。
+
+@item エクスターナルボーダー(External Border)
+@cindex external border
+@dfn{エクスターナルボーダー(external
+border)}はウィンドウマネージャーにより提供される装飾の一部。典型的にはマウスによるフレームのリサイズで典型的に使用される。そのため``全画面化(fullboth)''や最大化されたフレームでは表示されない(@ref{Size
+Parameters}を参照)。エクスターナルボーダーの幅はウィンドウマネージャーにより決定されて、Emacsの関数では変更できない。
+
+テキスト端末のフレームではエクスターナルボーダーは存在しない。グラフィカルなフレームではフレームパラメーター@code{override-redirect}と@code{undecorated}をセットすることにより表示を抑制できる(@ref{Management
+Parameters}を参照)。
+
+@item アウターボーダー(Outer Border)
+@cindex outer border
+@dfn{アウターボーダー(outer border)}はフレームパラメーター@code{border-width} (@ref{Layout
+Parameters}を参照)で指定可能な分割線。実際にはエクスターナルボーダーとアウターボーダーのいずれかが表示されるが、両方が同時に表示されることはない。アウターボーダーはツールチップフレーム(@ref{Tooltips}を参照)、子フレーム(@ref{Child
+Frames}を参照)、および@code{undecorated}や@code{override-redirect}をセットされたフレーム(@ref{Management
+Parameters}を参照)のようにウィンドウマネージャーにより(完全に)制御される特別なフレームでは通常は表示されない。
+
+アウターボーダーはテキスト端末のフレームとGTK+ルーチンが生成したフレームでは表示されない。MS-Windowsではアウターボーダーはピクセル幅が1のエクスターナルボーダーの助けを借りてエミュレートされる。X上でのツールキットによらないビルドではフレームパラメーター@code{border-color}をセットすることによりアウターボーダーのカラーを変更できる(@ref{Layout
+Parameters}を参照)。
+
+@item タイトルバー(Title Bar)
+@cindex title bar
+@cindex caption bar
+@dfn{タイトルバー(title bar)}、いわゆる@dfn{キャプションバー(caption
+bar)}もウィンドウマネージャーの装飾の一部であり通常はフレームのタイトル(@ref{Frame
+Titles}を参照)、同様に最小化や最大化、削除のボタンを表示する。これはマウスによるフレームのドラッグにも使用できる。タイトルバーは通常は全画面化(fullboth)されたフレーム(@ref{Size
+Parameters}を参照)、ツールチップフレーム(@ref{Tooltips}を参照)、子フレーム(@pxref{Child
+Frames}を参照)では表示されず、端末フレームでは存在しない。タイトルバーの表示はフレームパラメーター@code{override-redirect}や@code{undecorated}をセットすることにより抑制できる(@ref{Management
+Parameters}を参照)。
+
+@item メニューバー(Menu Bar)
+@cindex internal menu bar
+@cindex external menu bar
+メニューバー(@ref{Menu
+Bar}を参照)にはインターナル(Emacs自身が描画)とエクスターナル(ツールキトが描画)がある。ほとんどのビルド(GTK+、Lucid、Motif、MS-Windows)ではエクスターナルメニューバーを依拠とする。NSもエクスターナルメニューバーを使用するが、これはアウターフレームの一部ではない。非ツールキットのビルドはインターナルメニューバーを提供できる。テキスト端末フレームではメニューバーはフレームのルートウィンドウの一部である(@ref{Windows
+and Frames}を参照)。ルールとして子フレームでメニューバーが表示されることはない(@ref{Child
+Frames}を参照)。パラメーター@code{menu-bar-lines} (@ref{Layout
+Parameters}を参照)をセットすることによりメニューバーの表示は抑制できる。
+
+メニューバーの幅がフレームにフィットするには大きくなりすぎた際に折り返されるか(wrapped)、それとも切り詰められるか(truncated)はツールキットに依存する。通常はMotifとMS-Windowsのビルドだけがニューバーを折り返すことができる。これらはメニューバーの折り返し、またはそれを解除する際にフレームのアウター高さの保持を試みるの、でかわりにフレームのネイティブ高さ(以下参照)が変更される。
+
+@item ツールバー(Tool Bar)
+@cindex internal tool bar
+@cindex external tool bar
+メニューバーと同じように、ツールバーにはインターナルツールバー(Emacsが描画)とエクスターナルツールバー(ツールキットが描画)がある。GTK+とNSのビルドにはそれらのツールキットが描画するツールバーがある。その他のビルドはインターナルツールバーを使用する。GTK+ではフレームのインタナルボーダー(以下参照)のすぐ外側のいずれかのサイドにツールバーを配置できる。子フレームは通常はツールバーを表示しない(@ref{Child
+Frames}を参照)。パラメーター@code{tool-bar-lines} (@ref{Layout
+Parameters}を参照)に0をセットすることでツールバーの表示を抑制できる。
+
+変数@code{auto-resize-tool-bars}が非@code{nil}なら、フレームに収まらないほど幅が大きくなるとEmacsはツールバーを折り返す。Emacsがインターナルツールバーの折り返しや折り返しの解除を行う場合には、デフォルトではフレームのアウター高さを未変更に保つので、かわりにフレームのネイティブ高さ(以下参照)が変更される。一方GTK+とともにビルドされたEmacsではツールバーの折り返しは決して行われないが、長くなりすぎたツールバーが収まるようにフレームのアウター幅が自動的に増加される。
+
+@item タブバー(Tab Bar)
+@cindex tab bar
+タブバー(@ref{Tab Bars,,,emacs, The GNU Emacs
+Manual}を参照)は常にEmacs自身によって描画される。タブバーはインターナルツールバーとともビルドされたEmacsのツールバーの上、エクスターナルツールバーとともにビルドされたEmacsではツールバーの下に表示される。@code{tab-bar-lines}パラメーターを0に設定すればタブバーの表示を抑止できる(@ref{Layout
+Parameters}を参照)。
+
+@item ネイティブフレーム(Native Frame)
+@cindex native frame
+@cindex native edges
+@cindex native width
+@cindex native height
+@cindex native size
+@dfn{ネイティブフレーム(native
+frame)}は全体的にアウターフレーム内に配置される。ネイティブフレームにはエクスターナルボーダーとアウターボーダー、タイトルバーとエクスターナルメニューバーとツールバーが占有する領域は含まれない。ネイティブフレームのエッジ(edge:
+端)はフレームの@dfn{ネイティブエッジ(native edges)}と呼ばれる。フレームの@dfn{ネイティブサイズ(native
+size)}ハ、フレームの@dfn{ネイティブ幅(native width)}と@dfn{ネイティブ高さ(native height)}で指定される。
+
+フレームのネイティブサイズはEmacs内のフレームの作成やリサイズをEmacsが行う際にウィンドウシステムやウィンドウマネージャーに渡すサイズである。これはたとえばタイトルバーの対応するボタンのクリックによりフレームを最大化した後やマウスでエクスターナルボーダーをドラッグした際等、フレームの(ウィンドウシステムの)ウィンドウをリサイズする際にウィンドウシステムやウィンドウマネージャーに渡すサイズでもある。
+
+@cindex native position
+ネイティブフレームの左上隅の位置はフレームの@dfn{ネイティブ位置(native
+position)}を指定する。上図の(1)から(3)は種々のビルドにたいするネイティブ位置を示す。
+
+@itemize @w{}
+@item (1) 非ツールキット、Android、Haiku、および端末のフレーム
+
+@item (2) Lucid、Motif、MS-Windowsのフレーム
+
+@item (3) GTK+とNSのフレーム
+@end itemize
+
+したがってLucid、Motif、MS-Windowsではネイティブ高さにツールバーの高さは含まれるがメニューバーの高さは含まれず、非ツールキットおよび端末のフレームではメニューバーとツールバーの高さは含まれない。
+
+普通ならネイティブ位置が(2)となるような場合でも、(4)に示したようにフレーム最下にツールバーが配置されていればタブバーの位置がフレームのネイティブ位置になる。
+
+フレームのネイティブ位置はマウスのカレント位置(@ref{Mouse
+Position}を参照)のセットやリターンを行う関数や@code{window-edges}、@code{window-at}、@code{coordinates-in-window-p}のようにウィンドウ位置(@ref{Coordinates
+and Windows}を参照)を扱う関数にたいして参照位置となる。これはフレームの子フレームの配置や位置にたいする原点(0, 0)も指定する。
+
+フレームパラメーター@code{override-redirect}や@code{undecorated} (@ref{Management
+Parameters}を参照)を変更してウィンドウマネージャーの装飾の削除や追加を行う際にも、フレームのネイティブ位置は未変更のままであることにも注意。
+
+@item インターナルボーダー(Internal Border)
+インターナルボーダーはインナーフレーム周囲にEmacsが描画するボーダー(以下参照)。その外観仕様は与えられたフレームが子フレームかどうかによる(@ref{Child
+Frames}を参照)。
+
+通常のフレームでは、フレームの幅はフレームパラメーター@code{internal-border-width} (@ref{Layout
+Parameters}を参照)、カラーは@code{internal-border}フェイスのバックグラウンドで指定される。
+
+子フレームでは、フレームの幅はフレームパラメーター@code{child-frame-border-width}
+(ただしフォールバックとして@code{internal-border-width}パラメーターを使用)、カラーは@code{child-frame-border}フェイスのバックグラウンドで指定される。
+
+@item インナーフレーム(Inner Frame)
+@cindex inner frame
+@cindex inner edges
+@cindex inner width
+@cindex inner height
+@cindex inner size
+@cindex display area
+@dfn{インナーフレーム(inner
+frame)}はフレームのウィンドウにたいして予約された矩形のこと。インナーフレームはインターナルボーダー(これはインナーフレームの一部ではない)に囲われている。インナーフレームのエッジはフレームの@dfn{インナーエッジ(inner
+edges)}と呼ばれる。この矩形の@dfn{インナーサイズ(inner size)}は@dfn{インアー幅(inner
+width)}と@dfn{インナー高さ(inner
+height)}により指定される。このインナーフレームはフレームの@dfn{ディスプレイエリア(display area)}として参照されることもある。
+
+@cindex minibuffer-less frame
+@cindex minibuffer-only frame
+ルールとしてインナーフレームはフレームのルートウィンドウ(@ref{Windows and
+Frames}を参照)とミニバッファーウィンドウ(@ref{Minibuffer
+Windows}を参照)に細分される。この2つには注目すべき2つの例外がある。それはミニバッファーウィンドウをもたないルートウィンドウのみの@dfn{ミニバッファーlessフレーム(minibuffer-less
+frame)}と、ミニバッファーウィンドウだけをもち、それがフレームのルートウィンドウの役目も果たす@dfn{ミニバッファーonlyウィンドウ(minibuffer-only
+frame)}である。そのようなフレーム構成を作成する方法は@ref{Initial Parameters}を参照のこと。
+
+@item テキストエリア(Text Area)
+@cindex text area
+フレームの@dfn{テキストエリア(text
+area)}はネイティブフレームに埋め込み可能な一種の架空領域である。テキストエリアの位置は指定されない。テキストエリアの幅はネイティブ幅からインターナルボーダーの幅、そのフレームに指定されていれば(@ref{Layout
+Parameters}を参照)1つの垂直スクロールバーの幅、左右のフリンジ各1の幅を取り除くことにより取得できる。テキストエリアの高さはネイティブ高さからインターナルボーダーの幅、そのフレームに指定されていればフレームのインターナルのメニューバー、ツールバー、タブバーの高さ、1つの水平スロールバーの高さを取り除くことにより取得できる。
+@end table
+
+@cindex absolute position
+@cindex absolute frame position
+@cindex absolute edges
+@cindex absolute frame edges
+@cindex display origin
+@cindex origin of display
+フレームの@dfn{絶対位置(absolute position)}は(X, Y)というペア、またはフレームのディスプレイの原点(0,
+0)から相対的な水平および垂直のピクセル単位のオフセットにより与えられる。これに対応してフレームの@dfn{絶対エッジ(absolute
+edges)}はこの原点からのピクセル単位のオフセットにより与えられる。
+
+  マルチモニターではディスプレイの原点が端末の利用可能な表示エリア全体の左上隅と一致する必要はない。したがってそのような環境では、たとえそのフレームが完全に可視であってもフレームの絶対位置は負の値になり得る。
+
+  慣例により垂直方向のオフセットは``下方向''にたいして増加する。これはフレームの下エッジから上エッジのオフセットを減ずることによりフレームの高さが得られることを意味する。期待されるように水平方向のオフセットは``右方向''にたいして増加するので、フレームの右エッジから左エッジのオフセットを減ずることによりフレームの幅を計算できる。
+
+  以下の関数はグラフィカル端末上のフレームにたいして上述したエリアのサイズをリターンします:
+
+@defun frame-geometry &optional frame
+この関数は@var{frame}の幾何学的な属性をリターンする。リタ^ン値は以下のような属性のリストの連想リスト。すべての座標、高さや幅の値はピクセル単位の整数。まだ@var{frame}がマップされていなければ(@ref{Visibility
+of Frames}を参照)、いくつかのリターン値は実際の値の近似値しか表していないかもしれない(それらの値はフレームのマップ後に確認可能になる)。
+
+@table @code
+@item outer-position
+@var{frame}のアウターフレームの絶対位置を表すコンスであり、@var{frame}のディスプレイの原点(0, 0)から相対的な位置。
+
+@item outer-size
+@var{frame}のアウター幅とアウター高さを表すコンス。
+
+@item external-border-size
+ウィンドウマネージャーにより与えられる、@var{frame}エクスターナルボーダーの水平幅と垂直幅を表すコンス。ウィンドウマネージャーによりこれらの値が提供されなければ、Emacsはアウターフレームとインナーフレームの座標からそれらの推測を試みる。
+
+@item outer-border-width
+@var{frame}のアウターボーダーの幅。この値は非GTK+のXビルドでのみ意味がある。
+
+@item title-bar-size
+ウィンドウマネージャーまたはオペレーティングシステムが与える、@var{frame}のタイトルバーの幅と高さを表すコンス。いずれも0なら、そのフレームにタイトルバーはない。幅だけが0なら、Emacsが幅の情報を取得できなかったことを意味する。
+
+@item menu-bar-external
+非@code{nil}なら、それはメニューバーがエクスターナルである(@var{frame}のネイティブフレームの一部ではない)ことを意味する。
+
+@item menu-bar-size
+@var{frame}のメニューバーの幅と高さを表すコンス。
+
+@item tool-bar-external
+非@code{nil}なら、それはツールバーがエクスターナルである(@var{frame}のネイティブフレームの一部ではない)ことを意味する。
+
+@item tool-bar-position
+これはツールバーが@var{frame}のどの端に配置されているかを示し@code{left}、@code{top}、@code{right}、@code{bottom}のいずれか。
+
+@code{left}と@code{right}の値はGTK+ツールキットを用いたビルドでのみサポートされる。@code{bottom}はNS以外のすべて、@code{top}はすべてのビルドでサポートされている。
+
+@item tool-bar-size
+@var{frame}のツールバーの幅と高さを表すコンス。
+
+@item internal-border-width
+@var{frame}のインターナルボーダーの幅。
+@end table
+@end defun
+
+以下の関数はフレームにたいするアウター、ネイティブ、インナーのエッジの取得に使用できます。
+
+@defun frame-edges &optional frame type
+この関数は@var{frame}のアウター、ネイティブ、インナーフレームの絶対エッジをリターンする。@var{frame}は生きたフレームでなければならずデフォルトは選択されたフレーム。リターンされるリストは@w{@code{(@var{left}
+@var{top} @var{right}
+@var{bottom})}}という形式をもつ。すべて@var{frame}のディスプレイの原点から相対的なピクセル単位の値。端末フレームでは@var{left}と@var{top}にたいしてリターンされる値は常に0。
+
+オプション引数@var{type}はリターンするエッジのタイプを指定する。@code{outer-edges}は@var{frame}のアウターエッジ、@code{native-edges}
+(か@code{nil})はネイティブエッジ、@code{inner-edges}はインナーエッジをリターンすることを意味する。
+
+慣例により@var{left}と@var{top}にたいしてリターンされたディスプレイのピクセル位置は@var{frame}の内部(一部)とみなされる。したがって@var{left}と@var{top}がいずれも0なら、ディスプレイの原点のピクセル位置は@var{frame}の一部となる。その一方で@var{bottom}と@var{right}のピクセル位置は@var{frame}のすぐ外側にあるとみなされる。これはたとえば2つの横並びのフレームがあり、左フレームの右アウトーエッジが右フレームの左エッジと等しければ、そのエッジ上のピセルは右フレームの一部として表されることを意味する。
+@end defun
+
+
+@node Frame Font
+@subsection フレームのフォント
+@cindex default font
+@cindex default character size
+@cindex default character width
+@cindex default width of character
+@cindex default character height
+@cindex default height of character
+フレームにはそれぞれ、そのフレームにたいするデフォルト文字サイズを指定する@dfn{デフォルトフォント(default
+font)}があります。このサイズは、行や列の単位でのフレームサイズの取得や変更での使用を意図したものです(@ref{Size
+Parameters}を参照)。これはウィンドウのリサイズ(@ref{Window Sizes}を参照)や分割(@ref{Splitting
+Windows}を参照)の際にも使用されます。
+
+@cindex line height
+@cindex column width
+@cindex canonical character height
+@cindex canonical character width
+``デフォルト文字高さ(default character height)t''のかわりに@dfn{行高さ(line
+height)}や@dfn{正準文字高さ(canonical character
+height)}という用語を使用するときがあります。同様に``デフォルト文字幅(default character
+width)''のかわりに@dfn{列幅(column width)}や@dfn{正準文字幅(canonical character
+width)}という用語も使用されます。
+
+@defun frame-char-height &optional frame
+@defunx frame-char-width &optional frame
+これらの関数はピクセルで測った@var{frame}内の文字のデフォルトの高さまたは幅をリターンする。両者をあわせたサイズにより@var{frame}の@var{frame}のサイズが確立される。値は@var{frame}にたいして選択されたフォントに依存する。@ref{Font
+and Color Parameters}を参照のこと。
+@end defun
+
+以下の関数でデフォルトフォントを直接セットすることもできます:
+
+@deffn Command set-frame-font font &optional keep-size frames
+これはデフォルトフォントに@var{font}をセットする。インタラクティブに呼び出された際にはフォント名の入力を求めて、選択されたフレームにそのフォントを使用する。Lispから呼び出す際には、@var{font}はフォント名(文字列)、フォントオブジェクト、フォントエンティティー、フォントspecのいずれかであること。
+
+オプション引数@var{keep-size}が@code{nil}ならフレームの行数と列数を固定に保つ(非@code{nil}なら次セクションで説明するオプション@code{frame-inhibit-implied-resize}がこれをオーバーライドするだろう)。@var{keep-size}が非@code{nil}
+(またはプレフィクス引数を指定)なら行数と列数を調節することにより、カレントフレームのディスプレイエリアのサイズの維持を試みる。
+
+オプション引数@var{frames}が@code{nil}なら、そのフォントは選択されたフレームだけに適用される。@var{frames}が非@code{nil}ならそれは作用するフレームのリスト、またはすべての既存フレームおよび将来のすべてのグラフィカルフレームを意味する@code{t}のいずれかであること。
+@end deffn
+
+
+@node Frame Position
+@subsection フレームの位置
+@cindex frame position
+@cindex position of frame
+
+グラフィカルなシステムでは通常のトップレベルのフレームの位置はアウターフレームの絶対位置として指定されます(@ref{Frame
+Geometry}を参照)。子フレーム(@ref{Child
+Frames}を参照)の位置は親フレームのネイティブ位置から子フレームのアウターエッジまでのピクセル単位のオフセットとして相対的に指定されます。
+
+  フレーム位置はフレームパラメーター@code{left}と@code{top}(@ref{Position
+Parameters}を参照)を使用すれば変更やアクセスができます。既存の可視なフレームの位置を処理するために追加で2つの関数が存在します。いずれの関数でも引数@var{frame}は生きたフレームでなければならず、デフォルトは選択されたフレームです。
+
+@defun frame-position &optional frame
+この関数は子フレームではない通常のフレームにたいしてフレームのアウター位置(@ref{Frame
+Layout}を参照)を、フレームのディスプレイの原点@code{(0,
+0)}からのピクセル座標をコンスセルでリターンする。子フレーム(@ref{Child
+Frames}を参照)にたいしてはフレームのアウター位置を、@var{frame}のネイティブ位置を原点@code{(0,
+0)}として、そこからのピクセル座標をリターンする。
+
+負の値は@var{frame}のディスプレイまたは親フレームの右エッジか下エッジからのオフセットではない。これらは@var{frame}のアウター位置が、フレームのデイスプレイの原点または親フレームのネイティブ位置の左および/または上にあることを意味する。これは通常は@var{frame}の一部だけが可視(または完全に不可視)であることを意味している。しかしディスプレイの原点がディスプレイの左上隅と一致しないシステムではセカンダリーモニター上ではフレームは可視かもしれない。
+
+てきすと端末ではいずれの値も0。
+@end defun
+
+@defun set-frame-position frame x y
+この関数は@var{frame}のアウターフレームの位置を(@var{x},
+@var{y})にセットする。後の引数は通常は@var{frame}のディスプレイの位置(0,
+0)にある原点からのピクセル数、子フレームでは@var{frame}の親フレームのネイティブ位置からのピクセル数。
+
+負のパラメーター値はアウターフレームの右エッジをスクリーンの右エッジ(または親フレームのネイティブ矩形位置)から左に@var{-x}ピクセル、または下エッジをスクリーンの下エッジ(または親フレームのネイティブ矩形位置)から上に@var{-y}ピクセルの位置にセットする。
+
+負の値では@var{frame}の右エッジや下エッジを性格にディスプレイや親フレームの右エッジや下エッジには揃えられないことに注意。負の値ではディスプレイや親フレーム内にあるエッジにある位置は指定できない。フレームパラメーター@code{left}と@code{top}
+(@ref{Position
+Parameters}を参照)でこれを行うことはできるものの、初期フレームや新たなフレームでは依然として良好な結果は得られないかもしれない。
+
+この関数はテキスト端末フレームでは効果がない。
+@end defun
+
+@defvar move-frame-functions
+@cindex frame position changes, a hook
+このフックはウィンドウシステムやウィンドウマネージャーがフレームを(新たな位置を割り当てて)移動した際に実行される関数を指定する。関数は移動されたフレームを単一の引数として実行される。子フレーム(@ref{Child
+Frames}を参照)では親フレームとの関連性においてのフレーム位置が変更されたときだけ関数が実行される。
+@end defvar
+
+
+@node Frame Size
+@subsection フレームのサイズ
+@cindex frame size
+@cindex text width of a frame
+@cindex text height of a frame
+@cindex text size of a frame
+Emacs内から@dfn{フレームサイズ(size of a frame)}を指定する正規の方法は@dfn{テキストサイズ(text
+size)}の指定による方法です(フレームのテキストエリアの幅と高さの組み合わせ。@ref{Frame
+Layout}を参照)。これはピクセルやフレームの標準の文字サイズ(@ref{Frame Font}を参照)で計ることができます。
+
+  インターナルメニューやインターナルツールバーのあるフレームでは実際にフレームが描画されるまでフレームのネイティブ高さを告げることはできません。一般的にこれはフレームの初期サイズの指定にネイティブサイズを使用できないことを意味しています。可視フレームのネイティブフレームが解り次第、@code{frame-geometry}のリターン値から残りのコンポーネントを追加してアウターサイズ(@ref{Frame
+Layout}を参照)を計算できます。しかし不可視のフレームやまだ作成されていないフレームにたいするアウターサイズは推定しかできません。これはスクリーンの右エッジや下エッジからのオフセットの指定ではフレームの正確な初期位置を計算することが不可能であることも意味しています(@ref{Frame
+Position}を参照)。
+
+  フレームのテキストサイズはフレームパラメーター@code{height}と@code{width}を使用してセットや取得が可能です(@ref{Size
+Parameters}を参照)。初期フレームのテキストサイズはX様式のジオメトリー仕様でもセットや取得が可能です。@ref{Emacs
+Invocation,, Command Line Arguments for Emacs Invocation, emacs, The GNU
+Emacs
+Manual}を参照してください。以下に既存で可視なフレーム(デフォルトは選択されたフレーム)のサイズにたいしてセットやアクセスを行う関数をいくつかリストします。
+
+@defun frame-height &optional frame
+@defunx frame-width &optional frame
+これらの関数は@var{frame}のテキストエリアの高さと幅を、@var{frame}のデフォルトフォントの高さと幅を単位に計測してリターンする。これらの関数は単に@code{(frame-parameter
+frame 'height)}と@code{(frame-parameter frame 'width)}を略記したもの。
+
+ピクセルで計測した@var{frame}のテキストエリアがデフォルトフォントサイズの倍数でなければ、これらの関数がリターンする値はテキストエリアに完全に収まるデフォルトフォントの文字数に切り捨てられる。
+@end defun
+
+以下の関数は与えられたフレームのネイティブフレーム、アウターフレーム、インナーフレーム、テキストエリアのピクセル幅とピクセル高さをリターンします(@ref{Frame
+Layout}を参照)。テキスト端末では結果はピクセルではなく文字単位になります。
+
+@defun frame-outer-width &optional frame
+@defunx frame-outer-height &optional frame
+これらの関数は@var{frame}のアウター幅やアウター高さをピクセル単位でリターンする。
+@end defun
+
+@defun frame-native-height &optional frame
+@defunx frame-native-width &optional frame
+これらの関数は@var{frame}のネイティブ幅やネイティブ高さをピクセル単位でリターンする。
+@end defun
+
+@defun frame-inner-width &optional frame
+@defunx frame-inner-height &optional frame
+これらの関数は@var{frame}のインナー幅やインナー高さをピクセル単位でリターンする。
+@end defun
+
+@defun frame-text-width &optional frame
+@defunx frame-text-height &optional frame
+これらの関数は@var{frame}のテキストエリアの幅や高さをピクセル単位でリターンする。
+@end defun
+
+ウィンドウシステムがサポートしていれば、Emacsはデフォルトでフレームのピクセル単位でのテキストサイズをフレームの文字サイズの倍数にしようと試みます。しかし通常これはエクスターナルボーダーのドラッグ時にフレームが文字サイズの増減だけでリサイズできることを意味しています。さらにこれはフレームの下および/または右に空のスペースが残ることにより、フレームを最大化したり``fullheight''や``fullwidth''にする試みを阻害するかもしれません。このような場合には以下のオプションが助けになるでしょう。
+
+@defopt frame-resize-pixelwise
+このオプションが@code{nil}
+(デフォルト)ならフレームのテキストのピクセルサイズは、フレームのリサイズの際に通常は@code{frame-char-height}と@code{frame-char-width}のカレント値の倍数に丸められる。非@code{nil}なら丸めは行われず、フレームのサイズはピクセル単位で増加/減少が可能になる。
+
+この変数をセットすることにより次回のリサイズ処理では、通常はウィンドウマネージャーにこれに相当するサイズのヒントを渡す。これはユーザーの初期ファイル内でのみこの変数をセットすべきで、アプリケーションが一時的にこれをバインドすべきではないことを意味する。
+
+このオプションにたいして@code{nil}値がもつ正確な意味は使用されるツールキットに依存する。マウスによるエクスターナルボーダーのドラッグは、ウィンドウマネージャーが対応するサイズヒントを処理する意思があれば文字単位で行われる。文字サイズの整数倍ではないフレームサイズを引数として@code{set-frame-size}
+(以下参照)を呼び出すと、もしかしたら丸められたり(GTK+)、あるいは受容される(Lucid、Motif、MS-Windows)かもしれない。
+
+いくつかのウィンドウマネージャーでは、フレームを本当に最大化や全画面で表示させるために、これを非@code{nil}にセットする必要があるかもしれない。
+@end defopt
+
+@defun set-frame-size frame width height &optional pixelwise
+この関数は@var{frame}のテキストエリアのサイズを、@var{frame}の文字の正準高さと正準幅で計測した単位でセトする(@ref{Frame
+Font}を参照)。
+
+オプション引数@var{pixelwise}が非@code{nil}なら、かわりにピクセル単位で新たな幅と高さを測ることを意味する。@code{frame-resize-pixelwise}が@code{nil}の場合には、それが文字の整数倍でフレームサイズを増加あるいは減少させないなら、この要求を完全にはしたがわずに拒絶するツールキットがいくつかあることに注意。
+@end defun
+
+@defun set-frame-height frame height &optional pretend pixelwise
+この関数は@var{frame}のテキストエリアを@var{height}行の高さにリサイズする。@var{frame}内の既存ウィンドウのサイズはフレームにフィットするよう比例して変更される。
+
+@var{pretend}が非@code{nil}なら、Emacsは@var{frame}内で@var{height}行の出力を表示するが、そのフレームの実際の高さにたいする値は変更しない。これはテキスト端末上でのみ有用。端末が実際に実装するより小さい高さの使用は、より小さいスクリーン上での振る舞いの再現したり、スクリーン全体を使用時の端末の誤動作を観察するとき有用かもしれない。フレームの高さの直接セットは常に機能するとは限らない。なぜならテキスト端末上でのカーソルを正しく配置するために、正確な実サイズを知る必要があるかもしれないからである。
+
+オプションの第4引数@var{pixelwise}が非@code{nil}なら、それは@var{frame}の高さが@var{height}ピクセル高くなることを意味する。@code{frame-resize-pixelwise}が@code{nil}の場合、それが文字の整数倍でフレームサイズを増加あるいは減少させないなら、この要求に完全にはしたがわずに拒絶するウィンドウマネージャーがいくつかあることに注意。
+
+インタラクティブにこのコマンドを使用時には、このコマンドはカレントで選択されたフレーム高さをセットするための行数をユーザーに尋ねる。
+@end defun
+
+@defun set-frame-width frame width &optional pretend pixelwise
+この関数は文字単位で@var{frame}のテキストエリアの幅をセットする。引数@var{pretend}は@code{set-frame-height}のときと同じ意味をもつ。
+
+オプションの第4引数@var{pixelwise}が非@code{nil}なら、それは@var{frame}の幅が@var{height}ピクセル広くなることを意味する。@code{frame-resize-pixelwise}が@code{nil}の場合には、それが文字の整数倍でフレームサイズを増加あるいは減少させないなら、この要求に完全にはしたがわずに拒絶するウィンドウマネージャーがいくつかあることに注意。
+
+インタラクティブにこのコマンドを使用時には、このコマンドはカレントで選択されたフレーム幅をセットするための列数をユーザーに尋ねる。
+@end defun
+
+これらの3つの関数はスクロールバー、フリンジ、マージン、ディバイダー、モードラインやヘッダーラインと一緒にすべてのウィンドウを表示するために必要な最小よりフレームを小さくしません。これはたとえばマウスによるフレームのエクスターナルボーダーのドラッグなどによるウィンドウマネージャーがトリガーとなる要求と対照的です。このような要求は、もし必要なら表示できないフレームの右下隅の部分をクリッピングすることにより常に尊重されます。Emacs内からのフレームサイズの変更時に同様の振る舞いを得るには、パラメーター@code{min-width}と@code{min-height}を使用できます(@ref{Size
+Parameters}を参照)。
+
+@cindex tracking frame size changes
+  アブノーマルフック@code{window-size-change-functions} (@ref{Window
+Hooks}を参照)はウィンドウシステムやウィンドウマネージャーに起因するのもを含む、フレームのインナーサイズの変更のすべてを追跡します。実際にインナーフレームのサイズを変更せずにフレームのウィンドウのサイズだけを変更した際に発生するかもしれない誤検出を除外するために以下の関数を使用できます。
+
+@defun frame-size-changed-p &optional frame
+この関数は@var{frame}にたいして最後に@code{window-size-change-functions}が実行されて以降に@var{frame}のインナー幅かインナー高さが変更されていれば非@code{nil}をリターンする。これは@var{frame}にたいする@code{window-size-change-functions}の実行直後は常に@code{nil}をリターンする。
+@end defun
+
+
+@node Implied Frame Resizing
+@subsection フレームの暗黙的なリサイズ
+@cindex implied frame resizing
+@cindex implied resizing of frame
+
+たとえばメニューバーやツールバーの表示切り替え、デフォルトフォントの変更、フレームのスクロールバーの幅のセットの際には、Emacsはデフォルトではフレームのテキストエリアの行数と列数を未変更に保つように試みます。しかしこれはそのような場合のサイズ変更を調停するために、Emacsがウィンドウマネージャーにフレームのウィンドウのリサイズを依頼しなければならないことを意味します。
+
+  たとえばフレームの最大化や全画面化の際のように、そのような@dfn{暗黙なフレームのリサイズ(implied frame
+resizing)}がおそらく望ましくないケースもあります(デフォルトではオフになっている)。一般的には以下のオプションで暗黙のリサイズを無効にできます。
+
+@defopt frame-inhibit-implied-resize
+このオプションが@code{nil}ならフレームのフォント、メニューバー、ツールバー、インターナルボーダー、フリンジ、スクロールバーを変更においてフレームのテキストエリアの列数と行数を維持するために、アウターフレームがリサイズされるかもしれない。このオプションが@code{t}ならそのようなリサイズは行われない。
+
+このオプションの値はフレームパラメーターのリストでもよい。この場合にはリスト内に出現するパラメーター変更にたいする暗黙のリサイズは抑制される。このオプションで処理されるフレームパラメーターは現在のところ@code{font}、@code{font-backend}、@code{internal-border-width}、@code{menu-bar-lines}、@code{tool-bar-lines}。
+
+フレームパラメーター@code{scroll-bar-width}、@code{scroll-bar-height}、@code{vertical-scroll-bars}、@code{horizontal-scroll-bars}、@code{left-fringe}、@code{right-fringe}のいずれかにたいする変更は、あたかもそのフレームが単一の生きたウィンドウを含むかのように処理される。これはたとえば複数の横並びのウィンドウをフレームで垂直スクロールバーを削除すると、このオプションが@code{nil}なら@code{nil}はスクロールバーの幅の分だけ縮小されて、@code{t}や@code{vertical-scroll-bars}を含む場合には未変更に保たれることを意味する。
+
+Lucid、Motif、MS-Windowsのデフォルト値は@code{(tab-bar-lines
+tool-bar-lines)}であり、これはツールバーやタブバーの追加や削除でアウターフレーム高さが変更されないことを意味する。GTK+を含むその他すべてのウィンドウシステムでは@code{(tab-bar-lines)}であり、これは上記リストの@code{tab-bar-lines}以外のパラメーターのいずれかを変更するとアウターフレームのサイズは変更されるかもしれないことを意味する。それ以外では@code{t}であり、これはウィンドウシステムのサポートがなければ暗黙にアウターフレームのサイズが変更されることはないことを意味する。
+
+フレームが上述のいずれかのパラメーターにたいする変更の調停に不十分な際には、たとえこのオプションが非@code{nil}でもEmacsがフレームの拡大を試みるかもしれないことに注意。
+
+ウィンドウマネージャーは通常はエクスターナルメニューバーやエクスターナルツールバーが占有する行数の変更時にフレームのリサイズを要求しないことにも注意。典型的にはこのような``折り返し(wrappings)''はユーザーがフレームのメニューバーやツールバーのすべての要素を表示できないほどフレームを水平方向に縮小しや際に発生する。これはメニューバーやツールバーのアイテム数を変化させるようなメジャーモードの変更によっても発生し得る。このような折り返しはフレームのテキストエリアの行数を暗黙に変更するかもしれ、このオプションのセットによる影響を受けない。
+@end defopt
+
+
+@node Frame Parameters
+@section フレームのパラメーター
+@cindex frame parameters
+
+  フレームにはその外見と挙動を制御する多くのパラメーターがあります。フレームがどのようなパラメーターをもつかは、そのフレームが使用するディスプレイのメカニズムに依存します。
+
+  フレームパラメーターは主にグラフィカルディスプレイのために存在します。ほとんどのフレームパラメーターはテキスト端末上のフレームへの適用時には効果がありません。テキスト端末上のフレームで何か特別なことを行うパラメーターは@code{height}、@code{width}、@code{name}、@code{title}、@code{menu-bar-lines}、@code{buffer-list}、@code{buffer-predicate}だけです。その端末がカラーをサポートする場合には@code{foreground-color}、@code{background-color}、@code{background-mode}、@code{display-type}などのパラメーターも意味をもちます。その端末が透過フレーム(frame
+transparency)をサポートする場合には、パラメーター@code{alpha}にも意味があります。
+
+  デフォルトでは変数@code{desktop-restore-frames}が非@code{nil}のときには、フレームパラメーターはデスクトップライブラリー関数(@ref{Desktop
+Save
+Mode}を参照)が保存とリストアを行います。リストアされたセッションでは無意味や有害になることを避けるためにパラメーターを@code{frameset-persistent-filter-alist}に含めるのはアプリケーションの責任です。
+
+@menu
+* Parameter Access::         フレームのパラメーターの変更方法。
+* Initial Parameters::       フレーム作成時に指定するフレームパラメーター。
+* Window Frame Parameters::  ウィンドウシステムにたいするフレームパラメーターのリスト。
+* Geometry::                 ジオメトリー仕様の解析。
+@end menu
+
+@node Parameter Access
+@subsection フレームパラメーターへのアクセス
+
+以下の関数でフレームのパラメーター値の読み取りと変更ができます。
+
+@defun frame-parameter frame parameter
+この関数は@var{frame}のパラメーター@var{parameter}
+(シンボル)の値をリターンする。@var{frame}が@code{nil}なら選択されたフレームのパラメーターをリターンする。@var{frame}が@var{parameter}にたいするセッティングをもたなければ、この関数は@code{nil}をリターンする。
+@end defun
+
+@defun frame-parameters &optional frame
+関数@code{frame-parameters}は@var{frame}のすべてのパラメーターとその値をリストするalistをリターンする。@var{frame}が省略または@code{nil}なら選択されたフレームのパラメーターをリターンする。
+@end defun
+
+@defun modify-frame-parameters frame alist
+この関数は@var{alist}の要素にもとづきフレーム@var{frame}を変更する。@var{alist}内の要素はそれぞれ@code{(@var{parm}
+. @var{value})}という形式をもつ。ここで@var{parm}はパラメーターを名付けるシンボルである。
+@var{alist}内に指定されないパラメーターの値は変更されない。@var{frame}が@code{nil}の場合のデフォルトは選択されたフレーム。
+
+いくつかのパラメーターは特定の種類のディスプレイ上のフレーム(@ref{Frames}を参照)でのみ意味がある。@var{frame}のディスプレイで意味をもたないパラメーターが@var{alist}に含まれているようなら、この関数はそのフレームのパラメーターリスト内の値を変更するが、その他の値を変更しないパラメーターは無視するだろう。
+
+@var{frame}の新たなサイズに影響し得る値をもつようなパラメーターが@var{alist}で複数指定されている際には、フレームの最終的なサイズは使用しているツールキットに応じて異なるかもしれない。たとえばあるフレームにたいしてメニューバーおよび/またはツールバーをもたない状態から保有するように指定して、同時に新たなフレーム高さを指定すると、必然的にフレームの高さの再計算を招くだろう。そのようなケースでは、概念的にはこの関数は明示的な高さ指定を優先するよう試みる。しかしツールキットによりその後に処理されるメニューバーやツールバーの追加(や削除)を除外することはできないので、高さ指定を優先するという意図は打ち消されてしまうだろう。
+
+ここで概略した問題は、この関数の呼び出し前後に@code{frame-inhibit-implied-resize} (@ref{Implied
+Frame
+Resizing}を参照)を非@code{nil}値にバインドすることで訂正できる場合がある。しかしそのようなバインディングが正に問題を引き起こす場合もある。
+@end defun
+
+@defun set-frame-parameter frame parm value
+この関数はフレームパラメーター@var{parm}に指定された@var{value}をセットする。@var{frame}が@code{nil}の場合のデフォルトは選択されたフレーム。
+@end defun
+
+@defun modify-all-frames-parameters alist
+この関数は
+@var{alist}に応じて既存のフレームすべてのフレームパラメーターを変更してから、今後に作成されるフレームに同じパラメーター値を適用するために、@code{default-frame-alist}
+(必要なら@code{initial-frame-alist}も)を変更する。
+@end defun
+
+@node Initial Parameters
+@subsection フレームの初期パラメーター
+@cindex parameters of initial frame
+
+initファイル(@ref{Init
+File}を参照)の内部で@code{initial-frame-alist}をセットすることにより、フレームの初期スタートアップにパラメーターを指定できます。
+
+@defopt initial-frame-alist
+この変数の値は初期フレーム作成時に使用されるパラメーター値のalist。以降のフレームを変更することなく初期フレームの外見を指定するためにこの変数を使用できる。要素はそれぞれ以下の形式をもつ:
+
+@example
+(@var{parameter} . @var{value})
+@end example
+
+Emacsはinitファイル読み取り前に初期フレームを作成する。Emacsはこのファイル読み取り後に@code{initial-frame-alist}をチェックして、変更する値に含まれるパラメーターのセッティングを作成済みの初期フレームに適用する。
+
+これらのセッティングがフレームのジオメトリーと外見に影響する場合には、間違った外見のフレームを目にした後に、指定した外見に変更される様を目にするだろう。これが煩わしければ、Xリソースで同じジオメトリーと外見を指定できる。これらはフレーム作成前に効果をもつ。@ref{X
+Resources,, X Resources, emacs, The GNU Emacs Manual}を参照のこと。
+
+Xリソースセッティングは、通常はすべてのフレームに適用される。初期フレームのためにあるXリソースを単独で指定して、それ以降のフレームには適用したくなければ、次の方法によりこれを達成できる。それ以降のフレームにたいするXリソースをオーバーライドするために@code{default-frame-alist}内でパラメーターを指定してから、それらが初期フレームに影響するのを防ぐために@code{initial-frame-alist}内の同じパラメーターにたいしてXリソースにマッチする値を指定すればよい。
+@end defopt
+
+@cindex minibuffer-only frame
+これらのパラメーターに@code{(minibuffer
+.
+nil)}が含まれていれば、それは初期フレームがミニバッファーをもつべきではないことを示しています。この場合には、Emacsは同じように@dfn{ミニバッファーonlyフレーム(minibuffer-only
+frame)}を個別に作成します。
+
+@defopt minibuffer-frame-alist
+この変数の値は、初期ミニバッファーonlyフレーム(
+@code{initial-frame-alist}がミニバッファーのないフレームを指定する場合にEmacsが作成するミニバッファーonlyフレーム)を作成時に使用されるパラメーター値のalist。
+@end defopt
+
+@defopt default-frame-alist
+これはすべてのEmacsフレーム(最初のフレームとそれ以降のフレーム)にたいしてフレームパラメーターのデフォルト値を指定するalist。Xウィンドウシステム使用時には、大抵はXリソースで同じ結果を得られる。
+
+この変数のセットは既存フレームに影響しない。さらに別フレームにバッファーを表示する関数は、自身のパラメーターを提供することによりデフォルトパラメーターをオーバーライドできる。
+@end defopt
+
+フレームの外見を指定するコマンドラインオプションとともにEmacsを呼び出すと、これらのオプションは@code{initial-frame-alist}か@code{default-frame-alist}のいずれかに要素を追加することにより効果を発揮します。@samp{--geometry}や@samp{--maximized}のような初期フレームだけに影響するオプションは@code{initial-frame-alist}、その他のオプションは@code{default-frame-alist}に要素を追加します。@ref{Emacs
+Invocation,, Command Line Arguments for Emacs Invocation, emacs, The GNU
+Emacs Manual}を参照してください。
+
+@node Window Frame Parameters
+@subsection ウィンドウフレームパラメーター
+@cindex frame parameters for windowed displays
+
+  フレームがどんなパラメーターをもつかは、どのようなディスプレイのメカニズムがそれを使用するかに依存します。このセクションでは一部、またはすべての端末種類において特別な意味をもつパラメーターを説明します。これらのうち@code{name}、@code{title}、@code{height}、@code{width}、@code{buffer-list}、@code{buffer-predicate}は端末フレームにおいて意味をもつ情報を提供し、@code{tty-color-mode}はテキスト端末上のフレームにたいしてのみ意味があります。
+
+@menu
+* Basic Parameters::         基本的なパラメーター。
+* Position Parameters::      スクリーン上のフレームの位置。
+* Size Parameters::          フレームのサイズ。
+* Layout Parameters::        フレームのパーツのサイズ、一部パーツの有効化と無効化。
+* Buffer Parameters::        表示済みまたは表示されるべきバッファーはどれか。
+* Frame Interaction Parameters::  別フレームと相互作用するためのパラーター。
+* Mouse Dragging Parameters::  マウスによるフレームのリサイズや移動のためのパラメーター。
+* Management Parameters::    ウィンドウマネージャーとの対話。
+* Cursor Parameters::        カーソルの外見の制御。
+* Font and Color Parameters::  フレームテキストにたいするフォントとカラー。
+@end menu
+
+@node Basic Parameters
+@subsubsection 基本パラメーター
+
+  以下のフレームパラメーターはフレームに関するっとも基本的な情報を提供します。@code{title}と@code{name}はすべての端末において意味をもちます。
+
+@table @code
+@vindex display@r{, a frame parameter}
+@item display
+このフレームをオープンするためのディスプレイ。これは環境変数@env{DISPLAY}のような@samp{@var{host}:@var{dpy}.@var{screen}}という形式の文字列であること。ディスプレイ名についての詳細は、@ref{Multiple
+Terminals}を参照のこと。
+
+@vindex display-type@r{, a frame parameter}
+@item display-type
+このパラメーターはこのフレーム内で使用できる利用可能なカラーの範囲を記述する。値は@code{color}、@code{grayscale}、@code{mono}のいずれか。
+
+@vindex title@r{, a frame parameter}
+@item title
+フレームが非@code{nil}のtitleをもつ場合には、そのタイトルがフレーム上端にあるウィンドウシステムのタイトルバーに表示される。@code{mode-line-frame-identification}に@samp{%F}
+(@ref{%-Constructs}を参照)を使用していればそのフレーム内のウィンドウのモードラインにも表示される。これは通常はEmacsがウィンドウシステムを使用しておらず、かつ同時に1つのフレームのみ表示可能なケースが該当する。@ref{Frame
+Titles}を参照のこと。Emacsがウィンドウシステムを使用している際にこのパラメーターが非@code{nil}だと、@code{name}によって決定されたタイトルがオーバーライドされて、@code{frame-title-format}に応じて暗黙裡にタイトルが計算される。更に@code{icon-title-format}によって決定されたアイコン化されたフレームのタイトルもオーバーライドする。@ref{Frame
+Titles}を参照のこと。
+
+@vindex name@r{, a frame parameter}
+@item name
+フレームの名前。このパラメーターを通じて名前を指定しなければ、Emacsが@code{frame-title-format}と@code{icon-title-format}で指定されたフレーム名を自動的にセットする。そしてEmacsがウィンドウシステムを使用している際には、(@code{title}パラメーターによってオーバーライドされていなければ)これがフレームのタイトルとして表示される。
+
+フレーム作成時に明示的にフレーム名を指定すると、そのフレームにたいしてXリソースを照合する際にも、(Emacs実行可能形式名のかわりに)その名前が使用される。
+
+@vindex explicit-name@r{, a frame parameter}
+@item explicit-name
+フレーム作成時にフレーム名が明示的に指定されると、このパラメーターはその名前。明示的に名付けられなかったら、このパラメーターは@code{nil}。
+@end table
+
+
+@node Position Parameters
+@subsubsection 位置のパラメーター
+@cindex window position on display
+@cindex frame position
+
+フレームのXY方向のオフセットを記述するパラメーターは常にピクセル単位です。子フレームではない通常のフレームでは、フレームのアウター位置(@ref{Frame
+Geometry}を参照)はディスプレイの原点から相対的に指定されます子フレーム(@ref{Child
+Frames}を参照)では、フレームのアウター位置は親フレームのネイティブ位置から相対的に指定されます(これらのパラメーターにTTYフレームで意味のあるものはないことに注意)。
+
+@table @code
+@vindex left@r{, a frame parameter}
+@item left
+フレームのディスプレイ(か親フレーム)の左エッジからフレームの左アウターエッジまでのピクセル単位での位置。以下のいずれかの方法で指定できる。
+
+@table @asis
+@item 整数
+正の整数はフレームの左エッジをディスプレイ(か親フレーム)の左エッジ、負の整数はフレームの右エッジをディスプレイ(か親フレーム)の右エッジに相対的に指定する。
+
+@item @code{(+ @var{pos})}
+これはディスプレイ(か親フレーム)の左エッジにたいしフレームの左エッジの相対的位置を指定する。整数@var{pos}は正と負の値をとり得る。負の値はスクリーン(か親フレーム)の外側、または(マルチモニターディスプレイにたいしては)プライマリーモニター以外のモニター上の位置を指定する。
+
+@item @code{(- @var{pos})}
+これはディスプレイ(か親フレーム)ノ右エッジにたいしフレームノ右エッジの相対的位置を指定する。整数@var{pos}は正ト負の値をとり得る。負の値はスクリーン外側、または(マルチモニターディスプレイにたいしては)プライマリーモニター以外のモニター上の位置を指定する。
+
+@cindex left position ratio
+@cindex top position ratio
+@item a floating-point value
+0.0から1.0の範囲の浮動小数点数はフレームの@dfn{左位置比率(left position
+ratio)}を通じて左エッジのオフレットを指定する。これはアウターフレームの左エッジの位置にたいする、フレームのワークエリア(@ref{Multiple
+Terminals}を参照)または親のネイティブフレーム(@ref{Child
+Frames}を参照)からアウターフレームの幅を減じた値との比率。したがって左位置比率0.0はディスプレイ(か親フレーム)の左、比率0.5は中央、1.0は右に揃える。同様に@dfn{上位置比率(top
+position
+ratio)}はアウターフレームの上エッジの位置にたいする、フレームのワークエリア(か親のネイティブフレーム)からフレームの高さを減じた値との比率。
+
+Emacsは子フレームのパラメーター@code{keep-ratio} (@ref{Frame Interaction
+Parameters}を参照)が非@code{nil}なら、親フレームがリサイズされた場合に子フレームの位置比率を未変更のままにしようと試みる。
+
+通常はフレームが可視になるまでフレームのアウターサイズ(@ref{Frame
+Geometry}を参照)は利用できないので、装飾つきのフレーム作成時には浮動小数点値の一般的には使用はできない。浮動小数点値は親フレームの領域内で子フレームの適切な配置を保証したい場合により適している。
+@end table
+
+プログラム指定の位置を無視するウィンドウマネージャーがいくつかある。指定した位置が無視されない保証を望む場合には、パラメーター@code{user-position}にも以下の例のように非@code{nil}値を指定すること。
+
+@example
+(modify-frame-parameters
+  nil '((user-position . t) (left . (+ -4))))
+@end example
+
+一般的にフレームをディスプレイの右エッジや下エッジから相対的に配置するのは良いアイデアではない。初期フレームや新たなフレームの配置は不正確になる(フレームが可視になるまでアウターフレームのサイズは完全には解らない)か、または(可視になった後にフレームが再配置されると)追加のちらつき(flickering)をもたらすだろう。
+
+  さらにディスプレイ(やワークエリア、親フレーム)の右エッジや下エッジから相対的に指定された位置、同様に浮動小数点数のオフセットは内部的にはディスプレイ(やワークエリア、親フレーム)の左エッジや上エッジから相対的な整数のオフセットとして格納されることに注意。これらの値は@code{frame-parameters}のような関数によるリターン値やデスクトップ保存ルーチンのリストアにも使用される。
+
+@vindex top@r{, a frame parameter}
+@item top
+ディスプレイ(か親フレーム)の上エッジ(下エッジ)にたいして、上エッジ(下エッジ)のスクリーン位置をピクセル単位で指定する。方向が水平ではなく垂直である点を除イテ、これは@code{left}と同様に機能する。
+
+@vindex icon-left@r{, a frame parameter}
+@item icon-left
+スクリーン左エッジから数えた、フレームアイコン左エッジのピクセル単位のスクリーン位置。ウィンドウマネージャーがこの機能をサポートすれば、これはフレームをアイコン化したとき効果を発揮する。このパラメーターに値を指定する場合には@code{icon-top}にも値を指定しなければならず、その逆も真。
+
+@vindex icon-top@r{, a frame parameter}
+@item icon-top
+スクリーン上端から数えたフレームアイコン上端のピクセル単位のスクリーン位置。ウィンドウマネージャーがこの機能をサポートすれば、これはフレームをアイコン化したときに効果を発揮する。
+
+@vindex user-position@r{, a frame parameter}
+@item user-position
+フレームを作成してパラメーター@code{left}と@code{top}で位置を指定する際は、指定した位置がユーザー指定(人間であるユーザーにより明示的に要求された位置)なのか、それとも単なるプログラム指定(プログラムにより選択された位置)なのかを告げるためにこのパラメーターを使用する。非@code{nil}値はそれがユーザー指定の位置であることを告げる。
+
+@cindex window positions and window managers
+ウィンドウマネージャーは一般的にユーザー指定位置に留意するとともに、プログラム指定位置にも幾分か留意する。しかし多くのウィンドウマネージャーはプログラム指定位置を無視して、ウィンドウをウィンドウマネージャーのデフォルトの方法で配置するかユーザーのマウスによる配置に任せる。@code{twm}を含むウィンドウマネージャーのいくつかは、プログラム指定位置にしたがうか無視するかをユーザーの指定に任せる。
+
+@code{make-frame}を呼び出す際にパラメーター@code{left}や@code{top}の値がそのユーザーにより示される嗜好を表すなら、このパラメーターに非@code{nil}値、それ以外は@code{nil}を指定すること。
+
+@vindex z-group@r{, a frame parameter}
+@item z-group
+このんパラメーターはフレームのウィンドウシステム的なウィンドウの相対位置を、フレームのディスプレイのスタック順(Zオーダー)で指定する。
+
+これが@code{above}ならウィンドウシステムは、@code{above}プロパティがセットされていない他のすべてのウィンドウシステムのウィンドウの前面にフレームに対応するウィンドウを表示する。@code{nil}ならフレームのウィンドウは@code{above}プロパティがセットされたすべてのウィンドウの背後、かつ@code{below}プロパティがセットされたすべてのウィンドウの前面に表示される。@code{below}ならフレームのウィンドウは@code{below}プロパティがセットされていないすべてのウィンドウの背後に表示される。
+
+特定のフレームの前面や背後にフレームを配置するためには関数@code{frame-restack}を使用すること(@ref{Raising and
+Lowering}を参照)。
+@end table
+
+
+@node Size Parameters
+@subsubsection サイズのパラメーター
+@cindex window size on display
+
+フレームパラメーターは通常はフレームのサイズを文字単位で指定します。グラフィカルなディスプレイ上では@code{default}フェイスがこれら文字単位の実際のピクセルサイズを決定します(@ref{Face
+Attributes}を参照)。
+
+@table @code
+@vindex width@r{, a frame parameter}
+@item width
+このパラメーターはフレームの幅を指定する。これは以下の方法でも指定できる:
+
+@table @asis
+@item 整数
+フレームのテキストエリア(@ref{Frame Geometry}を参照)の幅を文字単位で指定する正の整数。
+
+@item a cons cell
+これが@sc{car}にシンボル@code{text-pixels}をもつコンスセルなら、@sc{cdr}はフレームのテキストエリアの幅をピクセル単位で指定する。
+
+@cindex frame width ratio
+@cindex frame height ratio
+@item a floating-point value
+0.0から1.0の範囲の浮動小数点数はフレームの@dfn{幅比率(width
+ratio)}を通じてフレームの幅の指定に使用できる。これはアウター幅(@ref{Frame
+Geometry}を参照)にたいする、フレームのワークエリア(@ref{Multiple
+Terminals}を参照)または親フレームのネイティブフレーム(@ref{Child
+Frames}を参照)からアウターフレームの幅を減じた値との比率。したがって値0.5はワークエリア(か親フレーム)の半分の幅、値1は全幅をフレームに占有させる。同様に@dfn{高さ比率(height
+ratio)}はアウターフ高さにたいする、フレームのワークエリア(か親のネイティブフレーム)からフレームの高さとの比率。
+
+Emacsは子フレームのパラメーター@code{keep-ratio} (@ref{Frame Interaction
+Parameters}を参照)が非@code{nil}なら、親フレームがリサイズされた場合に子フレームの幅と高さの比率を未変更のままにしようと試みる。
+
+通常はフレームが可視になるまでフレームのアウターサイズ(@ref{Frame
+Geometry}を参照)は利用できないので、装飾つきのフレーム作成時には浮動小数点値の一般的には使用はできない。浮動小数点値は、たとえば@code{display-buffer-in-child-frame}を通じて@code{display-buffer-alist}
+(@ref{Choosing
+Window}を参照)をカスタマイズする際に親フレームの領域内へ常に子フレームを確実にフィットさせたい場合により適している。
+@end table
+
+パラメーターの指定方法にかかわらず、このパラメーターの値を報告する@code{frame-parameters}のような関数は、常にフレームのデフォルトの文字幅の倍数にするために必要に応じて丸めを行いフレームのテキストエリアの幅を整数でリターンする。この値はデスクトップ保存ルーチンでも使用される。
+
+@vindex height@r{, a frame parameter}
+@item height
+このパラメーターはフレームの高さを指定する。これは水平ではなく垂直であるという点を除き@code{width}のように機能する。
+
+@vindex user-size@r{, a frame parameter}
+@item user-size
+これはサイズパラメーター@code{height}と@code{width}にたいして、@code{user-position}
+(@ref{Position Parameters,
+user-position}を参照)が@code{top}と@code{left}が行うのと同じことを行う。
+
+@vindex min-width@r{, a frame parameter}
+@item min-width
+このパラメーターはフレームの最小ネイティブ幅(@ref{Frame
+Geometry}を参照)を文字単位で指定する。フレームの初期幅やフレームを水平方向にリサイズする関数は、通常はフレームのすべてのウィンドウ、垂直スクロールバー、フリンジ、マージン、垂直ディバイダーが表示できるよう保証する。このパラメーターが非@code{nil}なら、収まりきらないコンポーネントが結果としてウィンドウマネージャーにクリップされてしまうような、フレームより小さいフレームの作成が有効になる。
+
+@vindex min-height@r{, a frame parameter}
+@item min-height
+このパラメーターはフレームの最小ネイティブ高さ(@ref{Frame
+Geometry}を参照)を文字単位で指定する。フレームの初期幅やフレームを水平方向にリサイズする関数は、通常はフレームのすべてのウィンドウ、水平スクロールバー、水平ディバイダー、モードライン、ヘッダーライン、エコーエリアー、インターナルメニューバー、インターナルツールバーが表示できるよう保証する。このパラメーターが非@code{nil}なら、収まりきらないコンポーネントが結果としてウィンドウマネージャーにクリップされてしまうような、フレームより小さいフレームの作成が有効になる。
+
+@cindex fullboth frames
+@cindex fullheight frames
+@cindex fullwidth frames
+@cindex maximized frames
+@vindex fullscreen@r{, a frame parameter}
+@item fullscreen
+このパラメータはフレームの幅、高さ、またはその両方を最大化するかどうかを指定する。値は@code{fullwidth}、@code{fullheight}、@code{fullboth}、または@code{maximized}のいずれか。@footnote{PGTKのフレームでは@code{fullheight}や@code{fullwidth}の値をセットしても効果はない。}フレームが@dfn{fullwidth}なら幅、@dfn{fullheight}なら高さ、@dfn{fullboth}まら幅と高さが可能なかぎり大きくなる。@dfn{maximized}は``fullboth''と同様だが、通常はタイトルバーとフレームのリサイズやクローズ用のボタンが維持される点が異なる。同様に最大化されたフレームでは、デスクトップ上に表示されているタスクバーやパネルが見えなくなること通常はない。一方で``fullboth(全画面)''のフレームは、通常はタイトルバーは省略されて、利用可能なスクリーンスペース全体を占有する。
+
+この点ではfullheightやfullwidthのフレームは最大化されたフレームと類似している。しかしこれらは通常は最大化フレームでは存在しないエクスターナルボーダーを表示する。したがって最大化されたフレームの高さと幅は、fullheightのフレームの高さやfullwidthのフレームの幅とあ数ピクセル異なることがある。
+
+いくつかのウィンドウマネージャーではフレームを真に最大化やフルスクリーンで表示させるために、変数@code{frame-resize-pixelwise}
+(@ref{Frame
+Size}を参照)をカスタマイズする必要があるかもしれない。さらにフルスクリーンや最大化の種々の状態間でスムーズな遷移をサポートしないウィンドウマネージャーもいくつかある。これの回避には変数@code{x-frame-normalize-before-maximize}のカスタマイズが助けになるかもしれない。
+
+macOSのフルスクリーンではツールバーとメニューバーの両方が非表示になるが、マウスポインターがスクリーン上端に移動すればどちらも表示される。
+
+@vindex fullscreen-restore@r{, a frame parameter}
+@item fullscreen-restore
+このパラメータは@code{toggle-frame-fullscreen}コマンド (@ref{Frame Commands,,, emacs,
+The GNU Emacs
+Manual}を参照)呼び出し後の``fullboth''状態での、望ましい全画面状態を指定する。このパラメーターは@ref{Frame
+Commands,,, emacs, The GNU Emacs
+Manualを参照}の切り替え時に、このコマンドによって自動的にインストールされる。しかしEmacsが``fullboth''の状態で開始された場合には、以下の例のように初期ファイル内で望ましい挙動を指定する必要がある
+
+@example
+(setq default-frame-alist
+    '((fullscreen . fullboth)
+      (fullscreen-restore . fullheight)))
+@end example
+
+これは@key{F11}の初回タイプ後に、フレームに新たにfullheightを与えるだろう。
+
+@vindex fit-frame-to-buffer-margins@r{, a frame parameter}
+@item fit-frame-to-buffer-margins
+このパラメーターは@code{fit-frame-to-buffer} (@ref{Resizing
+Windows}を参照)でフレームをルートウィンドウのバッファーにフィットさせる際に、オプション@code{fit-frame-to-buffer-margins}の値のオーバーライドを有効にする。
+
+@vindex fit-frame-to-buffer-sizes@r{, a frame parameter}
+@item fit-frame-to-buffer-sizes
+このパラメーターは@code{fit-frame-to-buffer} (@ref{Resizing
+Windows}を参照)でフレームをルートウィンドウのバッファーにフィットさせる際に、オプション@code{fit-frame-to-buffer-sizes}の値のオーバーライドを有効にする。
+@end table
+
+
+@node Layout Parameters
+@subsubsection レイアウトのパラメーター
+@cindex layout parameters of frames
+@cindex frame layout parameters
+
+  以下のフレームパラメーターによりフレームのさまざまなパーツを有効または無効にしたりサイズを制御できます。
+
+@table @code
+@vindex border-width@r{, a frame parameter}
+@item border-width
+ピクセル単位でのフレームのアウターボーダー幅(@ref{Frame Geometry}を参照)。
+
+@vindex internal-border-width@r{, a frame parameter}
+@item internal-border-width
+ピクセル単位でのフレームのインターナルボーダー幅(@ref{Frame Geometry}を参照)。
+
+@vindex child-frame-border-width@r{, a frame parameter}
+@item child-frame-border-width
+与えられたフレームが子フレーム(@ref{Child
+Frames}を参照)なら、フレームのインターナルボーダーのピクセル幅。@code{nil}ならかわりに@code{internal-border-width}で指定した値を使用する。
+
+@vindex vertical-scroll-bars@r{, a frame parameter}
+@item vertical-scroll-bars
+フレームが垂直スクロール用のスクロールバー(@ref{Scroll
+Bars}を参照)をもつべきか否か、およびスクロールバーをフレームのどちら側に置くか。可能な値は@code{left}、@code{right}、スクロールバーなしは@code{nil}。
+
+@vindex horizontal-scroll-bars@r{, a frame parameter}
+@item horizontal-scroll-bars
+フレームが水平スクロール用のスクロールバーをもつべきかと、スクロールバーをフレームのどちら側に置くか(@code{t}と@code{bottom}はスクロールバーあり、@code{nil}はスクロールバーなしを意味する)。
+
+@vindex scroll-bar-width@r{, a frame parameter}
+@item scroll-bar-width
+垂直スクロールバーのピクセル単位による幅。@code{nil}はデフォルト幅の使用を意味する。
+
+@vindex scroll-bar-height@r{, a frame parameter}
+@item scroll-bar-height
+垂直スクロールバーのピクセル単位による高さ。@code{nil}はデフォルト高さの使用を意味する。
+
+@vindex left-fringe@r{, a frame parameter}
+@vindex right-fringe@r{, a frame parameter}
+@item left-fringe
+@itemx right-fringe
+そのフレーム内のウィンドウの左右フリンジのデフォルト幅(@ref{Fringes}を参照)。いずれかが0なら対応するフリンジを削除する効果がある。
+
+これら2つのフレームパラメーターの値を問い合わせるために@code{frame-parameter}を使用する際のリターン値は常に整数。@code{nil}値を渡して@code{set-frame-parameter}を使用する際には、実際のデフォルト値8ピクセルが課せられる。
+
+@vindex right-divider-width@r{, a frame parameter}
+@item right-divider-width
+フレーム上のすべてのウィンドウの右ディバイダー(@ref{Window
+Dividers}を参照)用に予約されるピクセル単位の幅(厚さ)。値0は右ディバイダーを描画しないことを意味する。
+
+@vindex bottom-divider-width@r{, a frame parameter}
+@item bottom-divider-width
+フレーム上のすべてのウィンドウの下ディバイダー(@ref{Window
+Dividers}を参照)用に予約されるピクセル単位の幅(厚さ)。値0は下ディバイダーを描画しないことを意味する。
+
+@vindex menu-bar-lines@r{, a frame parameter}
+@item menu-bar-lines
+メニューバー用にフレーム上端に割り当てる行数(@ref{Menu Bar}を参照)。デフォルトはMenu
+Barモードが有効なら1、それ以外なら0。@ref{Menu Bars,,,emacs, The GNU Emacs
+Manual}を参照のこと。エクスターナルメニューバー(@ref{Frame
+Layout}を参照)では、メニューバーが複数行に折り返されても値は変更されない。この場合には@code{frame-geometry}がリターンする@code{menu-bar-size}の値で実際にメニューバーが占有する行数の算出が有効になる(@ref{Frame
+Geometry}を参照)。
+
+@vindex tool-bar-lines@r{, a frame parameter}
+@item tool-bar-lines
+ツールバー用に使用する行数(@ref{Tool Bar}を参照)。デフォルトはTool Barモードが有効なら1、それ以外は0。@ref{Tool
+Bars,,,emacs, The GNU Emacs
+Manual}を参照のこと。ツールバーが折り返されているかどうかで値は変化するかもしれない(@ref{Frame Layout}を参照)。
+
+@vindex tool-bar-position@r{, a frame parameter}
+@item tool-bar-position
+ツールバーの位置。値は@code{top}、@code{bottom}、@code{left}、@code{right}のいずれか(デフォルトは@code{top})。
+
+Nextstep以外のツールキットとビルドしたEmacsでは@code{bottom}、GTK+を用いてビルドした場合には@code{left}や@code{right}をセットできる。
+
+@vindex tab-bar-lines@r{, a frame parameter}
+@item tab-bar-lines
+タブバー用に使用する行数(@ref{Tab Bars,,,emacs, The GNU Emacs Manual}を参照)。デフォルトはTab
+Barモードが有効なら1、それ以外は0。ツールバーが折り返されているかどうかで値は変化するかもしれない(@ref{Frame Layout}を参照)。
+
+@vindex line-spacing@r{, a frame parameter}
+@item line-spacing
+各テキスト行の下に残すピクセル単位の追加スペース(正の整数)。詳細は@ref{Line Height}を参照のこと。
+
+@vindex no-special-glyphs@r{, a frame parameter}
+@item no-special-glyphs
+非@code{nil}ならそのフレームで表示するすべてのバッファーにたいする切り詰めと継続のグリフ(@ref{Truncation}を参照)の表示をすべて抑制する。これは@code{fit-frame-to-buffer}
+(@ref{Resizing Windows}を参照)を通じてフレームをバッファーにフィットさせる際のグリフ排除に有用。
+@end table
+
+
+@node Buffer Parameters
+@subsubsection バッファーのパラメーター
+@cindex frame, which buffers to display
+@cindex buffers to display on frame
+
+  以下はフレーム内でどのバッファーが表示されているか、表示されるべきかを扱うためのフレームパラメーターであり、すべての種類の端末上で意味があります。
+
+@table @code
+@vindex minibuffer@r{, a frame parameter}
+@item minibuffer
+そのフレームが自身のミニバッファーをもつか否か。もつ場合には@code{t}、もたない場合は@code{nil}、@code{only}ならそのフレームが正にミニバッファーであることを意味する。値が(別フレーム内の)ミニバッファーウィンドウなら、そのフレームはそのミニバッファーを使用する。
+
+このパラメーターはフレームの作成時に効果をもつ。@code{nil}を指定するとEmacsは@code{default-minibuffer-frame}のミニバッファーウィンドウ(@ref{Minibuffers
+and
+Frames}を参照)にそのフレームをセットしようと試みる。このパラメーターは既存のフレームでは別のミニバッファーウィンドウを指定するためにのみ使用できる。@code{nil}から@code{t}、およびその逆の変更も許されていない。このパラメーターがすでにミニバッファーウィンドウを指定していれば、これを@code{nil}にセットしても効果はない。
+
+特別な値@code{child-frame}は作成されるフレームが親となるようなミニバッファーのみの子フレーム(@ref{Child
+Frames}を参照)を作成することを意味する。Emacsは@code{nil}が指定されたかのように子フレームのイニバッファーウィンドウにこのパラメーターをセットするが、作成後に子フレームを選択しない。
+
+@vindex buffer-predicate@r{, a frame parameter}
+@item buffer-predicate
+このフレームにたいするバッファー述語関数。関数@code{other-buffer}はこの述語が非@code{nil}なら、(選択されたフレームから)どのバッファーを考慮すべきか決定するためにこれを使用する。これは各バッファーにたいして、そのバッファーを唯一の引数としてこの述語を1回呼び出す。この述語が非@code{nil}値をリターンしたら、そのバッファーは考慮される。
+
+@vindex buffer-list@r{, a frame parameter}
+@item buffer-list
+そのフレーム内で選択されたことのあるバッファーにたいする、もっとも最近選択されたバッファーが先頭になるような順のリスト。
+
+@vindex unsplittable@r{, a frame parameter}
+@item unsplittable
+非@code{nil}なら、このフレームのウィンドウは決して自動的に分割されることはない。
+@end table
+
+
+@node Frame Interaction Parameters
+@subsubsection フレームとの相互作用のためのパラメーター
+@cindex frame interaction parameters
+@cindex interaction parameters between frames
+
+以下のパラメーターは別のフレームとの間での相互作用するためのフォームを提供します。
+
+@table @code
+@vindex parent-frame@r{, a frame parameter}
+@item parent-frame
+非@code{nil}ならそのフレームが子フレーム(@ref{Child
+Frames}を参照)であることを意味しており、そのパラメーターは親フレームを指定する。@code{nil}ならそのフレームが通常のトップレベルのフレームであることを意味する。
+
+@vindex delete-before@r{, a frame parameter}
+@item delete-before
+このパラメーターが非@code{nil}なら、それは削除によってこのウレームも自動的にトリガーされるようなフレームを指定する。@ref{Deleting
+Frames}を参照のこと。
+
+@vindex mouse-wheel-frame@r{, a frame parameter}
+@item mouse-wheel-frame
+このパラメーターが非@code{nil}ならフレーム上でマウスホイールをスクロールするたびにウィンドウがスクロールされるようなフレームを指定する。@ref{Mouse
+Commands,,, emacs, The GNU Emacs Manual}を参照のこと。
+
+@vindex no-other-frame@r{, a frame parameter}
+@item no-other-frame
+非@code{nil}ならそのフレームは関数@code{next-frame}、@code{previous-frame} (@ref{Finding
+All Frames}を参照)、@code{other-frame}の候補として適格ではない。@ref{Frame Commands,,, emacs,
+The GNU Emacs Manual}を参照のこと。
+
+@vindex auto-hide-function@r{, a frame parameter}
+@item auto-hide-function
+このパラメーターが関数を指定する場合には、他のフレームが存在しないときにフレーム唯一のウィンドウをquit(@ref{Quitting
+Windows}を参照)した際に変数@code{frame-auto-hide-function}で指定された関数のかわりに呼び出される関数を指定する。
+
+@vindex minibuffer-exit@r{, a frame parameter}
+@item minibuffer-exit
+このパラメーターが非@code{nil}なら、Emacsはミニバッファーのexit(@ref{Minibuffers}を参照)の際は常にそのフレームを不可視にする。かわりに関数@code{iconify-frame}と@code{delete-frame}も指定できる。このパラメーターはミニバッファーのexit時に(Emacsがウィンドウを処理する際のように)自動的に子フレームを非表示にするために有用。
+
+@vindex keep-ratio@r{, a frame parameter}
+@item keep-ratio
+このパラメーターは現在のところ子フレーム(@ref{Child
+Frames}を参照)にたいしてのみ意味がある。非@code{nil}なら親フレームのリサイズ時に、Emacsはフレームのサイズ比率(幅と高さ。@ref{Size
+Parameters}を参照)と位置比率(左と右。@ref{Position Parameters}を参照のこと)を変更しないよう試みる。
+
+このパラメーターの値が@code{nil}なら親フレームのリサイズ時にフレームのサイズと位置は変更されないので、位置とサイズの比率は変更されるかもしれない。パラメーターの値が@code{t}なら、Emacsはフレームのサイズと位置の比率を維持しようと試みるので、親フレームから相対的なフレームのサイズと位置は変更されるかもしれない。
+
+コンスセルを使用することにより、さらに特化した制御が可能になる。この場合にはコンスセルの@sc{car}が@code{t}か@code{width-only}ならフレームの幅比率、@sc{car}が@code{t}か@code{height-only}なら高さ比率、@sc{cdr}が@code{t}か@code{left-only}なら左位置比率、@sc{cdr}が@code{t}か@code{top-only}なら上位置比率が維持される。
+@end table
+
+
+@node Mouse Dragging Parameters
+@subsubsection マウスドラッグのパラメーター
+@cindex mouse dragging parameters
+@cindex parameters for resizing frames with the mouse
+@cindex parameters for moving frames with the mouse
+
+以下のパラメーターはマウスでのインターナルボーダーのドラッグによるフレームのリサイズにたいするサポートを提供します。これらは最上ウィンドウのヘッダーラインやタブライン、最下ウィンドウのモードラインのマウスドラッグによるフレームの移動も可能にします。
+
+これらのパラメーターはウィンドウマネージャーによる装飾がない子フレーム(@ref{Child
+Frames}を参照)にたいしてもっとも有用です。もし必要なら未装飾のトップレベルのフレームにたいしても使用できます。
+
+@table @code
+@vindex drag-internal-border@r{, a frame parameter}
+@item drag-internal-border
+非@code{nil}なら、(もしあれば)マウスでインターナルボーダーをドラッグしてフレームをリサイズできる。
+
+@vindex drag-with-header-line@r{, a frame parameter}
+@item drag-with-header-line
+非@code{nil}なら、マウスで最上ウィンドウのヘッダーラインをドラッグしてフレームを移動できる。
+
+@vindex drag-with-tab-line@r{, a frame parameter}
+@item drag-with-tab-line
+非@code{nil}なら、マウスで最上ウィンドウのタブラインをドラッグしてフレームを移動できる。
+
+@vindex drag-with-mode-line@r{, a frame parameter}
+@item drag-with-mode-line
+非@code{nil}なら、マウスで最下ウィンドウのモードラインをドラッグしてフレームを移動できる。このようなフレームは自身のミニバッファーウィンドウをもつことが許されないことに注意。
+
+@vindex snap-width@r{, a frame parameter}
+@item snap-width
+マウスで移動されるフレームはディスプレイ(か親ウィンドウ)のいずれかのエッジにこのパラメーターで指定されたピクセル数までドラッグされるとディスプレイ(か親ウィンドウ)のボーダーに``snapする(とびつく)''。
+
+@vindex top-visible@r{, a frame parameter}
+@item top-visible
+このパラメーターが数値ならフレームの上エッジがディスプレイ(か親フレーム)の上エッジより上に表示されることは決してない。さらにディスプレイ(か親フレーム)の他のエッジにたいしてフレームが移動された際には、フレームの指定されたピクセル数分が可視に留まる。このパラメーターのセットは非@code{nil}の@code{drag-with-header-line}パラメーターをもつ子フレームが、ドラッグにより完全に親フレームのエリア外になることを防ぐために有用。
+
+@vindex bottom-visible@r{, a frame parameter}
+@item bottom-visible
+このパラメーターが数値ならフレームの下エッジがディスプレイ(か親フレーム)の下エッジより下に表示されることは決してない。さらにディスプレイ(か親フレーム)の他のエッジにたいしてフレームが移動された際には、フレームの指定されたピクセル数分が可視に留まる。このパラメーターのセットは非@code{nil}の@code{drag-with-mode-line}パラメーターをもつ子フレームが、ドラッグにより完全に親フレームのエリア外になることを防ぐために有用。
+@end table
+
+
+@node Management Parameters
+@subsubsection ウィンドウ管理のパラメーター
+@cindex window manager interaction, and frame parameters
+
+  以下のフレームパラメーターはウィンドウマネージャーやウィンドウシステムとフレームとの相互作用のさまざまな面を制御します。これらはテキスト端末上では効果がありません。
+
+@table @code
+@vindex visibility@r{, a frame parameter}
+@item visibility
+フレームの可視性(visibility)の状態。可能な値は3つあり@code{nil}は不可視、@code{t}は可視、@code{icon}はアイコン化されていることを意味する。@ref{Visibility
+of Frames}を参照のこと。
+
+@vindex auto-raise@r{, a frame parameter}
+@item auto-raise
+非@code{nil}なら、Emacsはそのフレーム選択時に自動的にそれを前面に移動(raise)する。これを許さないウィンドウマネージャーがいくつかある。
+
+@vindex auto-lower@r{, a frame parameter}
+@item auto-lower
+非@code{nil}なら、Emacsはそのフレームの選択解除時に自動的にそれを背面に移動(lower)する。これを許さないウィンドウマネージャーがいくつかある。
+
+@vindex icon-type@r{, a frame parameter}
+@item icon-type
+そのフレームに使用するアイコンのタイプ。値が文字列なら使用するビットマップを含むファイル、@code{nil}ならアイコンなしを指定する(何を表示するかはウィンドウマネージャーが決定する)。その他の非@code{nil}値はデフォルトのEmacsアイコンを指定する。
+
+@vindex icon-name@r{, a frame parameter}
+@item icon-name
+このフレームにたいするアイコンで使用する名前。アイコンを表示する場合は、その際に表示される。これが@code{nil}ならフレームのタイトルが使用される。
+
+@vindex window-id@r{, a frame parameter}
+@item window-id
+グラフィカルディスプレイがこのフレームにたいして使用するID番号。Emacsはフレーム作成時にこのパラメーターを割り当てる。このパラメーターを変更しても実際のID番号に効果はない。
+
+@vindex outer-window-id@r{, a frame parameter}
+@item outer-window-id
+そのフレームが存在する最外殻のウィンドウシステムのウィンドウのID番号。@code{window-id}と同じように、このパラメーターを変更しても実際の効果はない。
+
+@vindex wait-for-wm@r{, a frame parameter}
+@item wait-for-wm
+非@code{nil}ならジオメトリー変更を確認するために、ウィンドウマネージャーを待機するようXtに指示する。Fvwm2およびKDEのバージョンを含むウィンドウマネージャーのいくつかは確認に失敗してXtがハングする。これらウィンドウマネージャーのハングを防ぐためには、これを@code{nil}にセットすること。
+
+@vindex sticky@r{, a frame parameter}
+@item sticky
+非@code{nil}なら仮想デスクトップを伴うシステム上のすべての仮想デスクトップ上でそのフレームが可視になる。
+
+@vindex shaded@r{, a frame parameter}
+@item shaded
+非@code{nil}ならウィンドウマネージャーにたいして、タイトルバーを残しコンテンツが隠れるようにフレームを表示するよう指示する。
+
+@vindex use-frame-synchronization@r{, a frame parameter}
+@item use-frame-synchronization
+非@code{nil}ならグラフィックのティアリングを防ぐために、フレームの再表示とモニターのリフレッシュレートを同期させる。これは現時点ではHaiku、および非ツールキットとXツールキットとともにビルドされたXウィンドウシステムでのみ実際されており、ツールキットのスクロールバーでは正しく動作しない。更に関連するディスプレイ同期プロトコルをサポートするコンポジット型ウィンドウマネージャーを要求する。Xリソースの@code{synchronizeResize}にも文字列@code{"extended"}がセットされていなければならない。
+
+@vindex inhibit-double-buffering@r{, a frame parameter}
+@item inhibit-double-buffering
+非@code{nil}ならフレームはダブルバッファリングなしでスクリーンに描画される。通常はちらつきを減少させるために、利用可能ならEmacsはダブルバッファリングの使用を試みる。これはダブルバッファリングが不正な表示を誘発する状況にたいして提供されているパラメーターではあるが、かつてEmacsを悩ませてきた太古のちらつきに郷愁を覚える変人にたいして提供されたパラメーターともいえる。
+
+@vindex skip-taskbar@r{, a frame parameter}
+@item skip-taskbar
+非@code{nil}ならウィンドウマネージャーならフレームのディスプレイに関連するタスクバーからフレームのアイコンを削除して、@kbd{Alt-@key{TAB}}のコンビネーションキーを通じたフレームへの切り替えを抑制するようにウィンドウマネージャーに指示する。MS-Windowsではこのようなフレームをアイコン化するとデスクトップ下部にある、フレームにたいするウィンドウシステムのウィンドウに"ロールイン(roll
+in)"される。いくつかのウィンドウマネージャーはこのパラメーターにしたがわない。
+
+@vindex no-focus-on-map@r{, a frame parameter}
+@item no-focus-on-map
+非@code{nil}ならフレームはマップ時に入力フォーカスの受け取りを希望しないことを意味する。いくつかのウィンドウマネージャーはこのパラメーターにしたがわない。
+
+@vindex no-accept-focus@r{, a frame parameter}
+@item no-accept-focus
+非@code{nil}ならフレームは明示的なマウスクリックや@code{focus-follows-mouse} (@ref{Input
+Focus}を参照)、@code{mouse-autoselect-window} (@ref{Mouse Window
+Auto-selection}を参照)によりマウスがフレーム内に移動した際に入力フォーカスの受け取りを希望しないことを意味する。これはユーザーが選択されていないフレームをマウスでスクロールできないという、望ましくない副作用をもたらすかもしれない。いくつかのウィンドウマネージャーはこのパラメーターにしたがわない。Haikuでもたとえユーザーが@kbd{Alt-@key{TAB}}というキー組み合わせでそのフレームに切り替えた場合であっても、ウィンドウがユーザーからのキーボード入力を何も受け取ることができないという副作用があるだろう。
+
+@vindex undecorated@r{, a frame parameter}
+@item undecorated
+非@code{nil}ならフレームのウィンドウシステムのウィンドウはタイトル、最小化ボックスや最大化ボックス、エクスターナルボーダーのような装飾なしで描画される。これは通常はマウスによるそのウィンドウシステムのウィンドウのドラッグ、リサイズ、アイコン化、最大化、削除ができないことを意味する。@code{nil}の場合にはウィンドウマネージャーのセッティングでディスプレイがサスペンドされていなければ、フレームのウィンドウは上述のすべての要素とともに描画される。
+
+Xでは装飾をオフに切り替えるために、EmacsはMotifウィンドウマネージャーのヒントを使用する。いくつかのウィンドウマネージャーはこれらのヒントにしたがわない。
+
+NSビルドはツールバーを装飾とみなすので未装飾のフレームでは表示されない。
+
+@vindex override-redirect@r{, a frame parameter}
+@item override-redirect
+@cindex override redirect frames
+非@code{nil}なら@dfn{オーバーライド・リダイレクト(override
+redirect)}のフレームであることを意味する。これはフレームがX配下のウィンドウマネージャーで処理されないことを意味する。オーバーライド・リダイレクト・フレームはウィンドウマネージャーの装飾をもたず、Emacsの配置関数やリサイズ関数でしか配置やリサイズができない。また他のすべてのフレームの最上位に通常は描画される。このパラメーターをセットしてもMS-Windowsでは効果がない。
+
+@ignore
+@vindex parent-id@r{, a frame parameter}
+@item parent-id
+@c ??? Not yet working.
+The X window number of the window that should be the parent of this one.
+Specifying this lets you create an Emacs window inside some other
+application's window.  (It is not certain this will be implemented; try
+it and see if it works.)
+@end ignore
+
+@vindex ns-appearance@r{, a frame parameter}
+@item ns-appearance
+macOSのみ利用可能であり@code{dark}にセットすると``vibrant
+dark''テーマ、@code{light}にセットすると``aqua''テーマ、それ以外ならシステムのデフォルトを使用してフレームのウィンドウシステムのウィンドウを描画する。暗色(dark)のバックグラウンドのEmacsテーマ使用時にツールバーやスクロールバーに暗色の外観をセットするために``vibrant
+dark''テーマを使用できる。
+
+@vindex ns-transparent-titlebar@r{, a frame parameter}
+@item ns-transparent-titlebar
+macOSでのみ利用可能であり非@code{nil}ならタイトルバーとツールバーをトランスペアレント(transparent:
+透明)にセットする。これはEmacsのバックグラウンドカラーにマッチするようにタイトルバーとツールバーのバックグラウンドカラーを効果的にセットする。
+@end table
+
+
+@node Cursor Parameters
+@subsubsection カーソルのパラメーター
+@cindex cursor, and frame parameters
+
+  このフレームパラメーターはカーソルの外見を制御します。
+
+@table @code
+@vindex cursor-type@r{, a frame parameter}
+@item cursor-type
+カーソルの表示方法。適正な値は:
+
+@table @code
+@item box
+塗りつぶされた四角形(filled box)を表示する(デフォルト)。
+@item (box . @var{size})
+塗りつぶされた四角形(filled
+box)を表示する。しかしポイントがいずれかの次元が@var{size}ピクセルより大きいマスクされたイメージ配下にあれば中抜きの四角形(hollow
+box)を表示する。
+@item hollow
+中抜きの四角形(hollow box)を表示する。
+@item nil
+カーソルを表示しない。
+@item bar
+文字間に垂直バー(vertical bar)を表示する。
+@item (bar . @var{width})
+文字間に幅が@var{width}ピクセルの垂直バー(vertical bar)を表示する。
+@item hbar
+文字間に水平バー(horizontal bar)を表示する。
+@item (hbar . @var{height})
+文字間に高さが@var{height}ピクセルの水平バー(horizontal bar)を表示する。
+@end table
+@end table
+
+@vindex cursor-type
+フレームパラメーター@code{cursor-type}は変数@code{cursor-type}と@code{cursor-in-non-selected-windows}によりオーバーライドされるかもしれません。
+
+@defopt cursor-type
+このバッファーローカル変数は選択されたウィンドウ内で表示されているそのバッファーのカーソルの外見を制御する。この値が@code{t}なら、それはフレームパラメーター@code{cursor-type}で指定されたカーソルのーを使用することを意味する。それ以外では値は上記リストのカーソルタイプのいずれかであるべきであり、これはフレームパラメーター@code{cursor-type}をオーバーライドする。
+@end defopt
+
+@defopt cursor-in-non-selected-windows
+このバッファーローカル変数は選択されていないウィンドウ内でのカーソルの外見を制御する。これはフレームパラメーター@code{cursor-type}と同じ値をサポートする。さらに@code{nil}は選択されていないウィンドウ内にはカーソルを表示せず、@code{t}は通常のカーソルタイプの標準的な変更(塗りつぶされた四角形は中抜きの四角形、バーはより細いバーになる)の使用を意味する。
+@end defopt
+
+@defopt x-stretch-cursor
+この変数はタブや伸長された空白文字のようなエクストラワイドグリフで表示されるblockカーソルの幅を制御する。デフォルトではそのフォントのデルト文字だけの幅で、これはカーソル一のグリフがエクストラワイドなら幅を完全にカバーしないだろう。この変数にたいする非@code{nil}値はカーソル位置のグリフの幅に応じてblockカーソルを描画することを意味する。デフォルト値は@code{nil}。
+
+テキストモードのフレームではEmacsの制御外部の端末によりカーソルが描画されるので、この変数に効果はない。
+@end defopt
+
+@defopt blink-cursor-alist
+この変数はカーソルのブリンク(blink: 点滅)方法を指定する。各要素は@code{(@var{on-state}
+.
+@var{off-state})}という形式をもつ。カーソルタイプが@var{on-state}と等しい(@code{equal}を用いて比較)ときは、これに対応する@var{off-state}がブリンクが``off''の際のカーソルの外見を指定する。@var{on-state}と@var{off-state}はどちらもフレームパラメーター@code{cursor-type}に適した値であること。
+
+それぞれのカーソルタイプのブリンク方法にたいして、そのタイプがここで@var{on-state}として指定されていなければ、さまざまなデフォルトが存在する。フレームパラメーター@code{cursor-type}で指定した際に限り、この変数内での変更は即座に効果を発揮しない。
+@end defopt
+
+@node Font and Color Parameters
+@subsubsection フォントとカラーのパラメーター
+@cindex font and color, frame parameters
+
+  以下のフレームパラメーターはフォントとカラーの使用を制御します。
+
+@table @code
+@vindex font-backend@r{, a frame parameter}
+@item font-backend
+フレーム上で文字の描画に使用する@dfn{フォントバックエンド(font
+backends)}を優先順に指定するシンボルのリスト。CairoなしでビルドされたEmacsのXでの描画では現在のところ@code{x}
+(Xのコアフォントドライバー)、@code{xft} (Xftフォントドライバー)、@code{xfthb}
+(HarfBuzzテキストシェイピングをもつXftフォントドライバー)という3つのフォントバックエンドが潜在的に利用できる。Cairo描画つきでビルドされた場合にもX上のフォントバックエンドとして@code{x}、@code{ftcr}
+(CairoのFreeTypeフォントドライバー)、@code{ftcrhb}
+(HarfBuzzテキストシェイピングをもつCairo上のFreeTypeフォントドライバー)の3つが潜在的に利用できる。HarfBuzzつきでEmacsをビルドした場合には、非推奨の@code{ftcr}ドライバーの使用が可能であっても、デフォルトのフォントドライバーは@code{ftcrhb}となる。MS-Windowsでは現在のところ@code{gdi}
+(MS-Windowsのコアフォントドライバー)、@code{uniscribe}
+(OTFフォントとTTFフォントにたいするUniscribeエンジンによるテキストシェイピングをもつフォントドライバー)、@code{harfbuzz}
+(OTFフォントとTTFフォントにたいするHarfBuzzテキストシェイピングをもつフォントドライバー)という3つのフォントバックエンドが利用できる(@ref{Windows
+Fonts,,, emacs, The GNU Emacs
+Manual}を参照)。同様に@code{harfbuzz}も推奨される。Haikuでは複数のフォントドライバーが存在する可能性がある(@ref{Haiku
+Fonts,,, emacs, The GNU Emacs Manual}を参照)。Androidも同様(@ref{Android Fonts,,,
+emacs, The GNU Emacs Manual}を参照)。
+
+それ以外のシステムでは利用可能なフォントバックエンドは1つだけなので、このフレームパラメーターの変更は意味をもたない。
+
+@vindex background-mode@r{, a frame parameter}
+@item background-mode
+このパラメーターは@code{dark}か@code{light}のいずれかで、それぞれバックグラウンドを暗く(dark)するか、明るく(light)するかに対応する。
+
+@vindex tty-color-mode@r{, a frame parameter}
+@item tty-color-mode
+@cindex standard colors for character terminals
+このパラメーターは端末上で使用するカラーモードを指定して、そのシステムの端末機能データベース(terminal capabilities
+database、termcap)により与えられた端末のカラーサポートをオーバーライドする。値にはシンボルか数値を指定できる。数値なら使用するカラー数(および間接的にはそれぞれのカラーを生成するためのコマンド)を指定する。たとえば@code{(tty-color-mode
+. 8)}は標準的なテキストカラーにたいしてANSIエスケープシーケンスの使用を指定する。値@minus{}1はカラーサポートをオフに切り替える。
+
+このパラメーターの値がシンボルなら、それは@code{tty-color-mode-alist}の値を通じて数値を指定するもので、そのシンボルに割り当てられた数値がかわりに使用される。
+
+@vindex screen-gamma@r{, a frame parameter}
+@item screen-gamma
+@cindex gamma correction
+これが数値ならEmacsはすべてのカラーの輝度を調整するガンマ補正(gamma
+correction)を行う。値はディスプレイのスクリーンのガンマであること。
+
+通常のPCモニターはスクリーンガンマが2.2なので、EmacsとXウィンドウのカラー値は一般的にそのガンマ値のモニター上で正しく表示するよう校正されている。@code{screen-gamma}にたいして2.2を指定すると、それは補正が不必要であることを意味する。その他の値は通常のモニター上のガンマ値2.2で表示されるように、補正したカラーがスクリーン上に表示されることを意図された補正を要求する。
+
+モニターが表示するカラーが明るすぎる場合には、@code{screen-gamma}に2.2より小さい値を指定すること。これはカラーをより暗くする補正を要求する。スクリーンガンマの値1.5は、LCDカラーディスプレイにたいして良好な結果を与えるだろう。
+
+@vindex alpha@r{, a frame parameter}
+@item alpha
+@cindex opacity, frame
+@cindex transparency, frame
+@vindex frame-alpha-lower-limit
+このパラメーターは可変透明度(variable
+opacity)をサポートするグラフィカルディスプレイ上でそのフレームの透明度を指定する。これは0から100の整数であるべきで0は完全な透明、100は完全な不透明を意味する。@code{nil}値をもつこともでき、これはEmacsにフレームのopacityをセットしないよう告げる(ウィンドウマネージャーに委ねる)。
+
+フレームが完全に見えなくなるのを防ぐために、変数@code{frame-alpha-lower-limit}は透明度の最低限度を定義する。フレームパラメーターの値がこの変数の値より小さければEmacsは後者を使用する。デフォルトの@code{frame-alpha-lower-limit}は20。
+
+フレームパラメーター@code{alpha}にはコンスセル@code{(@code{active}
+.
+@code{inactive})}も指定できる。ここで@code{active}は選択時のフレームの透明度、@code{inactive}は未選択時の透明度。
+
+いくつかのウィンドウシステムは子フレーム(@ref{Child Frames}を参照)にたいして@code{alpha}パラメーターをサポートしない。
+
+@vindex alpha-background@r{, a frame parameter}
+@item alpha-background
+@cindex opacity, frame
+@cindex transparency, frame
+フレームのバックグラウンドの透明度をセットする。フレームパラメーター@code{alpha}とは異なり、テキストは完全に不透明のままといったようにフォアグラウンド要素は保ちつつ、バックグラウンドの透明度だけを制御する。値は0から100の整数であり0は完全に透明、100(デフォルト)は完全に不透明を意味する。
+@end table
+
+以下は特定のフェイスの特定のフェイス属性と自動的に等しくなるので、ほぼ時代遅れとなったフレームパラメーターです(@ref{Standard
+Faces,,, emacs, The Emacs Manual}を参照)。
+
+@table @code
+@vindex font@r{, a frame parameter}
+@item font
+フレーム内でテキストを表示するためのフォントの名前。これはシステムで有効なフォント名か、Emacsフォントセット名(@ref{Fontsets}を参照)のいずれかであるような文字列。これは@code{default}フェイスの@code{font}属性と等価。
+
+@vindex foreground-color@r{, a frame parameter}
+@item foreground-color
+文字に使用するカラー。これは@code{default}フェイスの@code{:foreground}属性と等価。
+
+@vindex background-color@r{, a frame parameter}
+@item background-color
+文字のバックグラウンドに使用するカラー。これは@code{default}フェイスの@code{:background}属性と等価。
+
+@vindex mouse-color@r{, a frame parameter}
+@vindex mouse@r{, a face}
+@item mouse-color
+マウスポインターのカラー。これは@code{mouse}フェイスの@code{:background}属性と等価。
+
+@vindex cursor-color@r{, a frame parameter}
+@item cursor-color
+ポイントを表示するカーソルのカラー。これは@code{cursor}フェイスの@code{:background}属性と等価。
+
+@vindex border-color@r{, a frame parameter}
+@item border-color
+これはフレームのボーダーのカラー。これは@code{border}フェイスの@code{:background}属性と等価。
+
+@vindex scroll-bar-foreground@r{, a frame parameter}
+@item scroll-bar-foreground
+非@code{nil}ならスクロールバーのフォアグラウンドカラー。これは@code{scroll-bar}フェイスの@code{:foreground}属性と等価。
+
+@vindex scroll-bar-background@r{, a frame parameter}
+@item scroll-bar-background
+非@code{nil}ならスクロールバーのバックグラウンドカラー。これは@code{scroll-bar}フェイスの@code{:background}属性と等価。
+@end table
+
+
+@node Geometry
+@subsection ジオメトリー
+
+  以下はXスタイルのウィンドウジオメトリー指定によるアクションのデータを調べる方法です:
+
+@defun x-parse-geometry geom
+@cindex geometry specification
+関数@code{x-parse-geometry}は標準的なXウィンドウのジオメトリー文字列を@code{make-frame}の引数の一部として使用できるalistに変換する。
+
+このalistは@var{geom}内で指定されたパラメーターと、そのパラメーターに指定された値を記述する。各要素は@code{(@var{parameter}
+.
+@var{value})}のような形式。可能な@var{parameter}の値は@code{left}、@code{top}、@code{width}、@code{height}。
+
+サイズのパラメーターの値は整数でなければならない。位置のパラメーター@code{left}と@code{top}の名前に関しては、かわりに右端または下端の位置を示す値もいくつかあるので完全に正確ではない。位置パラメーターにたいして可能な@var{value}は前述したような整数(@ref{Position
+Parameters}を参照)、リスト@code{(+ @var{pos})}、リスト@code{(- @var{pos})}である。
+
+以下は例:
+
+@example
+(x-parse-geometry "35x70+0-0")
+     @result{} ((height . 70) (width . 35)
+         (top - 0) (left . 0))
+@end example
+@end defun
+
+@node Terminal Parameters
+@section 端末のパラメーター
+@cindex terminal parameters
+
+  端末はそれぞれ関連するパラメーターのリストをもっています。これら@dfn{端末パラメーター(terminal
+parameters)}は主に端末ローカル変数を格納するための便利な手段ですが、いくつかの端末パラメーターは特別な意味をもっています。
+
+  このセクションでは端末のパラメーター値の読み取りや変更を行う関数を説明します。これらはすべて引数として端末かフレームいずれかを受け入れます。フレームならそれはそのフレームの端末の使用を意味します。引数@code{nil}は選択されたフレームの端末という意味です。
+
+@defun terminal-parameters &optional terminal
+この関数は@var{terminal}nのすべてのパラメーターとその値をリストするalistをリターンする。
+@end defun
+
+@defun terminal-parameter terminal parameter
+この関数は@var{terminal}のパラメーター@var{parameter}
+(シンボル)の値をリターンする。@var{terminal}が@var{parameter}にたいするセッティングをもたなければ、この関数は@code{nil}をリターンする。
+@end defun
+
+@defun set-terminal-parameter terminal parameter value
+この関数は@var{terminal}のパラメーター@var{parameter}に指定された@var{value}をセットしてパラメーターの以前の値をリターンする。
+@end defun
+
+以下は特別な意味をもついくつかの端末パラメーターのリストです:
+
+@table @code
+@item background-mode
+端末のバックグラウンドカラーの区分で@code{light}か@code{dark}のいずれか。
+@item normal-erase-is-backspace
+値は1か0で、これはその端末上で@code{normal-erase-is-backspace-mode}がオンまたはオフのいずれに切り替えられたかに依存する。@ref{DEL
+Does Not Delete,,, emacs, The Emacs Manual}を参照のこと。
+@item terminal-initted
+端末の初期化後に端末固有の初期化関数にセットされる。
+@item tty-mode-set-strings
+与えられた際には、読み取り用にttyを設定時にEmacsが出力するエスケープシーケンスを含む文字列のリスト。Emacsは端末の設定時のみこれらの文字列を発行する。すでにアクティブな端末上(たとえば@code{tty-setup-hook}内)でモードを有効にしたければ、@code{tty-mode-set-strings}へのシーケンスの追加に加えて、@code{send-string-to-terminal}を使用して明示的に必要なエスケープシーケンスを出力すること。
+@item tty-mode-reset-strings
+与えられた際には、@code{tty-mode-set-strings}内の文字列の効果をアンドゥする文字列のリスト。Emacsはexit、端末の削除、Emacs自身のサスペンドの際にそれらの文字列を発行する。
+@end table
+
+@node Frame Titles
+@section フレームのタイトル
+@cindex frame title
+
+  フレームにはそれぞれ@code{name}というパラメーターがあります。これはウィンドウシステムが通常フレーム上端に表示するフレームタイトルにたいするデフォルトとしての役割をもちます。フレームプロパティ@code{name}をセットすることにより明示的に名前を指定できます。
+
+  通常は名前を明示的に指定せずに、Emacsが変数@code{frame-title-format}に格納されたテンプレートにもとづいて自動的にフレーム名を計算します。Emacsはフレームが再表示されるたびに名前を再計算します。
+
+@defvar frame-title-format
+この変数はフレーム名の明示的な指定(フレームのパラメーターを通じて; @ref{Basic
+Parameters}を参照)がされていない場合にフレーム名を計算する方法を指定する。この変数の値は実際には@code{mode-line-format}のようなモードライン構文(mode
+line construct)だが@samp{%c}、@samp{%C}、@samp{%l}の構文は無視される。@ref{Mode Line
+Data}を参照のこと。
+@end defvar
+
+@defvar icon-title-format
+これはフレームのパラメーターを通じてフレームの名前を明示的に指定していない際に、アイコン化されたフレームの名前を計算する方法を指定する変数である。計算の結果得られたタイトルが、そのフレームのアイコン自体に表示される。値が文字列であれば、@code{frame-title-format}のようなモードライン構文であること。値は@code{t}でもよく、この場合にはかわりに@code{frame-title-format}を使用することを意味する。これによって(フレームがアイコン化されているときに)フレームのタイトルを変更すると、そのフレームのraiseおよび/または入力フォーカスの要求と解釈する、一部のウィンドウマネージャーやデスクトップ環境における問題を避けることができる。この値はフレームがアイコン化されているかどうかに関わらず、フレームのタイトルを同じにしたい場合にも役に立つ。デフォルト値は@code{frame-title-format}のデフォルト値と同じ文字列。
+@end defvar
+
+@defvar multiple-frames
+この変数はEmacsにより自動的にセットされる。フレームが2つ以上(ミニバッファーのみのフレームと不可視のフレームは勘定に入らない)のとき、値は@code{t}となる。@code{frame-title-format}のデフォルト値はフレームが複数存在する場合のみ、フレーム名にバッファー名を入れるために@code{multiple-frames}を使用する。
+
+この変数の値は@code{frame-title-format}と@code{icon-title-format}の処理中を除き正確である保証はない。
+@end defvar
+
+@node Deleting Frames
+@section フレームの削除
+@cindex deleting frames
+
+@dfn{生きたフレーム(live
+frame)}とは削除されていないフレームのことです。フレームが削除される際には、たとえそれへの参照元がなくなるまでLispオブジェクトとして存在し続けるとしても端末ディスプレイからは削除されます。
+
+@deffn Command delete-frame &optional frame force
+@vindex delete-frame-functions
+@vindex after-delete-frame-functions
+この関数はフレーム@var{frame}を削除する。引数@var{frame}は生きたフレーム(以下参照)を指定しなければならず、デフォルトは選択されたフレーム。
+
+この関数はまず@var{frame}のすべての子フレーム(@ref{Child
+Frames}を参照)とフレームパラメーター@code{delete-before} (@ref{Frame Interaction
+Parameters}を参照)が@var{frame}を指定するすべてのフレームを削除する。祖先として@var{frame}をもつフレームが他に存在しないことを保証するために、このような削除はすべて再帰的に行われる。その後に@var{frame}がツールチップを指定していなければ、実際にフレームをkillする前にフック@code{delete-frame-functions}を実行する(フックの各関数は単一の引数として@var{frame}を受け取る)。@code{delete-frame}は実際にフレームをkillしてフレームリストからフレームを削除した後に@code{after-delete-frame-functions}を実行する。
+
+フレームのミニバッファーが別のフレームの代替えミニバッファー(@ref{Minibuffers and
+Frames}を参照)の役割をもつかぎりフレームを削除できないことに注意。他のフレームすべてが不可視なら通常はフレームは削除できないが、@var{force}が非@code{nil}なら削除が可能になる。
+@end deffn
+
+@defun frame-live-p frame
+この関数はフレーム@var{frame}が削除されていなければ非@code{nil}をリターンする。リターンされ得る非@code{nil}の値は@code{framep}と同様。@ref{Frames}を参照のこと。
+@end defun
+
+  いくつかのウィンドウマネージャーはウィンドウを削除するコマンドを提供します。これらはそのウィンドウを操作するプログラムに特別なメッセージを送ることにより機能します。Emacsがそれらメッセージのいずれかを受け取ったときは@code{delete-frame}イベントを生成します。このイベントの通常の定義は関数@code{delete-frame}を呼び出すコマンドです。@ref{Misc
+Events}を参照してください。
+
+@deffn Command delete-other-frames &optional frame iconify
+このコマンドは@var{frame}の端末上から@var{frame}以外のすべてのフレームを削除する。@var{frame}が別のフレームのミニバッファーを使用している場合には、そのミニバッファーフレームは処理せずに残る。引数@var{frame}は生きたフレームを指定しなければならず、デフォルトは選択されたフレーム。このコマンドは内部的には削除するすべてのフレームにたいして、@var{force}に@code{nil}を指定して@code{delete-frame}を呼び出すことにより機能する。
+
+この関数は@var{frame}の子フレームは削除しない(@ref{Child
+Frames}を削除)。@var{frame}が子フレームなら@var{frame}の兄弟だけを削除する。
+
+プレフィックス引数@var{iconify}を指定するとフレームを削除せずにアイコン化する。
+@end deffn
+
+
+@node Finding All Frames
+@section すべてのフレームを探す
+@cindex frames, scanning all
+
+@defun frame-list
+この関数はすべての生きたフレーム(削除されていないフレーム)のリストをリターンする。これはバッファーにたいする@code{buffer-list}に類似しており、すべての端末上のフレームが含まれる。リターンされるリストは新たに作成されたものであり、このリストを変更してもEmacs内部への影響はない。
+@end defun
+
+@defun visible-frame-list
+この関数はカレントで可視なフレームだけのリストをリターンする。@xref{Visibility of
+Frames}を参照のこと。テキスト端末上のフレームは、実際に表示されるのが選択されたフレームだけだとしても常に可視であるとみなされる。
+@end defun
+
+@defun frame-list-z-order &optional display
+この関数はZオーダー(重なり)の順でEmacsのフレームのリストをリターンする(@ref{Raising and
+Lowering}を参照)。オプション引数@var{display}は調査するディスプレイを指定する。@var{display}はフレームかディスプレイ名(文字列)であること。省略か@code{nil}なら選択されたフレームのディスプレイを意味する。@var{display}にEmacsフレームが含まれていなければ@code{nil}をリターンする。
+
+フレームは最前面(最初)から最背面(最後)の順にリストされる。特別なケースとして@var{display}が非@code{nil}で生きたフレームを指定する場合には、そのフレームの子フレームをZオーダー(重なり順)でリターンする。
+
+この関数はテキスト端末では意味がない。
+@end defun
+
+@defun next-frame &optional frame minibuf
+この関数により特定の端末上のすべてのフレームを任意の開始位置から簡単に巡回できる。これは@var{frame}の端末上のすべての生きたフレームのリストから@var{frame}の後のフレームをリターンする。引数@var{frame}は生きたフレームを指定しなければならず、デフォルトは選択されたフレーム。@code{no-other-frame}パラメーター(@ref{Frame
+Interaction Parameters}を参照)が非@code{nil}であるようなフレームをリターンすることは決してない。
+
+2つ目の引数@var{minibuf}は、次フレームを決定する際にどのフレームを考慮するかを示す:
+
+@table @asis
+@item @code{nil}
+ミニバッファーのみのフレームを除いたすべてのフレームを考慮する。
+@item @code{visible}
+可視フレームだけを考慮する。
+@item 0
+可視フレームとアイコン化されたフレームだけを考慮する。
+@item ウィンドウ
+特定のウィンドウをミニバッファーウィンドウとして使用するフレームだけを考慮する。
+@item その他
+すべてのフレームを考慮する。
+@end table
+@end defun
+
+@defun previous-frame &optional frame minibuf
+@code{next-frame}と同様だがすべてのフレームを逆方向に巡回する。
+@end defun
+
+  @ref{Cyclic Window
+Ordering}の@code{next-window}と@code{previous-window}も参照してください。
+
+  一部のLispプログラムでは与えられた条件を満たすために1つ以上のフレームが必要になります。この用途のために提供されている関数が@code{filtered-frame-list}です。
+
+@defun filtered-frame-list predicate
+この関数は@var{predicate}の指定を満足する生きたフレームのリストをリターンする。引数はフィルター条件にたいしてテストされるフレームを単一の引数として、そのフレームが条件を満たせば非@code{nil}をリターンする関数でなければならない。
+@end defun
+
+@node Minibuffers and Frames
+@section ミニバッファーとフレーム
+
+それぞれのフレームは通常は下端に自身のミニバッファーウィンドウをもち、フレームが選択された際は常にそれを使用します。このウィンドウは関数@code{minibuffer-window}で取得できます(@ref{Minibuffer
+Windows}を参照)。
+
+@cindex frame without a minibuffer
+@cindex surrogate minibuffer frame
+しかしミニバッファーをもたないフレームも作成できます。そのようなフレームは、別のフレームのミニバッファーを使用しなければなりません。この別フレームはそのフレームにたいする@dfn{代替えミニバッファーフレーム(surrogate
+minibuffer
+frame)}としての役目を果たし、そのフレームが生きているかぎり@code{delete-frame}で削除することはできなくなります(@ref{Deleting
+Frames}を参照)。
+
+フレームパラメーター@code{minibuffer}により、フレーム作成時に(別フレーム上にある)使用するミニバッファーを明示的に指定できます(@ref{Buffer
+Parameters}を参照)。これを行わない場合には変数@code{default-minibuffer-frame}の値であるようなフレーム内でミニバッファーを探します。この値はミニバッファーをもつフレームである必要があります。
+
+ミニバッファーのみのフレームを使用する場合には、ミニバッファーにエンター時にそのフレームを前面に移動(raise)したいと思うかもしれません。その場合には変数@code{minibuffer-auto-raise}に@code{t}をセットします。@ref{Raising
+and Lowering}を参照してください。
+
+@defvar default-minibuffer-frame
+この変数はデフォルトでミニバッファーウィンドウとして使用するフレームを指定する。これは既存のフレームには影響しない。これはカレント端末にたいして常にローカルであり、バッファーローカルにはできない。@ref{Multiple
+Terminals}を参照のこと。
+@end defvar
+
+
+@node Input Focus
+@section 入力のフォーカス
+@cindex input focus
+@cindex selected frame
+
+どんなときでもEmacs内のただ1つのフレームが@dfn{選択されたフレーム(selected
+frame)}です。選択されたウィンドウ(@ref{Selecting Windows}を参照)は常に選択されたフレーム上にあります。
+
+Emacsがフレームを複数端末(@ref{Multiple
+Terminals}を参照)上に表示する際には、各端末は自身の選択されたフレームをもちます。しかしそれらのうち1つだけが、@emph{いわゆる}選択されたフレームであり、それはもっとも最近に入力があった端末に属すフレームです。つまり特定の端末からのコマンドをEmacsが実行する際には、その端末上の1つが選択されたフレームです。Emacsが実行するコマンドは常に1つだけなので、選択されたフレームは常に1つだけだと考える必要があります。このフレームこそが、このマニュアルで@dfn{選択されたフレーム}と呼ぶフレームです。選択されたフレームを表示するディスプレイは、@dfn{選択されたフレームのディスプレイ(selected
+frame's display)}です。
+
+@defun selected-frame
+この関数は選択されたフレームをリターンする。
+@end defun
+
+いくつかのウィンドウシステムおよびウィンドウマネージャーは、マウスがあるウィンドウオブジェクトにキーボード入力をダイレクトします。それ以外は、さまざまなウィンドウオブジェクトに@dfn{フォーカスをシフト(shift
+the
+focus)}するために、明示的なクリックやコマンドを要求します。どちらの方法でもEmacsはフォーカスをもつフレーム(複数形のframes)を自動的に追跡します。Lisp関数から別フレームに明示的に切り替えるためには、@code{select-frame-set-input-focus}を呼び出します。
+
+前のパラグラフ中の``複数形のframes''は意図したものです。Emacs自身は選択されたフレームを1つしかもたないのにたいして、Emacsは多くの異なる端末上にフレームをもつことができ(ウィンドウシステムへの接続は端末とみなされることを思い出してほしい)、各端末は入力フォーカスをもつフレームにたいして独自のアイデアをもっています。Xウィンドウシステムの下ではユーザー入力は個別に入力の``指定席''に組織化されていて、それらの指定席それぞれが独自に特定の入力フォーカスを順に得ることができるのです。あるフレームに入力フォーカスをセットすると、Emacsが最後に相互作用を行った指定席のフレームの端末にフォーカスがセットされますが、他の端末上のフレームや指定席に依然としてフォーカスが残るかもしれません。
+
+入力フォーカスをセットする前に指定された端末上でユーザーと何らかの相互作用が発生した場合には、Xサーバーが指定席をランダムに選んで(通常はもっとも小さい番号の指定席)、そこに入力フォーカスをセットします。
+
+関数@code{select-frame}を呼び出すことにより、Lispプログラムが一時的にフレームを切り替えることができます。これはそのウィンドウシステムのフォーカス概念を変更はしません。変更ではなく何らかの方法により制御が再確認(reasserted)されるまで、ウィンドウマネージャーの制御から抜け出す(escape)のです。
+
+テキスト端末使用時はその端末上で一度に表示できるフレームは1つだけなので、@code{select-frame}呼び出し後に次回の再表示で新たに選択されたフレームが実際に表示されます。このフレームは次の@code{select-frame}呼び出しまで選択されたままです。テキスト端末上の各フレームはバッファー名の前に表示される番号をもちます(@ref{Mode
+Line Variables}を参照)。
+
+@defun select-frame-set-input-focus frame &optional norecord
+この関数は@var{frame}を選択して、(他のフレームのせいで不明瞭な場合には)それを前面に移動(raise)してウィンドウシステムのフォーカス授与を試みる。テキスト端末上では、次回再表示時に端末スクリーン全体に新たにフレームが表示される。オプション引数@var{norecord}は@code{select-frame}(下記参照)のときと同じ意味をもつ。この関数のリターン値に意味はない。
+@end defun
+
+以下で説明する関数は理想的には他のフレームを前面にレイズすることなくフレームにフォーカスするべきです。残念ながらウィンドウシステムやウィンドウマネージャーの多くはこの要求を拒絶するかもしれません。
+
+@defun x-focus-frame frame &optional noactivate
+この関数は@var{frame}のレイズを要さずに@var{frame}にXサーバーのフォーカスを与える。@var{frame}が@code{nil}なら選択されたフレームを意味する。Xの配下ではオプション引数@var{noactivate}が非@code{nil}なら、@var{frame}のウィンドウシステムのウィンドウが``アクティブ''なウィンドウになることを防ぐことを意味する。これは@var{frame}が他のフレームの前面にならないようさらに強く主張する。
+
+MS-Windowsでは@var{noactivate}引数に効果はない。しかし@var{frame}が子フレーム(@ref{Child
+Frames}を参照)なら、この関数は通常は他の子レームの前面にレイズすることなく@var{frame}にフォーカスする。
+
+この関数はウィンドウシステムのサポートがなければ何もしない。
+@end defun
+
+@deffn Command select-frame frame &optional norecord
+この関数はフレーム@var{frame}を選択して、Xサーバーのフォーカスがあればそれを一時的に無視する。@var{frame}にたいする選択は次回ユーザーが別フレームに何かを行うか、この関数の次回呼び出しまで継続する(ウィンドウシステムを使用する場合には以前に選択されていたフレームに依然としてウィンドウシステムの入力フォーカスがあるかもしれないので、コマンドループからリターン後にそのフレームが選択されたフレームとしてリストアされるかもしれない)。
+
+指定された@var{frame}は選択されたフレームとなり、その端末が選択された端末になる。この関数はその後に@var{frame}内で選択されていたウィンドウを第1引数、@var{norecord}を第2引数にして@code{select-window}をサブルーチンとして呼び出す(したがって@var{norecord}が非@code{nil}なら、もっとも最近に選択されたウィンドウとバッファーリストの変更を避ける)。@ref{Selecting
+Windows}を参照のこと。
+
+この関数は@var{frame}、@var{frame}が削除されていれば@code{nil}をリターンする。
+
+一般的には実行後に端末を戻すよう切り替えることなく、別の端末に切り替えるのが可能な手段として@code{select-frame}を決して使用しないこと。
+@end deffn
+
+@cindex text-terminal focus notification
+Emacsは選択されたフレームをサーバーとしてアレンジしてウィンドウシステムに要求することによりウィンドウシステムと協調します。Emacsのいずれかのフレームが選択されたことをあるウィンドウシステムが通知すると、Emacsは内部的に@dfn{focus-in}イベントを生成します。Emacsフレームをフォーカス変更イベントの通知をサポートする@command{xterm}のようなテキスト端末エミュレーター上で表示している際には、テキストモードのフレームでもfocus-inとfocus-outのイベントを利用できます。フォーカスイベントは通常は@code{handle-focus-in}で処理されます。
+
+@deffn Command handle-focus-in event
+この関数は明示的なフォーカス通知をサポートするウィンドウシステムと端末からのfocus-inイベントを処理する。これは@code{frame-focus-state}が問い合わせて@code{after-focus-change-function}を呼び出すフレームごとのフォーカスフラグを更新する。加えてEmacsが認識する選択されたフレームを、いくつかの端末でもっとも最近フォーカスされたフレームに切り替えるために@code{switch-frame}イベントを生成する。Emacsの選択されたフレームをもっとも最近フォーカスされたフレームに切り替えることは、それぞれの端末にある他のフレームがフォーカスをもち続けることを意味しないことに注意することが大事。自分でこの関数を呼び出してはならない。かわりにロジックを@code{after-focus-change-function}につけ加えること。
+@end deffn
+
+@deffn Command handle-switch-frame frame
+この関数はフォーカス通知や最後のイベントとは異なるフレームから到着した入力イベントを含むさまざまな状況においてEmacsが自身のために生成するswitch-frameイベントを処理する。自分でこの関数を呼び出してはならない。
+@end deffn
+
+@defun redirect-frame-focus frame &optional focus-frame
+この関数は@var{frame}から@var{focus-frame}にフォーカスをリダイレクトする。これは@var{frame}にかわって@var{focus-frame}が以降のキーストロークとイベントを受け取るであろうことを意味する。そのようなイベント後には@code{last-event-frame}の値は@var{focus-frame}になるだろう。また@var{frame}を指定したswitch-frameイベントも、かわりに@var{focus-frame}を選択するだろう。
+
+@var{focus-frame}が省略または@code{nil}なら、@var{frame}にたいするすべての既存のリダイレクションがキャンセルされるので、@var{frame}が自身のイベントを再度受け取ることになる。
+
+フォーカスリダイレクトの用途の1つは、ミニバッファーをもたないフレームにたいしてである。これらのフレームは別フレーム上のミニバッファーを使用する。別フレーム上のミニバッファーをアクティブにすることは、そのフレームにフォーカスをリダイレクトすることである。これはたとえマウスがミニバッファーをアクティブにしたフレーム内に留まっていても、ミニバッファーが属すフレームにフォーカスを置く。
+
+フレーム選択はフォーカスリダイレクションの変更も可能にする。@code{foo}が選択されているときにフレーム@code{bar}を選択することにより、@code{foo}を指すすべてのリダイレクションはかわりに@code{bar}を指す。これはユーザーが@code{select-window}を使用してあるフレームから別のフレームに切り替えた際に、フォーカスのリダイレクトが正しく機能することを可能にする。
+
+これはフォーカスが自身にリダイレクトされたフレームが、フォーカスがリダイレクトされていないフレームとは異なる扱いを受けることを意味する。前者にたいして@code{select-frame}は影響するが、後者には影響がない。
+
+このリダイレクションは、それを変更するために@code{redirect-frame-focus}が呼び出されるまで継続する。
+@end defun
+
+@defun frame-focus-state frame
+この関数は@var{frame}の既知の最後のフォーカス状態を取得する。
+
+フレームにフォーカスがないと解っていれば@code{nil}、フォーカスがあると解っていれば@code{t}、フレームのフォーカス状態をEmacsが知らなければ@code{unknown}をリターンする(この最後の状態は明示的なフォーカス通知をサポートしない端末で実行中のTTYフレームで見ることがあるかもしれない)。
+@end defun
+
+@defvar after-focus-change-function
+これはEmacsがフレームへのフォーカスを取得あるいは喪失する可能性に気づいた際に引数なしで呼び出される関数である。フォーカスイベントの配信は非同期であり、期待する順に配信されないかもしれないので、フレームのフォーカス状態に応じて何かを行いたいコードはすべてのフレームをチェックする必要がある。
+
+たとえばフレームへのフォーカス有無にもとづきバックグラウンドカラーをセットするシンプルな関数例を以下に示す:
+
+@lisp
+(add-function :after after-focus-change-function
+              #'my-change-background)
+(defun my-change-background ()
+  (dolist (frame (frame-list))
+    (pcase (frame-focus-state frame)
+      (`t (set-face-background 'default "black" frame))
+      (`nil (set-face-background 'default "#404040" frame)))))
+@end lisp
+
+フォーカスイベント配信の差異や別の要因のせいで、複数フレームが入力イベントをもつように見える場合があるので、このような状況に直面しても大丈夫なように堅牢なコードを記述するべきである。
+
+ウィンドウシステムによってはフォーカスイベントが繰り返し配信されて、期待した値にセットする前に異なるフォーカス状態が配信されるかもしれない。フォーカス通知にもとづくコードはおそらく再表示まで処理を遅延することにより、フォーカス変更から生じるユーザーに可視の更新を``デバウンス(debounce)''する必要がある。
+
+この関数は@code{read-event}の内部を含む任意のコンテキストで呼び出されるかもしれないので、プロセスフィルター記述時と同様の注意を払うこと。
+@end defvar
+
+@defopt focus-follows-mouse
+このオプションはフレーム内にマウスポインターを移動した際にウィンドウマネージャーがフォーカスを転送するかどうかと、その方法についてEmacsに知らせる。意味がある値は以下の3つ:
+
+@table @asis
+@item @code{nil}
+デフォルト値@code{nil}はウィンドウマネージャーが``click-to-focus(フレームがフォーカスを取得するためにフレーム内部でマウスをクリックする必要がある)''のポリシーにしたがう際に使用すること。
+
+@item @code{t}
+値@code{t}はマウスポインターの位置にしたがってウィンドウマネージャーが自動的にフォーカスするが、フォーカスを得たフレームは自動的にレイズされず別のウィンドウシステムのウィンドウに隠されたままかもしれないときに使用すること。
+
+@item @code{auto-raise}
+値@code{auto-raise}はマウスポインターの位置にしたがってウィンドウマネージャーが自動的にフォーカスして、フォーカスを得たフレームは自動的にレイズされる際に使用すること。
+@end table
+
+このオプションが非@code{nil}なら、Emacsは@code{select-frame-set-input-focus}が選択したフレームにマウスポインターを移動する。この関数は@code{other-frame}や@code{pop-to-buffer}などいくつかのコマンドで使用される。
+
+ウィンドウマネージャーは``通常''のフレームのレイズには通常は配慮するので、値@code{t}と@code{auto-raise}を区別する必要はない。これは@code{mouse-autoselect-window}
+(@ref{Mouse Window Auto-selection}を参照)を通じて子フレームをレイズするために有用。
+
+このオオプションは``sloppy''なフォーカス(ウィンドウシステムの別ウィンドウにマウスポインターが移動しないかぎり以前にフォーカスのあったフレームがフォーカスを保持する)と``strict''なフォーカス(マウスポインターが去るとフレームは即座にフォーカスを失う)を区別しないことに注意。ウィンドウマネージャーがフォーカスや自動レイズの遅延をサポートしていなくても、新たなフレームがフォーカスを取得(あるいは自動レイズ)するまでの時間を明示的に指定できる。
+
+変数@code{mouse-autoselect-window} (@ref{Mouse Window
+Auto-selection}を参照)をカスタマイズすることにより、個別のEmacsウィンドウにたいして``focus follows
+mouse''ポリシーを提供できる。
+@end defopt
+
+
+@node Visibility of Frames
+@section フレームの可視性
+@cindex visible frame
+@cindex invisible frame
+@cindex iconified frame
+@cindex minimized frame
+@cindex frame visibility
+
+グラフィカルなディスプレイ上のフレームは@dfn{可視(visible)}、@dfn{不可視(invisible)}、または@dfn{アイコン化(iconified)}されているかもしれません。可視ならそのコンテンツは通常の方法により表示されます。アイコン化されている場合にはそのコンテンツは表示されませんが、ビュー内にフレームを戻すための小さいアイコンがどこかにあります(いくつかのウィンドウマネージャーはこの状態を@dfn{アイコン化}ではなく@dfn{最小化}と呼ぶがEmacsの見地ではこれらは同等である)。フレームが不可視ならまったく表示されません。
+
+@cindex mapped frame
+@cindex unmapped frame
+  可視性の概念はマップ(または非マップ)されたフレームと強い関連性があります。フレーム(より正確にはウィンドウシステムのウィンドウ)は最初に表示されるときに@dfn{マップ済み(mapped)}となり、状態が@code{iconified}や@code{invisible}から@code{visible}に変化します。それとは逆に状態が@code{visible}から@code{iconified}や@code{invisible}に変化したときは、フレームは常に@dfn{非マップ済み(unmapped)}になります。
+
+  テキスト端末では実際に表示されるのは常に選択されたフレームだけなので可視性に意味はありません。
+
+@defun frame-visible-p frame
+この関数はフレーム@var{frame}の可視性の状態をリターンする。値は@var{frame}が可視なら@code{t}、不可視なら@code{nil}、アイコン化されていれば@code{icon}。
+
+テキスト端末上ではたとえ1つのフレームだけが表示されているとしても、この関数の目的にたいしてはすべてのフレームが可視とみなされる。@ref{Raising
+and Lowering}を参照のこと。
+@end defun
+
+@deffn Command iconify-frame &optional frame
+この関数はフレーム@var{frame}をアイコン化する。@var{frame}を省略すると選択されたフレームをアイコン化する。これにより通常は@var{frame}のすべての子フレーム(と子孫)は不可視になる(@ref{Child
+Frames}を参照)。
+@end deffn
+
+@deffn Command make-frame-visible &optional frame
+この関数はフレーム@var{frame}を可視にする。@var{frame}を省略すると選択されたフレームを可視にする。これはフレームを前面に移動しないが、望むなら@code{raise-frame}でこれを行うことができる(@ref{Raising
+and Lowering}を参照)。
+
+通常はフレームを可視とすることにより、すべての子フレーム(と子孫)も同様に可視になる(@ref{Child Frames}を参照)。
+@end deffn
+
+@deffn Command make-frame-invisible &optional frame force
+この関数はフレーム@var{frame}を不可視にする。@var{frame}を省略すると選択されたフレームを不可視にする。これにより通常は@var{frame}のすべての子フレーム(と子孫)も不可視になる(@ref{Child
+Frames}を参照)。
+
+この関数は@var{force}が@code{nil}の場合には、他のすべてのフレームが不可視なら@var{frame}を不可視にすることを拒絶する。
+@end deffn
+
+  フレームの可視性の状態はフレームパラメーターとしても利用可能である。つまりフレームパラメーターとして読み取りと変更ができる。@ref{Management
+Parameters}を参照のこと。ウィンドウマネージャーによりユーザーがフレームのアイコン化や非アイコン化を行うこともできる。これはEmacsが何らかの制御を及ぼすのが可能なレベルより下のレベルにおいて発生するが、Emacsはそのような変化を追跡するために使用するイベントを提供する。@ref{Misc
+Events}を参照のこと。
+
+@defun x-double-buffered-p &optional frame
+この関数は@var{frame}がカレントでダブルバッファリングで描画されていれば非@code{nil}をリターンする。@var{frame}のデフォルトは選択されたフレーム。
+@end defun
+
+
+@node Raising and Lowering
+@section フレームのraise、lower、re-stack
+
+@cindex raising a frame
+@cindex lowering a frame
+@cindex restacking a frame
+@cindex frame stacking order
+@cindex frame Z-order
+@cindex Z-order
+  ほとんどのウィンドウシステムではデスクトップというメタファー(metaphor:
+比喩的概念)が使用されています。このメタファーの一部はシステムレベルのウィンドウ(Emacsではフレーム)がスクリーン表面に向かって、概念的3次元の垂直方向にスタッキングされる(重ねて表示される)というアイデアにもとづいています。スタッキングによる順序は合計であり、通常はスタッキングの順序(またはZオーダー)として参照されます。2つのゥィンドウがオーバーラップする領域では、このオーダーにおいて高位のウィンドウが、下位のウィンドウ(の一部)をカバーします。
+
+  関数@code{raise-frame}と@code{lower-frame}を使用してフレームのZオーダーの一番上に@dfn{raise}したり一番下に@dfn{lower}することができます。関数@code{frame-restack}を使用すれば別のフレームの上や下にフレームを直接@dfn{restack}できます。
+
+  以下で説明するすべての関数はフレーム(および他のウィンドウシステムのウィンドウすべて)の対応するZグループを尊重することに注意してください(@ref{Position
+Parameters}を参照)。たとえば通常はフレームをデスクトップウィンドウよりlower(下位)にすることや、@code{z-group}パラメータ0が非@code{nil}のフレームをウィンドウシステムのタスクバーやツールチップウィンドウよりraise(上位)にすることはできません。
+
+@deffn Command raise-frame &optional frame
+この関数はを@var{frame}のz-groupと同じかlower(下位)にある他のすべのフレームの上位にフレーム@var{frame}
+(デフォルトは選択されたフレーム)をraiseする。@var{frame}が不可視やアイコン化されていたら可視になる。@var{frame}が子フレーム(@ref{Child
+Frames}を参照)なら、親フレームの他のすべての子フレームの上位に@var{frame}をraiseする。
+@end deffn
+
+@deffn Command lower-frame &optional frame
+この関数はを@var{frame}のz-groupと同じか上位にある他のすべのフレームの下位へフレーム@var{frame}
+(デフォルトは選択されたフレーム)をlowerにする。@var{frame}が子フレーム(@ref{Child
+Frames}を参照)なら、親フレームの他のすべての子フレームの下位に@var{frame}をlowerする。
+@end deffn
+
+@defun frame-restack frame1 frame2 &optional above
+この関数は@var{frame2}の下に@var{frame1}を再スタックする(restack:
+再び重ねる)。いずれのフレームも可視で表示エリアがオーバーラップしていたら、@var{frame2}が@var{frame1}を(部分的に)隠すことを暗に示している。オプションの3つ目の引数@var{above}が非@code{nil}なら、この関数は@var{frame2}の上に@var{frame1}を再スタックする。これはいずれのフレームも可視で表示エリアがオーバーラップしていたら、@var{frame1}が@var{frame2}を(部分的に)隠すことを意味している。
+
+この関数は最初のステップではディスプレイから@var{frame1}のウィンドウシステムのウィンドウを削除して、2つ目のステップで(
+@var{above}が真なら)@var{frame2}のウィンドウの下に@var{frame1}のウィンドウを再挿入を行う、2つのステップによりアトミックなアクションを処理すると技術的に考えることができる。したがって@var{frame1}を除く他のすべてのフレームに相対的な@var{frame2}のディスプレイ内でのZオーダー(スタッキングオーダー)は変更されない。
+
+いくつかのウィンドウマネージャーはウィンドウの再スタックを拒絶する。
+@end defun
+
+再スタックの効果は関連するフレームがアイコン化されたり不可視になったりしないかぎり継続することに注意してください。フレームを他のフレームの上位(や下位)に永続的に表示されるフレームグループに追加するためにフレームパラメーター@code{z-group}
+(@ref{Position
+Parameters}を参照)を使用できます。これらのグループのいずれかにフレームが所属するかぎり、再スタックはそのグループ内での相対的なスタッキング位置にのみ効果があります。異なるZグループに所属するフレームにたいする再スタックの効果は未定義です。関数@code{frame-list-z-order}でカレントのフレームスタッキングオーダーをリストできます(@ref{Finding
+All Frames}を参照)。
+
+@defopt minibuffer-auto-raise
+これが非@code{nil}ならミニバッファーをアクティブにすることにより、ミニバッファーウィンドウのあるフレームが前面に移動される。
+@end defopt
+
+  ウィンドウシステム上ではフレームパラメーターを使用して、(フレーム選択時に)auto-raising、(フレーム選択解除時に)auto-loweringを有効にできます。@ref{Management
+Parameters}を参照してください。
+
+@cindex top frame
+  フレームを前面や背面に移動するという概念は、テキスト端末のフレームにも適用できます。各テキスト端末上では一度に表示されるのは常に最前面のフレームだけです。
+
+@defun tty-top-frame &optional terminal
+この関数は@var{terminal}上の最前面のフレームをリターンする。@var{terminal}は端末オブジェクト、フレーム(そのフレームの端末を意味する)、または@code{nil}
+(選択されたフレームの端末を意味する)であること。これがテキスト端末を参照しなければリターン値は@code{nil}。
+@end defun
+
+
+@node Frame Configurations
+@section フレーム構成
+@cindex frame configuration
+
+  @dfn{フレーム構成(frame
+configuration)}はフレームのカレント配置、すべてのプロパティ、および各ウィンドウのウィンドウ構成(@ref{Window
+Configurations}を参照)を記録します。
+
+@defun current-frame-configuration
+この関数はフレームのカレント配置とそのコンテンツを記述するフレーム構成のリストをリターンする。
+@end defun
+
+@defun set-frame-configuration configuration &optional nodelete
+この関数はフレームの状態を@var{configuration}の記述にリストアする。ただしこの関数は削除されたフレームはリストアしない。
+
+この関数は通常は@var{configuration}内にリストされない既存フレームすべてを削除する。しかし@var{nodelete}が非@code{nil}なら、それらのフレームはかわりにアイコン化される。
+@end defun
+
+
+@node Child Frames
+@section 子フレーム
+@cindex child frames
+@cindex parent frames
+
+子フレームはウィンドウ(@ref{Windows}を参照)と``通常''のフレームとの中間にあるオブジェクトです。ウィンドウのよように所属するフレームにアタッチされますが、ウィンドウとは異なり互いにオーバーラップすることができます。子フレームの1つのサイズや位置を変更しても兄弟となる他の子フレームのサイズや位置は変化しません。
+
+  仕様により子フレームの作成や変更を行う操作は特別な関数やカスタマイズ可能な変数ではなくフレームパラメーター(@ref{Frame
+Parameters}を参照)の助けを借りて実装されています。子フレームはグラフィカル端末でのみ意味があることに注意してください。
+
+  子フレームを新たに作成したり通常のフレームを子フレームに変換するためには、そのフレームの@code{parent-frame}パラメーター(@ref{Frame
+Interaction
+Parameters}を参照)にすでに存在するフレームをセットします。このパラメーターで指定されたフレームは、パラメーターが変更やリセットされるまでフレームの親フレームになります。これにより技術的には子フレームのウィンドウシステムのウィンドウは、親フレームのウィンドウシステムのウィンドウの子ウィンドウになります。
+
+@cindex reparent frame
+@cindex nest frame
+  @code{parent-frame}パラメーターはいつでも変更できます。これを他のフレームにセットすれば子フレームが@dfn{reparent(親を変更)}されます。別の子フレームにセットすればフレームを@dfn{ネストされた(nested)}子フレームにします。にセットすればフレームの状態をトップレベルのフレーム(ウィンドウシステムのウィンドウがディスプレイーのルートウィンドウの子であるようなフレーム)にリストアします。@footnote{Haikuで子フレームが可視なのは親フレームがアクティブなときだけであり、これはHaikuウィンドウシステムの制限によるものです。同じ制限により子フレームはトップレベルの親、すなわち階層上一番上位にある親をもたないフレームの上でのみ表示が保証されています。}
+
+  子フレームは任意にネスト(入れ子)させることができるので、フレームは子フレームと親フレームの両方になることができます。また子フレームと親フレームの相対的な役割はいつでも逆転させることができます(たとえ子フレームを親フレームより十分小さいサイズに保つことが通常はよいアイデアであるとしても)。フレームをそのフレームの祖先にしようと試みるとエラーがシグナルされます。
+
+   ほとんどのウィンドウシステムは親フレームのネイティブエッジ(@ref{Frame
+Geometry}を参照)で子フレームをクリップします(これらのエッジの外側は通常は不可視になる)。子フレームのパラメーター@code{left}と@code{top}は親のネイティブフレームの左上隅から相対的な位置を指定します。親フレームがリサイズされたとき、この位置は概念的には変更されません。
+
+  NSビルドは親フレームのエッジで子フレームをクリップしないので、子フレーム自身が可視であっても親フレームを隠さないように配置することができます。
+
+  通常は親フレームを移動することにより、すべての子フレームとその子孫も相対的な位置が変化しないように一緒に移動されます。フック@code{move-frame-functions}
+(@ref{Frame Position}を参照)は子フレームの親フレームにたいする相対的な位置が変化したときだけ実行されます。
+
+  親フレームがリサイズされた際には、子フレームは概念的には以前のサイズと親フレームの左上隅からの相対的な位置を保ちます。これは親フレームが縮小されると子フレームが(部分的に)不可視になるかもしれないことを意味しています。親フレームのリサイズ時に常に子フレームを比例してリサイズおよび再配置するためにパラメーター@code{keep-ratio}を使用できます(@ref{Frame
+Interaction Parameters}を参照)。これにより親フレームが縮小された際にフレームの一部が隠されることを防ぐことができます。
+
+  可視な子フレームは常に親フレームの最上位に表示されるので、親フレームの下位に表示可能なNSビルド以外では親フレームの一部を隠すことになります。これは常に親ウィンドウであるデスクトップのルートウィンドウの最上位に表示されるトップレベルフレームのウィンドウシステムのウィンドウに相当します。親フレームがアイコン化されたり不可視(@ref{Visibility
+of Frames}を参照)になったときには子フレームは不可視になります。親フレームが非アイコン化されたり可視になると子フレームは可視になります。
+
+  親フレームが削除される際には、その前に子フレームが再帰的に削除されます(@ref{Deleting
+Frames}を参照)。この規則には1つの例外があります。子フレームが他のフレームの代理ミニバッファーフレーム(@ref{Minibuffers and
+Frames}を参照)を果たす際には、親フレームが削除されるまで削除されずに留まります。。この時点でその子フレームをミニバッファーとして使用するフレームが残っていなければ、Emacsは子フレームの削除も試みます。理由は何であれこの削除が失敗すると、その子フレームがトップレベルのフレームになります。
+
+  子フレームがメニューバーやツールバーをもてるかどうかはウィンドウシステムやウィンドウマネージャーに依存します。ほとんどのウィンドウシステムは子フレームのメニューバーを明示的に許可していません。フレームの初期パラメーターのセッティングでメニューバーとツールバーの両方を無効にすることを推奨します。
+
+  子フレームは通常はタイトルバーやエクスターナルボーダー(@ref{Frame
+Geometry}を参照)のようなウィンドウマネージャーの装飾を表示しません。子フレームがメニューバーやツールバーを表示しないときには他の種類のフレームのボーダーをエクスターナルボーダーのかわりに使用できます(@ref{Layout
+Parameters}を参照)。
+
+  特にX(ただしGTK+ビルド以外)ではフレームのアウターボーダーを使用できます。MS-Windowsでは非0のアウターボ^ダーを指定することにより、幅が1ピクセルのエクスターナルボーダーが表示されます。すべてのウィンドウシステムにおいてインターナルボーダーを使用できます。いずれのケースでもフレームパラメーター@code{undecorated}
+(@ref{Management Parameters}を参照)で子フレームにたいするウィンドウマネージャーの装飾を無効にすることを推奨します。
+
+  マウスで装飾されていない子フレームのリサイズや移動を行うためには、特別なフレームパラメーターを使う必要があります(@ref{Mouse Dragging
+Parameters}を参照)。子フレームのインターナルボーダーが存在する場合には、そのフレームが非@code{nil}の@code{drag-internal-border}パラメーターをもっていればマウスによるフレームのリサイズに使用できます。@code{snap-width}がセットされていれば、それは親フレームのエッジやコーナーそれぞれでフレームを@dfn{スナップ(snaps)}するピクセル数を表します。
+
+  マウスで子フレーム全体をドラッグするためには2つの方法があります。@code{drag-with-mode-line}パラメーターが非@code{nil}なら、ミニバッファーウィンドウのないフレーム(@ref{Minibuffer
+Windows}を参照)の最下ウィンドウのモードラインエリアを通じたドラッグが有効になります。@code{drag-with-header-line}パラメーターが非@code{nil}なら、フレームの最上ウィンドウのヘッダーラインを通じたドラッグが有効になります。
+
+  子フレームにドラッグ可能なヘッダーラインやモードラインを与えるためには、ウィンドウパラメーター@code{mode-line-format}と@code{header-line-format}
+(@ref{Window
+Parameters}を参照)を使用するのが手軽です。これらにより(@code{drag-with-header-line}の選択時に)不要なモードラインを削除したり、フレームのドラッグと干渉するマウス感応エリアを削除できます。
+
+  ユーザーが親フレームの外へフレームをマウスでドラッグすれば、親フレームのスクリーン領域外へ簡単にドラッグできます。マウスボタンを一度離してしまうと、そのようなフレームを取得するのは難しくなります。そのような状況を避けるために、フレームのパラメーター@code{top-visible}および@code{bottom-visible}
+(@ref{Mouse Dragging Parameters}を参照)をセットすることをお勧めします。
+
+  ヘッダーラインでユーザーにフレームをドラッグさせたければ、子フレームの@code{top-visible}パラメーターに数値をセットします。@code{top-visible}に数値をセットすることによって、親フレームの上エッジを超えて子フレームの上エッジをドラッグすることが抑制されます。モードラインを介してフレームをドラッグさせたければ、@code{bottom-visible}に数値をセットしてください。これは親フレームの下エッジを超えて子フレームの下エッジをドラッグすることを抑制します。いずれの場合でも、セットした数値は同時にドラッグの間に可視に留まる子フレーム領域の幅および高さをピクセルで指定します。
+
+  @code{display-buffer-in-child-frame} (@ref{Buffer Display Action
+Functions}を参照)を介してバッファー表示に子フレームが使用されている際には、バッファーを表示中のウィンドウがquitされる際にフレームを適切に処理するために、フレームの@code{auto-hide-function}パラメーターに関数をセットできます(@ref{Frame
+Interaction Parameters}を参照)。
+
+  たとえば別のウィンドウに補完を表示する等でミニバッファーとの相互作用中子フレームを使用する際には、ミニバッファーのexit時にフレームを適切に処理するために@code{minibuffer-exit}パラメーター(@ref{Frame
+Interaction Parameters}を参照)が便利です。
+
+  子フレームの振る舞いは他のいくつかの点においても、トップレベルのフレームから逸脱しています。それらのいくつかを以下に挙げます:
+
+@itemize @bullet
+@item
+子フレームにたいする最大化とアイコン化の意味はウィンドウシステムに大きく依存する。原則としてアプリケーションは子フレームでこれらのオプションを決して呼び出すべきではない。デフォルトでは子フレームで@code{iconify-frame}を呼び出すと子フレームにに対応するトップレベルのフレームにたいしてアイコン化を試みる。異なる挙動を得るためには、以下で説明するオプション@code{iconify-child-frame}をカスタマイズできる。
+
+@item
+子フレームのraise、lower、restack (@ref{Raising and Lowering}を参照)や@code{z-group}
+(@ref{Position Parameters}を参照)の変更では、同じ親をもつ子フレームのstack順だけが変更される。
+
+@item
+ウィンドウシステムの多くは子フレームの透明度(@ref{Font and Color Parameters}を参照)を変更できない。
+
+@item
+いくつかのウィンドウシステムでは、祖先のウィンドウの可視部分のマウスクリックによる、子フレームから親以外の祖先へのフォーカスの移動は失敗する。最初に直接的な親のウィンドウシステムのウィンドウを直接クリックする必要があるだろう。
+
+@item
+ウィンドウマネージャーマウスポリシーにしたがってフォーカスを子フレームに拡大しないかもしれない。この問題にたいして@code{mouse-autoselect-window}のカスタマイズが助けになるかもしれない(@ref{Mouse
+Window Auto-selection}を参照)。
+
+@item
+子フレームへのドロップ(@ref{Drag and
+Drop}を参照)はすべてのウィンドウシステムで動作を保証されない。親フレームにオブジェクトをドロップしたり、他の祖先にドロップするものもある。
+@end itemize
+
+  以下の2つの関数は子フレームと親フレームで処理を行う際に役に立つかもしれません:
+
+@defun frame-parent &optional frame
+この関数は@var{frame}の親フレームをリターンする。@var{frame}の親フレームはウィンドウシステムのウィンドウが@var{frame}のウィンドウシステムのウィンドウの親ウィンドウであるようなEmacsフレーウである。そのようなフレームが存在すれば、@var{frame}はそのフレームの子フレームとみなされる。
+
+この関数は@var{frame}に親フレームがなければ@code{nil}をリターンする。
+@end defun
+
+@defun frame-ancestor-p ancestor descendant
+この関数は@var{ancestor}が@var{descendant}の祖先なら非@code{nil}をリターンする。@var{ancestor}が@var{descendant}の親フレームか@var{descendant}の親フレームの祖先なら、@var{ancestor}は@var{descendant}の祖先である。@var{ancestor}と@var{descendant}にはいずれも生きたフレームを指定しなければならない。
+@end defun
+
+既存ウィンドウの最大の空エリア内への子フレームの描画に使用できる関数@code{window-largest-empty-rectangle}にも注意してください(@ref{Coordinates
+and Windows}を参照)。これは子フレームがウィンドウ内に表示されているテキストを隠さないようにするために有用です。
+
+子フレームにたいする@code{iconify-frame}の挙動の調整に以下のオプションのカスタマイズが役に立つかもしれません。
+
+@defopt iconify-child-frame
+このオプションはEmacsにたいして子フレームのアイコン化を要求された際に処理を行う方法を指定する。@code{nil}なら@code{iconify-frame}が子フレームに呼び出された際には何も行わない。@code{iconify-top-level}なら子フレームの祖先であるトップレベルのフレームをアイコン化する。@code{make-invisible}ならアイコン化せずに子フレームを不可視にしようと試みる。
+
+その他の値は子フレームのアイコン化を試みることを意味する。そのような試みはすべてのウィンドウマネージャーで許容されるとはかぎらず、子フレームがユーザーのアクションに無応答になることさえあり得るので、デフォルトではトップレベルのフレームをアイコン化する。
+@end defopt
+
+
+@node Mouse Tracking
+@section マウスの追跡
+@cindex mouse tracking
+@c @cindex tracking the mouse   Duplicates track-mouse
+
+  マウスを@dfn{トラック(track:
+追跡)}するのが有用なことが時折あります。マウスのトラックとはマウスの位置を示す何かを表示して、マウス移動とともにそのインジケーターを移動するという意味です。効果的にマウスをトラックするためには、マウスが実際に移動するまで待機する手段が必要になります。
+
+  マウスをトラックするためには、マウスのモーション(motion:
+移動)を表すイベントを問い合わせるのが便利な方法です。その後はそのイベントを待機することによりモーションを待機できます。それに加えて発生し得る他の類のイベントも簡単に処理できます。ボタンのリリースのような何か他のイベントだけを待機してマウスを永久にトラックすることは、通常は望ましくないのでこれは有用です。
+
+@defmac track-mouse body@dots{}
+このマクロはマウスモーションイベントの生成を有効にして@var{body}を実行する。@var{body}はモーションイベントを読み取るために、通常は@code{read-event}を使用してそれに対応して表示を変更する。マウスモーションイベントのフォーマットについては@ref{Motion
+Events}を参照のこと。
+
+@var{body}内の最後のフォームの値が@code{track-mouse}の値となる。ボタンのリリースを示すup-eventや、何であれトラッキングを停止すべきタイミングを意味するイベントを確認したら@var{body}からリターンするようデザインすること。この変数の値はマウスボタンが押されたときに、そのマウスイベントがどのように報告されるかも制御する。値が@code{dropping}か@code{drag-source}なら、ポインター下にあるフレームに関連するモーションイベントが報告される。そのようなフレームがなければ、そのイベントはマウスボタンが最初に押されたフレームと関連のあるイベントとして報告される。加えて値が@code{drag-source}なら、マウス位置リストの@code{posn-window}は@code{nil}になる。これはマウスポインター下にあるフレームが直接見えないときに有用。
+
+@code{track-mouse}マクロでは変数@code{track-mouse}を非@code{nil}値にバインドすることにより、Emacsにマウスモーションイベントを生成させる。この変数が特別な値@code{dragging}をもつなら、ディスプレイエンジンにマウスポインターのシェイプ(形状)の変更を控えるように追加で指示する。これはEmacsが表示する大きな範囲を横断するマウスドラッグを要するLispプログラムでは、そうしなければ表示箇所に応じてマウスポインターのシェイプが変更されてしまうので望ましいだろう(@ref{Pointer
+Shape}を参照)。したがってドラッグ中にオリジナルのマウスポインターシェイプを保つ必要があるLispプログラムは、@var{body}の先頭で@code{track-mouse}を値@code{dragging}にバインドすること。
+@end defmac
+
+マウスモーションをトラックする通常の目的は、それ以降に発生するボタンのプッシュやリリースをカレント位置に示すことです。
+
+多くの場合はテキストプロパティ@code{mouse-face}(@ref{Special
+Properties}を参照)を使用することにより、マウスをトラックする必要性を回避できます。これはより低レベルで機能して、かつLispレベルのマウストラッキングよりスムーズに実行されます。
+
+@ignore
+@c These are not implemented yet.
+
+These functions change the screen appearance instantaneously.  The
+effect is transient, only until the next ordinary Emacs redisplay.  That
+is OK for mouse tracking, since it doesn't make sense for mouse tracking
+to change the text, and the body of @code{track-mouse} normally reads
+the events itself and does not do redisplay.
+
+@defun x-contour-region window beg end
+This function draws lines to make a box around the text from @var{beg}
+to @var{end}, in window @var{window}.
+@end defun
+
+@defun x-uncontour-region window beg end
+This function erases the lines that would make a box around the text
+from @var{beg} to @var{end}, in window @var{window}.  Use it to remove
+a contour that you previously made by calling @code{x-contour-region}.
+@end defun
+
+@defun x-draw-rectangle frame left top right bottom
+This function draws a hollow rectangle on frame @var{frame} with the
+specified edge coordinates, all measured in pixels from the inside top
+left corner.  It uses the cursor color, the one used for indicating the
+location of point.
+@end defun
+
+@defun x-erase-rectangle frame left top right bottom
+This function erases a hollow rectangle on frame @var{frame} with the
+specified edge coordinates, all measured in pixels from the inside top
+left corner.  Erasure means redrawing the text and background that
+normally belong in the specified rectangle.
+@end defun
+@end ignore
+
+@node Mouse Position
+@section マウスの位置
+@cindex mouse position
+@cindex position of mouse
+
+  関数@code{mouse-position}と@code{set-mouse-position}はマウスのカレント位置にたいするアクセスを提供します。
+
+@defun mouse-position
+この関数はマウス位置の記述子をリターンする。値は@code{(@var{frame} @var{x}
+. @var{y})}のような形式であり、@var{x}と@var{y}は@var{frame}のネイティブ位置(@ref{Frame
+Geometry}を参照)から相対的に、@var{frame}のデフォルト文字サイズ(@ref{Frame
+Font}を参照)の単位で位置を与える整数(丸められている可能性あり)。
+@end defun
+
+@defvar mouse-position-function
+この変数の値は非@code{nil}なら@code{mouse-position}にたいして呼び出される関数。@code{mouse-position}はリターン直前に、自身の通常のリターン値を唯一の引数としてこの関数を呼び出して、それが何であれその関数がリターンした値をリターンする。
+
+このアブノーマルフックは@file{xt-mouse.el}のようにLispレベルでマウス処理を行う必要があるパッケージのために存在する。
+@end defvar
+
+@defvar tty-menu-calls-mouse-position-function
+非@code{nil}なら、上述のようにTTYメニューは@code{mouse-position-function}を呼び出す。これは再表示をトリガーする等、TTYメニューからの@code{mouse-position-function}呼び出しが安全ではない場合のために存在する。
+@end defvar
+
+@defun set-mouse-position frame x y
+この関数はフレーム@var{frame}内の位置@var{x}、@var{y}に@dfn{マウスをワープ(warps the
+mouse)}する。引数@var{x}と@var{y}は@var{frame}のネイティブ位置(@ref{Frame
+Geometry}を参照)から相対的に、@var{frame}のデフォルト文字サイズ(@ref{Frame
+Font}を参照)の単位で位置を与える整数(丸められている可能性あり)。
+
+結果となるマウス位置は@var{frame}のネイティブフレームに拘束される。この関数は@var{frame}が不可視なら何も行わない。リターン値に意味はない。
+@end defun
+
+@defun mouse-pixel-position
+この関数は@code{mouse-position}と似ているが文字単位ではなくピクセル単位の座標をリターンする。
+@end defun
+
+@defun set-mouse-pixel-position frame x y
+この関数は@code{set-mouse-position}のようにマウスをワープするが、@var{x}と@var{y}が文字単位ではなくピクセル単位である点が異なる。
+
+結果となるマウス位置は@var{frame}のネイティブフレームに拘束される。この関数は@var{frame}が不可視なら何も行わない。リターン値に意味はない。
+@end defun
+
+フラフィカルな端末上では、以下の2つの関数によりマウスカーソルの絶対位置の取得とセットができます。
+
+@defun mouse-absolute-pixel-position
+この関数は選択されたフレームのディスプレイの位置(0, 0)から相対的に、マウスカーソルの位置の座標をピクセル単位のコンスセル(@var{x}
+. @var{y})でリターンする。
+@end defun
+
+@defun set-mouse-absolute-pixel-position x y
+この関数はマウスカーソルを位置(@var{x},
+@var{y})に移動する。座標@var{x}と@var{y}は、選択されたフレームのディスプレイの位置(0, 0)から相対的なピクセル値と解釈される。
+@end defun
+
+以下の関数はフレーム上のマウスカーソルがレントで可視かどうかを確認します:
+
+@defun frame-pointer-visible-p &optional frame
+この述語関数は@var{frame}上に表示されたマウスポインターが可視なら非@code{nil}、それ以外は@code{nil}をリターンする。@var{frame}が省略または@code{nil}ならそれは選択されたフレームを意味する。これは@code{make-pointer-invisible}が@code{t}にセットされているときに有用。これによりポインターが隠されていることを知ることができる。@ref{Mouse
+Avoidance,,,emacs, The Emacs Manual}を参照のこと。
+@end defun
+
+@need 3000
+
+@node Pop-Up Menus
+@section ポップアップメニュー
+@cindex menus, popup
+
+  Lispプログラムがポップアップメニューを表示して、ユーザーがマウスで候補を選択できます。テキスト端末上では、マウスが利用不可ならキーボードのモーションキー@kbd{C-n}や@kbd{C-p}、上矢印キーや下矢印キーで候補を選択できます。
+
+@defun x-popup-menu position menu
+この関数はポップアップメニューを表示して、ユーザーが何を選択したかの指標をリターンする。
+
+引数@var{position}には、メニュー左上隅をスクリーン上のどこに置くか指定する。これはマウスボタンや@code{touchscreen-begin}イベント(ユーザーがボタンを操作した位置にメニューを置くよう指示する)、または以下の形式のリストのいずれか:
+
+@example
+((@var{xoffset} @var{yoffset}) @var{window})
+@end example
+
+@noindent
+ここで@var{xoffset}と@var{yoffset}は@var{window}の左上隅からピクセル単位で測られた座標である。@var{window}はウィンドウかフレーム。
+
+@var{position}が@code{t}なら、それはマウスのカレント位置の使用を意味する(テキスト端末上でマウスが利用不可ならフレーム左上隅)。@var{position}が@code{nil}なら、それは実際にメニューをポップアップせずに、@var{menu}内で指定されたキーマップと等価なキーバインディングを事前に計算することを意味する。
+
+引数@var{menu}はメニュー内で何を表示するかを意味する。これはキーマップかキーマップのリストを指定できる(@ref{Menu
+Keymaps}を参照)。この場合にはリターン値はユーザー選択に対応するイベントのリスト。選択がサブメニュー内で発生した場合には、このリストには複数の要素がある(@code{x-popup-menu}はそのイベントシーケンスにバインドされたコマンドを実際には実行しないことに注意)。テキスト端末やメニュータイトルをサポートするツールキットでは、@var{menu}がキーマップならタイトルは@var{menu}のプロンプト文字列、@var{menu}がキーマップのリストなら最初のキーマップのプロンプト文字列から取得される(@ref{Defining
+Menus}を参照)。
+
+かわりに@var{menu}は以下の形式をもつこともできる:
+
+@example
+(@var{title} @var{pane1} @var{pane2}...)
+@end example
+
+@noindent
+ここでpaneはそれぞれ以下の形式のリストである
+
+@example
+(@var{title} @var{item1} @var{item2}...)
+@end example
+
+@var{item}はそれぞれコンスセル@code{(@var{line}
+.
+@var{value})}であること。ここで@var{line}は文字列、@var{value}は@var{line}が選択された場合にリターンされる値。メニューキーマップとは異なり@code{nil}の@var{value}は選択不可のメニューアイテムを作成しない。かわりに@var{item}にコンスセルではなく文字列を指定できる。これは選択不可のメニューアイテムを作成する。
+
+たとえば有効な選択からマウスを外してクリックしたり、@kbd{C-g}をタイプすることにより、有効な選択を行うことなくユーザーがメニューを取り除いた場合は、通常はquitして@code{x-popup-menu}はリターンしない。しかし@var{position}がマウスボタンイベント(ユーザーがマウスでメニューを呼び出したことを示す)なら、quitは発生せずに@code{x-popup-menu}はリターンする。
+@end defun
+
+  @strong{使用上の注意:
+}メニューキーマップで定義したプレフィクスキー処理を行える場合には、メニューの表示に@code{x-popup-menu}を使用しないでください。メニューの実装にメニューキーマップを使用する場合には、@kbd{C-h
+c}と@kbd{C-h
+a}でメニュー内の個別アイテムの確認、およびそれらにたいするヘルプを提供できます。かわりに@code{x-popup-menu}を呼び出すコマンドを定義することによりメニューを実装した場合には、ヘルプ機能はそのコマンド内部で何が起こっているか知ることができず、そのメニューアイテムのヘルプを何も与えることはできません。
+
+  マウス移動によってサブメニュー間を切り替えるメニューバーのメカニズムは、それが@code{x-popup-menu}を呼び出すか確認するためにコマンドの定義を見ることができません。したがって@code{x-popup-menu}を使用してサブメニューの実装を試みた場合には、それは統合された方式でメニューバーとともに機能しません。メニューバーのすべてのサブメニューは親メニューのメニューキーマップにより実装されて、決して@code{x-popup-menu}で実装されないのはこれが理由です。@ref{Menu
+Bar}を参照してください。
+
+  メニューバーのサブメニューのコンテンツを変化させたい場合にも、その実装には依然としてメニューキーマップを使用するべきです。コンテンツを変化させるためには、必要に応じてメニューキーマップのコンテンツを更新するためにフック関数を@code{menu-bar-update-hook}に追加してください。
+
+@defvar x-pre-popup-menu-hook
+  @code{x-popup-menu}の呼び出しから直接、またはメニューキーマップを通して表示されるポップアップメニューの表示直前に実行されるノーマルフック。何らかの理由によりポップアップメニューを表示せずに@code{x-popup-menu}がリターンしたら呼び出されない。
+@end defvar
+
+@node On-Screen Keyboards
+@section オンスクリーンキーボード
+
+  オンスクリーンキーボードとはシステムによって提供される、実際のキーボードとして機能するクリック可能なボタン列が付属した特別な種類のポップアップソフトウェアのことです。
+
+  特定のシステム(@ref{On-Screen Keyboards,,,emacs, The Emacs
+Manual}を参照)では、ユーザーが何をタイプしようとしているかに応じて、Emacsがオンスクリーンキーボードの表示と非表示を処理します。
+
+@defun frame-toggle-on-screen-keyboard frame hide
+この関数はフレーム@var{frame}にかわりオンスクリーンキーボードを表示または非表示にする。@var{hide}が非@code{nil}ならオンスクリーンキーボードを表示、それ以外なら非表示。
+
+この関数はオンスクリーンキーボードが表示されている@strong{可能性があるかどうか}をリターンする。後でオンスクリーンキーボードを非表示にするかどうかを判断するためには、このリターン値は使用すること。
+
+システムがオンスクリーンキーボードの表示タイミングを自動的に検知する場合、あるいはシステムがオンスクリーンキーボードを何も提供しない場合には効果がない。
+@end defun
+
+@node Dialog Boxes
+@section ダイアログボックス
+@cindex dialog boxes
+
+  ダイアログボックスとはポップアップメニューの一種です。外見は多少異なり常にフレーム中央に表示されて、階層を1つしかもたず1つ以上のボタンがあります。ユーザーが``yes''、``no''、および別のいくつかの候補で応答ができる質問を尋ねるのがダイアログボックスの主な用途です。単一のボタンではユーザーに重要な情報の確認を強いることもできます。関数@code{y-or-n-p}や@code{yes-or-no-p}は、マウスのクリックで呼び出されたコマンドから呼び出された際には、キーボードのかわりにダイアログボックスを使用します。
+
+@defun x-popup-dialog position contents &optional header
+この関数はポップアップダイアログボックスを表示してユーザーが何を選択したかの指標をリターンする。引数@var{contents}は提供する選択肢を指定する。これは以下のフォーマットをもつ:
+
+@example
+(@var{title} (@var{string} . @var{value})@dots{})
+@end example
+
+@noindent
+これは@code{x-popup-menu}にたいして単一のpaneを指定するリストのように見える。
+
+リターン値は選択された候補の@var{value}。
+
+@code{x-popup-menu}の場合と同じように、このリストの要素はコンスセル@code{(@var{string}
+. @var{value})}のかわりに単なる文字列かもしれない。これは選択不可のボックスを作成する。
+
+このリスト内に@code{nil}がある場合には、それは左手側と右手側のアイテムを分ける。つまり@code{nil}より前のアイテムは左、@code{nil}より後のアイテムは右に表示される。リスト内に@code{nil}を含めない場合には、およそ半数ずつが両サイドに表示される。
+
+ダイアログボックスは常にフレームの中央に表示される。引数@var{position}はどのフレームかを指定する。可能な値は@code{x-popup-menu}の場合と同様だが、正確な座標や個別のウィンドウは問題ではなくフレームだけが問題となる。
+
+@var{header}が非@code{nil}ならボックスのフレームタイトルは@samp{Information}、それ以外は@samp{Question}になる。前者は@code{message-box}
+(@ref{message-box}を参照)にたいして使用される(テキスト端末上ではボックスタイトルは表示されない)。
+
+いくつかの構成ではEmacsは本当のダイアログボックスを表示できないので、かわりにフレーム中央のポップアップメニュー内に同じアイテムを表示する。
+
+たとえばウィンドウマネージャーを使用して有効な選択を行うことなくユーザーがダイアログボックスを取り除いた場合には、通常はquitして@code{x-popup-dialog}はリターンしない。
+@end defun
+
+@node Pointer Shape
+@section ポインターの形状
+@cindex pointer shape
+@cindex mouse pointer shape
+
+  テキストプロパティ@code{pointer}や、イメージならイメージプロパティ@code{:pointer}と@code{:map}を使用して、特定のテキストやイメージにたいしてマウスポインターのスタイルを指定できます。以下のテーブルの値を、これらのプロパティに使用できます。実際のシェイプはシステムにより異なります。記述してあるのはその例です。これらのプロパティには以下のテーブル内の値が使用できます。説明では例を示していますが、実際の外観はシステムに依存します。
+
+@table @code
+@item text
+@itemx nil
+テキスト上にあるときの通常のマウスポインタースタイル(``I''のようなシェイプ)。
+
+@item arrow
+@itemx vdrag
+@itemx modeline
+北西向き矢印。
+
+@item hand
+上向きの手。
+
+@item hdrag
+左右の矢印。
+
+@item nhdrag
+上下の矢印。
+
+@item hourglass
+回転する輪。
+@end table
+
+  ウィンドウの空部分(void parts:
+バッファーコンテンツのどの部分にも対応しない部分)の上では、マウスポインターは通常@code{arrow}スタイルを使用しますが、@code{void-text-area-pointer}をセットすることにより異なるスタイルを指定できます。
+
+@defopt void-text-area-pointer
+この変数は空テキストエリアにたいするマウスポインタースタイルを指定する。このエリアには行末の後やバッファー終端行の下が含まれる。デフォルトでは@code{arrow}(non-text)ポインタースタイルを使用する。
+@end defopt
+
+  一部のウィンドウシステムを使用する際には、変数@code{x-pointer-shape}をセットすることにより@code{text}の実際の外見を指定できます。
+
+@defvar x-pointer-shape
+この変数はEmacsフレーム内でポインタースタイル@code{text}に通常使用するポインターシェイプを指定する。
+@end defvar
+
+@defvar x-sensitive-text-pointer-shape
+この変数はマウスがマウスセンシティブテキスト上にあるときのポインターシェイプを指定する。
+@end defvar
+
+  これらの変数は新たに作成されるフレームに影響します。これらは通常は既存のフレームに効果はありませんが、フレームのマウスカラーのインストール時にはこれら2つ変数のカレント値もインストールされます。@ref{Font
+and Color Parameters}を参照してください。
+
+  これらのポインターシェイプのいずれかを指定するために使用可能な値はファイル@file{lisp/term/x-win.el}内で定義されています。それらのリストを確認するには@kbd{M-x
+apropos @key{RET} x-pointer @key{RET}}を使用してください。
+
+@node Window System Selections
+@section ウィンドウシステムによる選択
+@cindex selection (for window systems)
+@cindex clipboard
+@cindex primary selection
+@cindex secondary selection
+
+  Xのようなウィンドウシステムでは、異なるアプリケーション間のデータ転送は@dfn{選択(selections)}により行われます。ウィンドウシステムはそれぞれ任意の数の@dfn{選択タイプ(selection
+types)}を定義し、すべてのウィンドウシステムが独自にデータを格納できますが、一般的に使用されるのは@dfn{クリップボード(clipboard)}、@dfn{プライマリー選択(primary
+selection)}、@dfn{セカンダリー選択(secondary
+selection)}の3つだけです。これら3つの選択を使用するEmacsコマンドについては@ref{Cut and Paste,, Cut and
+Paste, emacs, The GNU Emacs
+Manual}を参照してください。このセクションではウィンドウシステムによる選択の読み取りとセットを行う低レベル関数について説明します。特定のウィンドウシステムにおける選択タイプとデータフォーマットについては@ref{Accessing
+Selections}を参照してください。
+
+@deffn Command gui-set-selection type data
+この関数はウィンドウシステムの選択をセットする。これは選択タイプ@var{type}、それに割り当てる値@var{data}という2つの引数を受け取る。
+
+@var{type}はシンボルであること。通常は@code{PRIMARY}、@code{SECONDARY}、@code{CLIPBOARD}のいずれかである。これらは一般的にはXウィンドウシステムの慣例に対応する大文字のシンボル名である。@var{type}が@code{nil}ならそれは@code{PRIMARY}を意味する。
+
+@var{data}が@code{nil}なら、それはその選択をクリアーすることを意味する。それ以外なら@var{data}は文字列、シンボル、整数、オーバーレイ、同じバッファーを指す2つのマーカーのコンスを指定できる。オーバーレイとマーカーのペアは、そのオーバーレイまたはマーカー間のテキストを意味する。引数@var{data}には有効な非ベクターの選択のベクターも指定できる。
+
+@var{data}が文字列なら、そのテキストプロパティによって個々のデータタイプに使用する値を指定できる。たとえば@var{data}が@code{text/uri-list}という名前のテキストプロパティを保有していれば、データタイプ@code{text/uri-list}とともに@code{gui-get-selection}を呼び出すことによって、@var{data}自身のかわりにそのプロパティの値が使用される。
+
+この関数は@var{data}をリターンする。
+@end deffn
+
+@defun gui-get-selection &optional type data-type
+この関数はEmacsや他のプログラムによりセットアップされた選択にアクセスする。これは@var{type}と@var{data-type}の2つの引数を受け取る。@var{type}は選択のタイプでありデフォルトは@code{PRIMARY}。
+
+@var{data-type}引数は別プログラムからLispデータに取得したrawデータの変換に用いるデータ変換のフォームを指定する。Xで有効なデータタイプの一覧は@ref{X
+Selections}、それ以外については@ref{Other Selections}を参照のこと。
+@end defun
+
+@defopt selection-coding-system
+これは選択データのエンコーディングに用いるコーディングシステム(@ref{Coding
+Systems}を参照)を提供する変数であり、MS-WindowsおよびXで効果がある。MS-Windowsで実行中のMS-DOSポートでも用いられ、Windowsのクリップボードのテキストにアクセスできる。
+
+Xではこの変数の値はテキストデータタイプのサブセットにたいする選択データのデコードに用いられる、@code{gui-get-selection}のコーディングシステムを提供する。ポリモーフィック@code{TEXT}データタイプ(polymorphic
+type:
+多様型)にたいする選択要求にたいして、Unicodeではなく@code{compound-text-with-extensions}によるエンコーディングで応答するよう強制も行う。
+
+MS-Windowsではクリップボードデータの一部としてMS-Windowsのクリップボードがデコーディングに関する情報を提供する上、必要に応じてUTF-16かlocale固有のエンコーディングが自動的に使用されるので、この変数は一般的には無視される。わたしたちは古いWindows
+9Xでのみこの変数の値をセットすることをお勧めする。それ以外で使用するとしたら、クリップボードが提供する情報が何らかの理由により使用できないような、非常に稀な場合だけだろう。
+
+この変数のデフォルト値はMS-Windows 95、98、Meではシステムコードページ、 Windows
+NT/W2K/XP/Vista/7/8/10/11では@code{utf-16le-dos}、MS-DOSでは@code{iso-latin-1-dos}、それ以外の場合は@code{nil}。
+@end defopt
+
+後方互換性のために@code{gui-get-selection}と@code{gui-set-selection}にたいして、Emacs
+25.1以前の名前@code{x-get-selection}と@code{x-set-selection}が時代遅れのエイリアスとして存在します。
+
+@node Accessing Selections
+@section 選択へのアクセス
+
+  @code{gui-get-selection}や@code{gui-set-selection}が理解できるデータタイプと選択については正確には指定されておらず、Emacsを実行しているウィンドウシステムによって異なります。
+
+  それと同時に@code{gui-set-selection}は多くの複雑さを抽象化しています。@var{data}引数はウィンドウシステムへの転送や要求したクライアントに適するように描画されるように、システム固有のコードにそのまま与えられます。
+
+  選択にたいするもっとも包括的な実装はXウィンドウシステムの実装です。この実装は歴史の成果であり(XはEmacsがサポートした最初のウィンドウシステム)、技術的検討による出来事でもありました。X選択はクライアントとの間でテキストやマルチメディアを転送するための単なる便宜的手法ではなく汎用的なクライアント間通信システムであり、選択とデータタイプの設計はネズミ算式に急増したのです。
+
+  この混乱に拍車をかけたのが、XにはICE(Inter-Client
+Exchange)と呼ばれる別のクライアント間通信メカニズムが存在したことです。EmacsがICEを使用するのはセッションマネージャーとの通信においてのみであり、これは別のトピックです。
+
+@menu
+* X Selections::             Xの選択のデータタイプ(その他)。
+* Other Selections::         これらが他のウィンドウシステムで機能する方法。
+@end menu
+
+@node X Selections
+@subsection X選択
+
+  Xは選択データにたいする固定化されたデータタイプの定義と選択の個数の固定化を控えてきました。選択は文字列名にたいしてXサーバーが発行する29ビットの一意な識別子である、Xの``アトム(atom)''によって識別されます。この複雑さはEmacsにより隠蔽されています。アトムの名前と同じ名前のシンボルをLispが提供すると、Emacsはそれ以上の介入を行わずにそれらの識別子を要求するのです。
+
+  Xであるプログラムが選択を``セット''したとき、Xは実際にはそのプログラムを選択の``オーナー(owner:
+所有者)''にします。それからXサーバーがプログラムに選択リクエストを送信します。プログラムは選択データを要求したクライアントに応答する義務があります。
+
+  同様にプログラムがXサーバーから選択データを``ゲット''するのではなく、プログラムの選択リクエストはその選択にたいして最後に所有権を表明したウィンドウとともに、データへのリクエストにたいして応答が期待されるクライアントに送信されるのです。
+
+  選択にたいするリクエストにはそれぞれ3つのパラメーターが組み込まれています:
+
+@itemize @bullet
+@item
+@c Not a typo: X spells ``requestor'' with an o.
+選択をリクエストした、リクエスト元となるプログラム(@dfn{リクエスター(requestor)}とも呼ばれる)を識別するウィンドウ。
+
+@item
+@dfn{ターゲット(target)}、すなわち所有者が変換を要する選択を識別するアトム。変換ターゲットとはリクエスターが望むデータの種類と考えるのが一番簡単であろう。lEmacsがリクエストした選択では、@code{gui-get-selection}の@var{type}引数によってターゲットが判断される。
+
+@item
+リクエスターが最後に入力を受信した時点でのXサーバー時刻を表す32ビットタイムスタンプ。これはLispコードとは無関係であり、Xサーバー、所有者、リクエスター間での同期をうながすことだけが目的のパラメーター。
+@end itemize
+
+  選択の所有者は一連のバイト、32ビットワード、およびそれらのワードタイプを識別する別のアトムをリクエスターに転送することによって応答を行います。選択のリクエスト後に、選択の所有者が転送したデータをLisp表現(@code{gui-get-selection}がリターン)に変換するために、Emacsがデータフォーマットとデータタイプに独自の解釈を適用します。
+
+  Emacsは一連の任意のバイトから構成される選択データを、それらのバイトを保持するユニバイト文字列に変換します。このユニバイト文字列は符号なし数値として単一の16ビットまたは32ビットのワードから構成され、さらに符号なし数値のベクターとして複数のそのようなワードから構成されます。この一般的なパターンの例外として、以下の変換ターゲットからのデータにたいして、Emacsは特別な扱いをほどこします:
+
+@table @code
+@item INTEGER
+このタイプの16ビットまたは32ビットのワードは、符号なし整数ではなく符号つき整数として扱われる。選択データに複数のワードがあればベクター、それ以外はその整数自体をリターンする。
+
+@item ATOM
+このタイプの32ビットのワードはXアトムとして扱われて、その名前がアトムを識別するようなLispシンボル(単独またはベクター)としてリターンされる。無効なアトムは@code{nil}に置き換えられる。
+
+@item COMPOUND_TEXT
+@item UTF8_STRING
+@item STRING
+選択データのタイプにセットされた単一の@code{foreign-selection}テキストプロパティは、それらのデータタイプへのリクエストを継承するユニバイト文字列に配置される。
+@end table
+
+  選択の所有者はそれぞれ少なくとも2つの選択ターゲットをリターンしなければなりません。1つ目はその所有者がサポートする選択データを記述するアトムの個数である@code{TARGETS}、2つ目は内部的な目的のためにXクライアントが使用する@code{MULTIPLE}です。選択の所有者は任意の個数の他のターゲットをサポートでき、それらの一部はXコンソーシアム(@url{http://x.org/releases/X11R7.6/doc/xorg-docs/specs/ICCCM/icccm.html,
+Inter-Client Communication Conventions
+Manual})によって標準化されているかもしれないし、他の@code{UTF8_STRING}のようなターゲットについてはXFree86プロジェクトによって標準化されるはずでした(しかしその標準化が完了することはなかった)。
+
+  慣例により特定の選択ターゲットへのリクエストは特定のタイプ、あるいはいくつかのタイプのいずれか(選択の所有者にとって一番都合がいいタイプ)がリターンされるかもしれません。後者の選択ターゲットのタイプについては@dfn{ポリモーフィックターゲット(polymorphic
+target:
+多様ターゲット)}と呼ばれています。あるリクエストへの応答において０，選択ターゲットがデータを何もリターンしないこともあり得ます。その後に副作用として選択の所有者は何らかのアクションを実行します。したがってこのように応答されるターゲットは@dfn{副作用ターゲット(side-effect
+targets)}と呼ばれます。
+
+  以下は@code{CLIPBOARD}、@code{PRIMARY}、@code{SECONDARY}のターゲットからのリクエスト時には標準とおおむね一貫性のある挙動を示す選択ターゲットの一部です。
+
+@table @code
+@item ADOBE_PORTABLE_DOCUMENT_FORMAT
+このターゲットはAdobe Systemの``PDF(Portable Document
+Format)''のフォーマットのデータを文字列としてリターンする。
+
+@item APPLE_PICT
+このターゲットはMacintoshコンピューターで用いられている``PICT''イメージフォーマットのデータを文字列としてリターンする。
+
+@item BACKGROUND
+@item BITMAP
+@item COLORMAP
+@item FOREGROUND
+これらビットマップのバックグラウンドカラーのピクセル値、ビットマップのX識別子、バックグラウンドとフォアグラウンドが割り当てられたカラーマップ、ビットマップのフォアグラウンドカラーのピクセル値という4つのターゲットは、組み合わせられてXサーバーに格納されたビットマップイメージを使用するために必要な整数をリターンする。
+
+@item CHARACTER_POSITION
+このターゲットは選択データを含むテキストフィールドで選択データの開始と終了の位置(単位はバイト)を記述するタイプ@code{SPAN}の2つの32ビット符号なし整数をリターンする。
+
+@item COMPOUND_TEXT
+このターゲットはXコンソーシアムのマルチバイトエンコーディングシステムのタイプ@code{COMPOUND_TEXT}の文字列をリターンする。
+
+@item DELETE
+このターゲットは何もリターンしないが、副作用として選択を含んだテキストフィールドから選択のコンテンツを削除する。
+
+@item DRAWABLE
+@item PIXMAP
+このターゲットはそれぞれがXサーバーのdrawableかpixmapに相当する符号なし32ビット整数のリストをリターンする。
+
+@item ENCAPSULATED_POSTSCRIPT
+@item _ADOBE_EPS
+このターゲットはEPS(Encapsulated Postscript)のコードを含む文字列をリターンする。
+
+@item FILE_NAME
+このターゲットはNULL文字で区切られた1つ以上のファイル名を含む文字列をリターンする。
+
+@item HOST_NAME
+このターゲットは選択の所有者が実行されているマシンのFQDN(Fully-Qualified Domain Name:
+完全修飾ドメイン名)を含む文字列をリターンする。
+
+@item USER
+このターゲットは選択の所有者が実行されているマシンのユーザー名を含む文字列をリターンする。
+
+@item LENGTH
+。このターゲットは選択データの長さを含む32ビットまたは16ビットの符号なし整数をリターンする。
+
+@item LINE_NUMBER
+このターゲットは選択データを含むテキストフィールド内における選択データの開始と終了の位置に相当する行番号を記述するタイプ@code{SPAN}の2つの32ビット符号なし整数をリターンする。
+
+@item MODULE
+このターゲットは選択データを含むすべての関数の名前をリターンする。主にテキストエディターによってリクエストされる。
+
+@item STRING
+このターゲットは選択データをISO Latin-1フォーマット、Unix改行のタイプ@code{STRING}の文字列としてリターンする。
+
+@item C_STRING
+このターゲットは選択データを``C文字列''としてリターンする。これは何であれ所有者が用いているエンコーディングによるNULL終端された、あるいはまったく終端されていない、または終端されているいないに関わらずASCII文字列のいずれかであるようなraw選択データを意味すると解釈される。
+
+@item UTF8_STRING
+これは選択データをUTF-8,でエンコードされたEOLフォーマット未指定のタイプ@code{UTF8_STRING}の文字列としてリターンする。
+
+@item TIMESTAMP
+このターゲットは選択にたいして所有者が所有権を得た際のXサーバータイムスタンプを16ビットまたは32ビットのタイプ@code{CARDINAL}のワードとしてリターンする。
+
+@item TEXT
+このポリモーフィックターゲットは選択データを@code{COMPOUND_TEXT}、@code{STRING}、@code{C_STRING}、@code{UTF8_STRING}のいずれかから何であれ選択の所有者にとって都合がいいデータタイプの文字列としてとしてリターンする。
+@end table
+
+  @code{selection-coding-system}および@code{next-selection-coding-system}がどちらもセットされておらず関数@code{gui-get-selection}を用いてターゲット@code{STRING}、@code{COMPOUND_TEXT}、@code{UTF8_STRING}へのリクエストを作成すると結果となる文字列はそれぞれ@code{iso-8859-1}、@code{compound-text-with-extensions}、@code{utf-8}という正しいコーディングシステムによってデコードされます。
+
+  上述のターゲット(およびさまざまなプログラムが独自の用途に用いる多くのターゲット)に加えて、いくつかの著名なプログラムやツールキットが適切なX標準化団体との対話なしで独自に選択データタイプを定義しています。これらのターゲットは一般的に@code{text/html}や@code{image/jpeg}のようなMIMEタイプに習って命名されており、以下のデータ形式をリターンすることが目撃されてきました:
+
+@itemize @bullet
+@item
+未終端、改行終端、NULL文字終端されたイメージまたはテキストのファイルのファイル名。
+
+@item
+適当なフォーマットのイメージまたはテキストのデータ。
+
+@item
+適当なフォーマットでファイルを識別する@code{file://}のURI(またはおそらく改行かNULLで終端されたURIリスト)。
+@end itemize
+
+  これらの選択ターゲットを最初に使用したのはNetscapeでしたが、現在ではあらゆる種類のプログラムが提供しており、それらは特にGTK+またはQtツールキットの最近のバージョンにもとづいています。
+
+  Emacsには選択の所有者としての役割りを果たす能力もあります。@code{gui-set-selection}が呼び出されると提供される選択データは内部的に記録されて、Emacsはセットされる選択の所有権を取得します。
+
+@defvar selection-converter-alist
+選択ターゲットから``選択コンバーター(selection
+converter)''となる関数へのalist。選択リクエストを受信すると、Emacsはリクエストされた選択ターゲットに関連する選択コンバーターを検索する。
+
+選択コンバーターはリクエストされた選択を識別するアトムに相当するシンボル、リクエストされた選択ターゲット、@code{gui-set-selection}でセットする値という3つの引数で呼び出される。選択コンバーターはデータタイプと個数を示すシンボルのコンス、シンボル、数値かシンボルのベクター、またはそのようなコンスのcdrのいずれかをリターンしなければならない。
+
+選択コンバーターの値が特別なシンボル@code{NULL}の場合にはリクエスターにリターンされるデータタイプは@code{NULL}にセットされて、応答には何のデータも送信されない。
+
+値が文字列の場合には、ユニバイト文字列でなければならない。データタイプを明示的に指定しなければ、リクエスターにはタイプ@code{STRING}でデータは転送される。
+
+値がシンボルならその値の``アトム''が取得されて、リクエスターには32ビット値(データタイプが指定されていなければタイプは@code{ATOM})として転送される。
+
+@code{-32769}から@code{32768}の間の数値の場合には、リクエスターには16ビット値(データタイプが指定されていなければタイプは@code{INTEGER})として転送される。
+
+上記以外の数値なら32ビット値とみなされる。たとえ符号なしの数値がリターンされても、リクエスターがタイプ@code{INTEGER}のワードを符号つきとして扱うだろう。符号なしの値をリターンするには、そこでタイプ@code{CARDINAL}を指定すること。
+
+値がシンボルか数値のベクターの場合には、リクエスターへの応答は複数のアトムか数値からなるリストになる。リターンされるデータタイプが明示的に指定されていなければ、リストの最初の要素のデータタイプ。
+@end defvar
+
+  デフォルトでは、Emacsは以下の選択ターゲットにたいしてセコンバーターを構成します:
+
+@table @code
+@item TEXT
+この選択コンバーターは以下のように選択データをリターンする:
+
+@itemize @bullet
+@item
+選択コンテンツがマルチバイトを含まない、あるいは``8ビットrawバイトバイト''(@ref{Text
+Representations}を参照)を含む場合にはタイプ@code{C_STRING}の文字列。
+
+@item
+選択コンテンツがISO-Latin-1テキストとして表現可能ならタイプ@code{STRING}の文字列。
+
+@item
+選択コンテンツがXコンソーシアムのCompound Text
+Encodingでエンコードでき、@code{selection-coding-system}か@code{next-selection-coding-system}が@code{:mime-charset}プロパティに@code{x-ctext}をもつコーディングシステムにセットされていれば、タイプ@code{COMPOUND_TEXT}の文字列。
+
+@item
+上記以外ならタイプ@code{UTF8_STRING}の文字列。
+@end itemize
+
+@item COMPOUND_TEXT
+この選択コンバーターは選択データをタイプ@code{COMPOUND_TEXT}の文字列としてリターンする。
+
+@item STRING
+この選択コンバーターは選択データをISO-Latin-1フォーマットでエンコードされたタイプ@code{STRING}の文字列としてリターンする。
+
+@item UTF8_STRING
+この選択コンバーターは選択データをUTF-8フォーマットでリターンする。
+
+@item text/plain
+@item text/plain;charset=utf-8
+@item text/uri-list
+@item text/x-xdnd-username
+@item XmTRANSFER_SUCCESS
+@item XmTRANSFER_FAILURE
+@item FILE
+@item _DT_NETFILE
+これらはドラッグアンドドロップ操作中に内部の用途にたいして使用される選択コンバーターであり、@code{XdndSelection}以外の選択にたいしては利用できない。
+
+@item TARGETS
+この選択コンバーターは、Emacsが理解できる選択ターゲットごとに1つずつアトムのリストをリターンする。
+
+@item MULTIPLE
+この選択コンバーターはCコードで実装されており、同時に複数の選択ターゲットを指定する選択リクエストの転送を効果的に実装するために用いられる。
+
+@item LENGTH
+この選択コンバーターは選択データの長さをバイト単位でリターンする。
+
+@item DELETE
+この選択コンバーターはドラッグアンドドロップ操作中に内部的な用途のために使用される。
+
+@item FILE_NAME
+この選択コンバーターは選択データを含むバッファーのファイル名をリターンする。
+
+@item CHARACTER_POSITION
+この選択コンバーターは選択データを含むバッファー内の選択の終了それぞれの文字位置をリターンする。
+
+@item LINE_NUMBER
+@item COLUMN_NUMBER
+この選択コンバーターは選択データを含むバッファー内の選択の終了それぞれの行番号、または列番号をリターンする。
+
+@item OWNER_OS
+この選択コンバーターはEmacsを実行中のオペレーティングシステムの名前をリターンする。
+
+@item HOST_NAME
+この選択コンバーターはEmacsを実行中のマシンのFQDN(完全修飾ドメイン名)をリターンする。
+
+@item USER
+この選択コンバーターは実行中のEmacsのユーザーアカウントのユーザー名をリターンする。
+
+@item CLASS
+@item NAME
+この選択コンバーターはEmacsが使用しているリソースのクラスまたは名前をリターンする。
+
+@item INTEGER
+この選択コンバーター文字通り整数値をリターンする。
+
+@item SAVE_TARGETS
+@item _EMACS_INTERNAL
+これらの選択コンバーターは内部的な用途のために用いられる。
+@end table
+
+  @code{INTEGER}を除いたすべての選択コンバーターは次のいずれかのデータが@code{gui-set-selection}に提供されることを期待します:
+
+@itemize @bullet
+@item
+文字列。
+
+@item
+@w{@code{(@var{beg} @var{end}
+@var{buf})}}という形式のフォーム。ここで@var{beg}と@var{end}はバッファー@var{buf}において選択データの境界を記述するマーカーかオーバーレイ。
+@end itemize
+
+@node Other Selections
+@subsection その他の選択
+
+  MS-Windows、Nextstep、Haiku、Androidのようなウィンドウシステムの選択はXの選択とは異なります。これらのウィンドウシステムは前ノードで説明した``選択コンバーター''メカニズムを採用せずに、それぞれが独自の選択メカニズムを場当たり的な使用しています。一般的にサポートされている選択は@code{PRIMARY}、@code{CLIPBOARD}、@code{SECONDARY}ですがドラッグアンドドロップのデータを記録する@code{XdndSelection}選択はNextstepとHaikuでも利用できます。
+
+@cindex PGTK selections
+  GTKはxの選択システムをエミュレートする道わ模索していますがそのエミュレーションは完全に信頼の置けるものではなく、GDKバックエンドが使用される問題それぞれの全体的な品質に依存します。したがってPGTKとともにビルドしたEmacsでは、XとともにビルドしたEmacsと同じインターフェイスが提供されますが、選択ターゲットの多くは役に立たないでしょう。
+
+@cindex MS-Windows selection emulation
+@cindex MS-Windows primary and secondary selection
+  たとえクリップボードはあっても、MS-Windowsというオペレーティングシステムにはプライマリーやセカンダリーという選択の概念がありません。このシステムでは要求に応じてクリップボードへの保存や取得を行う際に、Emacsがプライマリー選択とセカンダリー選択の存在をシミュレートしています。
+
+  プライマリー選択とセカンダリー選択のシミュレーションは、@code{gui-set-selection}に与えられた選択との関連を指定するシンボルの@code{x-selections}プロパティ(すなわち@code{gui-get-selection}の@var{type}引数)の値を保存するすることによって行われます。その後の@code{gui-get-selection}呼び出しごとにその値がリターンされますが、その値はさらなる検査(型チェックなど)の対象ではありません。このような状況下では、@var{data-type}引数は通常は無視されます(ただし@code{TARGETS}に関する条件については以下参照)。
+
+@cindex MS-Windows clipboard
+  クリップボード選択を考慮しなければならない場合(@var{type}が@code{CLIPBOARD}なら常時)には、@code{gui-set-selection}は提供された値が文字列であることを検証して、@code{selection-coding-system}で構成されたコーディングシステムでエンコードした後にシステムのクリップボードに保存します。@code{gui-get-selection}の呼び出し側は@var{data-type}を@code{STRING}か@code{TARGETS}のいずれかにセットすることを要求されます。
+
+  @code{gui-get-selection}の呼び出しにおいて@var{data-type}に@code{TARGETS}がセットされている場合には、選択データが存在すればXでの場合と同じようにシンボルのベクターがリターンされます。前提条件となるデータ変換ルーチンが存在しないので、@code{STRING}以外のフォーマットでクリップボードのデータを要求することは不可能です。@code{selection-coding-system}によってエンコードしてクリップボードに文字列を保存する場合と同じように、同じコーディングシステムによりデコードされた文字列が読み取られます選択データを保存する際に問題が生じた場合には、この変数、および同類の@code{next-selection-coding-system}は特に吟味する価値があるでしょう。
+
+@cindex Nextstep selections
+  Xにおける標準であるこれら3つの選択はNextstepにも存在しますが、Emacsに唯一可能なのはこれらの選択への文字列の保存だけです。@code{selection-coding-system}の値に関わらずテキストは@code{utf-8-unix}として一律にエンコードされるとはいえ、@code{gui-set-selection}の呼び出しにはMS-Windowsの場合と同様の制限が課せられます。@code{gui-get-selection}はより寛大なので、以下の選択ターゲットにたいしてリクエストを受け付けます:
+
+@c FIXME: how is the text coding system determined, and do image/* or
+@c application/* return image data or file names?
+@itemize @bullet
+@item text/plain
+@item image/png
+@item text/html
+@item application/pdf
+@item application/rtf
+@item application/rtfd
+@item STRING
+@item text/plain
+@item image/tiff
+@end itemize
+
+  Nextstepでは@code{XdndSelection}選択も、@code{gui-set-selection}に提供された値を記録するレポジトリという形式で存在します。これの唯一の目的は、基本的なドラッグアンドドロップ関数である@code{x-begin-drag}にたいする値を保存することにあります(@ref{Drag
+and Drop}を参照)。他の何らかのによって読み取った値については何の保証もありません。
+
+@cindex Haiku selections
+  Haikuシステムにおける選択はXにおいて慣例的な3つの選択すべて、およびドラッグアンドドロップデータを記録する@code{XdndSelection}から構成されています。
+
+  前者の3つの選択にたいして@code{gui-set-selection}が呼び出されると、提供されたデータは@dfn{選択エンコーダー(selection
+encoder)}という関数のリストによりウィンドウサーバーの``メッセージ''へと変換されて、ウィンドウサーバーに送信されます。
+
+@defvar haiku-normal-selection-encoders
+選択エンコーダー関数のリスト。@code{gui-set-selection}が呼び出されると、その@var{selection}と@var{value}の引数により、このリスト内の関数がそれぞれ順に呼び出される。これらの関数が非@code{nil}をリターンする場合には、リターン値は@w{@code{(@var{key}
+@var{type}
+@var{value})}}という形式のリストでなければならない。このリストにおいて@var{key}は転送されるデータの名前(一般的にはたとえば@samp{"text/plain"}のようにそのデータのMIMEタイプ)、@var{type}はデータのタイプを指定するシンボルか数値(これらにより@var{value}の解釈も管理される)。以下のリストに有効なデータタイプ、およびそれらによって@var{value}がどのように解釈されることになるかを示す。
+
+@table @code
+@item string
+ユニバイト文字列。この文字列はメッセージ内に配置された後にNULL終端される。
+
+@item ref
+ファイル名。ファイルを特定してそのファイルを識別するinodeをメッセージ内に配置する。
+
+@item short
+16ビット整数値。
+
+@item long
+32ビット整数値。
+
+@item llong
+64ビット整数値。
+
+@item byte
+@item char
+0から255の符号なしバイト。
+
+@item size_t
+0から1までの数値から、Emacs実行中のコンピューターのワードサイズの2乗を減じた値。
+
+@item ssize_t
+Cの@code{ssize_t}型に適合する数値。
+
+@item point
+スクリーン上の座標を指定する2つの浮動小数点数のコンス。
+
+@item float
+@item double
+フォーマット未指定の単精度または倍精度の浮動小数点数。
+
+@item (haiku-numeric-enum MIME)
+特定のMIMEタイプのデータを含んだユニバイト文字列。
+@end table
+@end defvar
+
+  @code{gui-get-selection}の呼び出しにより通常だと選択メッセージ内に@var{data-type}という名前のデータがリターンされますが、代替えの名前によって@var{data-type}を置き換える場合には、以下のX選択ターゲットのいずれかが用いられます:
+
+@table @code
+@item STRING
+これはXにおいてLatin-1テキストを表す: ``text/plain;charset=iso-8859-1''
+
+@item UTF8_STRING
+UTF-8テキストを表す: ``text/plain''
+@end table
+
+  @var{data-type}が@code{STRING}のようなテキストタイプ、あるいはパターン@samp{`text/*}にマッチするMIMEタイプの場合には、文字列データはリターンされる前に適切なコーディングシステムによってデコードされます。
+
+  さらに@var{TIMESTAMP}と@code{TARGETS}の2つのデータタイプは特別に取り扱われます。前者にたいしてリターンされる値はシステムの起動以降に選択が変更された回数(タイムスタンプでは@emph{ない})、後者については他の場合と同じように任意の選択データタイプのベクターです。
+
+@cindex Android selections
+  MS-Windowsと同じようにAndroidはクリップボードを提供しますがプライマリー選択とセカンダリー選択はありません。@code{gui-set-selection}は@code{gui-get-selection}呼び出し後にリターンされる値を変数に保存することでプライマリー選択とセカンダリー選択をシミュレートします。
+
+  @code{gui-get-selection}にはクリップボードからタイプ@code{STRING}のUTF-8文字列データ、@code{TAREGTS}データタイプ、イメージデータや任意のMIMEタイプのアプリケーションデータをリターンする能力があります。@code{gui-set-selection}はたとえデータが@code{selection-coding-system}の値に影響を受けなくても、MS-Windowsの場合と同じように文字列データだけをセットできます。これとは対照的にプライマリー選択およびセカンダリー選択との間で保存と読み取りができるのは文字列データだけです。ただしこのデータがEmacs以外のプログラムとやり取りされることはないので、何らかのコーディングシステムによるエンコーディングやデコーディングの対象ではありません。
+
+@node Yanking Media
+@section メディアのyank
+
+  ウィンドウシステムの選択で保存されるデータはプレーンテキストだけではありません。選択データにイメージやその他のバイナリーデータを含めたり、HTMLやPostScriptによってインスタンス化されたリッチテキストコンテンツを含めることが可能です。これらのデータに付随する選択データタイプはプレーンテキストにたいする選択データタイプとは異なるので、そのようなデータの挿入は@dfn{yankメディアハンドラー(yank-media
+handlers)}と呼ばれる一連の関数によって容易になります。これらの関数はメジャーモードが挿入処理を任せるためにメジャーモードがそれぞれ登録して、@code{yank-media}コマンドの実行時に保証されていれば呼び出されるのです。
+
+@defun yank-media-handler types handler
+カレントバッファーに適用するyankメディアハンドラーを登録する。
+
+@var{types}は選択データタイプ(@ref{Accessing
+Selections}を参照)を指示するシンボル、そのようなタイプにマッチするregexp、あるいはこれらのシンボルおよびregexpのリスト。たとえば:
+
+@example
+(yank-media-handler 'text/html #'my-html-handler)
+(yank-media-handler "image/.*" #'my-image-handler)
+@end example
+
+選択が@var{types}にマッチするデータタイプを提案する場合には選択のデータを挿入するために、関数@var{handler}がマッチする選択データタイプを示すシンボル、@code{gui-get-selection}がリターンしたデータとともに呼び出される。
+@end defun
+
+@code{yank-media-types}コマンドはカレントで利用可能な選択データタイプのリストを表示します。このコマンドは一般的に折衷的で一貫性の低い寄せ集めのデータタイプを提案するプログラムにおいてyankメディアハンドラーを実装する際に役に立つでしょう。
+
+@node Drag and Drop
+@section ドラッグアンドドロップ
+@cindex drag and drop
+
+  ドラッグアンドドロップで転送されるデータは、プレーンテキストかファイルやその他のリソースを示すURLのリストであることが一般的です。テキストをドロップするとドロップした場所にテキストが挿入されますが、それが不可能ならリソースはkillリングに保存されます。
+
+  ドロップされたURLは変数@code{dnd-protocol-alist}内の適切な@dfn{DNDハンドラー関数(DND handler
+functions)}、または変数@code{browse-url-handlers}と@code{browse-url-default-handlers}に設定された``URLハンドラー''に提供されます。いずれのタイプのハンドラーにもマッチが存在しなければプレーンテキストとみなされてバッファーに挿入されます。
+
+@defvar dnd-protocol-alist
+この変数はURLをマッチさせるregexp、およびマッチしたURLのドロップ時に呼び出されるDNDハンドラー関数からなるalist。
+
+@cindex dnd-multiple-handler, a symbol property
+ハンドラー関数が@code{dnd-multiple-handler}プロパティがセットされたシンボル(@ref{Symbol
+Properties}を参照)の場合には、ドロップ時にはそのregexpにマッチするすべてのURLのリストが与えられる。このプロパティがなければ、それらのURLそれぞれにたいしてハンドラー関数が1回呼び出される。この1つ目の引数の後には実行するアクションを識別する@code{copy}、@code{move}、@code{link}、@code{private}、@code{ask}いずれかのシンボルを指定する。
+
+@var{action}が@var{private}なら、それはドロップ操作を開始したプログラムが受信者側に特定の動作を要求しない。この場合に行うべき妥当なアクションはそのURLのオープン、あるいはカレントバッファーへのコンテンツのコピーとなる。それ以外の@var{action}は、@code{dnd-begin-file-drag}にたいする@var{action}引数と同じ意味合いとなる。
+
+処理が完了したら、ハンドラー関数は行ったアクションを示すシンボルをリターンしなければならない。リターンするシンボルは指定されたアクション、あるいはドロップのソースにたいして所定のアクションが実行されなかったことを伝えるシンボル@code{private}のいずれか。
+
+ドロップ内の重複するアイテムのサブセットに複数のハンドラーが一致する際には、もっとも多くのアイテムにたいしてマッチするハンドラーがそのサブセットをオープンするために呼び出される。提供されたアイテムは(たとえそれらも同様にマッチしても)後続の他のハンドラーには保留される。
+@end defvar
+
+@cindex drag and drop, X
+@cindex drag and drop, other formats
+  EmacsはテキストとURL以外のデータを受け入れるための手段は用意していません。これを可能にするためのウィンドウシステムのインターフェイスは、一貫性をもって抽象化するにはあまりに異なるからです。特定のドラッグアンドドロッププロトコルは受信者にそのような制御を拒むので、DNDハンドラーにも実行しようとするアクションにたいして影響を与えることは許されていません。X11のドラッグアンドドロップの実装は、選択の転送を使用し多くの共通点を共有する土台となる複数のプロトコルに基礎を置いており、以下の関数と変数を通じた低レベルのアクセスが提供されています:
+
+@defvar x-dnd-test-function
+この関数はEmacsがドロップを受け入れるべきかを確認するために呼び出される。以下の3つの引数で呼び出される:
+
+@itemize @bullet
+@item
+ドラッグ中のアイテムの下にあるウィンドウ、すなわちドロップを受信するバッファーのウィンドウ。アイテムがフレームのウィンドウ以外のコンポーネント上(スクロールバー、ツールバーなど)にある場合には、フレーム自体が供される。
+
+@item
+ドロップのソースによって提案されたアイテムにたいして実行するアクションを表すシンボル。@code{move}、@code{copy}、@code{link}、@code{ask}のいずれか。これらのシンボルの意味は@code{x-begin-drag}の場合と同様。
+
+@item
+そのアイテムが提供する選択データタイプのベクター(@ref{X Selections}を参照)。
+@end itemize
+
+この関数はドロップを拒絶する@code{nil}、あるいは実行するアクション(DNDハンドラー関数への転送など)とリクエストされた選択データタイプからなるコンスのいずれかをリターンしなければならない。このコンスでリターンされるアクションはシンボル@code{private}でもよく、これは実行するアクションが確定していないことを暗に示す。
+@end defvar
+
+@defvar x-dnd-known-types
+@code{x-dnd-test-function}の変更は一般的に保証されていない。ドロップを受け入れるためのデフォルトの基準セットはこの選択データタイプのリストを変更すれば調整できるため。要素はそれぞれシンボルであり、デフォルトの``テスト関数''によってデータタイプのリストで要素の名前をもつシンボルが見つかった場合には、その関数がドロップを受け入れるよう仕向けられる。
+
+このリストへの新たなエントリーの導入は、相手方となるハンドラー関数が@code{x-dnd-types-alist}に追加されなければ有用ではない。
+@end defvar
+
+@defvar x-dnd-types-alist
+この変数は選択データタイプを示す文字列、およびそのタイプがドロップされた際に呼び出される関数とのalist。
+
+これらの関数はそれぞれ3つの引数を提供する。1つ目は@code{x-dnd-test-function}の場合のようにドロップ箇所の下にあるウィンドウかフレーム、2つ目は実行するアクション(テスト関数がリターンするアクションのいずれかかもしれない)、3つ目は選択データそれ自体(@ref{Accessing
+Selections}を参照)。
+@end defvar
+
+  X11のドラッグアンドドロッププロトコルによって提供される選択データタイプは、ICCCMおよびそれに準拠するクリップボードやプライマリー選択の所有者によって提供される選択データタイプとは異なる場合があります。よくある例としては@code{"text/plain;charset=utf-8"}のようなlMIMEのタイプ名(``utf-8''の大文字小文字が異なる)から、@code{UTF8_STRING}のような標準的なXの選択名への置き換えです。
+
+@cindex XDS
+@cindex direct save protocol
+@vindex x-dnd-direct-save-function
+  @acronym{XDS}プロトコル(X Direct Save
+Protocol)により、プログラムがドロップするファイルにたいする命名責任を受信者に委譲することが可能になります。このようなドロップが発生すると、ドロップに応答するために別の関数が用いられて、DNDハンドラーおよび前述したX固有のインターフェイスの大部分が回避されます。
+
+@defvar x-dnd-direct-save-function
+この変数ｎは@acronym{XDS}プロトコルを用いて2ステップの手続きを経て、ドロップされたファイルの登録と命名を行う関数をセットすること。この関数は@var{need-name}、@var{filename}という2つの引数を受け取る。
+
+@enumerate 1
+@item
+ファイルのドラッグ元であるアプリケーションは、ファイルを保存するためにEmacsにたいして完全なファイル名の提供を求める。この目的のために1つ目の引数@var{need-name}に非@code{nil}、2つ目の引数@var{filename}に保存するファイルのディレクトリー部分を除いた名前をセットしてdirect-save関数が呼び出される。この関数はファイルを保存するための完全に展開された絶対ファイル名をリターンする必要がある。たとえばDiredウィンドウにファイルがドラッグされれば、そのファイルのディレクトリーは当然ドロップされた場所に表示されているファイルのディレクトリーになるだろう。何らかの理由によりファイルの保存が不可能な場合には、この関数はドラッグアンドドロップ操作をキャンセルする@code{nil}をリターンする必要がある。
+
+@item
+ファイルのドラッグ元のアプリケーションは、1回目のdirect-save関数呼び出しでリターンされた名前でファイルを保存する。ファイルの保存に成功したら1つ目の引数@var{need-name}に@code{nil}、2つ目の引数@var{filename}に保存したファイルの完全な絶対ファイル名をセットして、もう一度direct-save関数を呼び出す。この関数にはファイルが保存されたという事実に鑑み、何であれ必要な処理を行うことが期待される。たとえばDiredならそこに新たなファイルを表示して、ディスプレイ上のディレクトリーを更新する必要があるだろう。
+@end enumerate
+
+デフォルトの@code{x-dnd-direct-save-function}は@code{x-dnd-save-direct}。
+@end defvar
+
+@defun x-dnd-save-direct need-name filename
+引数@var{need-name}が非@code{nil}で呼び出されると、この関数はファイルを保存するためにユーザーに絶対ファイル名の入力を求める。指定されたファイルがすでに存在する場合には、上書きするかどうかの入力をユーザーに追加で求めて、ユーザーが上書きに同意した場合のみ絶対ファイル名をリターンする。
+
+引数@var{need-name}が@code{nil}で呼び出された際には、カレントバッファーがDiredモード、あるいはDiredを継承する子孫の場合にはDiredの一覧リストをリバート、それ以外の場合には@code{find-file}
+(@ref{Visiting Functions}を参照)を呼び出してそのファイルをvisitする。
+@end defun
+
+@defun x-dnd-save-direct-immediately need-name filename
+この関数は@code{x-dnd-save-direct}と同様に機能するが、引数@var{need-name}が非@code{nil}で呼び出されても、ファイルを保存するための完全なファイル名の入力をユーザーに求めずに、カレントバッファーのデフォルトディレクトリーにたいして@var{filename}引数を展開してリターンする(デフォルトディレクトリーにその名前のファイルが既に存在する場合に確認を求めるのは変わらず)。
+@end defun
+
+@cindex initiating drag-and-drop
+  カレントのウィンドウシステムでサポートされていれば、Emacsから他のプログラムへのコンテンツのドラッグも可能です。以下はこのために提供される関数です:
+
+@cindex drop target, in drag-and-drop operations
+@defun dnd-begin-text-drag text &optional frame action allow-same-frame
+関数は@var{frame}から別のアプリケーション(@dfn{ドロップターゲット}と呼ばれる)への@var{file}のドラッグアンドドロップを開始して、@var{text}がドロップされるか操作がキャンセルされるとリターンする。
+
+@var{action}は@code{copy}か@code{move}というシンボルのいずれかでなければならない。ここで@code{copy}はドロップターゲットによって@var{text}が挿入されるべきであることを意味する。@code{move}は@code{copy}と同様だが、以下のリストで説明するように呼び出し元はソースから@var{text}も削除しなければならない。
+
+@var{frame}はマウスボタンをカレントで押下したフレーム。@code{nil}は選択されているフレームを意味する。この関数はどのマウスボタンが何も押されていなければ即座にリターンするかもしれないので、@code{down-mouse-1}やそれに類するイベント(@ref{Mouse
+Events}を参照)への応答として、そのイベントが発生したフレーム(@ref{Click
+Events}を参照)を@var{frame}にセットして呼び出すこと。
+
+@var{allow-same-frame}が@code{nil}なら、@var{frame}自体の上へのドロップを無視する。
+
+リターン値はドロップターゲットが実際に行ったアクションを反映する。したがって(もしあれば)呼び出し側が次に行うアクションも反映する。
+以下のうちのシンボルのいずれか:
+
+@table @code
+@item copy
+ドロップターゲットはドロップされたテキストを挿入した。
+
+@item move
+ドロップターゲットはドロップされたテキストを挿入した。呼び出し元はもし該当すればテキストの抽出元であるバッファーから@var{text}を削除する必要がある。
+
+@item private
+ドロップターゲットは指定されていない何らかのアクションを行った。
+
+@item nil
+ドラッグアンドドロップの操作はキャンセルされた。
+@end table
+
+@end defun
+
+@defun dnd-begin-file-drag file &optional frame action allow-same-frame
+この関数は@var{frame}から別のアプリケーション(@dfn{ドロップターゲット}と呼ばれる)へのドラッグアンドドロップ操作を開始して、@var{file}がドロップされるか操作がキャンセルされるとリターンする。
+
+@var{file}がリモートファイルなら、一時的なローカルコピーを作成する。
+
+@var{action}は@code{copy}、@code{move}、または@code{link},のいずれかでなければならない。ここで@code{copy}はドロップターゲットによって@var{file}がオープンまたはコピーされるべきことを、@code{move}はドロップターゲットがファイルを別の場所に移動すべきことを、そして@code{link}はドロップターゲットが@var{file}へのシンボリックリンクを作成するべきであることを意味する。@var{file}がリモートファイルの場合にアクションとして@code{link}を指定するとエラーになる。
+
+@var{frame}と@var{allow-same-frame}の意味は@code{dnd-begin-text-drag}呼び出しでの場合と同様。
+
+リターン値はドロップターゲットが実際に行ったアクションで、以下のうちのシンボルのいずれか:
+
+@table @code
+@item copy
+ドロップターゲットは@var{file}をオープンした、または別の場所へコピーした。
+
+@item move
+ドロップターゲットは@var{file}を別の場所に移動した。
+
+@item link
+ドロップターゲット(通常はファイルマネージャー)は@var{file}へのシンボリックリンクを作成した。
+
+@item private
+ドロップターゲットは指定されていない何らかのアクションを行った。
+
+@item nil
+ドラッグアンドドロップの操作はキャンセルされた。
+@end table
+
+@end defun
+
+@defun dnd-begin-drag-files files &optional frame action allow-same-frame
+この関数は@code{dnd-begin-file-drag}と同様だが、@var{files}がファイルのリストである点が異なる。ドロップターゲットが複数ファイルのドロップをサポートしていなければ、かわりに1つ目のファイルが使用される。
+@end defun
+
+@defun dnd-direct-save file name &optional frame allow-same-frame
+この関数の挙動は(デフォルトのアクション@code{copy}を使用した際は)@code{dnd-begin-file-drag}と似ているが、実際にコピーする際に名前を受け付ける点が異なる。
+@end defun
+
+@cindex initiating drag-and-drop, low-level
+  上述した高レベルのインターフェイスは、低レベルなプリミティブの上位に実装されています。低レベルのインターフェイス@code{x-begin-drag}はテキストやファイル以外のコンテンツのドラッグにも利用できます。これには呼び出し側がサポートしたいプラットフォームそれぞれにおいて、プログラムが理解できるデータタイプおよびアクションにたいする詳細な知識が必要でしょう。
+
+@defun x-begin-drag targets &optional action frame return-frame allow-current-frame follow-tooltip
+この関数は@var{frame}からのドラッグを開始して、そのドラッグアンドドロップがドロップに成功するか、あるいは拒絶されたかのいずれにより操作終了したらリターンする。ドロップは@var{frame}以外のトップレベルのXウィンドウ(@dfn{ドロップターゲット}、@var{allow-current-frame}が非@code{nil}なら任意のXウィンドウ)の上でマウスボタンがリリースされた際に発生する。そのドラッグアンドドロップ操作の開始時にどのマウスボタンも押されていなければ、この関数は即座に@code{nil}をリターンする。
+
+@var{targets}は@code{gui-get-selection}の@var{data-type}引数のような、選択されているターゲットを表す文字列のリストであり、ドロップターゲットがEmacsに要求する可能性がある(@ref{Window
+System Selections}を参照)。
+
+@var{action}はターゲットに推奨されているアクションを示すシンボル。@code{XdndActionCopy}か@code{XdndActionMove}のいずれか。どちらも選択コンテンツのコピーをコピーを暗に示し、@code{XdndSelection}はドロップターゲットへのコピーだが、後者はさらにコピー後に選択コンテンツの削除を指示する。
+
+利用できるアクションを表すシンボル、およびユーザーにそれらのアクションを選択させる際に提示する文字列との連想を示すalistでもよい。
+
+@var{return-frame}が非@code{nil}、および最初にマウスが@var{frame}の外に移動してからEmacsフレームに移動した場合には、マウスが移動したフレームを即座にリターンする。@var{return-frame}がシンボル@code{now}なら、最初にマウスが@var{frame}の外に移動するのを待機せずに、フレームが何であれマウスポインター配下にあればそのフレームをリターンする。@var{return-frame}は特にあるフレームから別のフレームへのコンテンツのドラッグを扱いたい際に役に立つだろう。他のプログラムへのコンテンツのドラッグも扱えるものの、すべてのシステムやウィンドウマネージャーの関数では保証されていない。
+
+@var{follow-tooltip}が非@code{nil}の場合には、ドラッグアンドドロップ操作の間にマウスポインターが移動するたびに、(@code{tooltip-show}によって表示されるような)ツールチップの位置がマウスポインターの位置にしたがうようになる。マウスボタンがリリースされるとツールチップは非表示になる。
+
+ドロップが拒絶されるかドロップターゲットが見つからなければ、この関数は@code{nil}をリターンする。それ以外の場合には、ターゲットが行うことを選択したアクション(ドロップターゲットがサポートしていなければ@var{action}とは異なるかもしれない)を記述するシンボルをリターンする。@code{XdndActionCopy}と@code{XdndActionMove}に加えて@code{XdndActionPrivate}も有効なリターンである。これはドロップターゲットが指定されていないアクションを選択したことを意味しており、呼び出し元はそれ以上の処理を要求されない。
+
+呼び出し元はターゲットによって選択された処理を完遂するために、ターゲットと協力しなければならない。たとえばこの関数が@code{XdndActionMove}をリターンしたら、呼び出し元はドラッグされたバッファーのすべてのテキスト、同様の基準が適用されるようなドラッグデータも削除すること。
+@end defun
+
+@cindex drag and drop protocols, X
+
+  関数@code{x-begin-drag}は、複数のドラッグアンドドロップのプロトコルの``舞台裏''で使用することで目的を果たしています。特定のドラッグアンドドロッププロトコルによってサポートされているか不明なコンテンツをドラッグする際には、以下の変数の値を変更してそのプロトコルをオフに切り替えることができます:
+
+@defvar x-dnd-disable-motif-protocol
+この変数が非@code{nil}ならMotifのドラッグアンドドロップのプロトコルは無効化となり、それらのプロトコルしか理解していないプログラムへのドロップは機能しない。
+@end defvar
+
+@defvar x-dnd-use-offix-drop
+この変数が@code{nil}ならOffiX(旧KDE)のドラッグアンドドロップのプロトコルは無効となる。シンボル@code{files}なら、@code{x-begin-drag}によって与えられたターゲットのいずれかが@code{"FILE_NAME"}の場合のみOffiXプロトコルが使用される。それ以外の値の場合には、サポートされているコンテンツのドロップにOffiXプロトコルが使用される。
+@end defvar
+
+@defvar x-dnd-use-unsupported-drop
+@code{x-begin-drag}によって与えられたリスト内に@code{"STRING"}、@code{"UTF8_STRING"}、@code{"COMPOUND_TEXT"}、@code{"TEXT"}のいずれかのターゲットがあれば、ドロップターゲットが何もドラッグアンドドロップのプロトコルをサポートしていなくても、Emacsは合成されたマウスイベントとプライマリー選択を用いてテキストの挿入を試みる。
+
+そのようなドロップにおいては、Emacsがそのプライマリー選択の所有者になるという副作用がある。この変数を@code{nil}にセットすれば、このようなエミュレーションを無効にできる。
+@end defvar
+
+@node Color Names
+@section カラー名
+
+@cindex color names
+@cindex specify color
+@cindex numerical RGB color specification
+  カラー名(color
+name)とはカラーを指定するテキスト(通常は文字列)です。@samp{black}、@samp{white}、@samp{red}等を指定できます。定義された名前のリストは@kbd{M-x
+list-colors-display}を使用して確認できます。@samp{#@var{rgb}}や@samp{RGB:@var{r}/@var{g}/@var{b}}のような数値的な形式でカラーを指定することもできます。ここで@var{r}は赤(red)、@var{g}は緑(green)、@var{b}は青(blue)のレベルを指定します。1桁、2桁、3桁、または4桁の16進数を@var{r}に使用できます。その後の@var{g}と@var{b}には同じ桁数の16進数を同様に使用しなければなりません。これにより総桁数が3､6､9､または12桁の16進数となります(カラーの数値的なRGB指定についての詳細はXウィンドウシステムのドキュメントを参照)。
+
+  以下の関数は有効なカラー名と、それらの外見を判断する手段を提供します。以下で説明するようにその値は@dfn{選択されたフレーム(selected
+frame)}に依存する場合があります。``選択されたフレーム''という用語の意味については@ref{Input Focus}を参照してください。
+
+  補完付きでカラー名のユーザー入力を読み取るには@code{read-color}を使用します(@ref{High-Level Completion,
+read-color}を参照)。
+
+@defun color-defined-p color &optional frame
+この関数はカラー名が有意かどうかを報告する。もし有意なら@code{t}、それ以外は@code{nil}をリターンする。引数@var{frame}はどのフレームのディスプレイにたいして問い合わせるかを指定する。@var{frame}が省略または@code{nil}の場合は選択されたフレームが使用される。
+
+これは使用しているディスプレイがそのカラーをサポートするかどうかは告げないことに注意。X使用時にはすべての種類のディスプレイ上のすべての定義されたカラーを問い合わせることができ、何らかの結果(通常は可能な限り近いカラー)を得ることができるだろう。あるフレームが特定のカラーを実際に表示できるかどうか判断するためには@code{color-supported-p}
+(以下参照)を使用する。
+@end defun
+
+@defun defined-colors &optional frame
+この関数は@var{frame}(デフォルトは選択されたフレーム)上で定義されていて、かつサポートされるカラー名のリストをリターンする。@var{frame}がカラーをサポートしなければ値は@code{nil}。
+@end defun
+
+@defun color-supported-p color &optional frame background-p
+これは、@var{frame}が実際にカラー@var{color}
+(または最低でもそれに近いカラー)を表示可能なら@code{t}をリターンする。@var{frame}が省略または@code{nil}ならこの問いは選択されたフレームに適用される。
+
+フォアグラウンドとバックグラウンドにたいして異なるカラーセットをサポートする端末がいくつかある。@var{background-p}が非@code{nil}なら、それは@var{color}がバックグラウンドとして、それ以外はフォアグラウンドとして使用可能かどうかを問うことを意味する。
+
+引数@var{color}は有効なカラー名でなければならない。
+@end defun
+
+@defun color-gray-p color &optional frame
+これは@var{color}が@var{frame}のディスプレイ上の定義としてグレイスケールなら@code{t}をリターンする。@var{frame}が省略または@code{nil}なら、この問いは選択されたフレームに適用される。@var{color}が有効なカラー名でなければ、この関数は@code{nil}をリターンする。
+@end defun
+
+@defun color-values color &optional frame
+@cindex rgb value
+この関数は@var{frame}上で理想的には@var{color}がどのように見えるべきかを記述する値をリターンする。@var{color}が定義済みなら値は赤、緑、青の割合を与える3つの整数からなるリストとなる。それぞれの整数の範囲は原則として0から65535だが、この範囲全体を使用しないディスプレイもいくつか存在するだろう。この3要素のリストはカラーの@dfn{RGB値(rgb
+values)}と呼ばれる。
+
+@var{color}が未定義なら値は@code{nil}。
+
+@example
+(color-values "black")
+     @result{} (0 0 0)
+(color-values "white")
+     @result{} (65535 65535 65535)
+(color-values "red")
+     @result{} (65535 0 0)
+(color-values "pink")
+     @result{} (65535 49344 52171)
+(color-values "hungry")
+     @result{} nil
+@end example
+
+カラーの値は@var{frame}のディスプレイにたいしてリターンされる。@var{frame}が省略または@code{nil}の場合には、この情報は選択されたフレームのディスプレイにたいしてリターンされる。このフレームがカラーを表示できなければ値は@code{nil}。
+@end defun
+
+@defun color-name-to-rgb color &optional frame
+この関数は@code{color-values}と同じことを行うが、0.0から1.0(両端を含む)の浮動小数点数としてカラー値をリターンする。
+@end defun
+
+@defun color-dark-p rgb
+この関数はRGBトリプレットで示されるカラー@var{rgb}が、暗いバックグラウンド(dark
+background)のときより明るいバックグラウンド(white
+background)のときの方が可読性に優れる場合には非@code{nil}をリターンする。引数@var{rgb}は@w{@code{(@var{r}
+@var{g}
+@var{b})}}という形式のリストであること。リストの要素はそれぞれ0.0から1.0(両端を含む)の浮動小数点数。カラー名をこのようなリストに変換するためには@code{color-name-to-rgb}を使うことができる。
+@end defun
+
+@node Text Terminal Colors
+@section テキスト端末のカラー
+@cindex colors on text terminals
+
+  テキスト端末は通常は少しのカラーしかサポートせず、コンピューターはカラー選択に小さい整数を使用します。これは選択したカラーがどのように見えるかコンピューターが信頼性をもって告げることができず、どのカラーがどのような小さい整数に対応するかという情報をアプリケーションに伝える必要があることを意味します。しかしEmacsは標準的なカラーセットを知っており、それらの自動的な使用を試みるでしょう。
+
+  このセクションで説明する関数はEmacsが端末カラーを使用する方法を制御します。
+
+  これらの関数のうちのいくつかは@ref{Color Names}で説明した@dfn{RGB値(rgb values)}を使用またはリターンします。
+
+  これらの関数はオプション引数としてディスプレイ(フレームまたは端末名のいずれか)を受け取ります。わたしたちは将来には異なる端末上で異なるカラーをEmacsにサポートさせたいと望んでいます。そうすればこの引数はどの端末を処理するか(デフォルトは選択されたフレームの端末。@ref{Input
+Focus}を参照)を指定するようになるでしょう。しかし現在のところ@var{frame}引数に効果はありません。
+
+@defun tty-color-define name number &optional rgb frame
+この関数はカラー名@var{name}をその端末上のカラー値@var{number}に関連付ける。
+
+オプション引数@var{rgb}が指定された場合、それはそのカラーが実際にどのように見えるかを指定する3つの数値のリストからなるRGB値である。@var{rgb}を指定しなければEmacsはそれがどのように見えるか知らないので、そのカラーを他のカラーに近似するために@code{tty-color-approximate}で使用することができない。
+@end defun
+
+@defun tty-color-clear &optional frame
+この関数はテキスト端末の定義済みカラーのテーブルをクリアーする。
+@end defun
+
+@defun tty-color-alist &optional frame
+この関数はテキスト端末がサポートする既知のカラーを記録したalistをリターンする。
+
+それぞれの要素は@code{(@var{name} @var{number} . @var{rgb})}、または@code{(@var{name}
+@var{number})}という形式をもつ。ここで@var{name}はカラー名、@var{number}はその端末でカラー指定に使用される数値。@var{rgb}が与えられたら、それはそのカラーが実際にどのように見えるかを告げる3つのカラー値(赤、緑、青)のリストである。
+@end defun
+
+@defun tty-color-approximate rgb &optional frame
+この関数は@var{display}にたいしてサポートされた既知のカラーの中から、RGB値@var{rgb}
+(カラー値のリスト)で記述されたもっとも近いカラーを探す。リターン値は@code{tty-color-alist}の要素。
+@end defun
+
+@defun tty-color-translate color &optional frame
+この関数は@var{display}にたいしてサポートされた既知のカラーの中から、もっとも近いカラーのインデックス(整数)をリターンする。名前@var{color}が未定義なら値は@code{nil}。
+@end defun
+
+@node Resources
+@section Xリソース
+
+このセクションではXリソース、または他のオペレーティングシステム上での等価物を問い合わせたり使用する関数および変数をいくつか説明します。Xリソースにたいする詳細な情報は@ref{X
+Resources,, X Resources, emacs, The GNU Emacs Manual}を参照してください。
+
+@defun x-get-resource attribute class &optional component subclass
+関数@code{x-get-resource}はXウィンドウのデフォルトデータベースからリソース値を取得する。
+
+リソースは@dfn{キー(key)}と@dfn{クラス(class)}の組み合わせによりインデックス付けされている。この関数は@samp{@var{instance}.@var{attribute}}という形式をキー(@var{instance}はEmacsが呼び出されたときの名前)、クラスとして@samp{Emacs.@var{class}}として使用することにより検索を行う。
+
+オプション引数@var{component}と@var{subclass}は、それぞれキーとクラスを追加する。指定する場合には両方を指定するか、さもなくばどちらも指定してはならない。これらを指定した場合にはキーは@samp{@var{instance}.@var{component}.@var{attribute}}、クラスは@samp{Emacs.@var{class}.@var{subclass}}となる。
+@end defun
+
+@defvar x-resource-class
+この変数は@code{x-get-resource}が照会すべきアプリケーション名を指定する。デフォルト値は@code{"Emacs"}。@code{x-get-resource}の呼び出し周辺で、この変数を他のアプリケーション名の文字列にバインドすることにより、アプリケーション名にたいしてXリソースを調べることができる。
+@end defvar
+
+@defvar x-resource-name
+この変数は@code{x-get-resource}が照会すべきインスタンス名を指定する。デフォルト値はEmacs呼び出し時の名前、またはスイッチ@samp{-name}、または@samp{-rn}で指定された値。
+@end defvar
+
+上述のいくつかを説明するためにXリソースファイル(通常は@file{~/.Xdefaults}や@file{~/.Xresources})内に以下のような行があるとしましょう:
+
+@example
+xterm.vt100.background: yellow
+@end example
+
+@noindent
+その場合は:
+
+@example
+@group
+(let ((x-resource-class "XTerm") (x-resource-name "xterm"))
+  (x-get-resource "vt100.background" "VT100.Background"))
+     @result{} "yellow"
+@end group
+@group
+(let ((x-resource-class "XTerm") (x-resource-name "xterm"))
+  (x-get-resource "background" "VT100" "vt100" "Background"))
+     @result{} "yellow"
+@end group
+@end example
+
+@defvar inhibit-x-resources
+この変数が非@code{nil}ならEmacsはXリソースを照会せず、新たなフレーム作成時にXリソースは何も効果をもたない。
+@end defvar
+
+@node Display Feature Testing
+@section ディスプレー機能のテスト
+@cindex display feature testing
+
+  このセクションの関数は特定のディスプレイの基本的な能力を説明します。Lispプログラムはそのディスプレイが行えることに挙動を合わせるために、それらを使用できます。たとえばポップアップメニューがサポートされなければ、通常はポップアップメニューを使用するプログラムはミニバッファーを使用できます。
+
+  これらの関数のオプション引数@var{display}は問い合わせるディスプレイを指定します。これにはディスプレイ名、フレーム(フレームがあるディスプレイを指定)、または@code{nil}
+(選択されたフレームのディスプレイを参照する。@ref{Input Focus}を参照)を指定できます。
+
+  ディスプレイに関する情報を取得するその他の関数については@ref{Color Names}を参照してください。
+
+@defun display-popup-menus-p &optional display
+この関数は@var{display}上でポップアップメニューがサポートされていれば@code{t}、それ以外は@code{nil}をリターンする。Emacsディスプレイのある部分をマウスでクリックすることによりメニューがポップアップするので、ポップアップメニューのサポートにはマウスが利用可能であることが要求される。
+@end defun
+
+@defun display-graphic-p &optional display
+この関数は@var{display}が一度に複数フレームおよび複数の異なるフォントを表示する能力を有すグラフィックディスプレイなら@code{t}をリターンする。これはXのようなウィンドウシステムのディスプレイにたいしては真、テキスト端末にたいしては偽となる。
+@end defun
+
+@defun display-mouse-p &optional display
+@cindex mouse, availability
+この関数は@var{display}でマウスが利用可能なら@code{t}、それ以外は@code{nil}をリターンする。
+@end defun
+
+@defun display-color-p &optional display
+この関数はスクリーンがカラースクリーンなら@code{t}をリターンする。
+@end defun
+
+@defun display-grayscale-p &optional display
+この関数はスクリーンがグレースケールを表示可能なら@code{t}をリターンする(カラーディスプレイはすべてこれを行うことができる)。
+@end defun
+
+@defun display-supports-face-attributes-p attributes &optional display
+@anchor{Display Face Attribute Testing}
+この関数は@var{attributes}内のすべてのフェイス属性がサポートされていれば非@code{nil}をリターンする(@ref{Face
+Attributes}を参照)。
+
+幾分発見的ではあるが``サポートされる''という言葉は、基本的にはあるフェイスが@var{attributes}内のすべての属性を含み、ディスプレイにたいしてデフォルトフェイスにマージ時に、
+
+@enumerate
+@item
+デフォルトフェイスとは異なる外見で表示でき、かつ
+
+@item
+指定した属性と正確に一致しない場合はより近い(close in spirit)外見で表示する
+@end enumerate
+
+2つ目のポイントによると属性@code{:weight black}は太字(bold)表示可能、同様に属性@code{:foreground
+"yellow"}は黄色がかった何らかのカラーを表示可能なすべてのディスプレイで満たされるだろうが、属性@code{:slant
+italic}は斜体(italic)を自動的に淡色(dim)に置き換えるttyの表示コードでは@emph{満たされない}であろうことを暗示している。
+@end defun
+
+@defun display-selections-p &optional display
+この関数は@var{display}が選択(selections)をサポートすれば@code{t}をリターンする。ウィンドウ化されたディスプレイでは通常は選択がサポートされるが、他の場合にもサポートされ得る。
+@end defun
+
+@defun display-images-p &optional display
+この関数は@var{display}がイメージを表示可能なら@code{t}をリターンする。ウィンドウ化されたディスプレイは原則イメージを処理するが、イメージにたいするサポートを欠くシステムもいくつかある。イメージをサポートしないディスプレイ上ではEmacsはツールバーを表示できない。
+@end defun
+
+@defun display-screens &optional display
+この関数はそのディスプレイに割り当てられたスクリーンの数をリターンする。
+@end defun
+
+@defun display-pixel-height &optional display
+この関数はスクリーンの高さをピクセルでリターンする。文字端末では文字数で高さを与える。
+
+マルチモニターにセットアップされているグラフィカル端末では、@var{display}に割り当てられたすべての物理モニターのピクセル幅を参照することに注意。@ref{Multiple
+Terminals}を参照のこと。
+@end defun
+
+@defun display-pixel-width &optional display
+この関数はスクリーンの幅をピクセルでリターンする。文字端末では文字数で幅を与える。
+
+マルチモニターにセットアップされているグラフィカル端末では、@var{display}に割り当てられたすべての物理モニターのピクセル幅を参照することに注意。@ref{Multiple
+Terminals}を参照のこと。
+@end defun
+
+@defun display-mm-height &optional display
+この関数はスクリーンの高さをミリメートルでリターンする。@code{nil}ならEmacsがその情報を取得できなかったことを意味する。
+
+マルチモニターにセットアップされているグラフィカル端末では、@var{display}に割り当てられたすべての物理モニターのピクセル幅を参照することに注意。@ref{Multiple
+Terminals}を参照のこと。
+@end defun
+
+@defun display-mm-width &optional display
+この関数はスクリーンの幅をミリメートルでリターンする。@code{nil}ならEmacsがその情報を取得できなかったことを意味する。
+
+マルチモニターにセットアップされているグラフィカル端末では、@var{display}に割り当てられたすべての物理モニターのピクセル幅を参照することに注意。@ref{Multiple
+Terminals}を参照のこと。
+@end defun
+
+@defopt display-mm-dimensions-alist
+この変数はシステムの提供する値が不正な場合に@code{display-mm-height}と@code{display-mm-width}がリターンするグラフィカルなディスプレイのサイズをユーザーが指定できるようにする。
+@end defopt
+
+@cindex backing store
+@defun display-backing-store &optional display
+この関数はそのディスプレイのバッキングストアー(backing
+store)の能力をリターンする。バッキングストアーとは非露出ウィンドウ(およびウィンドウの一部)のピクセルを記録しておいて、露出時に素早く表示できるようにすることを意味する。
+
+値はシンボル@code{always}、@code{when-mapped}、@code{not-useful}。特定の種類のディスプレイにたいしてこの問いが適用外の際には、この関数は@code{nil}をリターンすることもある。
+@end defun
+
+@cindex SaveUnder feature
+@defun display-save-under &optional display
+この関数はそのディスプレイがSaveUnder機能をサポートすれば非@code{nil}をリターンする。この機能はポップアップウィンドウに隠されるピクセルを保存して素早くポップダウンができるようにするために使用される。
+@end defun
+
+@defun display-planes &optional display
+この関数はそのディスプレイがサポートする平面数(number of planes)をリターンする。これは通常はピクセルごとのビット数(bits per
+pixel: 色深度[bpp])。ttyディスプレイではサポートされるカラー数の2進対数(log to base two)。
+@end defun
+
+@defun display-visual-class &optional display
+この関数はそのスクリーンのビジュアルクラスをリターンする。値はシンボル@code{static-gray}
+(カラー数変更不可の限定されたグレイ)、@code{gray-scale} (フルレンジのグレイ)、@code{static-color}
+(カラー数変更不可の限定されたカラー)、@code{pseudo-color} (限定されたカラー数のカラー)、@code{true-color}
+(フルレンジのカラー)、および@code{direct-color} (フルレンジのカラー)のいずれか。
+@end defun
+
+@defun display-color-cells &optional display
+この関数はそのスクリーンがサポートするカラーのセル数をリターンする。
+@end defun
+
+  以下の関数はEmacsが指定された@var{display}を表示する場所に使用されるウィンドウシステムの追加情報を取得します(関数名先頭の@code{x-}は歴史的理由による)。
+
+@defun x-server-version &optional display
+この関数はGNUおよびUnixシステム上のXサーバーのような、@var{display}上で実行されているGUIウィンドウシステムのバージョン番号のリストをリターンする。値は3つの整数からなるリストで、1つ目と2つ目の整数はそのプロトコルのメジャーバージョン番号とマイナーバージョン番号、3つ目の整数はウィンドウシステムソフトウェア自体のディストリビューター固有のリリース番号。GNUおよびUnixシステムでは、通常これらはXプロトコルのバージョン番号と、Xサーバーソフトウェアのディストリビューター固有のリリース番号。MS-WindowsではWidowsのOSバージョン番号。
+@end defun
+
+@defun x-server-vendor &optional display
+この関数はウィンドウシステムソフトウェアを提供するベンダー(文字列)をリターンする。GNUおよびUnixシステムでは、それが誰であれそのXサーバーを配布するベンダーを意味する。MS-WindowsではWidows
+OSのベンダーID文字列(Microsoft)。
+
+X開発者がソフトウェア配布者を``vendors''とラベル付けしたことは、いかなるシステムも非商業的に開発および配布できないと彼らが誤って仮定したことを示している。
+@end defun
+
+@ignore
+@defvar x-no-window-manager
+この変数の値はXウィンドウマネージャーが何も使用されていなければ@code{t}。
+@end defvar
+@end ignore

@@ -1,0 +1,2014 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c -*- coding: utf-8 -*-
+@c This is part of the Emacs manual.
+@c Copyright (C) 1985--1987, 1993--1995, 1997, 2000--2024 Free Software
+@c Foundation, Inc.
+@c See file emacs-ja.texi for copying conditions.
+@node Customization
+@chapter カスタマイズ
+@cindex customization
+
+  このチャプターでは、Emacsの振る舞いをカスタマイズするシンプルな方法をいくつか説明します。
+
+  ここで説明する方法とは別に、EmacsをカスタマイズするためにX resourcesを使用する情報については@ref{X
+Resources}、キーボードマクロの記録と再生については@ref{Keyboard
+Macros}を参照してください。より広範で制限のない変更を行なうには、Emacs Lispコードを記述する必要があります。
+@iftex
+@cite{The Emacs Lisp Reference Manual}を参照してください。
+@end iftex
+@ifnottex
+@ref{Top, Emacs Lisp, Emacs Lisp, elisp, The Emacs Lisp Reference
+Manual}を参照してください。
+@end ifnottex
+
+@menu
+* Easy Customization::       設定を閲覧したり変更する便利な方法。
+* Variables::                多くのEmacsコマンドは何を行なうか決定するためにEmacs変数を調べるので、変数をセットすることによりこれらの機能を制御できます。
+* Key Bindings::             keymapsは各キーがどのコマンドを実行するか指定します。これらを変更することによりキーを再定義できます。
+* Init File::                初期化ファイルで一般的なカスタマイズを記述する方法。
+* Authentication::           永続的に認証情報を保つ。
+
+@end menu
+
+@node Easy Customization
+@section Easy Customizationインターフェース
+
+@cindex settings
+@cindex user option
+@cindex customizable variable
+  Emacsには変更できる多くの@dfn{セッティング(settings)}があります。ほとんどのセッティングは@dfn{カスタマイズ可能な変数(customizable
+variables。@ref{Variables}を参照してください)}で、これらは@dfn{ユーザーオプション(user
+options)}とも呼ばれます。非常にたくさんのカスタマイズ可能な変数があり、それらはEmacsの振る舞いを数々の側面から制御します。このマニュアルにドキュメントされている変数は、@ref{Variable
+Index}にリストされています。セッティングの別のクラスには@dfn{フェイス(faces)}があり、これはフォント、カラー、その他のテキスト属性を決定します(@ref{Faces}を参照してください)。
+
+@findex customize
+@cindex customization buffer
+  セッティング(変数およびフェイスの両方)を閲覧したり変更するには、@kbd{M-x
+customize}とタイプします。これは論理的に組織化されたセッティングのリストの操作、値の編集とセット、永続的な保存を行なうことができる、@dfn{カスタマイズバッファー(customization
+buffer)}を作成します。
+
+@menu
+* Customization Groups::     セッティングがクラス化される方法。
+* Browsing Custom::          セッティングのブラウズとサーチ。
+* Changing a Variable::      オプション値の編集、およびオプションをセットする方法。
+* Saving Customizations::    将来のEmacsセッションのためにカスタマイズを保存する。
+* Face Customization::       フェイスの属性を編集する方法。
+* Specific Customization::   グループの特定のセッティングのカスタマイズ。
+* Custom Themes::            カスタマイズセッティングのコレクション。
+* Creating Custom Themes::   新しいカスタムテーマを作成する方法。
+@end menu
+
+@node Customization Groups
+@subsection カスタマイズグループ
+@cindex customization groups
+
+  カスタマイズセッティングは、@dfn{カスタマイズグループ(customization
+groups)}に組織化されています。これらのグループはより大きなグループに集められ、最終的に@code{Emacs}と呼ばれるマスターグループに集約されます。
+
+  @kbd{M-x
+customize}は、トップレベルの@code{Emacs}グループを表示するカスタマイズバッファーを作成します。これは、部分的には以下のようなものです:
+
+@c we want the buffer example to all be on one page, but unfortunately
+@c that's quite a bit of text, so force all space to the bottom.
+@c @page
+@smallexample
+@group
+For help using this buffer, see [Easy Customization] in the [Emacs manual].
+
+________________________________________ [ Search ]
+
+ Operate on all settings in this buffer:
+ [ Revert... ] [ Apply ] [ Apply and Save ]
+
+
+Emacs group: Customization of the One True Editor.
+      [State]: visible group members are all at standard values.
+      See also [Manual].
+
+[Editing]      Basic text editing facilities.
+[Convenience]  Convenience features for faster editing.
+
+@var{...more second-level groups...}
+@end group
+@end smallexample
+
+@noindent
+このバッファーも表示されている主要な部分は@samp{Emacs}カスタマイズグループで、これはいくつかの他のグループ(@samp{Editing}、@samp{Convenience}など)を含みます。これらのグループの内容はここではリストされず、それぞれにたいして1行のドキュメントだけが表示されています。
+
+  グループの@dfn{state(ステート、状態)}には、そのグループ内のセッティングが、編集されているか(edited)、セットされているか(set)、保存されているか(saved)が示されます。@ref{Changing
+a Variable}を参照してください。
+
+@cindex editable fields (customization buffer)
+@cindex buttons (customization buffer)
+@cindex links (customization buffer)
+  カスタマイズバッファーのほとんどは読み取り専用ですが、編集できるいくつかの@dfn{編集可能フィールド(editable
+fields)}が含まれています。たとえばカスタマイズバッファーの最上部にある編集可能フィールドは、セッティングを検索するためのものです(@ref{Browsing
+Custom}を参照してください)。マウスでクリック、またはポイントをそこに移動して@kbd{@key{RET}}をタイプすることによりアクティブにできる、@dfn{ボタン(buttons)}や@dfn{リンク(links)}もあります。たとえば@samp{[Editing]}のようなグループ名はリンクで、これらのリンクをアクティブにすることにより、そのグループにたいするカスタマイズバッファーが立ち上がります。
+
+@kindex TAB @r{(customization buffer)}
+@kindex S-TAB @r{(customization buffer)}
+@findex widget-forward
+@findex widget-backward
+  カスタマイズバッファーでは、@kbd{@key{TAB}}
+(@code{widget-forward})とタイプすると、次のボタンまたは編集可能フィールドに前方へ移動します。@kbd{S-@key{TAB}}
+(@code{widget-backward})は、前のボタンまたは編集可能フィールドに後方へ移動します。
+
+@node Browsing Custom
+@subsection セッティングのブラウズと検索
+@findex customize-browse
+
+  @kbd{M-x
+customize}により作成されたトップレベルのカスタマイズバッファーから、カスタマイズグループ@samp{Emacs}のサブグループへのリンクをフォローできます。これらのサブグループは、カスタマイズするためのセッティングを含んでいるでしょう。また、これらのサブグループには、Emacsのより特化したサブシステムを扱うサブグループが、さらに含まれているかもしれません。カスタマイズグループの階層を移動していけば、カスタマイズしたい、いくつかのセッティングが見つかるでしょう。
+
+  特定のセッティングまたはカスタマイズグループのカスタマイズに興味がある場合は、コマンド@kbd{M-x
+customize-option}、@kbd{M-x customize-face}、@w{@kbd{M-x
+customize-group}}で直接移動することもできます。@ref{Specific Customization}を参照してください。
+
+@vindex custom-search-field
+  どのグループまたはセッティングをカスタマイズしたいか確信がもてない場合、各カスタマイズバッファーの上部にある、編集可能なサーチフィールドを使用して、それらを検索できます。このフィールドで検索条件
+--- 1つの単語またはスペースで区切られた複数の単語、または正規表現(@ref{Regexps}を参照してください) ---
+をタイプできます。それからそのフィールドで@kbd{@key{RET}}をタイプするか、となりの@samp{Search}ボタンをアクティブにすることにより、その条件にマッチするグループとセッティングを含むカスタマイズバッファーに切り替わります。しかし、この機能はカレントEmacsセッションにロードされたグループ、またはセッティングだけを探すことに注意してください。
+
+  カスタマイズバッファーにサーチフィールドを表示したくない場合は、変数@code{custom-search-field}を@code{nil}に変更してください。
+
+  コマンド@kbd{M-x
+customize-apropos}は、同じようにサーチフィールドを使用しますが、これはミニバッファーを使用して検索条件を読み取ります。@ref{Specific
+Customization}を参照してください。
+
+  @kbd{M-x
+customize-browse}は、利用可能なセッティングをブラウズする別の方法です。このコマンドは、グループまたはセッティングの名前だけを、構造化されたレイアウトで表示する、特別なカスタマイズバッファーを作成します。グループ名のとなりの@samp{[+]}ボタンを呼び出すことにより、同じバッファーでグループの内容を表示できます。グループの内容が表示されている場合、ボタンは@samp{[-]}に変化し、それを呼び出すことにより、再びグループ内容を隠すことができます。このバッファーのグループまたはセッティングには、それぞれ@samp{[Group]}、@samp{[Option]}、@samp{[Face]}というリンクがあります。このリンクを呼び出すことにより、そのグループ、オプション、フェイスだけを表示する、通常のカスタマイズバッファーが作成されます。@kbd{M-x
+customize-browse}では、この方法によりセッティングを変更します。
+
+@node Changing a Variable
+@subsection 変数の変更
+
+  以下は変数またはユーザーオプションが、カスタマイズバッファーではどのように表示されるかの例です:
+
+@smallexample
+[Hide] Kill Ring Max: Integer (positive or zero): 120
+   [State]: STANDARD.
+   Maximum length of kill ring before oldest elements are thrown away.
+@end smallexample
+
+  最初の行には、この変数の名前が@code{kill-ring-max}であることが、見やすいよう@samp{Kill Ring
+Max}のようにフォーマットされて、期待されるタイプ(0以上の整数)とともに表示されています(デフォルト値は@samp{120})。@samp{[Hide]}というラベルのボタンは、アクティブにした場合は、この変数の値とステートを隠します。これは、変数がもし非常に長い値をもつ場合、カスタマイズバッファーが見にくくなるのを避けるために便利です(この理由により、非常に長い値をもつ変数は、最初は隠されています)。@samp{[Hide]}ボタンを使用すると、ボタンは@samp{[Show
+Value]}に変化し、これをアクティブにすると値とステートが表示されます。グラフィカルなディスプレイでは、@samp{[Hide]}と@samp{[Show
+Value]}ボタンは、下向きまたは右向きのグラフィカルな三角形で置き換えられます。
+
+  変数名の次の行は、変数の@dfn{カスタマイズ状態(customization
+state)}を示します。この例では@samp{STANDARD}で、これは変数を変更していないので、値はデフォルトのままだということを意味します。@samp{[State]}ボタンは、変数をカスタマイズするためのオペレーションメニューを提供します。
+
+  カスタマイズのステートの下は、変数のドキュメントです。これは@kbd{C-h
+v}コマンド(@ref{Examining}を参照してください)で表示されるのと同じドキュメントです。ドキュメントが複数行の場合、1行だけが表示されます。この場合、その行の最後に@samp{[More]}ボタンが表示されるので、これをアクティブにすれば完全なドキュメントを表示できます。
+
+@cindex user options, changing
+@cindex customizing variables
+@cindex variables, changing
+  @samp{Kill Ring
+Max}に新しい値を入力するには、値にポイントを移動してそれを編集するだけです。たとえば@kbd{M-d}とタイプして@samp{60}を削除して、別の値をタイプします。テキストの変更を開始すると、@samp{[State]}行が変化します:
+
+@smallexample
+[State]: EDITED, shown value does not take effect until you
+         set or save it.
+@end smallexample
+
+@noindent
+値を編集してもすぐに変更は反映されません。変更を反映するには、@samp{[State]}をアクティブにして、@samp{Set for Current
+Session}を選択することにより、変数を@dfn{セット(set)}しなければなりません。すると変数のステートは以下のようになります:
+
+@smallexample
+[State]: SET for current session only.
+@end smallexample
+
+@noindent
+無効な値を指定してしまうことを心配する必要はありません。@samp{Set for Current
+Session}オペレーションは正当性をチェックして、不当な値はインストールしません。
+
+@kindex M-TAB @r{(customization buffer)}
+@kindex C-M-i @r{(customization buffer)}
+@findex widget-complete
+  ファイル名、ディレクトリー名、Emacsコマンドのようなタイプの値を編集するときは、@kbd{C-M-i}
+(@code{widget-complete})、または等価なキー@kbd{M-@key{TAB}}、@kbd{@key{ESC}
+@key{TAB}}で補完を行なうことができます。これはミニバッファーでの補完と同じように振る舞います(@ref{Completion}を参照してください)。
+
+  編集可能な値フィールドで@kbd{@key{RET}}とタイプすることにより、@kbd{@key{TAB}}のように、次のフィールドまたはボタンに移動できます。したがってフィールドの編集を終えたら@kbd{@key{RET}}とタイプして、次のボタンまたはフィールドに移動できます。編集可能なフィールドに改行を挿入するには、@kbd{C-o}または@kbd{C-q
+C-j}を使用します。
+
+  あらかじめ決められた値しかセットできず、値を直接編集することができない変数もいくつかあります。そのような変数の値の前には、かわりに@samp{[Value
+Menu]}ボタンが表示されます。このボタンをアクティブにすると、値の選択肢が表示されます。``onかoff''のブーリーン値にたいしては、@samp{[Toggle]}ボタンが表示され、このボタンにより値のオンとオフを切り替えることができます。@samp{[Value
+Menu]}ボタンや@samp{[Toggle]}ボタンを使用した後は、変数をセットして、選択した値を反映するために、再度値をセットしなければなりません。
+
+  複雑な構造の値をもつ変数もいくつか存在します。たとえば、@code{minibuffer-frame-alist}の値は連想配列(association
+list、alist)です。これはカスタマイズバッファーでは、以下のように表示されます:
+
+@smallexample
+[Hide] Minibuffer Frame Alist:
+[INS] [DEL] Parameter: width
+            Value: 80
+[INS] [DEL] Parameter: height
+            Value: 2
+[INS]
+   [ State ]: STANDARD.
+   Alist of parameters for the initial minibuffer frame. [Hide]
+   @r{[@dots{}more lines of documentation@dots{}]}
+@end smallexample
+
+@noindent
+この場合、リストの各association要素は2つのアイテムからなり、1つは@samp{Parameter}というラベルがつき、もう1つは@samp{Value}というラベルがつき、両方とも編集可能フィールドです。となりにある@samp{[DEL]}ボタンでリストからassociationを削除できます。associationを追加するには、挿入したい位置の@samp{[INS]}ボタンを使用します。一番最後の@samp{[INS]}ボタンはリストの最後に挿入します。
+
+@cindex saving a setting
+@cindex settings, how to save
+  変数をセットした場合、新しい値はカレントEmacsセッションでだけ効果があります。将来のセッションのために値を@dfn{保存(save)}するには、@samp{[State]}ボタンを使用して、@samp{Save
+for Future Sessions}オペレーションを選択します。@ref{Saving Customizations}を参照してください。
+
+  @samp{[State]}ボタンを使用して@samp{Erase
+Customization}オペレーションを選択することにより、変数の値をその変数の標準値に復元することもできます。実際には4つのリセットオペレーションがあります:
+
+@table @samp
+@item Undo Edits
+値を変更したが、まだ変数をセットしていない場合は、実際の値にマッチするようにバッファーのテキストを復元します。
+
+@item Revert This Session's Customizations
+これは、変更された変数がある場合は、変数の値を最後に保存された値に復元し、それ以外は標準の値に復元します。テキストも復元された変数に合わせて更新します。
+
+@item Erase Customization
+これは変数をその変数の標準値にセットします。保存した値も削除します。
+
+@item Set to Backup Value
+これはこのセッションでカスタマイズバッファーでセットされる前の値に、変数をリセットします。変数をカスタマイズしてからリセットすると、これはカスタマイズした値を破棄するので、このオペレーションにより、破棄した値に戻すことができます。
+@end table
+
+@cindex comments on customized settings
+  特定のカスタマイズにたいして、コメントを記録できれば便利なこともあります。コメントを入力するフィールドを作成するには、@samp{[State]}メニューの@samp{Add
+Comment}アイテムを使用します。
+
+  カスタマイズバッファーの上部には2行のボタン行があります:
+
+@smallexample
+ Operate on all settings in this buffer:
+ [Revert...] [Apply] [Apply and Save]
+@end smallexample
+
+@noindent
+@samp{[Revert...]}ボタンは、上述で説明したうち、最初の3つのリセット操作をドロップダウンします。@samp{[Apply]}ボタンは、カレントセッションにセッティングを適用します。@samp{[Apply
+and
+Save]}ボタンはセッティングを適用して、将来のセッションのためにそれらのセッティングを保存します。このボタンは、Emacsが@option{-q}または@option{-Q}のオプションで開始された場合は表示されません(@ref{Initial
+Options}を参照)。
+
+@kindex C-c C-c @r{(customization buffer)}
+@kindex C-x C-c @r{(customization buffer)}
+@findex Custom-set
+@findex Custom-save
+  コマンド@kbd{C-c C-c} (@code{Custom-set})は、@samp{[Set for Current
+Session]}ボタンを使用するのと等価です。コマンド@kbd{C-x C-s} (@code{Custom-save})は、@samp{[Save
+for Future Sessions]}ボタンを使用するのと同様です。
+
+@vindex custom-buffer-done-kill
+  @samp{[Exit]}ボタンはカスタマイズバッファーを、バッファーリストの最後のバッファーに隠し(bury)ます。カスタマイズバッファーをkillさせるようにするには、変数@code{custom-buffer-done-kill}を@code{t}に変更します。
+
+@node Saving Customizations
+@subsection カスタマイズの保存
+
+  カスタマイズバッファーでは、カスタマイズしたセッティングの@samp{[State]}ボタンで@samp{Save for Future
+Sessions}を選択することにより、それを@dfn{保存(save)}できます。@kbd{C-x C-s}
+(@code{Custom-save})コマンド、またはカスタマイズバッファーのトップにある@samp{[Apply and
+Save]}ボタンで、そのバッファー内で適用可能なすべてのセッティングが保存されます。
+
+  ファイル(通常は初期化ファイル。@ref{Init
+File}を参照してください)にコードを書き込むことにより保存は機能します。将来のEmacsセッションは、開始時に自動的にこのファイルを読み込んで、カスタマイズを再びセットします。
+
+@vindex custom-file
+  初期化ファイル以外の他のファイルにカスタマイズを保存する選択もできます。これが機能するには、変数@code{custom-file}に保存したいファイル名をセットして、そのファイルをロードするコード行を追加しなければなりません。たとえば:
+
+@example
+(setq custom-file "~/.config/emacs-custom.el")
+(load custom-file)
+@end example
+
+  以下のようにして、Emacsのバージョンごとに違うカスタマイズファイルを指定することさえ可能です:
+
+@example
+(cond ((< emacs-major-version 28)
+       ;; @r{Emacs 27用のカスタマイズ}
+       (setq custom-file "~/.config/custom-27.el"))
+      ((and (= emacs-major-version 26)
+            (< emacs-minor-version 3))
+       ;; @r{バージョン26.3以前のEmacs 26用カスタマイズ}
+       (setq custom-file "~/.config/custom-26.el"))
+      (t
+       ;; @r{Emacs バージョン28.1以降}
+       (setq custom-file "~/.config/emacs-custom.el")))
+
+(load custom-file)
+@end example
+
+  Emacsが@option{-q}または@option{--no-init-file}オプションで呼び出されたときは、カスタマイズを初期化ファイルに保存しません。なぜならそのようなセッションからカスタマイズを保存することにより、初期化ファイルに記述されていた他のすべてのカスタマイズが消されてしまうからです。
+
+@cindex unsaved customizations, reminder to save
+@findex custom-prompt-customize-unsaved-options
+  将来のセッションのために保存することを選択しなかった場合、そのカスタマイズはEmacsの終了とともに失われてしまうことに注意してください。終了時に保存されていないカスタマイズにたいするメッセージを表示させたい場合は、初期化ファイルに以下を追加してください:
+
+@example
+(add-hook 'kill-emacs-query-functions
+          'custom-prompt-customize-unsaved-options)
+@end example
+
+@node Face Customization
+@subsection フェイスのカスタマイズ
+@cindex customizing faces
+@cindex faces, customizing
+@cindex fonts and faces
+
+  フェイス(@ref{Faces}を参照してください)をカスタマイズできます。フェイスは、異なる種類のテキストをEmacsがどのように表示するか決定します。カスタマイズグループは、変数とフェイスの両方を含むことができます。
+
+  たとえばプログラミング言語のモードでは、ソースコードのコメントはフェイス@code{font-lock-comment-face}で表示されます(@ref{Font
+Lock}を参照してください)。カスタマイズバッファーでは、@samp{[Show All
+Attributes]}リンクをクリックした後は、このフェイスについて以下のように表示されます:
+
+@smallexample
+[Hide] Font Lock Comment Face:[sample]
+   [State] : STANDARD.
+   Font Lock mode face used to highlight comments.
+   [ ] Font Family: --
+   [ ] Font Foundry: --
+   [ ] Width: --
+   [ ] Height: --
+   [ ] Weight: --
+   [ ] Slant: --
+   [ ] Underline: --
+   [ ] Overline: --
+   [ ] Strike-through: --
+   [ ] Box around text: --
+   [ ] Inverse-video: --
+   [X] Foreground: Firebrick     [Choose]  (sample)
+   [ ] Background: --
+   [ ] Stipple: --
+   [ ] Inherit: --
+   [Hide Unused Attributes]
+@end smallexample
+
+@noindent
+最初の3行にはフェイス名、@samp{[State]}ボタン、そのフェイスにたいするドキュメントが表示されます。その下は、@dfn{フェイス属性(face
+attributes)}のリストです。それぞれの属性の前にはチェックボックスがあります。チェックされているチェックボックスは@samp{[X]}と表示され、このフェイスがその属性に値を指定していることを意味します。空のチェックボックスは@samp{[
+]}と表示され、このフェイスがその属性に特に値を指定していないことを意味します。チェックボックスをアクティブにすることにより、その属性を指定または未指定にできます。
+
+  フェイスにすべての属性を指定する必要はありません。実際のところ、ほとんどのフェイスは少しの属性しか指定していません。上記の例では、@code{font-lock-comment-face}はフォアグラウンドカラーだけを指定しています。未指定の属性にたいしては、すべての属性が指定された特別なフェイス@code{default}の属性が使用されます。@code{default}フェイスは、明示的にフェイスが割り当てられていない任意のテキストを表示するために使用されるフェイスです。さらに、このフェイスのバックグラウンドカラー属性には、フレームのバックグラウンドカラーが使用されます。
+
+  属性リストの最後にある@samp{[Hide Unused
+Attributes]}ボタンは、このフェイスの未指定の属性を隠します。隠された属性があるとき、ボタンは@samp{[Show All
+Attributes]}に変化し、これはすべての属性リストを表示します。カスタマイズバッファーは、インターフェースが見にくくなるのを避けるため、未指定の属性が隠された状態で開始されるでしょう。
+
+  属性を指定するときは、通常の方法で値を変更できます。
+
+  フォアグラウンドカラーとバックグラウンドカラーは、カラーネームとRGBトリプレットの両方を使用して指定できます(@ref{Colors}を参照してください)。カラーネームのリストに切り替えるために、@samp{[Choose]}ボタンも使用できます。そのバッファーで@kbd{@key{RET}}でカラーを選択すると、値フィールドにそのカラーネームが入ります。
+
+  フェイスのセット・保存。リセットは、変数にたいする操作と同様に機能します(@ref{Changing a Variable}を参照してください)。
+
+  フェイスは、異なるタイプのディスプレイにたいして、違う外観を指定できます。たとえば、カラーディスプレイではテキストを赤にして、モノクロディスプレイでは太字フォントを使うようにフェイスを設定できます。フェイスにたいして複数の外観を指定するには、@samp{[State]}で呼び出されるメニューで@samp{For
+All Kinds of Displays}を選択してください。
+
+@node Specific Customization
+@subsection 特定のアイテムのカスタマイズ
+
+@table @kbd
+@item M-x customize-option @key{RET} @var{option} @key{RET}
+@itemx M-x customize-variable @key{RET} @var{option} @key{RET}
+1つのユーザーオプション@var{option}にたいするカスタマイズバッファーをセットアップします。
+
+@item M-x customize-face @key{RET} @var{face} @key{RET}
+1つのフェイス@var{face}にたいするカスタマイズバッファーをセットアップします。
+
+@item M-x customize-icon @key{RET} @var{face} @key{RET}
+1つのアイコン@var{icon}にたいするカスタマイズバッファーをセットアップします。
+
+@item M-x customize-group @key{RET} @var{group} @key{RET}
+1つのグループ@var{group}にたいするカスタマイズバッファーをセットアップします。
+
+@item M-x customize-apropos @key{RET} @var{regexp} @key{RET}
+@var{regexp}にマッチする、すべてのセッティングとグループにたいするカスタマイズバッファーをセットアップします。
+
+@item M-x customize-changed @key{RET} @var{version} @key{RET}
+Emacsのバージョン@var{version}以降に意味が変更された(または追加された)、すべてのユーザーオプション、フェイスとグループでカスタマイズバッファーをセットアップします。
+
+@item M-x customize-saved
+カスタマイズバッファーを使って保存された、すべてのセッティングを含むカスタマイズバッファーをセットアップします。
+
+@item M-x customize-unsaved
+セットしたが保存していない、すべてのセッティングを含むカスタマイズバッファーをセットアップします。
+@end table
+
+@findex customize-option
+  特定のユーザーオプションをカスタマイズしたい場合は、@kbd{M-x
+customize-option}とタイプします。これは変数名を読み取り、そのユーザーオプション1つだけのためのカスタマイズバッファーをセットアップします。ミニバッファーから変数名を入力するときは、補完が利用可能ですが、Emacsにロードされた変数名だけが補完されます。
+
+@findex customize-face
+@findex customize-group
+  同様に@kbd{M-x customize-face}を使用して、特定のフェイスをカスタマイズできます。@kbd{M-x
+customize-group}を使用して、特定のカスタマイズグループにたいするカスタマイズバッファーをセットアップできます。
+
+@findex customize-apropos
+  @kbd{M-x customize-apropos}は検索条件 --- 1つの単語か、スペースで区切られた複数の単語、または正規表現 ---
+の入力を求め、名前がそれにマッチする、@emph{ロードされた}すべてのセッティングとグループにたいするカスタマイズバッファーをセットアップします。これはカスタマイズバッファーのトップにあるサーチフィールドを使用するのと同様です(@ref{Customization
+Groups}を参照してください)。
+
+@findex customize-changed
+  新しいバージョンのEmacsにアップグレードしたとき、新しいセッティングをカスタマイズしたり、意味やデフォルト値が変更されたものをセッティングしたいと思うかもしれません。これを行なうには@kbd{M-x
+customize-changed}を使用して、ミニバッファーから以前のEmacsのバージョンを指定します。これは指定されたバージョンから変更されたすべてのセッティングとグループを表示するカスタマイズバッファーを作成し、必要ならそれらをロードします。
+
+@findex customize-saved
+@findex customize-unsaved
+  セッティングを変更した後、その変更が間違いだと気づいたときは、変更を戻すために2つのコマンドを使用できます。保存されたカスタマイズのセッティングには、@kbd{M-x
+customize-saved}を使用します。セットしたが保存していないカスタマイズのセッティングには、@kbd{M-x
+customize-unsaved}を使用します。
+
+@node Custom Themes
+@subsection カスタムテーマ
+@cindex custom themes
+
+  @dfn{カスタムテーマ(Custom
+themes)}は、1つの単位として有効または無効にできる、セッティングのコレクションです。カスタムテーマを使用して、さまざまなセッティングコレクション間を簡単に切り替えることができ、あるコンピューターから別のコンピューターへそのようなコレクションを持ち運ぶことができます。
+
+  カスタムテーマは、Emacs
+Lispソースファイルとして保存されています。カスタムテーマの名前が@var{name}なら、そのテーマのファイル名は@file{@var{name}-theme.el}です。テーマファイルのフォーマットと、それを作成する方法については、@ref{Creating
+Custom Themes}を参照してください。
+
+@findex customize-themes
+@vindex custom-theme-directory
+@cindex color scheme
+  @kbd{M-x customize-themes}とタイプすると、Emacsが認識するカスタムテーマをリストする、@file{*Custom
+Themes*}という名前のバッファーに切り替わります。デフォルトでは、Emacsは2つの場所からテーマファイルを探します。1つは@code{custom-theme-directory}により指定されるディレクトリー(デフォルトは@file{~/.emacs.d/}))で、もう1つはEmacsがインストールされた場所(変数@code{data-directory}を参照してください)の@file{etc/themes}というディレクトリーです。後者にはEmacsと共に配布されるいくつかのカスタムテーマが含まれており、これらはさまざまなカラースキーム(color
+schemes)に適合するように、Emacsフェイスをカスタマイズします(しかし、カスタムテーマの目的はこれだけに制限される必要はなく、変数をカスタマイズするのにも使用できることに注意してください)。
+
+@vindex custom-theme-load-path
+  Emacsに他の場所からカスタムテーマを探させたい場合は、リスト変数@code{custom-theme-load-path}にディレクトリーを追加します。この変数のデフォルト値は@code{(custom-theme-directory
+t)}です。ここでシンボル@code{custom-theme-directory}は、変数@code{custom-theme-directory}の値を指定するという特別な意味をもち、@code{t}はビルトインのテーマディレクトリー@file{etc/themes}を意味します。@code{custom-theme-load-path}で指定されるディレクトリーにあるテーマが、@file{*Custom
+Themes*}バッファーにリストされます。
+
+@kindex C-x C-s @r{(Custom Themes buffer)}
+  @file{*Custom
+Themes*}バッファーでは、カスタムテーマの隣のチェックボックスをアクティブにすることにより、カレントEmacsセッションで、そのテーマを有効または無効にできます。カスタムテーマが有効な場合、そのテーマのすべてのセッティング(変数とフェイス)がEmacsセッションで効果をもちます。選択したテーマを将来のEmacsセッションに適用するには、@kbd{C-x
+C-s} (@code{custom-theme-save})とタイプするか、@samp{[Save Theme
+Settings]}ボタンを使用してください。
+
+@vindex custom-safe-themes
+  最初にカスタムテーマを有効にするとき、Emacsはテーマファイルの内容を表示して、本当にロードするか確認を求めます。これはカスタムテーマのロードにより不定なLispコードが実行されるからで、テーマが安全だと判っているときだけyesと答えるべきです。この場合、Emacsは将来のセッションのために、そのテーマが安全だということを記憶するか尋ねます(これは変数@code{custom-safe-themes}にテーマファイルのSHA-256ハッシュ値を保存することにより行なわれます)。すべてのテーマを安全なものとして扱いたい場合は、変数の値を@code{t})に変更します。(ディレクトリー@file{etc/themes}の)Emacsと共に配布されるテーマは、このチェックから除外されていて、常に安全だと判断されます。
+
+@vindex custom-enabled-themes
+  カスタムテーマのセッティングと保存は、変数@code{custom-enabled-themes}をカスタマイズすることにより機能します。この変数の値は、カスタムテーマ名(@code{tango}のようなLispシンボル)のリストです。@code{custom-enabled-themes}のセットに@file{*Custom
+Themes*}バッファーを使用するかわりに、たとえば@kbd{M-x
+customize-option}のような通常のカスタマイズインターフェースを使用して、変数をカスタマイズできます。カスタムテーマ自身では、@code{custom-enabled-themes}をセットできないことに注意してください。
+
+  カスタマイズバッファーを通じて行なう任意のカスタマイズは、テーマのセッティングより優先されます。これによりテーマのセッティングを簡単にオーバーライドできます。2つの異なるテーマのセッティングがオーバーラップする場合には、@code{custom-enabled-themes}で先に指定されたテーマが優先されます。カスタマイズバッファーでは、カスタムテーマによりセッティングがデフォルトから変更されているときは、@samp{State}には@samp{STANDARD}ではなく@samp{THEMED}が表示されます。
+
+@findex load-theme
+@findex enable-theme
+@findex disable-theme
+  @kbd{M-x
+load-theme}とタイプすることにより、カレントEmacsセッションで特定のカスタムテーマを有効にできます。これはテーマ名の入力を求め、テーマファイルからテーマをロードし、それを有効にします。すでにテーマファイルがロードされているときは、@kbd{M-x
+enable-theme}とタイプすることにより、ファイルをロードせずにテーマを有効にできます。カスタムテーマを無効にするには、@kbd{M-x
+disable-theme}とタイプしてください。
+
+@findex describe-theme
+  カスタムテーマの説明を見るには、@file{*Custom
+Themes*}バッファーのその行で、@kbd{?}とタイプするか、Emacsの任意のバッファーで@kbd{M-x
+describe-theme}とタイプしてテーマ名を入力してください。
+
+@findex theme-choose-variant
+一部のテーマには変種(lightとdarkの2つのみの場合が多い)があります。@kbd{M-x
+theme-choose-variant}を使えば他の変種に切り替えることができます。カレントでアクティブなテーマの変種が1種類しかなければ、そのテーマが選択されます。2つ以上の変種がある場合には、どれに切り替えるか入力を求めます。
+
+@code{theme-choose-variant}はアクティブなテーマが単一の場合のみ機能することに注意してください。
+
+@node Creating Custom Themes
+@subsection カスタムテーマの作成
+@cindex custom themes, creating
+
+@findex customize-create-theme
+  @kbd{M-x
+customize-create-theme}とタイプすることにより、カスタマイズバッファーと似たインターフェースを使用して、カスタムテーマを定義できます。これは@file{*Custom
+Theme*}という名前のバッファーに切り替えます。これは、一般的なEmacsフェイスをそのテーマに挿入するかも尋ねます(カスタムテーマは、フェイスをカスタマイズするのに使用される場合があるので便利です)。これにnoと答えると、そのテーマには最初は何もセッティングが含まれません。
+
+  @file{*Custom
+Theme*}バッファーの上部には、テーマ名と説明を入力できる、編集可能フィールドがあります。@samp{user}を除く任意の名前を指定できます。説明は、テーマにたいして@kbd{M-x
+describe-theme}を呼び出したときに表示される文です。最初の行は1センテンスの概要であるべきです。@kbd{M-x
+customize-themes}により作成されたバッファーでは、このセンテンスがテーマ名のとなりに表示されます。
+
+  テーマに新しいセッティングを追加するには、@samp{[Insert Additional Face]}ボタンか、@samp{[Insert
+Additional
+Variable]}ボタンを使用します。これらのボタンはミニバッファーを使用して、補完つきでフェイス名または変数名を読み取り、そのフェイスまたは変数にたいするカスタマイズエントリーを挿入します。通常のカスタマイズバッファーと同じ方法で、変数の値またはフェイスの属性を編集できます。テーマからフェイスまたは変数を削除するには、名前の横のチェックボックスのチェックを外してください。
+
+@vindex custom-theme-directory@r{, saving theme files}
+  カスタムテーマのフェイスや変数を指定した後は、@kbd{C-x C-s}
+(@code{custom-theme-write})とタイプするか、そのバッファーの@samp{[Save
+Theme]}ボタンを使用します。これは@code{custom-theme-directory}のディレクトリーに、@file{@var{name}-theme.el}(@var{name}はテーマ名)という名前で、テーマファイルを保存します。
+
+  @file{*Custom Theme*}バッファーから、@samp{[Visit
+Theme]}ボタンをアクティブにしてテーマ名を指定することにより、既存のカスタムテーマの閲覧と編集ができます。@samp{[Merge
+Theme]}ボタンを使用して、他のテーマのセッティングをバッファーに追加することもできます。@samp{[Merge
+Theme]}ボタンを使用して、@samp{user}という名前の特別なテーマ名を指定することにより、非テーマセッティングをカスタムテーマにインポートできます。
+
+  テーマファイルは単なるEmacs
+Lispソースファイルで、カスタムテーマのロードはLispファイルをロードすることにより機能します。したがって@file{*Custom
+Theme*}バッファーを使用するかわりに、テーマファイルを直接編集することもできます。詳細は、@ref{Custom Themes,,, elisp,
+The Emacs Lisp Reference Manual}を参照してください。
+
+@node Variables
+@section 変数
+@cindex variable
+
+  @dfn{変数(variable)}とは、値をもつLipシンボルです。このようなシンボルの名前は、@dfn{変数名(variable
+name)}とも呼ばれます。変数名には、ファイルに記述できる任意の文字を含めることもできますが、ほとんどの変数名は通常の単語をハイフンで区切って構成されます。
+
+  変数の名前には、その変数の役割を簡単に説明する役目があります。ほとんどの変数は@dfn{ドキュメント文字列(documentation
+string)}ももっていて、これは変数の目的、どのような種類の値をもつべきか、値がどのように使用されるかを説明します。ヘルプコマンド@kbd{C-h
+v} (@code{describe-variable})を使用して、このドキュメントを閲覧できます。@ref{Examining}を参照してください。
+
+  Emacsは内部の記録維持のために多くのLisp変数を使用しますが、非プログラマーに一番興味があるのはユーザーが変更することを意図したLisp変数であり、これらは@dfn{カスタマイズ可能変数(customizable
+variables)}や@dfn{ユーザーオプション(user options)}と呼ばれます(@ref{Easy
+Customization}を参照してください)。以下のセクションでは、カスタマイズのためのインターフェース以外から変数をセットする方法など、他の観点からEmacs変数を説明します。
+
+  (少数の例外を除き)Emacs
+Lispでは、任意の変数は任意のタイプの値をもつことができます。しかし多くの変数は、特定のタイプの値を割り当てられた場合だけ意味をもちます。たとえばkillリングの最大長さを指定する@code{kill-ring-max}の値としては、数字だけが意味をもちます。@code{kill-ring-max}の値として文字列を与えた場合、@kbd{C-y}
+(@code{yank})のようなコマンドはエラーをシグナルするでしょう。一方、タイプを気にしない変数もあります。たとえば、変数の値が@code{nil}のときはある効果をもたらし、非@code{nil}のときは別の効果をもたらす場合、シンボル@code{nil}以外の任意の値は、そのタイプに関わらず2番目の効果をもたらします(慣例により、非@code{nil}値を指定するために、通常は値@code{t}
+--- これは``true''が由来です ---
+を使用します)。カスタマイズバッファーを使用して変数をセットする場合、無効なタイプを与えてしまう心配はありません。カスタマイズバッファーでは通常、意味のある値しか入力できないからです。判別がつかないときは、その変数が期待するどの種類の値かを見るために、@kbd{C-h
+v}
+(@code{describe-variable})を使用して、変数のドキュメント文字列をチェックしてください(@ref{Examining}を参照してください)。
+
+@menu
+* Examining::                変数の値の検証とセッティング。
+* Hooks::                    フック変数によりEmacsの一部にたいして特定の機会に実行するプログラムを指定できます。
+* Locals::                   変数のバッファーごとの値。
+* File Variables::           ファイルが変数の値を指定する方法。
+* Directory Variables::      ディレクトリーにより変数の値を指定する方法。
+* Connection Variables::     リモートのデフォルトディレクトリーをもつバッファーにたいして有効な変数。
+@end menu
+
+@node Examining
+@subsection 変数の確認とセット
+@cindex setting variables
+
+@table @kbd
+@item C-h v @var{var} @key{RET}
+変数@var{var}の値とドキュメントを表示します(@code{describe-variable})。
+
+@item M-x set-variable @key{RET} @var{var} @key{RET} @var{value} @key{RET}
+変数@var{var}の値を@var{value}に変更します。
+@end table
+
+  変数の値を調べるには、@kbd{C-h v}
+(@code{describe-variable})を使用します。これはミニバッファーを使用して補完つきで変数名を読み取り、、変数の値とドキュメントの両方を表示します。たとえば、
+
+@example
+C-h v fill-column @key{RET}
+@end example
+
+@noindent
+これは以下のような出力を表示します:
+
+@example
+fill-column is a variable defined in @quoteleft{}C source code@quoteright{}.
+Its value is 70
+
+  Automatically becomes buffer-local when set.
+  This variable is safe as a file local variable if its value
+  satisfies the predicate @quoteleft{}integerp@quoteright{}.
+  Probably introduced at or before Emacs version 18.
+
+Documentation:
+Column beyond which automatic line-wrapping should happen.
+Interactively, you can set the buffer local value using C-x f.
+
+You can customize this variable.
+@end example
+
+@noindent
+@samp{You can customize the variable}の行は、この変数がユーザーオプションであることを示します。@kbd{C-h
+v}はユーザーオプションだけに制限されません。これはカスタマイズ可能でない変数にも使用できます。
+
+@findex set-variable
+  特定のカスタマイズ可能な変数をセットする一番簡単な方法は、@kbd{M-x
+set-variable}です。これはミニバッファーで変数名を読み取り(補完つき)、次にミニバッファーを使用して新しい値にたいするLisp式を読み取ります(@kbd{M-n}を使用してミニバッファーで編集するために、古い値を挿入することができます)。たとえば、
+
+@example
+M-x set-variable @key{RET} fill-column @key{RET} 75 @key{RET}
+@end example
+
+@noindent
+これは@code{fill-column}を75にセットします。
+
+ @kbd{M-x set-variable}はカスタマイズ可能な変数に制限されていますが、以下のようなLisp式で任意の変数をセットできます:
+
+@example
+(setq fill-column 75)
+@end example
+
+@noindent
+このような式を実行するには、@kbd{M-:}
+(@code{eval-expression})とタイプして、ミニバッファーで式を入力します(@ref{Lisp
+Eval}を参照してください)。かわりに@file{*scratch*}バッファーに移動して、式をタイプしてから@kbd{C-j}とタイプすることもできます(@ref{Lisp
+Interaction}を参照してください)。
+
+  変数のセットは、Emacsのカスタマイズと同様、特に明記しない限りは、カレントEmacsセッションだけに影響します。将来のセッションのために変数を変更する唯一の方法は、初期化ファイルにそれを記述することです(@ref{Init
+File}を参照してください)。
+
+  initファイルでカスタマイズ可能な変数をセットしていてCustomizeインターフェイスを使いたくない場合には、たとえば以下のように@code{setopt}を使うことができます:
+
+@findex setopt
+@example
+(setopt fill-column 75)
+@end example
+
+これは@code{setq}と同じように機能しますが、その変数に特別なセッター関数(setter
+function)があれば、@code{setopt}は自動的にそちらを実行します。一方カスタマイズ可能ではない変数に@code{setopt}を使うこともできますが、@code{setq}を使うより効率性に劣ります。
+
+@node Hooks
+@subsection フック
+@cindex hook
+@cindex running a hook
+
+  @dfn{フック(hook)}とは、Emacsをカスタマイズするための重要な仕組みです。フックは関数のリストを保持するLisp変数で、これらの関数は、ある定められたタイミングで呼び出されます(これは、@dfn{フックを実行する(running
+the hook)})、と呼ばれます)。リストの中の個別の関数は、そのフックの@dfn{フック関数(hook
+functions)}と呼ばれます。たとえばフック@code{kill-emacs-hook}は、Emacsを終了する直前に実行されます(@ref{Exiting}を参照してください)。
+
+@cindex normal hook
+  ほとんどのフックは@dfn{ノーマルフック(normal
+hooks)}です。これは、Emacsがフックを実行するとき、フック関数が引数なしで順に呼び出します。わたしたちは、ほとんどのフックをノーマルフックに保つために努力しているので、あなたはこれらのフックを一貫した方法で使用することができます。変数名の最後が@samp{-hook}の変数は、ノーマルフックです。
+
+@cindex abnormal hook
+  多くはありませんが、@dfn{アブノーマルフック(abnormal
+hooks)}もあります。アブノーマルフックは、名前の最後が@samp{-hook}ではなく@samp{-functions}です(古いコードの中には時代遅れのサフィックス@samp{-hooks}を使うものもあります)。これらのフックがアブノーマルな理由は、関数が呼び出される方法にあります
+---
+もしかしたら引数が与えられているかもしれず、ことによると関数が返す値が何かに使用されるかもしれません。たとえば@code{find-file-not-found-functions}はアブノーマルです。なぜならフック関数のうちの1つが非@code{nil}値を返した場合、残りの関数は呼び出されないからです(@ref{Visiting}を参照してください)。アブノーマルフック変数のドキュメントには、フック関数がどのように使用されるかの説明があります。
+
+@findex add-hook
+  他のLisp変数と同じように、@code{setq}でフック変数をセットすることもできますが、フック(ノーマルとアブノーマルの両方)に関数を追加するための推奨される方法は、以下の例で示されるような、@code{add-hook}を使う方法です。詳細は、@ref{Hooks,,,
+elisp, The Emacs Lisp Reference Manual}を参照してください。
+
+  ほとんどのメジャーモードは初期化の最終ステップで、1つ以上の@dfn{モードフック(mode
+hooks)}を実行します。モードフックは個々のモードの振る舞いをカスタマイズするための便利な方法で、常にノーマルフックです。たとえば、以下はTextモードと、Textモードを基礎とする他のモードで、Auto
+Fillモードをオンにするフックをセットアップする方法です:
+
+@example
+(add-hook 'text-mode-hook 'auto-fill-mode)
+@end example
+
+@noindent
+これは、引数を与えられない場合にマイナーモードを有効にする@code{auto-fill-mode}を呼び出すことにより機能します(@ref{Minor
+Modes}を参照してください)。次に、Textモードを基礎とする@LaTeX{}モードではAuto
+Fillモードをオンにしたくない場合、以下の行を追加してこれを行なうことができます:
+
+@example
+(add-hook 'latex-mode-hook (lambda () (auto-fill-mode -1)))
+@end example
+
+@noindent
+ここでは、無名関数(anonymous function。@ref{Lambda Expressions,,, elisp, The Emacs
+Lisp Reference
+Manual}を参照してください)を構築するために、特別なマクロ@code{lambda}を使用しており、@code{auto-fill-mode}に@code{-1}を与えて呼び出すことにより、マイナーモードを無効にしています。@LaTeX{}モードは、@code{text-mode-hook}を実行した後に、@code{latex-mode-hook}モードを実行するので、その結果Auto
+Fillモードが無効になります。
+
+  以下はもっと複雑な例で、Cコードのインデントをカスタマイズするのにフックを使う方法です:
+
+@example
+@group
+(setq my-c-style
+  '((c-comment-only-line-offset . 4)
+@end group
+@group
+    (c-cleanup-list . (scope-operator
+                       empty-defun-braces
+                       defun-close-semi))))
+@end group
+
+@group
+(add-hook 'c-mode-common-hook
+  (lambda () (c-add-style "my-style" my-c-style t)))
+@end group
+@end example
+
+@cindex Prog mode
+@cindex modes for editing programs
+  メジャーモードフックは、それを元のモードとして@dfn{派生された(derived)}他のメジャーモードにも適用されます(@ref{Derived
+Modes,,, elisp, The Emacs Lisp Reference
+Manual}を参照してください)。たとえばHTMLモード(@ref{HTML
+Mode}を参照してください)はTextモードから派生しており、HTMLモードが有効になるときは、@code{html-mode-hook}を実行する前に@code{text-mode-hook}が実行されます。これは1つのフックを複数の関連するモードに作用させるための便利な方法を提供します。特に任意のプログラミング言語にたいしてフック関数を適用したい場合は、それを@code{prog-mode-hook}モードに追加します。Progモードは、それを継承する他のメジャーモードと比較すると、ほとんど何も行なわないメジャーモードで、まさにこの目的のために存在します。
+
+  実行される順番に依存しないようにフック関数をデザインするのがベストです。実行順への依存はトラブルを招きます。しかし実行順は予測可能です。フック関数はフックに登録された順に実行されます。
+
+@findex remove-hook
+  何度も@code{add-hook}を呼び出すことにより、さまざまな異なるバージョンのフック関数を追加した場合、追加されたすべてのバージョンのフック関数がフック変数に残ることを忘れないでください。@code{remove-hook}を呼び出すことにより関数を個別にクリアーするか、@code{(setq
+@var{hook-variable} nil)}ですべてのフック関数を削除できます。
+
+@cindex buffer-local hooks
+  フック変数がバッファーローカルな場合、グローバル変数のかわりにバッファーローカル変数が使用されます。しかしバッファーローカル変数が要素@code{t}を含む場合は、グローバル変数も同様に実行されます。
+
+@node Locals
+@subsection ローカル変数
+
+@table @kbd
+@item M-x make-local-variable @key{RET} @var{var} @key{RET}
+変数@var{var}が、カレントバッファーでローカル値をもつようにします。
+
+@item M-x kill-local-variable @key{RET} @var{var} @key{RET}
+変数@var{var}が、カレントバッファーでグローバル値を使うようにします。
+
+@item M-x make-variable-buffer-local @key{RET} @var{var} @key{RET}
+変数@var{var}がセットされた時点で、カレントバッファーにたいしてローカルになるようマークします。
+@end table
+
+@cindex local variables
+  ほとんどの変数は、特定のEmacsバッファーにたいして@dfn{ローカル(local)}にすることができます。これは、そのバッファーでの変数の値が、他のバッファーでの変数の値とは、独立していることを意味します。多くはありませんが、常にバッファーごとにローカルな変数もあります。他のすべてのEmacs変数は、バッファーで変数をローカルにしていないかぎりは、すべてのバッファーに効果を及ぼす@dfn{グローバル(global)}な値をもちます。
+
+@findex make-local-variable
+  @kbd{M-x
+make-local-variable}は変数名を読み取り、それをカレントバッファーにたいしてローカルにします。その後、このバッファーで変数の値を変更しても他のバッファーには影響せず、変数のグローバル値を変更してもこのバッファーには影響しなくなります。
+
+@findex make-variable-buffer-local
+@cindex per-buffer variables
+  @kbd{M-x
+make-variable-buffer-local}は、変数がセットされたとき自動的にローカルになるように、変数をマークします。より正確には、1度この方法で変数がマークされると、通常の方法による変数のセットは、最初に自動的に@code{make-local-variable}を呼び出します。このような変数を@dfn{パーバッファー(per-buffer:
+バッファーごと)}変数と呼びます。Emacsの多くの変数は、通常はパーバッファーです。変数のドキュメント文字列には、いつこれを行なうかが記述されています。パーバッファー変数のグローバル値は、通常は任意のバッファーには影響しませんが、それでもまだ意味があります。グローバル値は、新しいバッファーにたいする、この変数の初期値として使用されます。
+
+  メジャーモード(@ref{Major
+Modes}を参照してください)は常に変数をセットする前に、変数をローカルにします。あるバッファーでメジャーモードを変更しても、他のバッファーに影響がないのは、これが理由です。マイナーモードは変数をセットすることにより機能します
+--- 通常、各マイナーモードは1つの制御変数(controlling
+variable)をもっていて、この変数が非@code{nil}の場合はモードが有効になります(@ref{Minor
+Modes}を参照してください)。多くのマイナーモードにたいして制御変数はパーバッファーであり、したがって常にバッファーローカルです。そうでない場合、他の変数と同様に特定のバッファーで変数をローカルにできます。
+
+  多くはありませんが、バッファーでローカルにできない(かわりに各ディスプレイにたいして常にローカル。@ref{Multiple
+Displays}を参照してください)変数も存在します。そのような変数をバッファーローカルにしようとすると、エラーメッセージが表示されます。
+
+@findex kill-local-variable
+  @kbd{M-x
+kill-local-variable}は、指定された変数が、カレントバッファーにたいしてローカルであることを終了させます。その後は、そのバッファーにたいして、その変数のグローバル値が効力をもちます。メジャーモードのセットにより、数少ない@dfn{パーマネントローカル(permanent
+locals: 永久にローカル)}な変数を除いて、そのバッファーのすべてのローカル変数はkillされます。
+
+@findex setq-default
+  変数がカレントバッファーでローカル値をもつかに関わらず、変数にグローバル値をセットするには、Lispコンストラクト@code{setq-default}を使用することができます。このコンストラクトは@code{setq}と同じように使用されますが、(もしあれば)ローカル値のかわりにグローバル値をセットします。カレントバッファーがローカル値をもつ場合、新しいグローバル値は他のバッファーに切り替えるまで見えないでしょう。以下は例です:
+
+@example
+(setq-default fill-column 75)
+@end example
+
+@noindent
+@code{setq-default}は、@code{make-variable-buffer-local}でマークされた変数のグローバル値をセットする唯一の方法です。
+
+@findex default-value
+  Lispプログラムは変数のデフォルト値を得るために、@code{default-value}を使用することができます。この関数はシンボルを引数として受け取り、それのデフォルト値を返します。引数は評価されるので、通常は明示的にクォートする必要があります。たとえば、以下は@code{fill-column}のデフォルト値を得る方法です:
+
+@example
+(default-value 'fill-column)
+@end example
+
+@node File Variables
+@subsection ファイル内のローカル変数
+@cindex local variables in files
+@cindex file local variables
+
+  ファイルに、Emacsでそのファイルを編集するときに使用するローカル変数の値を指定できます。ファイルをvisitするか、メジャーモードをセットすることにより、Emacsはローカル変数指定をチェックします。これは自動的にこれらの変数をバッファーにたいしてローカルにし、ファイルで指定された値にセットします。
+
+  あるファイルのディレクトリーにたいしてディレクトリーローカル変数(@ref{Directory
+Variables}を参照)が指定されている場合、ファイルローカル変数はそれをオーバーライドします。
+
+@menu
+* Specifying File Variables::  ファイルローカル変数の指定。
+* Safe File Variables::      ファイルローカル変数が安全であることを確認する。
+@end menu
+
+@node Specifying File Variables
+@subsubsection ファイル変数の指定
+
+  ファイルローカル変数を指定するには2つの方法があります。1つは最初の行に記述する方法で、もう1つはローカル変数リストを使用する方法です。以下は最初の行でこれらを指定する方法の例です:
+
+@example
+-*- mode: @var{modename}; @var{var}: @var{value}; @dots{} -*-
+@end example
+
+@noindent
+この方法により、任意の数の変数/値(variable/value)ペアーを指定できます。各ペアーはコロンとセミコロンで区切ります。特別な変数/値ペアー@code{mode:
+@var{modename};}が与えられた場合にはメジャーモードを指定します(サフィックス``-mode''なし)。@var{value}は文字列として使用されて、評価はされません。
+
+@findex add-file-local-variable-prop-line
+@findex delete-file-local-variable-prop-line
+@findex copy-dir-locals-to-file-locals-prop-line
+  手作業でエントリーを追加するかわりに、@kbd{M-x
+add-file-local-variable-prop-line}を使用することができます。このコマンドは変数と値の入力を求め、適切な方法で最初の行にこれらを追加します。@kbd{M-x
+delete-file-local-variable-prop-line}は変数の入力を求め、最初の行から変数のエントリーを削除します。コマンド@kbd{M-x
+copy-dir-locals-to-file-locals-prop-line}は、カレントのディレクトリーローカル変数を最初の行にコピーします(@ref{Directory
+Variables}を参照してください)。
+
+  以下は、最初の行でLispモードを指定して、2つの変数に数値をセットする例です:
+
+@smallexample
+;; -*- mode: Lisp; fill-column: 75; comment-column: 50; -*-
+@end smallexample
+
+@noindent
+@code{mode}の他に、ファイル変数として特別な意味をもつキーワードは@code{coding}、@code{unibyte}、@code{eval}です。これらは以下で説明します。
+
+@cindex shell scripts, and local file variables
+@cindex man pages, and local file variables
+  シェルスクリプトでは、最初の行はスクリプトのインタープリターの識別に使用されるので、ローカル変数をそこに置くことはできません。これに対処するために、Emacsは最初の行がインタープリターを指定しているときは、@emph{2行目}からローカル変数指定を探します。man
+pagesにも同じことが言えます。man
+pagesはtroffプリプロセッサーのリストを指定するマジック文字列@samp{'\"}で始まるからです(しかし、すべてがこれを行なう訳ではありません)。
+
+  @samp{-*-}行を使用するのではなく、ファイルの終端付近で@dfn{ローカル変数リスト(local variables
+list)}を使用することにより、ファイルローカル変数を定義することもできます。ローカル変数リストは、ファイル終端から3000文字以内で開始され、ファイルがページに分かれているときは最後のページになければなりません。
+
+  ファイルにローカル変数リストと@samp{-*-}の両方がある場合、Emacsは最初に@samp{-*-}行の@emph{すべて}を処理してから、ローカル変数リストの@emph{すべて}を処理します。例外はメジャーモード指定です。Emacsはメジャーモード指定がどこにあろうと、まずそれを適用します。なぜならほとんどのメジャーモードは、初期化部分ですべてのローカル変数をkillするからです。
+
+  ローカル変数リストは、文字列@samp{Local
+Variables:}を含む行で開始され、文字列@samp{End:}を含む行で終了します。この間には、以下のように1行に変数名と値のペアーが記述されます:
+
+@example
+/* Local Variables:  */
+/* mode: c           */
+/* comment-column: 0 */
+/* End:              */
+@end example
+
+@noindent
+この例では、各行はプレフィクス@samp{/*}で始まり、サフィックス@samp{*/}で終了します。Emacsは、リストの最初の行のマジック文字列@samp{Local
+Variables:}を囲む文字列から、プレフィクスとサフィックスを識別します。その後はリストの他の行で自動的にこれらを破棄します。プレフィクスおよび/またはサフィックスを使用する通常の理由は、そのファイルが意図する他のプログラムが混乱しないように、ローカル変数をコメントに埋め込むためです。上記は、コメントが@samp{/*}で始まり@samp{*/}で終わるCプログラミング言語での例です。
+
+Emacsのローカル変数リストではないが、そのように見えるテキストがある場合は、そのテキストの後にフォームフィード文字(ページ区切りです。@ref{Pages}を参照してください)を挿入して、それを取り消すことができます。Emacsはファイルの最後のページ(つまり最後のページ区切りの後)にあるファイルローカル変数だけを調べます。
+
+@findex add-file-local-variable
+@findex delete-file-local-variable
+@findex copy-dir-locals-to-file-locals
+  ローカル変数を直接タイプするかわりに、コマンド@kbd{M-x
+add-file-local-variable}を使用することができます。これは変数と値の入力を求め、それらをリストに追加し、@samp{Local
+Variables:}と、必要なら開始・終了マーカーも追加します。コマンド@kbd{M-x
+delete-file-local-variable}は、リストから変数を削除します。@kbd{M-x
+copy-dir-locals-to-file-locals}は、ディレクトリーローカル変数をリストにコピーします(@ref{Directory
+Variables}を参照してください)。
+
+  @samp{-*-}行と同じように、ローカル変数リストの変数は文字列として使用され、最初に評価されることはありません。長い文字列値をファイル内で複数行に分割したい場合、改行とバックスラッシュを使用できます(Lisp文字列定数では無視されます)。各行には、プレフィクスとサフィックスを記述するべきです。たとえ行がその文字列で開始または終了していても、それらはリストを処理するとき取り除かれます。以下は例です:
+
+@example
+# Local Variables:
+# compile-command: "cc foo.c -Dfoo=bar -Dhack=whatever \
+#   -Dmumble=blaah"
+# End:
+@end example
+
+  いくつかの名前は、ローカル変数リスト内で特別な意味をもちます:
+
+@itemize
+@item
+@code{mode}は、指定されたメジャーモードを有効にします。
+
+@item
+@code{eval}は、指定されたLisp式を評価します(式が返す値は無視されます)。
+
+@item
+@code{coding}は、このファイルでの文字コード変換にたいするコーディングシステムを指定します。@ref{Coding
+Systems}を参照してください。
+
+@item
+@code{unibyte}の値が@code{t}の場合、Emacs
+Lispのロードとコンパイルをunibyteモードで行ないます。@ref{Disabling Multibyte, , Disabling
+Multibyte Characters, elisp, GNU Emacs Lisp Reference Manual}を参照してください。
+
+@end itemize
+
+@noindent
+これら4つのキーワードは、実際には変数ではありません。他のコンテキストでこれらをセットしても、特別な意味はありません。
+
+@cindex fallback modes
+  Emacsの複数のバージョン間にまたがってファイルを編集するような場合に、新しいバージョンのEmacsではそのファイルを処理する新たなモードが導入されたとします。新しいバージョンのEmacsでは新たなモード(たとえば@code{my-new-mode})、そして古いバージョンのEmacsでは古いモード(たとえば@code{my-old-mode})にフォールバックするという具合に、@code{mode}エントリーを複数使うことができます。1行目でモードを有効にしている場合には、以下のように記述します:
+
+@example
+-*- mode: my-old; mode: my-new -*-
+@end example
+
+  Emacsは見つかったモードの中から最後に定義されたモードを使用するので、古いバージョンのEmacsでは@code{my-new-mode}は無視されますが、@code{my-new-mode}が定義されているバージョンのEmacsでは@code{my-old-mode}が無視されます。同様にして、ファイル終端のローカル変数ブロックでは以下のように記述します:
+
+@example
+Local variables:
+mode: my-old
+mode: my-new
+@end example
+
+  マイナーモードにたいして@code{mode}キーワードを使用しないでください。ローカル変数リストでマイナーモードを有効または無効にするには、@code{eval}でモードコマンドを実行するLisp式を指定します(@ref{Minor
+Modes}を参照)。たとえば以下のローカル変数リストは、引数なし(引数に1を指定しても同じことを行なう)で@code{eldoc-mode}を呼び出すことにより、ElDocモード(@ref{Programming
+Language Doc}を参照)を有効にし、引数@minus{}1で@code{font-lock-mode}(@ref{Font
+Lock}を参照)を呼び出すことにより、Font Lockモードを無効にする例です。
+
+@example
+;; Local Variables:
+;; eval: (eldoc-mode)
+;; eval: (font-lock-mode -1)
+;; End:
+@end example
+
+@noindent
+しかしこの方法でマイナーモードを指定するのは、間違っている場合もあることに注意してください。マイナーモードは個人の好みを表しており、そのファイルを編集するユーザーにあなたの好みを強制するのは、不適切かもしれません。状況に依存して自動的にマイナーモードを有効または無効にしたい場合は、たいていメジャーモードフックでこれを行なう方がよいのです(@ref{Hooks}を参照してください)。
+
+  ローカル変数と、ファイル名とファイル内容にしたがったバッファーのメジャーモード(もしあればローカル変数リストも)をリセットするには、コマンド@kbd{M-x
+normal-mode}を使用します。@ref{Choosing Modes}を参照してください。
+
+@node Safe File Variables
+@subsubsection 安全なファイル変数
+
+  ファイルローカル変数が危険な場合もあります。他の誰かのファイルをvisitするとき、そのファイルのローカル変数リストがEmacsに何を行なうか、告げるものはありません。@code{eval}
+``variable''や、その他の@code{load-path}などにたいする不正な値は、実行する意図がないLispコードを実行するかもしれません。
+
+  したがって、安全と判っていないファイルローカル変数を発見した場合、Emacsはファイルのローカル変数リスト全体を表示して、それらをセットする前に継続するか尋ねます。@kbd{y}または@key{SPC}をタイプすると、ローカル変数リストは効果をもち、@kbd{n}の場合は無視します。Emacsがバッチモード(@ref{Initial
+Options}を参照してください)で実行されている場合、Emacsは確認することができないので、@kbd{n}と応えられたとみなします。
+
+  Emacsは通常、特定の変数/値ペアーが安全だと認識できます。たとえば@code{comment-column}や@code{fill-column}には、任意の整数値を与えても安全です。ファイルが安全だと判っている変数/値ペアーだけを指定する場合、Emacsはそれらをセットする前に確認を求めません。そうでない場合、確認プロンプトで@kbd{!}とタイプすることにより、このファイル内のすべての変数/値ペアーが安全なことを記録するようEmacsに指示できます。その後、Emacsが同じファイルまたは別のファイルで、これらの変数/値ペアーに出会うと、これらを安全だとみなします。
+
+  同意を求めるプロンプトで@kbd{i}とタイプすることによって、ファイル内のすべての変数/値ペアーを永続的に無視するようEmacsに指示することもできます。それ以降は、これらのペアーはそのファイルと他のすべてのファイルで無視されるようになります。
+
+  ディレクトリーローカル変数(@ref{Directory
+Variables}を参照)のセットについてEmacsが確認を求める際には、入力を求めるプロンプトで@kbd{+}をタイプすればすべての変数をセットするとともに@code{safe-local-variable-directories}
+(下記参照)のリストにたいしてそのディレクトリーの追加も行います。これにより将来のセッションにおいても、このディレクトリーが任意のディレクトリーローカル変数をロードしても安全だとEmacsがみますようになります。応答として@kbd{+}を使用するのは、コンテンツが信頼できるディレクトリーにかぎるべきです。
+
+@vindex safe-local-variable-values
+@vindex ignored-local-variable-values
+@cindex risky variable
+  @code{load-path}のようないくつかの変数は、特に@dfn{危険(risky)}だと判断されます。これらをローカル変数として指定すべき理由はほとんどなく、それらを変更するのは危険です。ファイルに危険なローカル変数だけが含まれる場合、Emacsは確認プロンプトで@kbd{!}の選択肢を提示することも、それを受け入れることもしません。ファイル内のいくつかのローカル変数が危険で、いくつかの変数は潜在的に安全ではない場合は、プロンプトで@kbd{!}を入力できます。これはすべての変数に適用されますが、危険ではない変数だけを将来のセッションのために安全とマークします。もし危険な変数を安全な値として記録したいと本当に望むなら、@samp{safe-local-variable-values}をカスタマイズすることによりこれを行ないます(@ref{Easy
+Customization}を参照)。同様に永続的に無視されるべき危険な変数の値を記録したければ、@code{ignored-local-variable-values}をカスタマイズしてください。
+
+@vindex safe-local-variable-directories
+  特定のディレクトリーのディレクトリー変数については常に信頼することにより、たとえ危険な変数であってもそれらのディレクトリーからローカル変数をロードする際には確認を求めるプロンプトをスキップできれば便利な場合もあるでしょう。変数@code{safe-local-variable-directories}はそのようなディレクトリーを保持するための変数です。このリストのディレクトリー名は完全な絶対ファイル名でなければなりません。変数@code{enable-remote-dir-locals}が非@code{nil}値の場合には、このリストにリモートディレクトリーも含めることができます。
+
+@vindex enable-local-variables
+  変数@code{enable-local-variables}により、Emacsがローカル変数を処理する方法を変更できます。デフォルト値は@code{t}で、これは上述の振る舞いを指定します。@code{nil}の場合、Emacsは単にすべてのファイルローカル変数を無視します。@code{:safe}は安全な値だけを使用して、残りは無視します。@code{:all}はEmacsにたいして値が安全か否かに関わらず、すべてのファイルローカル変数をセットするよう指示します(恒常的に使用しないよう推奨)。他の値の場合、安全と判っている値かどうかの決定を試みずに、ローカル変数をもつ各ファイルごとに尋ねます。
+
+@vindex enable-local-eval
+@vindex safe-local-eval-forms
+  変数@code{enable-local-eval}は、Emacsが@code{eval}変数を処理するかどうかを制御します。@code{enable-local-variables}のように、変数に対する可能な値は3つで、@code{t}、@code{nil}、およびそれ以外です。デフォルトは、@code{t}や@code{nil}ではない@code{maybe}で、通常Emacsは@code{eval}変数を処理するときに確認を求めます。
+
+  例外として、評価する任意の@code{eval}形式が、変数@code{safe-local-eval-forms}で指定された形式の場合、Emacsは確認を求めません。
+
+@node Directory Variables
+@subsection ディレクトリーごとのローカル変数
+@cindex local variables, for all files in a directory
+@cindex directory-local variables
+@cindex per-directory local variables
+
+  大きなソフトウェアプロジェクトでのディレクトリーツリーのような、特定のディレクトリーや、それのサブディレクトリーのすべてのファイルにたいして、同じローカル変数を定義したいことがあるかもしれません。これは@dfn{ディレクトリーローカル変数(directory-local
+variables)}で行なうことができます。ファイルローカル変数はディレクトリーローカル変数をオーバーライドするので、あるディレクトリー内のファイルに特別なセッティングが必要な場合は、ディレクトリー変数でそのディレクトリー内の大多数にたいするセッティングを指定してから、ファイルローカル変数により、少数のファイルにたいしてオーバーライドを要する一般的なセッティングを定義できます。
+
+@cindex @file{.dir-locals.el} file
+  ディレクトリーローカル変数を定義する通常の方法は、そのディレクトリーに@file{.dir-locals.el}@footnote{MS-DOSでは、DOSファイルシステムの制限により、このファイルの名前は@file{_dir-locals.el}になります。ファイルシステムによりファイル名が8+3に制限されている場合、OSによりファイル名が@file{_dir-loc.el}に切り詰められるでしょう。}を配す方法です。そのディレクトリー、またはそれのサブディレクトリーの任意のファイルをEmacsがvisitするとき、@file{.dir-locals.el}で指定されたディレクトリーローカル変数が、あたかもそのファイルのファイルローカル変数(@ref{File
+Variables}を参照してください)として定義されたかのように、ファイルに適用されます。Emacsはvisitされたファイルのディレクトリーから、ディレクトリーツリーを上に移動しながら@file{.dir-locals.el}を検索します。スローダウンを避けるために、検索はリモートファイルをスキップします。必要なら、変数@code{enable-remote-dir-locals}を@code{t}にセットして、検索範囲をリモートファイルに広げることができます。
+
+  Emacsが追加でロードする@file{.dir-locals-2.el}が存在する場合は、それを使用することもできます。これは@file{.dir-locals.el}がバージョンコントロールの共有ディレクトリー配下にあり、個人的なカスタマイズに使用できないときに有用です。
+
+  @file{.dir-locals.el}は、特別な構成のリストをもちます。これはモード名(シンボルで指定)をalist(Association
+Lists: 連想リスト。@ref{Association Lists,,, elisp, The Emacs Lisp Reference
+Manual}を参照してください)にマップします。各alistエントリーは、変数名と、指定されたメジャーモードが有効なときに、その変数に割り当てるディレクトリーローカル値からなります。モード名のかわりに@samp{nil}を指定でき、これはalistが任意のモードで適用されることを意味します。サブディレクトリー(文字列で指定)を指定することもできます。この場合、そのサブディレクトリーのすべてのファイルにalistが適用されます。
+
+  以下は、@file{.dir-locals.el}ファイルの例です:
+
+@example
+((nil . ((indent-tabs-mode . t)
+         (fill-column . 80)
+         (mode . auto-fill)))
+ (c-mode . ((c-file-style . "BSD")
+            (subdirs . nil)))
+ ("src/imported"
+  . ((nil . ((change-log-default-name
+              . "ChangeLog.local"))))))
+@end example
+
+@noindent
+これはディレクトリーツリーの任意のファイルにたいして変数@samp{indent-tabs-mode}および@code{fill-column}をセットして、任意のCソースファイルにたいしてインデントスタイルをセットします。特別な要素@code{mode}は有効にするマイナーモードを指定します。したがって@code{(mode
+.
+auto-fill)え}はマイナーモード@code{auto-fill-mode}の有効化が必要なことを指定します。特別な要素@code{subdirs}は変数ではありません。これは特別なキーワードで、Cモードのセッティングがカレントディレクトリーだけに適用され、任意のサブディレクトリーには適用されないことを示します。最後に、これは@file{src/imported}サブディレクトリー内の任意のファイルにたいして、違う@file{ChangeLog}ファイル名を指定します。
+
+異なるモード名やディレクトリーを使用する変数にたいして、@file{.dir-locals.el}ファイル内に複数の値が含まれる場合には、汎用的なモードと比較してより特化したモードにたいする値が優先して適用されるでしょう。更にディレクトリー下に指定された値は、より高い優先度をもちます。たとえば:
+
+@example
+((nil . ((fill-column . 40)))
+ (c-mode . ((fill-column . 50)))
+ (prog-mode . ((fill-column . 60)))
+ ("narrow-files" . ((nil . ((fill-column . 20))))))
+@end example
+
+@code{c-mode}は@code{prog-mode}から派生しているので、@code{c-mode}を使用するファイルは@code{prog-mode}にもマッチします。しかしCのファイルは@code{prog-mode}より特化したモード名なので、@code{fill-column}に使用される値は@code{50}になるでしょう。@code{prog-mode}から派生する他のモードを使用するファイルは、@code{60}を使用します。@file{narrow-files}ディレクトリー配下のファイルでは、モードエントリーよりディレクトリーエントリーが優先されるので、たとえ@code{c-mode}を使用するファイルでも、値@code{20}が使用されることになります。
+
+@file{.dir-locals.el}内では@code{mode}、@code{eval}、@code{unibyte}を指定できます。これらの変数は、ファイルローカル変数のときとオ同じ意味をもちます。@code{coding}は、ディレクトリーローカル変数としては指定できません。@ref{File
+Variables}を参照してください。
+
+@file{.dir-locals.el}内のスペシャルキー@code{auto-mode-alist}で、ファイルのメジャーモードをセットできます。これは変数@code{auto-mode-alist}と同様に機能します(@ref{Choosing
+Modes}を参照)。たとえば以下はそのディレクトリー内の@file{.def}ソースファイルをCモードにするようEmacsに指示する例です:
+
+@example
+((auto-mode-alist . (("\\.def\\'" . c-mode))))
+@end example
+
+@findex add-dir-local-variable
+@findex delete-dir-local-variable
+@findex copy-file-locals-to-dir-locals
+  @file{.dir-locals.el}ファイルを手で編集するかわりに、コマンド@kbd{M-x
+add-dir-local-variable}を使用できます。これはモード名またはサブディレクトリー、および変数名と値の入力を求め、ディレクトリーローカル変数を定義するエントリーを追加します。@kbd{M-x
+delete-dir-local-variable}は、エントリーを削除します。@kbd{M-x
+copy-file-locals-to-dir-locals}は、カレントファイル内のファイルローカル変数を@file{.dir-locals.el}にコピーして、@file{.dir-locals-2.el}があれば同様にそのファイルにもコピーします。
+
+3つのコマンドはすべて、プレフィクス引数を指定すると編集したいファイルの入力を求めます。存在する必要はないものの、@file{.dir-locals.el}か@file{.dir-locals-2.el}いずれかの有効なファイル名を入力しなければなりません。
+
+@findex customize-dirlocals
+ディレクトリーローカル変数を編集するためにEasy Customizationバッファー (@ref{Easy
+Customization}を参照)をポップアップするコマンド@code{customize-dirlocals}もあります。
+
+@findex dir-locals-set-class-variables
+@findex dir-locals-set-directory-class
+  ディレクトリーローカル変数を指定する他の方法は、@code{dir-locals-set-class-variables}関数を使用して、@dfn{ディレクトリークラス(directory
+class)}の中に、変数/値ペアーのグループを定義する方法です。その後、@code{dir-locals-set-directory-class}関数を使用して、そのクラスに対応するディレクトリーをEmacsに指示します。これらの関数呼び出しは通常、初期化ファイルで行なわれます(@ref{Init
+File}を参照してください)。この方法は、何らかの理由でディレクトリーに@file{.dir-locals.el}を置けないときに便利です。たとえば、この方法で書き込み不可なディレクトリーにセッティングを適用できます:
+
+@example
+(dir-locals-set-class-variables 'unwritable-directory
+   '((nil . ((some-useful-setting . value)))))
+
+(dir-locals-set-directory-class
+   "/usr/include/" 'unwritable-directory)
+@end example
+
+  変数にたいしてディレクトリーローカル値とファイルローカル値の両方が指定された場合、ファイルローカル値が効果をもちます。安全ではないディレクトリーローカル値は、安全でないファイルローカル値と同じ方法で扱われます(@ref{Safe
+File Variables}を参照してください)。
+
+  ディレクトリーローカル変数は、Diredバッファー(@ref{Dired}を参照してください)のような、ファイルを直接visitしていないが、ディレクトリーで処理を行なうバッファーにたいしても効果があります。
+
+@node Connection Variables
+@subsection 接続ごとのローカル変数
+@cindex local variables, for all remote connections
+@cindex connection-local variables
+@cindex per-connection local variables
+
+  ほとんどの変数はローカルマシンの状況を反映します。リモートのデフォルトディレクトリーをもつバッファー操作時には、それらの変数が異なる値を使用しなければならないときが時折あります。@code{shell}を呼び出す際の挙動について考えてみましょう。ローカルのマシンでは@file{/bin/bash}を使用してtermcapを用いるかもしれませんが、リモートのマシンでは@file{/bin/ksh}とterminfoかもしれないのです。
+
+  これは@dfn{接続ローカル変数(connection-local
+variables)}で実現することができます。ディレクトリーローカル変数とファイルローカル変数は接続ローカル変数をオーバーライドします。安全ではない接続ローカル値は、安全でないファイルローカル値と同じ方法で扱われます(@ref{Safe
+File Variables}を参照してください)。
+
+@findex connection-local-set-profile-variables
+@findex connection-local-set-profiles
+  接続ローカル変数は@code{connection-local-set-profile-variables}関数を使用して変数/値ペアのグループとして@dfn{プロファイル(profile)}内に宣言されます。関数@code{connection-local-set-profiles}はリモートマシンを識別する与えられた条件にたいしてプロファイルをアクティブにします。
+
+@example
+(connection-local-set-profile-variables 'remote-terminfo
+   '((system-uses-terminfo . t)
+     (comint-terminfo-terminal . "dumb-emacs-ansi")))
+
+(connection-local-set-profile-variables 'remote-ksh
+   '((shell-file-name . "/bin/ksh")
+     (shell-command-switch . "-c")))
+
+(connection-local-set-profile-variables 'remote-bash
+   '((shell-file-name . "/bin/bash")
+     (shell-command-switch . "-c")))
+
+(connection-local-set-profiles
+   '(:application tramp :machine "remotemachine")
+   'remote-terminfo 'remote-ksh)
+@end example
+
+  このコードでは@code{remote-terminfo}、@code{remote-ksh}そして@code{remote-bash}という3つの異なるプロファイルを宣言しています。プロファイル@code{remote-terminfo}と@code{remote-ksh}は、ホスト名がregexpの@code{"remotemachine"}にマッチするリモートのデフォルトディレクトリーをもつすべてのバッファーに適用されます。このような条件はプロパティ@code{:protocol}
+(Trampの手法)や@code{:user}
+(リモートユーザー名)も区別できます。@code{nil}という条件はリモートデフォルトディレクトリーをもつすべてのバッファーにマッチします。
+
+  同じ変数にたいして異なるプロファイルを宣言する際には、同時にマッチするかもしれない条件をプロファイルにセットしないように注意してください。その場合にはどちらの変数値が用いられるかは未定義です。
+
+@node Key Bindings
+@section キーバインディングのカスタマイズ
+@cindex key bindings
+
+  このセクションでは、キーをコマンドにマップする@dfn{キーバインド(key
+bindings)}と、そのキーバインドを記録する@dfn{キーマップ(keymaps)}を説明します。それにinitファイルを編集して、キーバインドをカスタマイズする方法も説明します(@ref{Init
+Rebinding}を参照してください)。
+
+@cindex reserved key bindings
+@cindex keys, reserved
+  ほとんどのモードは自身のキーバインディングを定義するので、モードをアクティブにすることにより、あなたのカスタムキーバインディングがオーバーライドされるかもしれません。いくつかのキーはユーザー定義バインディングのために予約されており、モードはそれらを使用してはならないので、これらのキーはこの問題にたいして安全です。予約済みのキーは、@kbd{C-c}と英字(大文字と小文字の両方)、修飾キーなし(@ref{Modifier
+Keys}を参照)のファンクションキーの@key{F5}から@key{F9}です。
+
+@menu
+* Keymaps::                  一般的な考え方。グローバルキーマップ。
+* Prefix Keymaps::           プレフィクスキーにたいするキーマップ。
+* Local Keymaps::            キーマップをもつメジャーモードとマイナーモード。
+* Minibuffer Maps::          ミニバッファーが使用する独自のキーマップ。
+* Rebinding::                あるキーの意味を再定義する便利な方法。
+* Init Rebinding::           初期化ファイルでのキーのリバインド。
+* Modifier Keys::            Using modifier keys.
+* Function Keys::            端末のファンクションキーのリバインド。
+* Named ASCII Chars::        @key{TAB}と@kbd{C-i}などを区別する方法。
+* Mouse Buttons::            Emacsでのマウスボタンのリバインド。
+* Disabling::                コマンドを無効にするとは、それを実行できるようにする前に確認が要求されることを意味します。これはビギナーを戸惑わせないようにするために行なわれます。
+@end menu
+
+@node Keymaps
+@subsection キーマップ
+@cindex keymap
+
+  @ref{Commands}で説明されているように、各Emacsコマンドは、対話的に使用することを条件として定義されたLisp関数です。すべてのLisp関数と同様に、コマンドは小文字とハイフンからなる関数名をもちます。
+
+  @dfn{キーシーケンス(key sequence)} --- 短くは@dfn{キー(key)} ---
+とは、1つの単位として意味をもつ、連続する@dfn{入力イベント(input
+events)}のことです。入力イベントとは文字、ファンクションキー、マウスボタン ---
+つまりコンピューターに送ることができるすべての入力のことです。キーシーケンスは、それが何のコマンドを実行するかを指示する@dfn{バインディング(binding)}により、意味をもちます。
+
+  キーシーケンスとコマンド関数との間のバインディングは、@dfn{keymaps(キーマップ)}と呼ばれるデータ構造に記録されます。Emacsには多くのkeymapsがあり、それぞれが特別の機会に使用されます。
+
+@cindex global keymap
+  一番重要なキーマップは、@dfn{グローバルキーマップ(global
+keymap)}です。なぜならグローバルキーマップは常に効果があるからです。グローバルキーマップはFundamentalモードにたいしてキーを定義します(@ref{Major
+Modes}を参照してください)。これらの定義のほとんどは、、ほとんどすべてのメジャーモードでは一般的です。メジャーモードまたはマイナーモードは、いくつかのキーにたいするグローバル定義をオーバーライドするために、それぞれ独自のkeymapをもつことができます。
+
+  たとえば@kbd{g}のような自己挿入文字(self-inserting character)は、グローバルキーマップがそれをコマンドcommand
+@code{self-insert-command}にバインドするので、自己挿入を行なうのです。@kbd{C-a}のような標準的なEmacsの編集文字もグローバルキーマップから、それらの標準的な意味を取得します。@kbd{M-x
+keymap-global-set}のようなキーをリバインドするコマンドは、新しいバインディングをグローバルマップの適切な位置に保存することにより機能します(@ref{Rebinding}を参照)。カレントのキーバインディングを閲覧するには@kbd{C-h
+b}コマンドを使用してください。
+
+@cindex function key
+  ほとんどの現代的なキーボードは、文字キーと同じようにファンクションキーをもちます。ファンクションキーは文字キーが行なうように入力イベントを送り、キーマップはファンクションキーにたいするバインディングをもつことができます。キーシーケンスにはファンクションキーと文字をミックスすることもできます。たとえば、キーボードにファンクションキー@key{Home}がある場合、Emacsは@kbd{C-x
+@key{Home}}のようなキーシーケンスを認識できます。@kbd{S-down-mouse-1}のように、マウスイベントとキーボードイベントをミックスすることさえ可能です。
+
+  テキスト端末では、ファンクションキーをタイプすることにより、文字シーケンスがコンピューターに送られます。シーケンスの正確な詳細は、ファンクションキーと端末タイプに依存します(シーケンスが@kbd{@key{ESC}
+[}で始まることもしばしばあります)。Emacsが端末タイプを理解する場合、自動的にそのようなシーケンスを1つの入力イベントとして処理します。
+
+  後続に1文字(@acronym{ASCII}と非@acronym{ASCII}の大文字小文字)を伴う@kbd{C-c}から構成されるキーシーケンスはユーザー用に予約済みです。これらのキーシーケンスをEmacs自身がバインドすることは決してなく、Emacs拡張はこれらのキーシーケンスのバインディングを避ける必要があります。言い換えると、ユーザーは@kbd{C-c
+a}や@kbd{C-c
+@,{c}}のようなキーシーケンスをバインドでき、それはEmacsのバインディングによりバインディングがシャドーされることは決してないということに基づいています。
+
+@node Prefix Keymaps
+@subsection プレフィクスキーマップ
+
+  内部的には、Emacsは各キーマップの1つのイベントだけを記録します。複数イベントのキーシーケンスの解釈は、キーマップの連鎖を生じます。最初のイベントにたいして最初のキーマップが定義を与え、シーケンス内の2番目のイベントを探すのに他のキーマップが使用され...と連鎖していきます。したがって@kbd{C-x}や@key{ESC}などのプレフィクスキーは独自のキーマップをもち、それらはプレフィクスの直後のイベントにたいする定義を保持します。
+
+  プレフィクスキーの定義は通常、それに続くイベントを探すのに使用するキーマップです。プレフィクスキーの定義として、関数定義がキーマップであるようなLispシンボルを指定することもできます。効果は同じですが、そのプレフィクスキーが何のためなのか説明するためのコマンド名を提供します。たとえば、@kbd{C-x}のバインディングはシンボル@code{Control-X-prefix}で、このシンボルの関数定義は、@kbd{C-x}コマンドにたいするキーマップです。プレフィクスキーとしての@kbd{C-c}、@kbd{C-x}、@kbd{C-h}、@key{ESC}は、グローバルキーマップに定義されているので、これらのプレフィクスキーは常に利用できます。
+
+  通常のプレフィクスキー以外に、``架空のプレフィクスキー(fictitious prefix
+key)''もあり、これらはメニューバーを表します。メニューバーのキーバインディングについての特別な情報は、@ref{Menu Bar,,,elisp,
+The Emacs Lisp Reference
+Manual}を参照してください。ポップアップメニューを呼び出すマウスボタンイベントもプレフィクスキーです。詳細については、@ref{Menu
+Keymaps,,,elisp, The Emacs Lisp Reference Manual}を参照してください。
+
+  いくつかのキーマップは、名前のついた変数に格納されています:
+
+@itemize @bullet
+@item
+@vindex ctl-x-map
+@code{ctl-x-map}は、@kbd{C-x}の後の文字に使用されるマップにたいする変数名です。
+@item
+@vindex help-map
+@code{help-map}は。@kbd{C-h}の後の文字のためのマップです。
+@item
+@vindex esc-map
+@code{esc-map}は、@key{ESC}の後の文字のためのマップです。したがって、すべてのメタ文字がこのマップで定義されています。
+@item
+@vindex ctl-x-4-map
+@code{ctl-x-4-map}は、@kbd{C-x 4}の後の文字のためのマップです。
+@item
+@vindex mode-specific-map
+@code{mode-specific-map}は、@kbd{C-c}の後の文字のためのマップです。
+@item
+@vindex project-prefix-map
+@code{project-prefix-map}はプロジェクト関連のコマンドに使用される、@kbd{C-x
+p}の後の文字のためのマップです(@ref{Projects}を参照)。
+@end itemize
+
+@node Local Keymaps
+@subsection ローカルキーマップ
+
+@cindex local keymap
+@cindex minor mode keymap
+  ここまではグローバルマップの詳細を説明してきました。メジャーモードは、@dfn{ローカルキーマップ(local
+keymaps)}で独自のキーバインディングを提供することにより、Emacsをカスタマイズします。たとえばCモードは、C言語のためにカレント行をインデントするために、@key{TAB}をオーバーライドします。マイナーモードもローカルキーマップをもつことができます。マイナーモードが効力をもつとき、マイナーモードのキーマップの定義は、メジャーモードのローカルキーマップとグローバルキーマップの両方をオーバーライドします。それに加えて、バッファーの一部のテキストに、他のすべてのキーマップをオーバーライドする独自のキーマップを指定できます。
+
+  ローカルキーマップは、あるキーをプレフィクスキーマップとして定義することにより、そのキーをプレフィクスキーとして再定義できます。そのキーがグローバルでもプレフィクスとして定義されている場合、そのキーのグローバルおよびローカルの定義(両方のキーマップ)が、相乗して効果をもちます。つまりプレフィクスキーに続くイベントを探すのに、両方の定義が使用されます。たとえばローカルキーマップが@kbd{C-c}をプレフィクスキーマップとして定義し、そのキーマップが@kbd{C-z}をコマンドとして定義する場合、これは@kbd{C-c
+C-z}にローカルな意味を提供します。これは@kbd{C-c}で始まる他のシーケンスには影響を与えません。これらのシーケンスが独自のローカルバインディングをもたない場合、グローバルバインディングが効果をもちます。
+
+  これを別の方法で考えると、Emacsはキーシーケンス全体のバインディングにたいして、複数のキーマップを1つずつ探して、複数イベントキーシーケンスを処理すると考えることができます。最初にマイナーモードが有効な場合はマイナーモードのキーマップをチェックして、次にメジャーモードのキーマップをチェックして、それからグローバルキーマップをチェックするのです。これはキーの照合が機能する正確な方法ではありませんが、通常の場面における結果を理解するには充分です。
+
+@node Minibuffer Maps
+@subsection ミニバッファーキーマップ
+
+@cindex minibuffer keymaps
+@vindex minibuffer-local-map
+@vindex minibuffer-local-ns-map
+@vindex minibuffer-local-completion-map
+@vindex minibuffer-local-must-match-map
+@vindex minibuffer-local-filename-completion-map
+  ミニバッファーは独自のローカルキーマップのセットをもちます。これにはさまざまな補完やexitコマンドが含まれます。
+
+@itemize @bullet
+@item
+@code{minibuffer-local-map}は、通常の入力(補完なし)に使用されます。
+@item
+@code{minibuffer-local-ns-map}は同様ですが、@key{SPC}で@key{RET}と同じようにexitします。
+@item
+@code{minibuffer-local-completion-map}は、寛大な補完(permissive
+completion)のためのキーマップです。
+@item
+@code{minibuffer-local-must-match-map}は、強い補完(strict
+completion)と慎重な補完(cautious completion)のためのキーマップです。
+@item
+@code{minibuffer-local-filename-completion-map}は前の2つと同様ですが、特にファイル名補完のためのキーマップです。これは@key{SPC}をバインドしません。
+@end itemize
+
+@code{minibuffer-local-completion-map}ではデフォルトでは@key{TAB}、@key{SPC}、@key{?}は補完を行います。日常的にスペースやクエスチョンマークのような文字をもつコレクションにたいして補完を行うようなら、以下をinitファイルに記述してそれらのキーでの置換を無効にすると便利かもしれません:
+
+@lisp
+(keymap-set minibuffer-local-completion-map "SPC" 'self-insert-command)
+(keymap-set minibuffer-local-completion-map "?" 'self-insert-command)
+@end lisp
+
+@node Rebinding
+@subsection 対話的なキーバインディングの変更
+@cindex key rebinding, this session
+@cindex rebinding keys, this session
+@cindex binding keys
+
+  Emacsがキーを再定義する方法は、キーマップのそのキーのエントリーを変更する方法です。グローバルキーマップを変更できます。この場合すべてのメジャーモードで変更が効果をもちます(ただし同じキーにたいしてそれをオーバーライドする独自のローカルバインディングをもつ場合を除きます)。ローカルキーマップを変更することもできます。これは同じメジャーモードを使用するすべてのバッファーに効果があります。
+
+  このセクションでは、現在のEmacsセッションでキーをリバインドする方法を説明します。将来のEmacsセッションで効果をもつようにキーをリバインドする方法については、@ref{Init
+Rebinding}を参照してください。
+
+@findex keymap-global-set
+@findex keymap-local-set
+@findex keymap-global-unset
+@findex keymap-local-unset
+@table @kbd
+@item M-x keymap-global-set @key{RET} @var{key} @var{cmd} @key{RET}
+@var{cmd}を実行する@var{key}をグローバルに定義します。
+@item M-x keymap-local-set @key{RET} @var{key} @var{cmd} @key{RET}
+@var{cmd}を実行する@var{key}を、(そのとき効力をもつメジャーモードで)ローカルに定義します。
+@item M-x keymap-global-unset @key{RET} @var{key}
+グローバルマップで@var{key}を未定義にします。
+@item M-x keymap-local-unset @key{RET} @var{key}
+(そのとき効力をもつメジャーモードで)ローカルに@var{key}を未定義にします。
+@end table
+
+  たとえば以下は、通常の@kbd{C-z}にたいするグローバルな定義を置き換えて、@kbd{C-z}を@code{shell}コマンド(@ref{Interactive
+Shell}を参照してください)にバインドします:
+
+@example
+M-x keymap-global-set @key{RET} C-z shell @key{RET}
+@end example
+
+@noindent
+@code{keymap-global-set}コマンドは、キーの後にコマンド名を読み取ります。キーを押した後に以下のようなメッセージが表示されるので、そのキーにバインドしたいコマンドを入力できます:
+
+@example
+Set key C-z to command:
+@end example
+
+  ファンクションキーとマウスイベントも同じ方法で再定義できます。リバインドするキーを指定するときに、ファンクションキーをタイプするか、マウスをクリックするだけです。
+
+  複数のイベントを含むキーも、同じ方法で再定義できます。Emacsは、(プレフィクスキーではない)完了キーまで、リバインドするキーの読み取りを続けます。したがって@var{key}に@kbd{C-f}をタイプすると、それで完了です。これによりミニバッファーに入って、すぐに@var{cmd}を読み取ります。しかし@kbd{C-x}をタイプした場合、これはプレフィクスなので、他の文字を読み取ります。それが@kbd{4}の場合、これもプレフィクス文字なので、さらに文字を読み取ります。たとえば、
+
+@example
+M-x keymap-global-set @key{RET} C-x 4 $ spell-other-window @key{RET}
+@end example
+
+@noindent
+これは、(架空のコマンド)@code{spell-other-window}を実行するように、@kbd{C-x 4 $}を再定義します。
+
+  @code{keymap-global-unset}で、キーのグローバルな定義を削除できます。これはそのキーを@dfn{未定義(undefined)}にします。その後このキーをタイプしても、Emacsはビープ音を鳴らすだけです。同様に@code{keymap-local-unset}は、カレントメジャーモードのキーマップでキーを未定義にして、メジャーモードでそのキーにたいするグローバル定義(またはグローバル定義に無い状態)が有効になります。
+
+  あるキーを再定義(または未定義に)してから、後でその変更を取り消したくなった場合、キーを未定義にしても上手くいきません ---
+そのキーを標準の定義に再定義する必要があります。そのキーの標準の定義の名前を見つけるには、フレッシュなEmacsのFundamentalモードで、@kbd{C-h
+c}を使用します。このマニュアルのキーのドキュメントにも、それらのコマンド名がリストされています。
+
+  間違ってコマンドを呼び出すことから自分を守りたい場合、そのキーを未定義にするより、コマンドを無効にするほうがよいでしょう。無効にされたコマンドは、実際にそれを実行したくなったとき、少しの手間で呼び出すことができます。@ref{Disabling}を参照してください。
+
+@node Init Rebinding
+@subsection initファイル内でのキーのリバインド
+@cindex rebinding major mode keys
+@cindex key rebinding, permanent
+@cindex rebinding keys, permanently
+@c This node is referenced in the tutorial.  When renaming or deleting
+@c it, the tutorial needs to be adjusted.  (TUTORIAL.de)
+
+  いつでも使いたいキーバインドがある場合、初期化ファイルにLispコードを記述することにより、それらを指定できます。初期化ファイルの説明については、@ref{Init
+File}を参照してください。
+
+@findex keymap-global-set
+  Lipsを用いてキーバインディングを記述する際には、@code{keymap-global-set}または@code{keymap-set}のいずれかの関数を使用することをお薦めします。たとえば以下はグローバルキーマップにおいて、@kbd{C-z}に@code{shell}コマンド(@ref{Interactive
+Shell}を参照)をバインドする例です:
+
+@example
+(keymap-global-set "C-z" 'shell)
+@end example
+
+@cindex key sequence syntax
+@noindent
+@code{keymap-global-set}の1つ目の引数にはキーシーケンスを記述します。これはスペースで区切られた一連の文字から構成される文字列であり、それぞれの文字がキーに対応しています。修飾されたキーは、たとえばControlキーなら@samp{C-}、Metaキーなら@samp{M-}のように、修飾キーを前に追加することによって指定できます。@key{TAB}や@key{RET}のようなスペシャルキーの場合には、@kbd{@key{TAB}}や@kbd{@key{RET}}のように山形カッコ(angle
+brackets)の中に記述することによって指定することができます。
+
+  上記例でキーシーケンスにバインドされるコマンド名@code{shell}の前にあるシングルクォートによって、それを変数ではなくシンボル定数としてマークします。クォートを省略した場合、Emacsは@code{shell}を変数として評価しようとします。これはおそらくエラーを引き起こしますが、もちろんあなたはそれを望まないはずです。
+
+  以下に、ファンクションキーやマウスイベントなどを含めた、追加の例を示します:
+
+@example
+(keymap-global-set "C-c y" 'clipboard-yank)
+(keymap-global-set "C-M-q" 'query-replace)
+(keymap-global-set "<f5>" 'flyspell-mode)
+(keymap-global-set "C-<f5>" 'display-line-numbers-mode)
+(keymap-global-set "C-<right>" 'forward-sentence)
+(keymap-global-set "<mouse-2>" 'mouse-save-then-kill)
+@end example
+
+  非@acronym{ASCII}文字にたいするキーバインディングは、言語とコーディングシステムに問題を起こすかもしれません。 @ref{Init
+Non-ASCII}を参照してください。
+
+@findex global-set-key
+@findex define-key
+  かわりに低レベル関数@code{define-key}と@code{global-set-key}を使うこともできます。たとえばこれらの低レベル関数を用いて、上記例のように@kbd{C-z}に@code{shell}コマンドをバインドするには:
+
+@example
+(global-set-key (kbd "C-z") 'shell)
+@end example
+
+@findex kbd
+@noindent
+キーシーケンスの指定にはさまざまな方法が存在しますが、上記例で示した関数@code{kbd}を使うのがもっともシンプルな方法です。@code{kbd}は単一の文字列引数としてキーシーケンスのテキスト表現を受け取り、@code{global-set-key}のような低レベル関数に適した形式に変換します。Lipsにおけるキーのバインディングと使用に関する詳細については、@ref{Keymaps,,,
+elisp, The Emacs Lisp Reference Manual}を参照してください。
+
+@findex keymap-set
+@findex keymap-unset
+  @ref{Local
+Keymaps}で説明したように、メジャーモードとマイナーモードはローカルキーマップを定義できます。これらのキーマップは、セッションで最初にそのモードがロードされるときに構築されます。特定のキーマップに変更を施すには、関数@code{keymap-set}を使用できます。キーバインディングの削除には@code{keymap-unset}を使用します。
+
+  モードのキーマップはモードがロードされるまで構築されないので、キーマップを変更するコードを@dfn{モードフック(mode
+hook)}に配置することにより実行を遅延しなければなりません(@ref{Hooks}を参照)。たとえばTexinfoモードは、フック@code{texinfo-mode-hook}を実行します。以下はTexinfoモードで@kbd{C-c
+n}と@kbd{C-c p}にローカルバインディングを追加、@kbd{C-c C-x
+x}のローカルバインディングを削除するために、どのようにフックを使用できるかの例です:
+
+@example
+(add-hook 'texinfo-mode-hook
+          (lambda ()
+            (keymap-set texinfo-mode-map "C-c p"
+                        'backward-paragraph)
+            (keymap-set texinfo-mode-map "C-c n"
+                        'forward-paragraph)
+            (keymap-set texinfo-mode-map "C-c C-x x" nil)))
+@end example
+
+@node Modifier Keys
+@subsection 修飾キー
+@cindex modifier keys, and key rebinding
+
+  Emacsでは、デフォルトのキーバインディングがセットアップされているので、修飾されたアルファベット文字は大文字小文字が区別されません。つまり@kbd{C-A}は@kbd{C-a}と同じことを行い、@kbd{M-A}は@kbd{M-a}と同じことを行ないます。これはアルファベット文字だけに当てはまり、他のキーのシフトキーが押された(shifted)バージョンには適用されません。たとえば、@kbd{C-@@}は@kbd{C-2}と同じではありません。
+
+  @key{Control}修飾されたアルファベット文字は、一般的に大文字小文字が区別されません。Emacsは常に@kbd{C-A}を@kbd{C-a}、@kbd{C-B}を@kbd{C-b}、...として扱います。これは歴史的な理由によります。非グラフィカルな環境ではこれらのキーストロークに差異はありません。しかしGUIフレームではshiftした@key{Control}のアルファベットキーストロークをバインドできます。
+
+@lisp
+(keymap-global-set "C-S-n" #'previous-line)
+@end lisp
+
+  他の修飾キーではEmacsをカスタマイズするとき修飾されたアルファベットの大文字小文字を区別するようにできます(非グラフィカルなフレームでも可)。たとえば@kbd{M-a}と@kbd{M-A}で別のコマンドを実行できます。
+
+@cindex Alt, modifier key
+@cindex Super, modifier key
+@cindex Hyper, modifier key
+@cindex s-
+@cindex H-
+@cindex A-
+  一般的に使用される修飾キーは@key{Control}と@key{Meta}だけですが、Emacsは他の修飾キーもサポートします。これらは@key{Super}、@key{Hyper}、@key{Alt}と呼ばれます。これらの修飾キーを使用する方法を提供する端末の数は多くありません。ほとんどのキーボードで@key{Alt}とラベルされたキーは、通常は@key{Alt}ではなく@key{Meta}修飾を発行します。Emacsの標準のキーバインディングには@key{Super}と@key{Hyper}は含まれず、少数の標準キーバインディングだけが@key{Alt}を使用します。これらのキーで修飾された文字は含まれません。しかしこれらの修飾を使用するキーバインディングに意味を割り当てるようにEmacsをカスタマイズできます。修飾ビットはそれぞれ@samp{s-}、@samp{H-}、@samp{A-}になります。
+
+@cindex modifier keys unsupported by keyboard
+  これらの追加的な修飾キーがキーボードになくても、@kbd{C-x @@}を使用して入力できます。@kbd{C-x @@
+h}はHyperフラグ、@kbd{C-x @@ s}はSuperフラグ、@kbd{C-x @@
+a}はAltフラグを次の文字に加えます。たとえば@kbd{Hyper-Control-a}を入力するには、@kbd{C-x @@ h
+C-a}とタイプします(残念なことに同じ文字にたいして@kbd{C-x
+@@}を使用して、2つの修飾を追加する方法はありません。なぜなら最初の1つは2回目の@kbd{C-x}にたいして作用するからです)。同様に必要となることは稀ですが@kbd{C-x
+@@ S}、@kbd{C-x @@ c}、@kbd{C-x @@ m}でShift、Control、Metaといった修飾キーを入力できます。
+
+@node Function Keys
+@subsection ファンクションキーのリバインド
+
+  キーシーケンスには、通常の文字と同じようにファンクションキーを含めることができます。Lisp文字(実際は整数です)がキーボードの文字を表すように、Lispシンボルはファンクションキーを表します。ファンクションキーのラベルに示された単語が、それにタイプするLispシンボルの名前になります。以下は一般的なファンクションキーにたいする、慣例的なLisp名です:
+
+@table @asis
+@item @code{left}、@code{up}、@code{right}、@code{down}
+カーソル矢印キーです。
+
+@item @code{begin}、@code{end}、@code{home}、@code{next}、@code{prior}
+その他のカーソルを再配置するキーです。
+
+@item @code{select}、@code{print}、@code{execute}、@code{backtab}
+@itemx @code{insert}、@code{undo}、@code{redo}、@code{clearline}
+@itemx @code{insertline}、@code{deleteline}、@code{insertchar}、@code{deletechar}
+その他のファンクションキーです。
+
+@item @code{f1}、@code{f2}、@dots{}、@code{f35}
+(キーボード上部にある)番号つきのファンクションキーです。
+
+@item @code{kp-add}、@code{kp-subtract}、@code{kp-multiply}、@code{kp-divide}
+@itemx @code{kp-backtab}、@code{kp-space}、@code{kp-tab}、@code{kp-enter}
+@itemx @code{kp-separator}、@code{kp-decimal}、@code{kp-equal}
+@itemx @code{kp-prior}、@code{kp-next}、@code{kp-end}、@code{kp-home}
+@itemx @code{kp-left}、@code{kp-up}、@code{kp-right}、@code{kp-down}
+@itemx @code{kp-insert }、@code{kp-delete}
+(標準的なキーボードでは右側にある)キーパッドの名前や句読点のキーです。
+
+@item @code{kp-0}、@code{kp-1}、@dots{}、@code{kp-9}
+キーパッドの数字キーです。
+
+@item @code{kp-f1}、@code{kp-f2}、@code{kp-f3}、@code{kp-f4}
+キーパッドのPFキーです。
+@end table
+
+  これらの名前は便利ですが、いくつかのシステム(特にXを使用するシステム)では、異なる名前を使用するかもしれません。端末のファンクションキーにたいして、どのシンボルが使用されているか確認するには、@kbd{C-h
+c}とタイプして、その後にそのファンクションキーを入力してください。
+
+  ファンクションキーにバインドする例については、@ref{Init Rebinding}を参照してください。
+
+@cindex keypad
+  多くのキーボードの右手側には、テンキーボード(numeric keypad)があります。キーパッドのテンキーは@samp{Num
+Lock}とラベルされたキーで切り替えるにことにより、カーソル移動キーにもなります。デフォルトでは、Emacsはこれらのキーを、メインのキーボードの対応するキーに変換します。たとえば@samp{Num
+Lock}がオンの場合、テンキーのlabeled
+@samp{8}のラベルがついたキーは@code{kp-8}を生成し、これは@kbd{8}に変換されます。また@samp{Num
+Lock}がオフの場合、このキーは@code{kp-up}を生成し、これは@key{UP}に変換されます。@kbd{8}や@key{UP}のようなキーをリバインドした場合、それはキーパッドの対応するキーにも影響します。しかし直接@samp{kp-}をリバインドした場合、これはメインのキーボードの等価なキーに影響を与えません。修飾されたキーは変換されないことに注意してください。たとえば@key{Meta}キーを押したまま、テンキーの@samp{8}を押すと、これは@kbd{M-@key{kp-8}}を生成します。
+
+  Emacsは変数@code{keypad-setup}、@code{keypad-numlock-setup}、@code{keypad-shifted-setup}、@code{keypad-numlock-shifted-setup}を使用することにより、テンキーのキーをバインドするための便利な方法を提供します。これらの変数は@samp{keyboard}カスタマイズグループで見つけることができます(@ref{Easy
+Customization}を参照してください)。キーをリバインドして、数引数を発行するなど、他のタスクを行なうことができます。
+
+@node Named ASCII Chars
+@subsection 名前のある@acronym{ASCII}コントロール文字
+
+  当初@key{TAB}、@key{RET}、@key{BS}、@key{LFD}、@key{ESC}、@key{DEL}は、特定の@acronym{ASCII}コントロール文字の名前として使用され、多用されるために自身の特別なキーをもつようになりました。たとえば@key{TAB}は@kbd{C-i}の別の名前です。その後、ユーザーはEmacsでこれらのキーと、@key{Ctrl}キーと一緒にタイプするコントロール文字を区別できると便利なことに気づきました。したがってほとんどの現代的な端末では、これらは同じではありません。つまり@key{TAB}は@kbd{C-i}と異なります。
+
+  これら2種類の入力を、キーボードが区別するなら、Emacsも区別することができます。Emacsは特別なキーを@code{tab}、@code{return}、@code{backspace}、@code{linefeed}、@code{escape}、@code{delete}という名前のファンクションキーとして扱います。これらのファンクションキーは、そのキー自体に何もバインドされていない場合は、対応する@acronym{ASCII}文字に自動的に変換されます。結果として、ユーザーもLispプログラマーも、彼らがそうしたいと望まない限りは、これらの区別に注意を払う必要はありません。
+
+  (たとえば)@key{TAB}と@kbd{C-i}を区別したくない場合は、@acronym{ASCII}文字の@key{TAB}(8進コード011)だけにたいしてバインディングを1つ指定します。これらを区別したいときは、@acronym{ASCII}文字にたいして1つのバインディング、ファンクションキーの@code{tab}にたいして別のバインディングを指定します。
+
+  通常の@acronym{ASCII}端末では、@key{TAB}と@kbd{C-i}(および同じような他のペアー)を区別する方法はありません。なぜなら端末はどちらの場合も同じ文字を送るからです。
+
+@node Mouse Buttons
+@subsection マウスボタンのリバインド
+@cindex mouse button events
+@cindex rebinding mouse buttons
+@cindex click events
+@cindex drag events
+@cindex down events
+@cindex button-down events
+
+  Emacsはマウスボタンを表すためにもLispシンボルを使用します。Emacsで通常のマウスイベントは、@dfn{クリック(click)}イベントです。これはボタンを押して、マウスを移動せずにボタンを離すと発生します。@dfn{ドラッグ(drag)}イベントも取得できます。これはボタンを押したままマウスを移動したとき発生します。ドラッグイベントは、最後にボタンを離したときにも発生します。
+
+  基本的なクリックイベントにたいするシンボルは、一番左のボタンが@code{mouse-1}、次が@code{mouse-2}、@dots{}となります。以下は、カレントウィンドウを2番目のマウスボタンで分割するように再定義する方法です:
+
+@example
+(keymap-global-set "<mouse-2>" 'split-window-below)
+@end example
+
+  ドラッグイベントにたいするシンボルも同様ですが、単語@samp{mouse}の前にプレフィクス@samp{drag-}がつきます。たとえば左ボタンでのドラッグは@code{drag-mouse-1}イベントを生成します。
+
+  マウスボタンが押されたときに発生するイベントにたいして、バインディングを定義することもできます。これらのイベントは@samp{drag-}ではなく@samp{down-}で始まります。このようなイベントは、それらにキーがバインドされているときだけ生成されます。ボタンダウンイベントを受け取った場合、その後に常にそれに対応するクリックまたはドラッグイベントが続きます。
+
+@cindex double clicks
+@cindex triple clicks
+  もし望むならシングルクリック、ダブルクリック、トリプルクリックを区別することもできます。ダブルクリックとは、マウスボタンをほぼ同じ場所で2回クリックすることを意味します。最初のクリックは通常のクリックイベントを生成します。2回目のクリックが充分早ければ、かわりにダブルクリックイベントを生成します。ダブルクリックイベントにたいするイベントタイプは、たとえば@code{double-mouse-3}のように、@samp{double-}で始まります。
+
+  これは同じ場所での2回目のクリックに特別な意味を与えることができることを意味しますが、それは最初のクリックを受け取ったときに実行される、通常のシングルクリックにたいする定義も実行されることを前提にしなければなりません。
+
+  これはダブルクリックで行なえることを制限しますが、ユーザーインターフェースデザイナーはこの制限は任意のケースにおいて従うべき制限だと言います。ダブルクリックは、シングルクリックで行なう何かを、よりもっと行なうためのものであるべきです。ダブルクリックイベントにたいするコマンドは、ダブルクリックにたいして追加の作業を処理するべきです。
+
+  ダブルクリックイベントにバインディングがない場合、これは対応するシングルクリックイベントに変化します。したがって、特にダブルクリックイベントを定義していない場合、これはシングルクリックコマンドを2回実行します。
+
+  Emacsはトリプルクリックイベントもサポートし、それらの名前は@samp{triple-}で始まります。Emacsはクワドループルクリック(quadruple
+clicks:
+4連クリック)をイベントタイプとして区別しません。3回目以降のクリックは、追加のトリプルクリックイベントを生成します。しかしクリックされた数はすべてイベントリストに記録されるので、Emacs
+Lispを知っていて、本当にそれを使いたい場合はそれらを区別できます(@ref{Click Events,,, elisp, The Emacs
+Lisp Reference
+Manual}を参照してください)。わたしたちは3連クリックを超えるクリックに明確な意味を与えるのは推奨しませんが、連続するクリックが同じ3つの意味のセットを巡回する
+---
+たとえば4連クリックは1クリックに等しく、5連クリックは2連クリックに等しく、6連クリックは3連クリックに等しい、とするのが便利なときがあるかもしれません。
+
+  Emacsはドラッグおよびボタンダウンイベントで、複数回ボタンが押されたことも記録します。たとえば、ボタンを2回押して、それからボタンを押したままマウスを移動した場合、Emacsは@samp{double-drag-}イベントを受け取ります。2回目にボタンを押した瞬間、Emacsは@samp{double-down-}イベントを受け取ります(そしてすべてのボタンダウンイベントと同様に、なにもバインドされていなければ無視されます)。
+
+@vindex double-click-time
+  変数@code{double-click-time}は、複数回のクリックをグループ化するのに、クリックの間にどれだけの時間経過を許すかを指定します。変数の値の単位はミリ秒です。値が@code{nil}の場合、ダブルクリックは検知されません。値が@code{t}の場合、時間の制限はありません。デフォルトは500です。
+
+@vindex double-click-fuzz
+  変数@code{double-click-fuzz}は、複数回のクリックをグループ化するのに、クリックの間にどれだけマウスが移動できるかを指定します。変数の値はウィンドウ化されたディスプレイではピクセル単位で、テキストモード端末では文字セルの1/8を単位とし、デフォルトは3です。
+
+  マウスイベントにたいするシンボルは、修飾キーの状態も示し、@samp{C-}、@samp{M-}、@samp{H-}、@samp{s-}、@samp{A-}、@samp{S-}のプレフィクスが通常つきます。@samp{double-}や@samp{triple-}は常に@samp{drag-}や@samp{down-}の前にきますが、これらのプレフィクスは常にそれより前にきます。
+
+  フレームにはバッファーのテキストを表示しない、モードラインやスクロールバーのような領域が含まれます。スクリーンの特別な領域でマウスボタンが押されたかどうかは、ダミーのプレフィクスキーで知ることができます。たとえばモードラインでマウスをクリックした場合、通常のマウスボタンシンボルの前にプレフィクスキー@code{mode-line}を受け取ります。したがって、以下はモードラインで左ボタンをクリックしたときに@code{scroll-up-command}を実行する方法です:
+
+@example
+(keymap-global-set "<mode-line> <mouse-1>" 'scroll-up-command)
+@end example
+
+  以下はダミーのプレフィクスキーと、その意味の完全なリストです:
+
+@table @code
+@item mode-line
+マウスはウィンドウのモードラインにあります。
+@item vertical-line
+マウスは横に並んだウィンドウを分ける垂直ラインにあります(スクロールバーを使用している場合は、垂直ラインに表示されます)。
+@item vertical-scroll-bar
+マウスは垂直スクロールバーにあります(これはEmacsが現在サポートしているスクロールバーにたいしてだけです)。
+@item menu-bar
+マウスはメニューバーにあります。
+@item tab-bar
+マウスはタブバーにあります。
+@item tab-line
+マウスはタブラインにあります。
+@item header-line
+マウスはヘッダーラインにあります。
+@ignore
+@item horizontal-scroll-bar
+The mouse was in a horizontal scroll bar.  Horizontal scroll bars do
+horizontal scrolling, and people don't use them often.
+@end ignore
+@end table
+
+  キーシーケンスにマウスボタンを複数配することもできますが、これは通常行なわれません。
+
+@node Disabling
+@subsection コマンドの無効化
+@cindex disabled command
+
+  コマンドを無効にするとは、そのコマンドを対話的に呼び出しユーザーに確認を求めることを意味します。コマンドを無効にする目的は、ユーザーが間違ってコマンドを実行するのを防ぐためです。わたしたちは初心者を混乱させるようなコマンドにたいして、これを行なっています。
+
+  無効なコマンドを呼び出そうとすると、Emacsはコマンド名、コマンドのドキュメント、すぐに何を行なうかの手引きを対話的に表示します。その後、Emacsはコマンドを要求されたとおり実行するか、そのコマンドを有効にしてから実行するか、キャンセルするか入力を求めます。コマンドを有効にすると決めた場合は、他の質問
+--- 永続的に有効にするか、それともカレントセッションでだけ有効にするか ---
+にも応えなければなりません(永続的に有効にする場合、これは自動的に初期化ファイルを編集することにより機能します)。@kbd{!}とタイプして、カレントセッションだけにたいして、@emph{すべて}のコマンドを有効にすることもできます。
+
+  コマンド無効化の直接的なメカニズムは、コマンドにたいするLispシンボルの@code{disabled}プロパティに非@code{nil}をputすることです。以下はこれを行なうLispプログラムです:
+
+@example
+(put 'delete-region 'disabled t)
+@end example
+
+  @code{disabled}プロパティの値が文字列の場合、その文字列はコマンドが使用されたときに表示されるメッセージに含まれます。
+
+@example
+(put 'delete-region 'disabled
+     "It's better to use `kill-region' instead.\n")
+@end example
+
+@findex command-query
+  無下にコマンドを無効にするのではなく、コマンドを実行する前に問い合わせを行いたい場合もあるかもしれません。たとえば@kbd{M->}
+(@code{end-of-buffer})というコマンドを実行する前に問い合わせを行うには、initファイルに以下のように記述してください:
+
+@example
+(command-query
+ 'end-of-buffer
+ "Do you really want to go to the end of the buffer?")
+@end example
+
+デフォルトでは@kbd{y}/@kbd{n}による問い合わせを行いますが、3つ目のオプション引数に非@code{nil}を与えれば、かわりに@kbd{yes}による問い合わせを行います。
+
+@findex disable-command
+@findex enable-command
+  初期化ファイルを直接編集するか、初期化ファイルを編集する@kbd{M-x
+disable-command}コマンドにより、コマンドを無効にできます。同様に@kbd{M-x
+enable-command}はコマンドを永続的に有効にするために、初期化ファイルを編集します。@ref{Init File}を参照してください。
+
+  Emacsが@option{-q}または@option{--no-init-file}オプション(@ref{Initial
+Options}を参照してください)で呼び出された場合、これらのコマンドは初期化ファイルを編集しません。Emacsは初期化ファイルを読み込んでいないので、これを行なうと情報が失われるかもしれないからです。
+
+  コマンドが無効にされているかどうかは、それを呼び出すのに使用されるキーとは独立しています。@kbd{M-x}を使用してコマンドを呼び出しても、無効化は適用されます。しかしLispプログラムから関数として呼び出す場合、コマンドの無効化は効力をもちません。
+
+@node Init File
+@section Emacs初期化ファイル
+@cindex init file
+@cindex .emacs file
+@cindex ~/.emacs file
+@cindex ~/.config/emacs/init.el file
+@cindex Emacs initialization file
+@cindex startup (init file)
+@cindex XDG_CONFIG_HOME
+
+@c When updating this, also update ``Setting up a customization file''
+@c in efaq.texi.
+  Emacsを開始したとき、Emacsは通常、@dfn{初期化ファイル(initialization
+file)}、短くは@dfn{initファイル}から、Lispプログラムのロードを試みます。このファイルは、もし存在する場合は、Emacsをどのように初期化するかを指定します。Emacsが@file{~/.emacs.el}、@file{~/.emacs.d/init.el}、@file{~/.config/emacs/init.el}、またはその他の場所を探すにしても、伝統的に@file{~/.emacs}はinitファイルとして扱われます。@ref{Find
+Init}を参照してください。
+
+Emacsのすべての設定が1つのディレクトリーにあると便利だと思うかもしれません。その場合には@file{~/.emacs.d/init.el}、またはXDG互換の@file{~/.config/emacs/init.el}を使用する必要があります。
+
+  コマンドラインスイッチ@samp{-q}により、initファイルのロードを抑止でき、@samp{-u}
+(または@samp{--user})で、別のユーザーのinitファイルを指定できます(@ref{Initial Options}を参照してください)。
+
+@cindex @file{default.el}, the default init file
+  @dfn{デフォルトinitファイル}が存在する場合もあります。これは@file{default.el}という名前のライブラリーで、ライブラリーにたいする標準の検索パスから探されます。Emacsディストリビューションには、そのようなライブラリーは含まれていませんが、あなたのサイトは、ローカルなカスタマイズのためにこれを作成しているかもしれません。このライブラリーが存在する場合、Emacsを開始したときは常にこれがロードされます(ただし@samp{-q}を指定した場合は除きます)。しかしinitファイルがあれば、それが最初にロードされるので、そこで@code{inhibit-default-init}に非@code{nil}をセットすれば、@file{デフォルトinitファイル}はロードされません。
+
+@cindex site init file
+@cindex @file{site-start.el}, the site startup file
+  あなたのサイトには@dfn{サイトスタートアップファイル(site startup
+file)}もあるかもしれません。もし存在する場合、これは@file{site-start.el}という名前です。@file{default.el}と同様に、Emacsはこのファイルを、Lispライブラリーにたいする標準の検索パスから探します。Emacsはこのライブラリーをinitファイルの前にロードします。このライブラリーのロードを抑止するには、オプション@samp{--no-site-file}を使用します。@ref{Initial
+Options}を参照してください。わたしたちは何かを変更する場合、@file{site-start.el}の使用を推奨しません。これを好まないユーザーもいるからです。変更を@file{default.el}に記述すれば、ユーザーはもっと簡単にそれをオーバーライドできます。
+
+@cindex @file{site-lisp} directories
+  @file{default.el}や@file{site-start.el}は、EmacsがLispライブラリーを検索する任意のディレクトリーに配置できます。変数@code{load-path}
+(@ref{Lisp
+Libraries}を参照してください)は、これらのディレクトリーを指定します。多くのサイトはこれらのファイルを、Emacsのインストールディレクトリーの中の、@file{site-lisp}(たとえば@file{/usr/local/share/emacs/site-lisp})に配置します。
+
+  initファイルにたいするバイトコンパイル(@ref{Byte Compilation,, Byte Compilation, elisp, the
+Emacs Lisp Reference
+Manual}を参照してください)は推奨されていません。一般的にこれは開始時のスピードの大幅な改善はせず、ファイルをリコンパイルするのを忘れたときに問題を起こすことが多いのです。よりよい解決策は、Emacsサーバー(@ref{Emacs
+Server}を参照してください)を使用して、Emacsを開始する回数を減らすことです。initファイルで多くの関数を定義している場合、これらを(バイトコンパイルされた)別のファイルに移動して、それをinitファイルでロードします。
+
+  マイナーなカスタマイズを超えるような、実際のEmacs Lispプログラムを記述するつもりなら、@cite{Emacs Lisp Reference
+Manual}を読むべきでしょう。
+@ifnottex
+@ref{Top, Emacs Lisp, Emacs Lisp, elisp, the Emacs Lisp Reference
+Manual}を参照してください。
+@end ifnottex
+
+@menu
+* Init Syntax::              Emacs Lispでの定数の構文。
+* Init Examples::            initファイルで何かを行なう方法。
+* Terminal Init::            端末タイプごとのinitファイル。
+* Find Init::                Emacsがinitファイルを探す方法について。
+* Init Non-ASCII::           initファイルでの非@acronym{ASCII}文字の使用。
+* Early Init File::          早期に読み込まれる別のinitファイル。
+@end menu
+
+@node Init Syntax
+@subsection initファイルの構文
+
+  initファイルには、1つ以上のLisp式が含まれています。式のそれぞれは引数をともなう関数名で、それらはすべてカッコで括られています。たとえば@code{(setq
+fill-column
+60)}は、変数@code{fill-column}(@ref{Filling}を参照してください)を60にセットするために、関数@code{setq}を呼び出します。
+
+  @code{setq}で任意のLisp変数をセットできますが、initファイルの特定の変数にたいして、@code{setq}は多分あなたの望むとおりには動作しないでしょう。いくつかの変数は@code{setq}でセットしたとき、自動的にバッファーローカルになります。あなたが望むのは、initファイルでデフォルト値をセットすることなので、@code{setq-default}を使用します(以下のセクションには両方の方法の例あり)。
+
+マイナーモードのカスタマイズ可能な変数のいくつかはCustomizeでセットするとモードを有効にするために特別なことを行ないますが、通常の@code{setq}ではそれを行ないません。initファイルでモードを有効にするには、マイナーモードコマンドを呼び出します。最後に複雑な方法で初期化される少数のカスタマイズ可能なユーザーオプションはCustomizeインターフェイス(@ref{Customization}を参照)、あるいは@code{customize-set-variable}か@code{setopt}
+(@ref{Examining}を参照)を使用してセットする必要があります。
+
+  @code{setq}の2番目の引数は、変数にたいする新しい値の式です。これには、定数、変数、関数呼び出し式を指定できます。initファイルでは、定数が使用される場合がほとんどです。これは以下のとおりです:
+
+@table @asis
+@item 数字:
+数字は10進で記述され、オプションで最初にマイナス記号がある場合があります。
+
+@item 文字列:
+@cindex Lisp string syntax
+@cindex string syntax
+Lispの文字列構文は、少数の例外を除き、Cの文字列構文と同じです。文字列定数の開始と終了にはダブルクォートを使用します。
+
+文字列には改行を含む、特別なリテラル文字を含めることができます。しかし、それらにたいして、バックスラッシュシーケンスを使う方が明確になる場合が多くあります。改行は@samp{\n}、バックスペースは@samp{\b}、キャリッジリターンは@samp{\r}、タブは@samp{\t}、フォームフィード(control-L)は@samp{\f}、エスケープは@samp{\e}、バックスラッシュは@samp{\\}、ダブルクォートは@samp{\"}、そして8進コードが@var{ooo}の文字は@samp{\@var{ooo}}です。バックスラッシュとダブルクォートだけは、バックスラッシュシーケンスが必須な文字です。
+
+@samp{\C-}はコントロール文字のプレフィクスとして使用でき、@samp{\C-s}は@acronym{ASCII}のcontrol-Sです。@samp{\M-}はメタ文字のプレフィクスとして使用でき、@samp{\M-a}は@kbd{@key{Meta}-A}で、@samp{\M-\C-a}は@kbd{@key{Ctrl}-@key{Meta}-A}です。
+
+initファイルに非@acronym{ASCII}文字を含めるための情報は、@ref{Init Non-ASCII}を参照してください。
+
+@item 文字:
+@cindex Lisp character syntax
+@cindex character syntax
+Lispの文字定数の構文は、たとえば@code{?x}、@code{?\n}、@code{?\"}、@code{?\)}のように、文字@samp{?}と、その後ろに文字または@samp{\}で始まるエスケープシーケンスからなります。Lispでは、文字列と文字は置き換え可能ではないことに注意してください。あるコンテキストでは一方が、他のコンテキストでは他方が要求されます。
+
+非@acronym{ASCII}文字を送るキーにコマンドをバインドする情報については、@ref{Init Non-ASCII}を参照してください。
+
+@item True:
+@code{t}は``true(真)''という意味です。
+
+@item False:
+@code{nil}は``false(偽)''という意味です。
+
+@item その他のLispオブジェクト:
+@cindex Lisp object syntax
+シングルクォートに続けてLispオブジェクトを記述します。
+@end table
+
+  Emacs Lisp構文についての詳細な情報は@ref{Introduction,,, elisp, The Emacs Lisp Reference
+Manual}を参照してください。
+
+@node Init Examples
+@subsection initファイルの例
+
+  以下はLisp式で一般的に行ないたいような事柄の例です:
+
+@itemize @bullet
+@item
+変数@code{load-path}にディレクトリーを追加します。その後、Emacsに含まれていないLispライブラリーをそのディレクトリーに配置すれば、@kbd{M-x
+load-library}でそれらをロードすることができます。@ref{Lisp Libraries}を参照してください。
+
+@example
+(add-to-list 'load-path "/path/to/lisp/libraries")
+@end example
+
+@item
+Cモードで、ポイントが行の途中にある場合、@key{TAB}が単にタブを挿入するようにします。
+
+@example
+(setq c-tab-always-indent nil)
+@end example
+
+個の例では、変数の通常の値が@code{t}、つまり``true''の変数の値を、@code{nil}つまり``false''にしています。
+
+@item
+(この設定をオーバーライドしないすべてのバッファーで)検索のデフォルトを、大文字小文字を区別させるようにします。
+
+@example
+(setq-default case-fold-search nil)
+@end example
+
+これはデフォルト値をセットし、この変数にたいするローカル値(@ref{Locals}を参照してください)をもたないすべてのバッファーに効果を及ぼします。@code{case-fold-search}を@code{setq}でセットした場合は、カレントバッファーだけに効果があり、それは多分あなたがinitファイルで行ないたいことではないはずです。
+
+@item
+@vindex user-mail-address@r{, in init file}
+Emacsがあなたのメールアドレスを正しく推測できない場合、メールアドレスを指定します。
+
+@example
+(setq user-mail-address "cheney@@torture.gov")
+@end example
+
+Messageモードのような、さまざまなEmacsパッケージは、メールアドレスを知る必要がある場合に、@code{user-mail-address}を参照します。@ref{Mail
+Headers}を参照してください。
+
+@item
+新しいバッファーにたいするデフォルトのモードをTextモードにします。
+
+@example
+(setq-default major-mode 'text-mode)
+@end example
+
+Textモードに入るコマンドに@code{text-mode}が使用されていることに注意してください。前のシングルクォートはシンボルを定数にしています。そうしない場合、@code{text-mode}は変数名として扱われます。
+
+@need 1500
+@item
+西ヨーロッパのほとんどの言語をサポートするLatin-1文字を、デフォルトにセットアップします。
+
+@example
+(set-language-environment "Latin-1")
+@end example
+
+@need 1500
+@item
+グローバルなマイナーモードのLine Numberモードをオフに切り替えます。
+
+@example
+(line-number-mode 0)
+@end example
+
+@need 1500
+@item
+Textモードと関連するモードで、自動的にAuto Fillモードをオンに切り替えます(@ref{Hooks}を参照してください)。
+
+@example
+(add-hook 'text-mode-hook 'auto-fill-mode)
+@end example
+
+@item
+クリップボード使用時のコーディングシステムを変更します(@ref{Communication Coding}を参照)。
+
+@example
+(setopt selection-coding-system 'utf-8)
+@end example
+
+@item
+インストールされた@file{foo}という名前のライブラリー(実際には標準のEmacsディレクトリーの@file{foo.elc}または@file{foo.el}というファイル)をロードします。
+
+@example
+(load "foo")
+@end example
+
+@code{load}の引数が、@samp{/}や@samp{~}で始まらない相対ファイル名の場合、@code{load}は@code{load-path}のディレクトリーを検索します(@ref{Lisp
+Libraries}を参照してください)。
+
+@item
+ホームディレクトリーの、コンパイルされたLispファイル@file{foo.elc}をロードします。
+
+@example
+(load "~/foo.elc")
+@end example
+
+ここでは完全なファイル名が使用されているので、検索は行なわれません。
+
+@item
+@cindex loading Lisp libraries automatically
+@cindex autoload Lisp libraries
+@file{mypackage}という名前のLispライブラリー(たとえば@file{mypackage.elc}や@file{mypackage.el}というファイル)をロードすることにより、関数@code{myfunction}の定義を探すようEmacsに指示します。
+
+@example
+(autoload 'myfunction "mypackage" "Do what I say." t)
+@end example
+
+@noindent
+ここで文字列@code{"Do what I
+say."}は、この関数のドキュメント文字列です。これを@code{autoload}定義の中で指定することにより、そのパッケージがロードされていなくてもヘルプコマンドで利用可能になります。最後の引数@code{t}は、この関数がinteractive(対話的)であることを示します。つまり、この関数は@kbd{M-x
+myfunction
+@key{RET}}とタイプするか、キーにバインドすることにより、対話的に呼び出すことができます。関数がinteractiveでない場合は、@code{t}を省略するか、@code{nil}を使用します。
+
+@item
+関数@code{make-symbolic-link}を実行するように、キー@kbd{C-x l}をリバインドします(@ref{Init
+Rebinding}を参照してください)。
+
+@example
+(keymap-global-set "C-x l" 'make-symbolic-link)
+@end example
+
+または
+
+@example
+(keymap-set global-map "C-x l" 'make-symbolic-link)
+@end example
+
+繰り返しになりますが、シングルクォートは@code{make-symbolic-link}を変数として値を参照するのではなく、シンボルとして参照するために使用されることに注意してください。
+
+@item
+Lispモードだけで、同じことを行ないます。
+
+@example
+(keymap-set lisp-mode-map "C-x l" 'make-symbolic-link)
+@end example
+
+@item
+Fundamentalモードで@code{next-line}を実行するすべてのキーにたいして、かわりに@code{forward-line}を実行するように再定義します。
+
+@findex keymap-substitute
+@example
+(keymap-substitute global-map 'next-line 'forward-line)
+@end example
+
+@item
+@kbd{C-x C-v}を未定義にします。
+
+@example
+(keymap-global-unset "C-x C-v")
+@end example
+
+キーを未定義にする1つの理由は、それをプレフィクスにできることです。単に@kbd{C-x C-v
+@var{anything}}を定義すると、@kbd{C-x C-v}はプレフィクスになりますが、最初に通常の@kbd{C-x
+C-v}にたいする非プレフィクス定義を開放しなければなりません。
+
+@item
+Textモードで@samp{$}に句読点構文をもたせます。@samp{$}にたいする文字定数の使い方に注意してください。
+
+@example
+(modify-syntax-entry ?\$ "." text-mode-syntax-table)
+@end example
+
+@item
+確認なしでの、コマンド@code{narrow-to-region}の使用を有効にします。
+
+@example
+(put 'narrow-to-region 'disabled nil)
+@end example
+
+@item
+さまざまなプラットフォームとEmacsバージョンにたいして、設定を調整します。
+
+ユーザーは通常、すべてのシステムでEmacsが同じように振る舞うことを期待するので、すべてのプラットフォームで同じinitファイルを使用するのが妥当です。しかしEmacsをカスタマイズするのに使用する関数が、他のプラットフォームやEmacsバージョンで利用できないということも発生します。この状況に対処するには、以下のように、ある関数または機能が利用可能かテストする条件文の内部に、カスタマイズを配置します:
+
+@example
+(if (fboundp 'blink-cursor-mode)
+    (blink-cursor-mode 0))
+
+@c FIXME: Find better example since `set-coding-priority' is removed.
+(if (boundp 'coding-category-utf-8)
+    (set-coding-priority '(coding-category-utf-8)))
+@end example
+
+@noindent
+関数が定義されていない場合に発生するエラーを、単に無視することもできます。
+
+@example
+(ignore-errors (set-face-background 'region "grey75"))
+@end example
+
+存在しない変数への@code{setq}は一般的に無害なので、これらを条件文の中に置く必要はありません。
+
+@item
+自動的にパッケージのロードと構成を行うためには@code{use-package}を使用します。
+
+@example
+(use-package hi-lock
+  :defer t
+  :init (add-hook 'some-hook 'hi-lock-mode)
+  :config (use-package my-hi-lock)
+  :bind (("M-o l" . highlight-lines-matching-regexp)
+         ("M-o r" . highlight-regexp)
+         ("M-o w" . highlight-phrase)))
+@end example
+
+@noindent
+これは初めて@code{hi-lock}にコマンドか変数が使用された際に@code{hi-lock}をロードするとともに、そのロード後に追加で@code{my-hi-lock}パッケージ(@code{hi-lock}を更にカスタマイズしたパッケージかもしれない)をロードします。@code{use-package}の機能については、それ自身のマニュアルにおいて完全に文書化されています。@ref{Top,,,
+use-package, use-package User manual}を参照してください。
+@end itemize
+
+@node Terminal Init
+@subsection 端末固有の初期化
+
+@vindex term-file-aliases
+  各端末タイプは、Emacsをその端末タイプで実行するときEmacsにロードされるLispライブラリーをもつことができます。@var{termtype}という名前の端末タイプにたいして、そのライブラリーは@file{term/@var{termtype}}と呼ばれます(@code{term-file-aliases}の連想配列(association
+list)の中に@code{(@var{termtype}
+.
+@var{alias})}という形式のエントリーがある場合、Emacsは@var{termtype}のところに@var{alias}を使用します)。このライブラリーは通常のようにディレクトリー@code{load-path}を検索することにより見つけられ、サフィックスは@samp{.elc}と@samp{.el}です。通常はほとんどのEmacsライブラリーがあるディレクトリーの、サブディレクトリー@file{term}にあります。
+
+  端末固有ライブラリーの通常の目的は、@code{input-decode-map}を使用して、その端末のファンクションキーで使用されるエスケープシーケンスを、より意味のある名前にマップすることです。これがどのように行なわれるかの例は、ファイル@file{term/lk201.el}を参照してください。多くのファンクションキーは、Termcapデータベースの情報にしたがい、自動的にマップされます。端末固有ライブラリーは、Termcapが指定しないファンクションキーだけをマップすればよいのです。
+
+  端末タイプがハイフンを含む場合、最初のハイフンの前の部分だけが、ライブラリーの選択で意味をもちます。したがって端末タイプ@samp{aaa-48}と@samp{aaa-30-rv}は、両方ともライブラリー@file{term/aaa}を使用します。ライブラリー内のコードは、@code{(getenv
+"TERM")}を使用して、完全なタイプ名を取得できます。
+
+@vindex term-file-prefix
+  ライブラリーの名前は、変数@code{term-file-prefix}の値と、端末タイプを結合することにより構築されます。@file{.emacs}で@code{term-file-prefix}を@code{nil}にセットすることにより、端末固有ライブラリーのロードを抑止できます。
+
+@vindex tty-setup-hook
+  Emacsは初期化の最後、@file{.emacs}と端末固有ライブラリーの両方が読み込まれた後に、フック@code{tty-setup-hook}を実行します。端末固有ライブラリーの任意の部分をオーバーライドしたい場合や、ライブラリーをもたない端末の初期化を定義したい場合は、このフックにフック関数を追加します。@ref{Hooks}を参照してください。
+
+@node Find Init
+@subsection Emacsがinitファイルを探す方法
+
+  通常だとEmacsはホームディレクトリー配下からinitファイルを探します@footnote{MS-Windowsではすべてのプログラムによってユーザーの``ホームディレクトリー''とみなされるような単一のディレクトリーは存在しません。Emacsはあなたのホームディレクトリーとして相応しいようなディレクトリーのうちの1つを使用します。詳細については@ref{Windows
+HOME}を参照してください。}。@ref{Init File}を参照してください。
+
+  Emacsは@file{~/.emacs.el}、@file{~/.emacs}、@file{~/.emacs.d/init.el}というファイル名で、この順序でinitファイルを探します。これらの名前のどれを使用するか選択できます(ホームディレクトリー直下の場所だけが場所のベース名として先頭にドットをもつことに注意)。
+
+EmacsはXDG互換の場所でも@file{init.el}を探します。デフォルトはディレクトリー@file{~/.config/emacs}です。これは環境変数@env{XDG_CONFIG_HOME}をセットしてオーバーライドできます。この値はデフォルトのXDG
+initファイルの名前の@file{~/.config}を置き換えます。しかし@file{~/.emacs.d}、@file{~/.emacs}、@file{~/.emacs.el}が存在する場合には常に優先されます。これはXDGロケーションを使用するためには、それらの削除やリネームを行わなければならないことを意味します。
+
+XDGロケーションと@file{~/.emacs.d}がいずれも存在しなければEmacsが@file{~/.emacs.d}を作成(したがって以降の呼び出しの間もそれが使用される)することにも注意してください。
+
+Emacsは使用を決定したディレクトリーを@code{user-emacs-directory}んセットします。
+
+これがたとえ古いバージョンのEmacsにたいする後方互換性のためだとしても、モダンなPOSIXプラットフォームは初期化ファイルを@file{~/.config}の配下に配置することを優先するので、誤ったinitファイルに起因する問題のトラブルシューティングやinitファイルコレクションのアーカイブはそのディレクトリーのリネームにより行うことができます。古いバージョンのEmacsがそれらのカレントのデフォルト位置で設定ファイルを見つけるのを助けるために、以下のEmacs
+Lispコードを実行することができます:
+
+@example
+(make-symbolic-link ".config/emacs" "~/.emacs.d")
+@end example
+
+  しかし@code{su}で開始されたシェルからEmacsを実行して環境変数@env{XDG_CONFIG_HOME}が未セットなら、Emacsは現在の見かけのユーザーではなく、あなた自身の初期化ファイルを探すことを試みます。このアイデアは、たとえスーパーユーザーとして実行しているときでも、自分のエディターカスタマイズを取得するべきだという考えです。
+
+  より正確には、最初にEmacsはどのユーザーのinitファイルを使用するか決定します。Emacsは環境変数@env{LOGNAME}と@env{USER}からユーザー名を取得します。どちらも存在しない場合、実効ユーザーIDを使用します。ユーザー名が実ユーザーIDとマッチしたとき、Emacsは@env{HOME}を使用します。そうでない場合、Emacsはシステムのユーザーデータベースの、そのユーザー名に対応するホームディレクトリーを探します。
+
+@c  LocalWords:  backtab
+  簡略化のためにEmacsドキュエントの残りの部分では、一般的にはinitファイルにたいして単にカレントデフォルト位置@file{~/.emacs.d/init.el}を使用します。
+
+@node Init Non-ASCII
+@subsection initファイル内の非@acronym{ASCII}文字
+@cindex international characters in @file{.emacs}
+@cindex non-@acronym{ASCII} characters in @file{.emacs}
+@cindex non-@acronym{ASCII} keys, binding
+@cindex rebinding non-@acronym{ASCII} keys
+
+  initファイルの文字列やキーバインディングに、アクセントつき文字などの非@acronym{ASCII}文字が含まれる場合、それは言語やコーディングシステムに問題を起こすかもしれません。
+
+  initファイルで非@acronym{ASCII}文字を使用したい場合、initファイルの最初の行に@w{@samp{-*-coding:
+@var{coding-system}-*-}}タグを配して、問題となる文字をサポートするコーディングシステムを指定するべきです。@ref{Recognize
+Coding}を参照してください。なぜなら、非@acronym{ASCII}テキストのでコーディングにたいするにたいするデフォルトのコーディングシステムは、Emacsがinitファイルでそのような文字列を使用する個所を読み込むまでに、セットアップされていないかもしれないので、Emacsがその文字列を間違ってデコードする可能性があるからです。@w{@samp{-*-coding:
+@var{coding-system}-*-}}を記述した場合、@code{set-language-environment}を呼び出す等、他の方法でコーディングシステムを変更するEmacs
+Lispコードの追加は避けるべきです。
+
+  非@acronym{ASCII}文字を直接使用せずに、@ref{General Escape Syntax,,, elisp, The Emacs
+Lisp Reference
+Manual}で述べた文字エスケープ構文のいずれかを使う選択肢もあります。これらはすべて@acronym{ASCII}文字だけですべてのUnicodeコードポイントを指定できます。
+
+  非@acronym{ASCII}キーをバインドするには、ベクターを使用しなければなりません(@ref{Init
+Rebinding}を参照してください)。非@acronym{ASCII}文字はメタキーとして解釈されるので、文字列構文は使用できません。たとえば:
+
+@example
+(global-set-key [?@var{char}] 'some-function)
+@end example
+
+@noindent
+@var{char}を挿入するには、@kbd{C-q}とタイプしてからバインドしたいキーをタイプします。
+
+@node Early Init File
+@subsection 早期初期化ファイル
+@cindex early init file
+@cindex @file{early-init.el} file
+
+  Emacsのほとんどのカスタマイズは通常のinitファイルに配置するべきです。@ref{Init
+File}を参照してください。しかしEmacsのスタートアップで通常のinitファイルを処理するより早い段階で効果をもつカスタマイズが必要な場合があります。そのようなカスタマイゼーションは早期initファイル@file{~/.config/emacs/early-init.el}または@file{~/.emacs.d/early-init.el}に配置することができます。このファイルはパッケージシステムとGUIの初期化前にロードされるので@code{package-enable-at-startup}、@code{package-load-list}、@code{package-user-dir}のようなパッケージ初期化プロセスに影響を与える変数をカスタマイズできます。新たなパッケージのインストールだけに影響がある@code{package-archives}のような変数やインストール済みパッケージを利用可能にするプロセス以外は正規のinitファイルでカスタマイズできます。@ref{Package
+Installation}を参照してください。
+
+  通常のinitファイルに残すことができるカスタマイゼーションを@file{early-init.el}に移動することは推奨できません。早期initファイルはGUIの初期化前に読み込まれるので。GUI機能に関連するカスタマイゼーションは@file{early-init.el}では信頼性をもって機能しないからです。対照的に通常のinitファイルはGUIの初期化後に読み込まれます。GUI機能に依存するカスタマイズを早期initファイルで行わなければならない場合には、Emacsがスタートアップ時に提供する@code{window-setup-hook}や@code{tty-setup-hook}のようなフックを外して実行してください。@ref{Hooks}を参照してください。
+
+  早期initファイルの詳細な情報は@ref{Init File,,, elisp, The Emacs Lisp Reference
+Manual}を参照してください。
+
+@node Authentication
+@section 永続的に認証情報を保つ
+
+  他のサービスに接続するEmacsパッケージには、たとえば@ref{Top, Gnus,, gnus, The Gnus
+Manual}や@ref{Top, Tramp,, tramp, The Tramp
+Manual}で見られるように、認証(@ref{Passwords}を参照)を要求するものがいくつかあります。同じユーザー名とパスワードを何度も提供するのは煩わしいかもしれないので、Emacsは@file{auth-source}ライブラリーを通じて、認証情報を永続的に保つことを提案します。
+
+@cindex @file{~/.authinfo} file
+@cindex @file{~/.authinfo.gpg} file
+@cindex ~/.netrc file
+  デフォルトでは、認証情報はファイル@file{~/.authinfo}、@file{~/.authinfo.gpg}、または@file{~/.netrc}から取得されます。これらのファイルは以下のような、ftpプログラム由来として知られる、netrcファイルと同様の構文をもちます:
+
+@example
+machine @var{mymachine} login @var{myloginname} password @var{mypassword} port @var{myport}
+@end example
+
+  同様に@file{auth-source}ライブラリーは現在のところ、クラシックなnetrcバックエンド、JSONファイル、Secret Service
+API、および標準的なUnixパスワードマネージャーのpassという、複数のストレージバックエンドをサポートしています。
+
+@vindex auth-sources
+  これらの選択肢はすべて、ユーザーオプション@code{auth-sources}を通じてカスタマイズできます。@ref{Help for users,
+Emacs auth-source,, auth, Emacs auth-source}を参照してください。
+
+@vindex auth-source-save-behavior
+  設定されたバックエンドで見つからないようなパスワードがインタラクティブに入力された場合、いくつかのバックエンドはそれの永続的な保存を提案します。これはユーザーオプション@code{auth-source-save-behavior}をカスタマイズして、変更することができます。

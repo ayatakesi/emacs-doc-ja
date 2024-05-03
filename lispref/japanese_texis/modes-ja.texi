@@ -1,0 +1,3596 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2024 Free Software
+@c Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Modes
+@chapter メジャーモードとマイナーモード
+@cindex mode
+
+  @dfn{モード(mode)}とはEmacsの挙動を簡便な方法でカスタマイズする定義のセットです。モードは2種類あります。@dfn{マイナーモード(minor
+modes)}は編集時にユーザーがオンとオフを切り替えられる機能を提供します。@dfn{メジャーモード(major
+modes)}は特定の種類のテキストにたいする編集や相互作用に使用します。ある時点においてバッファーはそれぞれ正確に1つの@dfn{メジャーモード}をもちます。
+
+  このチャプターではメジャーモードとマイナーモードを記述する方法、それらをモードラインに示す方法、そしてそれらのモードがユーザーが提供するフックを実行する方法を説明します。キーマップ(keymaps)や構文テーブル(syntax
+tables)のような関連するトピックについては@ref{Keymaps}と@ref{Syntax Tables}を参照してください。
+
+@menu
+* Hooks::                    フックの使用法とフックを提供するコードの記述方法。
+* Major Modes::              メジャーモードの定義。
+* Minor Modes::              マイナーモードの定義。
+* Mode Line Format::         モードラインに表示されるテキストのカスタマイズ。
+* Imenu::                    バッファーで作成された定義のメニューを提供する。
+* Outline Minor Mode::       他のメジャーモードとのOutlineモードの併用。
+* Font Lock Mode::           モードが構文に応じてテキストをハイライトする方法。
+* Auto-Indentation::         メジャーモードにたいするインデントをEmacsに伝える方法。
+* Desktop Save Mode::        Emacsセッション間でモードがバッファー状態を保存する方法。
+@end menu
+
+@node Hooks
+@section フック
+@cindex hooks
+
+  @dfn{フック(hook)}とは既存のプログラムから特定のタイミングで呼び出される関数(複数可)を格納できる変数のことです(@ref{What Is
+a Function}を参照)。Emacsはカスタマイズ用にフックを提供します。ほとんどの場合にはinitファイル内(@ref{Init
+File}を参照)でフックをセットアップしますが、Lispプログラムもフックをセットできます。標準的なフック変数のリストは@ref{Standard
+Hooks}を参照してください。
+
+@cindex normal hook
+  Emacsのほとんどのフックは@dfn{ノーマルフック(normal
+hooks)}です。これらの変数は、引数なしで呼び出される関数のリストを含んでいます。慣習により名前が@samp{-hook}で終わるフックは、そのフックがノーマルフックであることを意味します。わたしたちは一貫した方法でフックを使用できるように、すべてのフックが可能な限りノーマルフックとなるよう努力しています。
+
+  すべてのメジャーモードコマンドは、初期化の最終ステップの1つとして、@dfn{モードフック(mode
+hook)}と呼ばれるノーマルフックを実行するとみなされます。これによってそのモードですでに作成されたバッファーローカル変数割り当てをオーバーライドすることにより、ユーザーがそのモードの動作をカスタマイズするのが簡単になります。ほとんどのマイナーモード関数も最後にモードフックを実行します。しかしフックは他のコンテキストでも使用されます。たとえばフック@code{suspend-hook}は、Emacsが自身をサスペンド(@ref{Suspending
+Emacs}を参照)する直前に実行されます。
+
+@cindex abnormal hook
+  フック変数の名前が@samp{-hook}で終わらなければ、それが恐らく@dfn{アブノーマルフック(abnormal
+hook)}であることを示しています。これらとノーマルフック違うのはフック関数が1つ以上の引数とともに呼ぶ出されること、何らかの方法によってそのリターン値が使用されることという2つの点です。その関数の呼び出し方や引数の使われ方はそのフックのドキュメントに記載されています。アブノーマルフックに追加する関数は、フックの呼び出し規約にしたがって関数を記述しなければなりません。慣習によりアブノーマルフックの名前の最後は@samp{-functions}です。
+
+@cindex single-function hook
+変数名の最後が@samp{-predicate}や@samp{-function}
+(単数形)なら、値は関数のリストではなく単一の関数でなければなりません。このような@emph{単一関数フック(single function
+hook)}が期待する引数やリターン値の意味はアブノーマルフックと同様さまざまです。それらの詳細については、各変数のdocstringで説明されています。
+
+  フック(単一関数と複数関数の両方)とは変数なので、値は@code{setq}、または一時的に@code{let}で変更できます。しかしフックがもつ他の関数を保持しつつ、特定の関数の追加や削除ができると便利なことがあります。複数関数フックでこれを行う推奨方法は@code{add-hook}と@code{remove-hook}です(@ref{Setting
+Hooks}を参照)。ほとんどのノーマルフック変数の初期値はvoidであり、@code{add-hook}はこれを扱う方法を理解しています。フックへのグローバルまたはバッファーローカルな追加は@code{add-hook}で行うことができます。単一の関数だけを保持するフックでは@code{add-hook}は不適切ですが、フックに新たな関数を組み合わせるために@code{add-function}
+(@ref{Advising
+Functions}を参照)を使用できます。いくつかの単一関数フックは@code{add-function}が扱えない@code{nil}かもしれないので、@code{add-function}の呼び出し前にそれをチェックしなければならないことに注意してください。
+
+@menu
+* Running Hooks::            フックの実行方法。
+* Setting Hooks::            関数をフックに登録、削除する方法。
+@end menu
+
+@node Running Hooks
+@subsection フックの実行
+
+  このセクションではノーマルフックを実行するために使用される@code{run-hooks}について説明します。またさまざまな種類のアブノーマルフックを実行する関数についても説明します。
+
+@defun run-hooks &rest hookvars
+この関数は引数として1つ以上のノーマルフック変数名を受け取って、各フックを順に実行する。引数はそれぞれノーマルフック変数であるようなシンボルであること。これらの引数は指定された順に処理される。
+
+フック変数の値が非@code{nil}ならその値は関数のリストであること。@code{run-hooks}はすべての関数を引数なしで1つずつ呼び出す。
+
+フック変数の値には、単一の関数(ラムダ式、またはシンボルの関数定義)も指定でき、その場合@code{run-hooks}はそれを呼び出す。しかしこの使い方は時代遅れである。
+
+フック変数がバッファーローカルならグローバル変数のかわりにそのバッファーローカル変数が使用される。しかしそのバッファーローカル変数が要素@code{t}を含む場合には、そのグローバルフック変数も同様に実行されるだろう。
+@end defun
+
+@defun run-hook-with-args hook &rest args
+この関数は、@var{hook}内のすべての関数に1つの引数@var{args}を渡して呼び出すことによってアブノーマルフックを実行する。
+@end defun
+
+@defun run-hook-with-args-until-failure hook &rest args
+この関数は各フック関数を順に呼び出すことによりアブノーマルフック関数を実行し、それらのうち1つが@code{nil}をリターンして失敗すると停止する。それぞれのフック関数は引数として@var{args}を渡される。この関数はフック関数の1つが失敗して停止したら@code{nil}、それ以外は非@code{nil}値をリターンする。
+@end defun
+
+@defun run-hook-with-args-until-success hook &rest args
+この関数は各フック関数を順に呼び出すことによりアブノーマルフック関数を実行して、それらのうち1つが非@code{nil}値をリターンして成功したら停止する。それぞれのフック関数は引数として@var{args}を渡される。この関数はフック関数の1つが失敗して停止したらその値、それ以外は@code{nil}をリターンする。
+@end defun
+
+@node Setting Hooks
+@subsection フックのセット
+
+  以下はLisp InteractionモードのときにAuto Fillモードをオンに切り替えるためにモードフックに関数を追加する例です:
+
+@example
+(add-hook 'lisp-interaction-mode-hook 'auto-fill-mode)
+@end example
+
+  フック変数の値は関数のリストにする必要があります。通常のLisp機能を使用してこのリストを操作できますが、モジュール方式では以下で説明する関数@code{add-hook}と@code{remove-hook}を使用します。これらの関数はいくつかの異常な状況を処理して問題を回避します。
+
+  フックに@code{lambda}式を配置しても機能しますが、これは混乱を招くので避けることを推奨します。2回目は記述を微妙に変えて同じ@code{lambda}式を追加すると、そのフックは等価な2つの別々の関数をもつことになります。それから一方を削除しても、もう一方は残り続けるでしょう。
+
+@defun add-hook hook function &optional depth local
+この関数はフック変数に関数@var{function}を追加する手軽な方法である。ノーマルフックと同じようにアブノーマルフックにたいしてもこの関数を使用できる。@var{function}には正しい数の引数を受け付ける任意のLisp関数を指定できる。たとえば、
+
+@example
+(add-hook 'text-mode-hook 'my-text-hook-function)
+@end example
+
+@noindent
+は@code{text-mode-hook}と呼ばれるフックに@code{my-text-hook-function}を追加する。
+
+@var{hook}内に@var{function}がすでに存在する場合(比較には@code{equal}を使用)、@code{add-hook}は2回目の追加を行わない。
+
+@var{function}のプロパティ@code{permanent-local-hook}が非@code{nil}なら@code{kill-all-local-variables}(またはメジャーモードを変更しても)はそのフック変数のローカル値から関数を削除しない。
+
+ノーマルフックにたいしてフック関数は実行される順序に無関係であるようにデザインされるべきである。順序への依存はトラブルを招く。とはいえその順序は予測可能である。@var{function}は通常はフックリストの先頭に追加されるので、(他の@code{add-hook}呼び出しがなければ)それは最初に実行される。
+
+いくつかのケースではフック上の相対順序の制御が重要になる。オプション引数によりリストのどこに関数を挿入するべきかを指定できる。値は-100から100の数値であり、より大きい値では関数はリストの終端に近づく。@var{depth}のデフォルトは0であり、後方互換のために非@code{nil}ならdepthを90と解釈する。さらに@var{depth}が厳密に0より大なら、関数は同じdepthの関数の前ではなく@emph{後}に追加される。あなたの関数の前(や後)に他の関数を配置する必要が絶対ないとは限らないので、100(や-100)のをdepthは決して使用しないこと。
+
+@code{add-hook}は@var{hook}がvoidのとき、または値が単一の関数の場合には、値を関数リストにセットまたは変更してそれらを扱うことができる。
+
+@var{local}が非@code{nil}なら、グローバルフックリストではなくバッファーローカルフックリストに@var{function}を追加する。これはフックをバッファーローカルにして、そのバッファーローカルな値に@code{t}を追加する。バッファーローカルな値への@code{t}の追加は、ローカル値と同じようにデフォルト値でもフック関数を実行するためのフラグである。
+@end defun
+
+@defun remove-hook hook function &optional local
+この関数はフック変数@var{hook}から@var{function}を削除する。これは@code{equal}を使用して@var{function}と@var{hook}要素を比較するので、その比較はシンボルとラムダ式の両方で機能する。
+
+@var{local}が非@code{nil}なら、それはグローバルフックリストではなくバッファーローカルフックリストから@var{function}を削除する。
+@end defun
+
+@node Major Modes
+@section メジャーモード
+@cindex major mode
+
+@cindex major mode command
+@cindex suspend major mode temporarily
+  メジャーモードは特定の種類のテキストの編集や相互作用にたいしてEmacsを特化します。すべてのバッファーは一度に1つのメジャーモードをもちます。すべてのメジャーモードは、@dfn{メジャーモードコマンド(major
+mode
+command)}に関連付けられ、そのコマンド名は@samp{-mode}で終わるべきです。このコマンドは、ローカルキーマップのようなさまざまなバッファーローカル変数をセットすることにより、カレントバッファー内でそのモードに切り替える配慮をします。@ref{Major
+Mode
+Conventions}を参照してください。マイナーモードとは異なりメジャーモードを``オフに切り替える''手段は存在せず、かわりにバッファーは別のメジャーモードに切り替えられなければなりません。しかしメジャーモードを一時的に@dfn{サスペンド}して、後でサスペンドしたモードを@dfn{リストア}できます。以下を参照してください。
+
+  @dfn{Fundamentalモード}と呼ばれるモードはもっとも特化されていないメジャーモードであり、モード特有な定義や変数セッティングをもちません。
+
+@deffn Command fundamental-mode
+これはFundamentalモードにたいするメジャーモードコマンドである。他のモードコマンドと異なり、このモードはカスタマイズしてはならないことになっているので、モードフックは何も@emph{実行されない}(@ref{Major
+Mode Conventions}を参照)。
+@end deffn
+
+@defun major-mode-suspend
+この関数はすべてのバッファーローカル変数をkillする点において@code{fundamental-mode}のように機能するが、これは後でリストアできるように効力をもつメジャーモードを記録する。この関数と@code{major-mode-restore}
+(以下参照)は、Emacsがそのバッファー用に自動的に選択したモード(@ref{Auto Major
+Mode}を参照)ではない何らかの特化したモードにバッファーを置く必要があり、なおかつ後で元のモードに戻れるようにしたい場合に有用。
+@end defun
+
+@defun major-mode-restore &optional avoided-modes
+この関数は@code{major-mode-suspend}が記録したメジャーモードをリストアする。メジャーモードが何も記録されていなければ、この関数は@code{normal-mode}
+(@ref{Auto Major Mode,
+normal-mode}を参照)を呼び出すが、@var{avoided-modes}引数が非@code{nil}ならこの引数内のモードを選択させないように試みる。
+@end defun
+
+@defun clean-mode
+メジャーモード変更によってほとんどのローカル変数はクリアーされるが、バッファー内に残された残置物(テキストプロパティやオーバーレイなど)がすべて削除される訳ではない。あるバッファーのメジャーモードを別のモードに変更することは稀であり、これは通常なら問題にならない(@code{fundamental-mode}からそれ以外のメジャーモードへの変更は除く)。バッファーの``完全リセット''を行うことができれば、(主としてバッファーでの問題をデバッグ中には)便利なときがあるかもしれず、正にそれがメジャーモード@code{clean-mode}の提供する機能である。これはすべてのローカル変数(永続的なローカル変数さえも)をkillするとともに、すべてのオーバーレイおよびテキストプロパティを削除する。
+@end defun
+
+  メジャーモードを記述するもっとも簡単な方法はマクロ@code{define-derived-mode}を使用する方法です。これは既存のメジャーモードを変形して新たなモードをセットアップします。@ref{Derived
+Modes}を参照してください。@code{define-derived-mode}は多くのコーディング規約を自動的に強要するので、たとえ新たなモードが他のモードから明示的に派生されない場合でも、わたしたちは@code{define-derived-mode}の使用を推奨します。派生元とするための一般的なモードについては@ref{Basic
+Major Modes}を参照してください。
+
+  標準的なGNU
+EmacsのLispディレクトリーツリーには、いくつかのメジャーモードが@file{text-mode.el}、@file{texinfo.el}、@file{lisp-mode.el}、@file{rmail.el}のようなファイルとして含まれています。モードの記述方法を確認するために、これらのライブラリーを学ぶことができます。
+
+@defopt major-mode
+この変数のバッファーローカル値はカレントのメジャーモードにたいするシンボルを保持する。この変数のデフォルト値は新たなバッファーにたいするデフォルトのメジャーモードを保持する。標準的なデフォルト値は@code{fundamental-mode}である。
+
+デフォルト値が@code{nil}なら、@kbd{C-x b}
+(@code{switch-to-buffer})のようなコマンドを通じてEmacsが新たなバッファーを作成したとき、新たなバッファーは以前カレントだったバッファーのメジャーモードになる。例外として以前のバッファーのメジャーモードのシンボルプロパティ@code{mode-class}が値@code{special}をもつ場合には、新たなバッファーはFundamentalモードになる(@ref{Major
+Mode Conventions}を参照)。
+@end defopt
+
+@menu
+* Major Mode Conventions::   キーマップなどにたいするコーディング規約。
+* Auto Major Mode::          Emacsが自動的にメジャーモードを選択する方法。
+* Mode Help::                モードの使用方法の探し方。
+* Derived Modes::            他のメジャーモードにもとづき新たなメジャーモードを定義する。
+* Basic Major Modes::        他のモードからよく派生元とされるモード。
+* Mode Hooks::               メジャーモード関数の最後に実行されるフック。
+* Tabulated List Mode::      表形式データを含むバッファーにたいする親モード。
+* Generic Modes::            コメント構文とFont 
+                               Lockモードをサポートするシンプルなメジャーモードの定義。
+* Example Major Modes::      TextモードとLispモード。
+@end menu
+
+@node Major Mode Conventions
+@subsection メジャーモードの慣習
+@cindex major mode conventions
+@cindex conventions for writing major modes
+
+  メジャーモードにたいするすべてのコードはさまざまなコーディング規約にしたがうべきであり、それらの規約にはローカルキーマップおよび構文テーブルの初期化、関数名や変数名、フックにたいする規約が含まれます。
+
+  @code{define-derived-mode}マクロを使用すれば、これらの規約を自動的に配慮します。@ref{Derived
+Modes}を参照してください。FundamentalモードはEmacsのデフォルト状態を表すモードなので、これらの規約が該当しないことに注意してください。
+
+  以下の規約リストはほんの一部です。一般的にすべてのメジャーモードはEmacs全体が首尾一貫するよう、他のEmacsメジャーモードとの一貫性を目指すべきです。ここでこの問題を洗い出すすべての想定される要点をリストするのは不可能です。自身の開発するメジャーモードが通常の規約を逸脱する領域を示すような場合には、Emacs開発者は互換性を保つようにしてください。
+
+@itemize @bullet
+@item
+名前が@samp{-mode}で終わるようにメジャーモードコマンドを定義する。引数なしで呼び出されたときこのコマンドはキーマップ、構文テーブル、既存バッファーのバッファーローカル変数をセットアップして、カレントバッファーを新たなモードに切り替えること。そのバッファーのコンテンツを変更しないこと。
+
+@item
+そのモードで利用できる特別なコマンドを説明するドキュメント文字列を記述する。@ref{Mode Help}を参照のこと。
+
+そのユーザー自身のキーバインディングに自動的に適合してヘルプが表示されるように、ドキュメント文字列に特別なドキュメントサブストリング@samp{\[@var{command}]}、@samp{\@{@var{keymap}@}}、@samp{\<@var{keymap}>}を含めるとよいかもしれない。@ref{Keys
+in Documentation}を参照のこと。
+
+@item
+メジャーモードコマンドは@code{kill-all-local-variables}を呼び出すことによって開始すること。これはノーマルフック@code{change-major-mode-hook}を実行してから、前のメジャーモードで効力のあったバッファーローカル変数を解放する。@ref{Creating
+Buffer-Local}を参照のこと。
+
+@item
+メジャーモードコマンドは変数@code{major-mode}にメジャーモードコマンドのシンボルをセットすること。これは@code{describe-mode}がプリントするドキュメントを探す手掛かりとなる。
+
+@item
+メジャーモードコマンドは変数@code{mode-name}にそのモードの``愛称(pretty
+name)''をセットすること(これは通常は文字列だが他の利用可能な形式については@ref{Mode Line
+Data}を参照)。このモード名はモードラインに表示される。
+
+@item
+連続してメジャーモードコマンドを直接呼び出しても失敗せずに、1回だけ呼び出されたときと同じことを行うこと。言い換えるとメジャーモードコマンドはべき等であること。
+
+@item
+@cindex functions in modes
+すべてのグローバル名は同じネームスペースにあるので、モードの一部であるようなすべてのグローバルな変数、定数、関数はメジャーモード名(メジャーモード名が長いようなら短縮名)で始まる名前をもつこと。@ref{Coding
+Conventions}を参照されたい。
+
+@item
+プログラム言語のようなある種の構造型テキストを編集するためのメジャーモードでは、その構造に応じたテキストのインデントがおそらく有用であろう。したがってそのようなモードは@code{indent-line-function}に適切な関数をセットするとともに、インデント用のその他の変数をカスタマイズするべきだろう。@ref{Auto-Indentation}を参照のこと。
+
+@item
+@cindex keymaps in modes
+メジャーモードは、通常はそのモードにあるすべてのバッファーのローカルキーマップとして使用されるモード自身のキーマップをもつこと。メジャーモードコマンドはそのローカルマップをインストールするために、@code{use-local-map}を呼び出すこと。詳細は@ref{Active
+Keymaps}を参照されたい。
+
+このキーマップは@code{@var{modename}-mode-map}という名前のグローバル変数に永続的に格納されること。そのモードを定義するライブラリーは、通常はこの変数をセットする。
+
+モード用のキーマップ変数をセットアップするコードの記述する方法に関するアドバイスは@ref{Tips for Defining}を参照されたい。
+
+@item
+メジャーモードのキーマップ内でバインドされるキーシーケンスは、通常は@kbd{C-c}で始まってその後にコントロール文字、数字、@kbd{@{}、@kbd{@}}、@kbd{<}、@kbd{>}、@kbd{:}、@kbd{;}が続くこと。その他の記号文字(punctuation
+characters)はマイナーモード、通常のアルファベット文字はユーザー用に予約済みである。
+
+メジャーモードは@kbd{M-n}、@kbd{M-p}、@kbd{M-s}などのキーもリバインドできる。@kbd{M-n}と@kbd{M-p}にたいするバインディングは、通常は
+前方か後方への移動を意味するような類のものであるべきだが、これが必ずしもカーソル移動を意味する必要はない。
+
+そのモードにより適した方法でテキストに同じ処理を行うコマンドを提供する場合には、メジャーモードが標準的なキーシーケンスをリバインドするのは正当性がある。たとえばプログラム言語を編集するためのメジャーモードは、その言語にとって関数の先頭に移動するために、より良く機能する方法で@kbd{C-M-a}を再定義するかもしれない。メジャーモードにニーズに応じて@kbd{C-M-a}を構成するための推奨方法は、そのモード固有の関数を呼び出すために@code{beginning-of-defun-function}をセットすること(@ref{List
+Motion}を参照)。
+
+ある標準的なキーシーケンスの標準的な意味がそのモードではほとんど役に立たないような場合にも、メジャーモードが標準的なキーシーケンスをリバインドする正当性がある。たとえば@kbd{M-r}の標準的な意味はミニバッファーではほとんど使用されないので、このキーシーケンスをリバインドする。テキストの自己挿入を許さないDiredやRmailのようなメジャーモードがアルファベット文字や、その他のプリント文字を特別なコマンドに再定義することには正当性がある。
+
+@item
+テキストを編集するメジャーモードは改行の挿入以外の何かに@key{RET}を定義すべきではない。しかしユーザーが直接テキストを編集しない、DiredやInfoのような特別なモードにたいしては完全に異なることを行うように@key{RET}を再定義しても構わない。
+
+@item
+メジャーモードは、たとえばAuto-Fillモードを有効にする等の、主にユーザーの好みに関するオプションを変更しないこと。それらのオプションはユーザーに選択に任せること。ただし@emph{もし}ユーザーがAuto-Fillモードを使用すると決定したら、それが便利に機能するように他の変数をカスタマイズすること。
+
+@item
+@cindex syntax tables in modes
+モードは自身の構文テーブルをもつことができ、他の関連するモードと構文テーブルを共有するかもすることもできる。モードが自身の構文テーブルをもつ場合には、@code{@var{modename}-mode-syntax-table}という名前の変数にそれを格納すること。@ref{Syntax
+Tables}を参照されたい。
+
+@item
+コメントにたいする構文をもつ言語を扱うモードは、コメント構文を定義する変数をセットすること。@ref{Options for Comments,,
+Options Controlling Comments, emacs, The GNU Emacs Manual}を参照されたい。
+
+@item
+@cindex abbrev tables in modes
+モードは自身のabbrevテーブルをもつことができ、他の関連するモードと構文テーブルを共有することもできる。モードが自身のabbrevテーブルをもつ場合には、@code{@var{modename}-mode-abbrev-table}という名前の変数にそれを格納すること。メジャーモードコマンドが自身で何らかのabbrevを定義する場合には、@code{define-abbrev}の@var{system-flag}引数に@code{t}を渡すこと。@ref{Defining
+Abbrevs}を参照されたい。
+
+@item
+モードは変数@code{font-lock-defaults}にバッファーローカルな値をセットすることによって、Font
+Lockモードにたいしてハイライトする方法を指定すること(@ref{Font Lock Mode}を参照)。
+
+@item
+モードが定義するすべてのフェイスは、もし可能なら既存のEmacsフェイスを継承すること。@ref{Basic Faces}と@ref{Faces for
+Font Lock}を参照されたい。
+
+@item
+メニューバーへのモード固有メニュー追加を検討すること。ユーザーが迅速かつ効率的に主機能を発見できるよう、もっとも重要なモード固有のセッティングとコマンドを含めることが望ましい。
+
+@item
+@cindex context menus, for a major mode
+@vindex context-menu-functions
+そのモードにたいして、ユーザーが@code{context-menu-mode} (@ref{Menu Mouse Clicks,,, emacs,
+The Emacs
+Manual}を参照)をアクティブにした際に使用されるモード固有のコンテキストメニューの追加を検討すること。これを達成するにはバッファー内で@kbd{mouse-3}がクリックされた位置に応じて1つ以上のメニューを構築するモード固有関数の定義して、@code{context-menu-functions}のバッファーローカル値にその関数を追加すればよい。
+
+@item
+モードは変数@code{imenu-generic-expression}、@code{imenu-prev-index-position-function}と@code{imenu-extract-index-name-function}の2つの変数、または変数@code{imenu-create-index-function}にバッファーローカルな値をセットすることによってImenuがバッファー内の定義やセクションを探す方法を指定すること(@ref{Imenu}を参照)。
+
+@item
+モードは変数@code{outline-regexp}と@code{outline-search-function}、さらに変数@code{outline-level}
+(@ref{Outline Minor
+Mode}を参照)にバッファーローカル値をセットアップして、どのようにしてOutlineマイナーモードがヘッダー行を見つけられるかを指定する必要がある。
+
+@item
+モードはスペシャルフック@code{eldoc-documentation-functions}に1つ以上のバッファーローカルエントリーを追加することにより、ポイント位置にあるものにたいして異なるタイプのドキュメントを取得する方法をElDocモードに指示できる。
+
+@item
+モードはスペシャルフック@code{completion-at-point-functions}に1つ以上のバッファーローカルエントリーを追加することにより、さまざまなキーワードの補完方法を指定できる。@ref{Completion
+in Buffers}を参照のこと。
+
+@item
+@cindex buffer-local variables in modes
+Emacsのカスタマイズ変数にたいしてバッファーローカルなバインディングを作成するには、@code{make-variable-buffer-local}ではなくメジャーモードコマンド内で@code{make-local-variable}を使用すること。関数@code{make-variable-buffer-local}はそれ以降にカスタマイズ変数をセットするすべてのバッファーにたいしてその変数をローカルにして、そのモードを使用しないバッファーにたいしても影響があるだろう。そのようなグローバルな効果はモードにとって好ましくない。@ref{Buffer-Local
+Variables}を参照のこと。
+
+稀な例外としてLispパッケージ内で@code{make-variable-buffer-local}を使用する唯一の正当な方法は、そのパッケージ内でのみ使用される変数にたいして使用をする場合である。他のパッケージにより使用される変数にたいしてこの関数を使用すると競合が発生するだろう。
+
+@item
+@cindex mode hook
+@cindex major mode hook
+すべてのメジャーモードは@code{@var{modename}-mode-hook}という名前のノーマルな@dfn{モードフック(mode
+hook)}をもつこと。メジャーモードコマンドが一番最後に@code{run-mode-hooks}を呼び出すこと。これはノーマルフック@code{change-major-mode-after-body-hook}、モードフック、(バッファーがファイルをvisitしていれば)関数@code{hack-local-variables}、その後にノーマルフック@code{after-change-major-mode-hook}を実行する。@ref{Mode
+Hooks}を参照のこと。
+
+@item
+メジャーモードコマンドは@dfn{親モード(parent
+mode)}と呼ばれる他のいくつかのメジャーモードを呼び出すことにより開始されるかもしれず、それらのセッティングのいくつかを変更するかもしれない。これを行うモードは@dfn{派生モード(derived
+mode)}と呼ばれる。派生モードを定義する推奨方法は@code{define-derived-mode}マクロの使用だが必須ではない。そのようなモードは@code{delay-mode-hooks}フォーム内で親のモードコマンドを呼び出すこと(@code{define-derived-mode}は自動的にこれを行う)。@ref{Derived
+Modes}と@ref{Mode Hooks}を参照されたい。
+
+@item
+ユーザーがそのモードのバッファーから他のモードのバッファーに切り替える際に特別な何かを行う必要がある場合、モードは@code{change-major-mode-hook}にたいしてバッファーローカル値をセットアップできる(@ref{Creating
+Buffer-Local}を参照)。
+
+@item
+そのモードが、(ユーザーがキーボードでタイプしたテキストや外部ファイルのテキストではなく)モード自身が生成する特別に用意されたテキストにたいしてのみ適している場合、メジャーモードコマンドのシンボルは以下のように@code{mode-class}という名前のプロパティに値@code{special}をputすること:
+
+@kindex mode-class @r{(property)}
+@cindex @code{special} modes
+@example
+(put 'funny-mode 'mode-class 'special)
+@end example
+
+@noindent
+これはEmacsにたいしてカレントバッファーがFunnyモードのときに新たなバッファーを作成したとき、たとえ@code{major-mode}のデフォルト値が@code{nil}であってもそのバッファーをFunnyモードにしないよう指示する。デフォルトでは@code{major-mode}にたいする値@code{nil}は新たなバッファー作成時にカレントバッファーのメジャーモードを使用することを意味するが(@ref{Auto
+Major
+Mode}を参照)、@code{special}なモードにたいしてはかわりにFundamentalモードが使用される。Dired、Rmail、Buffer
+Listのようなモードはこの機能を使用する。
+
+関数@code{view-buffer}はmode-classがspecialであるようなバッファーではViewモードを有効にしない。そのようなモードは通常は自身でViewに相当するバインディングを提供するからである。
+
+@code{define-derived-mode}マクロは親モードがspecialなら、自動的に派生モードをspecialにマークする。親モードでspecialモードが有用ならそれを継承したモードでも有用だろう。@ref{Basic
+Major Modes}を参照のこと。
+
+@item
+新たなモードを識別可能な特定のファイルにたいするデフォルトとしたければ、そのようなファイル名にたいしてそのモードを選択するために@code{auto-mode-alist}に要素を追加する。autoload用にモードコマンドを定義する場合には、@code{autoload}を呼び出すのと同じファイル内にその要素を追加すること。モードコマンドにたいしてautoload
+cookieを使用する場合はに、その要素を追加するフォームにたいしてもautoload cookieを使用できる(@ref{autoload
+cookie}を参照)。モードコマンドをautoloadしない場合には、モード定義を含むファイル内で要素を追加すれば十分である。
+
+@item
+@cindex mode loading
+悪影響を与えることなく1回以上評価されるように、モード定義はファイル内のトップレベルのフォームとして記述すべきである。たとえばすでに値をもつ変数が再初期化されないように、モードに関連した変数をセットするときは@code{defvar}か@code{defcustom}を使用する(@ref{Defining
+Variables}を参照)。
+
+@end itemize
+
+@node Auto Major Mode
+@subsection Emacsがメジャーモードを選択する方法
+@cindex major mode, automatic selection
+
+  Emacsはファイルをvisitするとき、ファイル名やファイル自体の内容などの情報を元にそのバッファーにたいするメジャーモードを選択します。またファイルのテキスト内で指定されたローカル変数も処理します。
+
+@deffn Command normal-mode &optional find-file
+この関数はカレントバッファーにたいして適切なメジャーモード、およびバッファーローカル変数のバインディングを設定する。これは@code{set-auto-mode}
+(以下参照)を呼び出す。Emacs
+26.1ではもはや@code{hack-local-variables}を呼び出さずに、メジャーモードの初期化時の@code{run-mode-hooks}でこれが行われる(@ref{Mode
+Hooks}を参照)。
+
+@code{normal-mode}の@var{find-file}引数が非@code{nil}なら、@code{normal-mode}は@code{find-file}関数が自身を呼び出したとみなす。この場合、@code{normal-mode}はそのファイル内の@samp{-*-}行、またはファイルの最後にあるローカル変数を処理できる。これを行うかどうかは変数@code{enable-local-variables}が制御する。ファイルのローカル変数セクションの構文は@ref{File
+Variables, , Local Variables in Files, emacs, The GNU Emacs Manual}を参照のこと。
+
+インタラクティブに@code{normal-mode}を実行すると、引数@var{find-file}は通常は@code{nil}である。この場合、@code{normal-mode}は無条件に任意のファイルローカル変数を処理する。
+
+この関数はメジャーモードを選択してセットするために@code{set-auto-mode}を呼び出す。この関数がモードを特定しなければバッファーの@code{major-mode}
+(以下参照)のデフォルト値により決定されるメジャーモードに留まる。
+
+@cindex file mode specification error
+@code{normal-mode}はメジャーモードコマンド呼び出しの周囲に@code{condition-case}を使用するのでエラーはcatchされて、@samp{File
+mode specification error}とともに元のエラーメッセージがその後に報告される。
+@end deffn
+
+@defun set-auto-mode &optional keep-mode-if-same
+@cindex visited file mode
+  この関数はカレントバッファーにたいして適切なメジャーモードを選択してセットする。この選択は関数自身の(優先順位による)決定にもとづく。優先順位は@w{@samp{-*-}}行、ファイル終端近傍の任意の@samp{mode:}ローカル変数、@w{@samp{#!}}行(@code{interpreter-mode-alist}を使用)、バッファーの先頭のテキスト(@code{magic-mode-alist}を使用)、最後がvisitされるファイル名(@code{auto-mode-alist}を使用)の順。@ref{Choosing
+Modes, , How Major Modes are Chosen, emacs, The GNU Emacs
+Manual}を参照のこと。@code{enable-local-variables}が@code{nil}なら@code{set-auto-mode}は@w{@samp{-*-}}行とファイル終端近傍にたいしてmodeタグのチェックを何も行わない。
+
+@vindex inhibit-local-variables-regexps
+モード特定のためにファイル内容をスキャンするのがふさわしくないファイルタイプがいくつかある。たとえばtarアーカイブファイルの終端付近に特定のファイルにたいしてモードを指定するローカル変数セクションをもつアーカイブメンバーファイルがたまたま含まれているかもしれない。こがそのファイルを含んだtarファイルに適用されるべきではないだろう。同様にtiffイメージファイルが@w{@samp{-*-}}パターンにマッチするように見える行を最初の行に偶然含むかもしれない。これらの理由により、これらのファイル拡張子はいずれも@code{inhibit-local-variables-regexps}リストのメンバーになっている。Emacsが、(モード指定に限らず)ファイルから任意の種類のローカル変数を検索することを防ぐには、このリストにパターンを追加する。
+
+@var{keep-mode-if-same}が非@code{nil}なら、すでにそのバッファーが適切なメジャーモードをもつときにこの関数はモードコマンドを呼び出さない。たとえば@code{set-visited-file-name}はユーザーがセットしたかもしれないバッファーローカル変数をkillすることを防ぐために、これを@code{t}にセットする。
+@end defun
+
+@defun set-buffer-major-mode buffer
+この関数は@var{buffer}のメジャーモードを@code{major-mode}のデフォルト値にセットする。@code{major-mode}が@code{nil}なら、(それが適切なら)カレントバッファーのメジャーモードを使用する。例外として@var{buffer}の名前が@file{*scratch*}なら、モードを@code{initial-major-mode}にセットする。
+
+バッファーを作成する低レベルのプリミティブはこの関数を使用しないが、@code{switch-to-buffer}や@code{find-file-noselect}のような中位レベルのコマンドは、バッファー作成時は常にこの関数を使用する。
+@end defun
+
+@defopt initial-major-mode
+@cindex @file{*scratch*}
+この変数の値は@file{*scratch*}バッファーの初期のメジャーモードを決定する。値はメジャーモードコマンドであるようなシンボルであること。デフォルト値は@code{lisp-interaction-mode}。
+@end defopt
+
+@defvar interpreter-mode-alist
+この変数は@samp{#!}行内のコマンドインタープリターを指定するスクリプトにたいして使用するメジャーモードを指定する。変数の値は@code{(@var{regexp}
+.
+@var{mode})}という形式の要素をもつalistである。これはそのファイルが@code{\\`@var{regexp}\\'}にマッチするインタープリターを指定する場合には@var{mode}を使用することを意味する。たとえばデフォルト要素の1つは@code{("python[0-9.]*"
+. python-mode)}である。
+@end defvar
+
+@defvar magic-mode-alist
+この変数の値は@code{(@var{regexp}
+@var{function})}という形式の要素をもつalistである。ここで@var{regexp}は正規表現、@var{function}は関数、または@code{nil}である。ファイルをvisitした後にバッファーの先頭のテキストが@var{regexp}にマッチした場合、@var{function}が非@code{nil}なら@code{set-auto-mode}は@var{function}を呼び出す。@var{function}が@code{nil}なら@code{auto-mode-alist}がモードを決定する。
+@end defvar
+
+@defvar magic-fallback-mode-alist
+これは@code{magic-mode-alist}と同様に機能するが、そのファイルにたいして@code{auto-mode-alist}がモードを指定しない場合だけ処理される点が異なる。
+@end defvar
+
+@defvar auto-mode-alist
+この変数はファイル名パターン(正規表現)と対応するメジャーモードコマンドの連想リストを含む。ファイル名パターンは通常は@samp{.el}や@samp{.c}のようなサフィックスをテストするが必須ではない。このalistの通常の要素は@code{(@var{regexp}
+.  @var{mode-function})}のようになる。
+
+たとえば、
+
+@smallexample
+@group
+(("\\`/tmp/fol/" . text-mode)
+ ("\\.texinfo\\'" . texinfo-mode)
+ ("\\.texi\\'" . texinfo-mode)
+@end group
+@group
+ ("\\.el\\'" . emacs-lisp-mode)
+ ("\\.c\\'" . c-mode)
+ ("\\.h\\'" . c-mode)
+ @dots{})
+@end group
+@end smallexample
+
+バージョン番号とバックアップ用サフィックスをもつファイルをvisitしたとき、それらのサフィックスは@code{file-name-sans-versions}
+(@ref{File Name Components}を参照)を使用して展開されたファイル名(@ref{File Name
+Expansion}を参照)から取り除かれて@var{regexp}とマッチされて、@code{set-auto-mode}はそれに対応する@var{mode-function}を呼び出す。この機能によりほとんどのファイルにたいしてEmacsが適切なメジャーモードを選択することが可能になる。
+
+@code{auto-mode-alist}の要素が@code{(@var{regexp} @var{function}
+t)}という形式なら、@var{function}を呼び出した後にEmacsは前回マッチしなかったファイル名部分にたいしてマッチするために再度@code{auto-mode-alist}を検索する。この機能は圧縮されたパッケージにたいして有用である。@code{("\\.gz\\'"
+@var{function}
+t)}という形式のエントリーは、ファイルを解凍してから@samp{.gz}抜きのファイル名の解凍されたファイルを適切なモードに置く。
+
+@var{regexp}がファイル名にマッチする要素が@code{auto-mode-alist}に複数ある場合には、Emacsは最初のマッチを使用する。
+
+以下は@code{auto-mode-alist}の先頭に複数のパターンペアーを追加する方法の例である(あなたはinitファイル内でこの種の式を使ったことがあるかもしれない)。
+
+@smallexample
+@group
+(setq auto-mode-alist
+  (append
+   ;; @r{ドットで始まる(ディレクトリー名付きの)ファイル名}
+   '(("/\\.[^/]*\\'" . fundamental-mode)
+     ;; @r{ドットのないファイル名}
+     ("/[^\\./]*\\'" . fundamental-mode)
+     ;; @r{@samp{.C}で終わるファイル名}
+     ("\\.C\\'" . c++-mode))
+   auto-mode-alist))
+@end group
+@end smallexample
+@end defvar
+
+@defvar major-mode-remap-defaults
+この変数には与えられたメジャーモードをアクティブにするにはどの関数を呼び出せばよいかを示す連想リストが含まれている。この変数はさまざまなメジャーモードによってサポートされているファイルフォーマットにたいして、デフォルトではどの候補が使用されるかを示すために使用できる。
+
+たとえばより改善されたPascal向けメジャーモードを提供するサードパーティー製パッケージは、通常なら@code{pascal-mode}を使用するであろうファイルすべてにたいして、以下のようにして@code{normal-mode}に@code{spiffy-pascal-mode}を使用するよう指示できる:
+
+@smallexample
+@group
+(add-to-list 'major-mode-remap-defaults '(pascal-mode . spiffy-pascal-mode))
+@end group
+@end smallexample
+
+この変数は@code{major-mode-remap-alist}と同じフォーマットをもつ。あるメジャーモードが両方のリストにマッチした場合には、@code{major-mode-remap-alist}が優先される。
+@end defvar
+
+@defun major-mode-remap mode
+この関数は@code{major-mode-remap-alist}と@code{major-mode-remap-defaults}に応じて、@var{mode}のかわりに使用するメジャーモードをリターンする。これらの変数によるモードのリマップが行われていなければ@var{mode}をリターンする。
+
+あるパッケージが特定のファイルフォーマットにたいしてあるメジャーモードをアクティブにしたければ、@code{mode}引数としてそのファイルフォーマットにたいする正規メジャーモードとすることにより、どのメジャーモードをアクティブにするか見つける際にユーザーの好みを反映させることができる。
+@end defun
+
+@node Mode Help
+@subsection メジャーモードでのヘルプ入手
+@cindex mode help
+@cindex help for major mode
+@cindex documentation for major mode
+
+  @code{describe-mode}関数はメジャーモードに関する情報を提供します。これは通常は@kbd{C-h
+m}にバインドされています。この関数は変数@code{major-mode} (@ref{Major
+Modes}を参照)の値を使用します。すべてのメジャーモードがこの変数をセットする必要があるのはこれが理由です。
+
+@deffn Command describe-mode &optional buffer
+このコマンドはカレントバッファーのメジャーモードとマイナーモードのドキュメントを表示する。この関数はメジャーモードおよびマイナーモードのコマンドのドキュメント文字列を取得するために@code{documentation}関数を使用する(@ref{Accessing
+Documentation}を参照)。
+
+@var{buffer}引数に非@code{nil}を指定してLispから呼び出されると、この関数はカレントバッファーではなくそのバッファーのメジャーモードとマイナーモードのドキュメントを表示する。
+@end deffn
+
+@node Derived Modes
+@subsection 派生モードの定義
+@cindex derived mode
+@cindex parent mode
+
+  新しいメジャーモードを定義する推奨方法は、@code{define-derived-mode}を使用して既存のメジャーモードから派生させる方法です。それほど近いモードが存在しない場合は@code{text-mode}、@code{special-mode}、または@code{prog-mode}から継承するべきです。@ref{Basic
+Major
+Modes}を参照してください。これらがいずれも適切でなければ、@code{fundamental-mode}から継承することができます(@ref{Major
+Modes}を参照)。
+
+@defmac define-derived-mode variant parent name docstring keyword-args@dots{} body@dots{}
+このマクロは@var{variant}をメジャーモードコマンドとして定義して、@var{name}をモード名の文字列形式とする。@var{variant}と@var{parent}はクォートされていないシンボルであること。
+
+新たなコマンド@var{variant}は関数@var{parent}を呼び出すよう定義されて、その後その親モードの特定の性質をオーバーライドする。
+
+@itemize @bullet
+@item
+新たなモードは@code{@var{variant}-map}という名前の、自身のsparseキーマップ(疎キーマップ)をもつ。@code{define-derived-mode}は@code{@var{variant}-map}がすでにセットされていて、かつすでに親をもつ場合を除いて親モードのキーマップを新たなマップの親キーマップにする。
+
+@item
+新たなモードは自身の構文テーブル(syntax
+table)をもち、それは変数@code{@var{variant}-syntax-table}に保持される。ただし@code{:syntax-table}キーワード(以下参照)を使用してこれをオーバーライドした場合は異なる。@code{define-derived-mode}は@code{@var{variant}-syntax-table}がすでにセットされていて、かつ標準的な構文テーブルよ異なる親をもつ場合を除いて、親モードの構文テーブルを@code{@var{variant}-syntax-table}の親とする。
+
+@item
+新たなモードは自身のabbrevテーブル(略語テーブル)をもち、それは変数@code{@var{variant}-abbrev-table}に保持される。ただし@code{:abbrev-table}キーワード(以下参照)を使用してこれをオーバーライドした場合は異なる。
+
+@item
+新たなモードは自身のモードフック@code{@var{variant}-hook}をもつ。これはフックを実行した後に@code{:after-hook}があればそれを実行して、それとは別に最後に@code{run-mode-hooks}によって自身の祖先のモードのフックを実行する。
+@end itemize
+
+これらに加えて@var{body}で@var{parent}のその他の性質をオーバーライドする方法を指定できます。コマンド@var{variant}は通常のオーバーライドをセットアップした後、そのモードのフックを実行する直前に@var{body}内のフォームを評価します。
+
+@var{parent}が非@code{nil}の@code{mode-class}シンボルプロパティをもつ場合、@code{define-derived-mode}は@var{variant}の@code{mode-class}プロパティに同じ値をセットします。これはたとえば@var{parent}がspecialモードなら@var{variant}もspecialモードになることを保証します(@ref{Major
+Mode Conventions}を参照)。
+
+@var{parent}にたいして@code{nil}を指定することもできます。これにより新たなモードは親をもたなくなります。その後に@code{define-derived-mode}は上述のように振る舞いますが、当然@var{parent}につながるすべてのアクションは省略されます。反対に新たなモードの祖先を明示的にセットするために、@code{derived-mode-set-parent}と@code{derived-mode-add-parents}を使うことができます(以下参照)。
+
+引数@var{docstring}は新たなモードにたいするドキュメント文字列を指定します。@code{define-derived-mode}はこのドキュメント文字列の最後にそのモードフックに関する一般的な情報と、その後にそのモードのキーマップを追加します。@var{docstring}を省略すると@code{define-derived-mode}がドキュメント文字列を生成します。
+
+@var{keyword-args}はキーワードと値のペアー。@code{:after-hook}のものを除いて値は評価される。現在のところ以下のキーワードがサポートされる:
+
+@table @code
+@item :syntax-table
+新たなモードにたいする構文テーブルを明示的に指定するためにこれを使用できる。@code{nil}値を指定すると新たなモードは@var{parent}と同じ構文テーブル、@var{parent}も@code{nil}なら標準的な構文テーブルを使用する(これは@code{nil}値の非キーワード引数は引数を指定しないのと同じという通常の慣習には@emph{したがわない}ことに注意)。
+
+@item :abbrev-table
+新たなモードにたいするabbrevテーブルを明示的に指定するためにこれを使用できる。@code{nil}値を指定すると新たなモードは@var{parent}と同じabbrevテーブル、@var{parent}も@code{nil}なら@code{fundamental-mode-abbrev-table}を使用する(繰り返すが@code{nil}値はこのキーワードを指定しないことでは@emph{ない})。
+
+@item :interactive
+モードはデフォルトではインタラクティブコマンド。@code{nil}値を指定すると、ここで指定したモードはインタラクティブにならない。これはユーザーが手動でアクティブにされることはないが、特別にフォーマットされたバッファーでのみ使用されることを意図したモードで有用。
+
+@item :group
+これが指定する場合、値はそのモードにたいするカスタマイズグループ(customization
+group)であること(すべてのメジャーモードがカスタマイズグループをもつ訳ではない)。@code{customize-mode}コマンドはこれを使用する。@code{define-derived-mode}は指定されたカスタマイズグループを自動的に@emph{定義しない}。
+
+@item :after-hook
+このオプションのｋｅｙはモードフック実行後にモード関数の最後の活動として評価される単一のLispフォームを指定する。クォートしないこと。モードにが終了した後にフォーが評価されるので、モード関数のローカル状態のすべての要素にアクセスするべきではない。@code{:after-hook}フォームはモードフックで変更されているかもしれないユーザーのセッティングに依存するモードの様相をセットアップするために有用。
+@end table
+
+以下は架空の例:
+
+@example
+(defvar-keymap hypertext-mode-map
+  "<down-mouse-3>" #'do-hyper-link)
+
+(define-derived-mode hypertext-mode
+  text-mode "Hypertext"
+  "ハイパーテキスト用のメジャーモード"
+  (setq-local case-fold-search nil))
+@end example
+
+@code{define-derived-mode}が自動的に行うので、この定義内に@code{interactive}指定を記述してはならない。
+@end defmac
+
+@cindex ancestry, of major modes
+@defun derived-mode-p modes
+この関数はカレントメジャーモードがシンボルのリスト@var{modes}で与えられたメジャーモードのいずれかから派生されていたら非@code{nil}をリターンする。@var{modes}はリストではなく単独のモードシンボルでもよい。
+
+さらに個別の引数として@var{modes}を渡す廃止された呼び出し規約も依然としてサポートされている。
+
+この関数はカレントメジャーモードの親モードを調べる際には@code{define-derived-mode}でセットされたカレントモードの親モード、さらに下記の@code{derived-mode-add-parents}でセットされた追加の親モードも考慮する。
+@end defun
+
+@defun provided-mode-derived-p mode modes
+この関数は@var{modes}にセットされたシンボルのリストによって与えられるメジャーモードのいずれかを@var{mode}が継承していれば非@code{nil}をリターンする。@code{derived-mode-p}の場合と同じように@var{modes}は単一のシンボルでもよく、さらに個別のシンボル引数として@var{modes}を渡す廃止された呼び出し規約もサポートされている。
+
+この関数は@var{mode}の親モードを調べる際には@code{define-derived-mode}でセットされた@var{mode}の親モード、さらに下記の@code{derived-mode-add-parents}でセットされた追加の親モードも考慮する。
+@end defun
+
+あるメジャーモードの祖先の家系図グラフは、以下の低レベル関数によってアクセスや変更が可能です:
+
+@defun derived-mode-set-parent mode parent
+この関数は@var{mode}が@code{parent}から派生していることを宣言する。これは@code{define-derived-mode}が@var{mode}を定義した後に、@code{parent}を再利用して@var{mode}が定義されたという事実を登録するために呼び出す関数である。
+@end defun
+
+@defun derived-mode-add-parents mode extra-parents
+この関数は@var{mode}の定義時に用いられた親と別の親モードの登録を可能にする。これは@var{mode}と@var{extra-parents}の愛だに類似性があり、たとえばディレクトリーローカル変数やその他のモード固有のセッティングを適用する等の目的のために@var{mode}をこれらのモードの子モードとして扱うことに意味がある際に使用できる。追加の親モードは@var{extra-parents}にセットされたシンボルのリストとして指定される。これらの親モードは@code{derived-mode-p}および@code{provided-mode-derived-p}により、@var{mode}の親モードのいずれかとみなされることになる。
+@end defun
+
+@defun derived-mode-all-parents mode
+この関数は@var{mode}の祖先となるすべてのモードのリストを、@var{mode}を先頭に具体性の大きいものから小さい順でリターンする。もしあれば@code{derived-mode-add-parents}呼び出しで追加された追加の親モードも含まれる。
+@end defun
+
+
+@node Basic Major Modes
+@subsection 基本的なメジャーモード
+
+  Fundamentalモードは別として他のメジャーモードの一般的な派生元となるメジャーモードが3つあります。それはTextモード、Progモード、およびSpecialモードです。Textモードはその本来もつ機能から有用なモードです(たとえば@file{.txt}ファイルの編集など)。一方、ProgモードとSpecialモードは主にそのようなモード以外のモードの派生元とするために存在します。
+
+@vindex prog-mode-hook
+  新たなモードは直接と間接を問わず、可能な限りそれら3つのモードから派生させるべきです。その理由の1つは関連のあるモードファミリー全体(たとえばすべてのプログラミング言語のモード)にたいして、ユーザーが単一のモードフックをカスタマイズできるからからです。
+
+@deffn Command text-mode
+Textモードは人間の言語を編集するためのメジャーモードである。このモードは文字@samp{"}と@samp{\}を区切り文字構文(punctuation
+syntax: @ref{Syntax Class
+Table}を参照)としてもち、スペリング辞書の単語にもとづいて補完を行うように@code{completion-at-point}をアレンジする(@ref{Completion
+in Buffers}を参照)。
+
+Textモードから派生されたメジャーモードの例としてHTMLモードがある。@ref{HTML Mode,,SGML and HTML Modes,
+emacs, The GNU Emacs Manual}を参照のこと。
+@end deffn
+
+@deffn Command prog-mode
+Progモードはプログラミング言語のソースコードを含むバッファーにたいする基本的なメジャーモードである。Emacsビルトインのプログラミング言語用メジャーモードはこのモードから派生されている。
+
+Progモードは@code{parse-sexp-ignore-comments}を@code{t} (@ref{Motion via
+Parsing}を参照)、@code{bidi-paragraph-direction}を@code{left-to-right}
+(@ref{Bidirectional Display}を参照)にバインドする。
+@end deffn
+
+@deffn Command special-mode
+Specialモードはファイルから直接ではなく、Emacsにより特別(specially)に生成されたテキストを含むバッファーにたいする基本的なメジャーモードである。Specialモードから派生されたメジャーモードは@code{mode-class}プロパティに@code{special}が与えられる(@ref{Major
+Mode Conventions}を参照)。
+
+Specialモードはバッファーを読み取り専用にセットする。このモードのキーマップはいくつかの一般的なバインディングを定義して、それには@code{quit-window}にたいする@kbd{q}、@code{revert-buffer}
+(@ref{Reverting}を参照)にたいする@kbd{g}が含まれる。
+
+Specialから派生されたメジャーモードの例としてはBuffer Menuモードがあり、これは@file{*Buffer
+List*}バッファーにより使用される。@ref{List Buffers,,Listing Existing Buffers, emacs, The
+GNU Emacs Manual}を参照のこと。
+@end deffn
+
+  これらに加えて表形式データのバッファーにたいするモードをTabulated
+Listモードから継承できます。このモードはSpecialモードから順に派生されているモードです。@ref{Tabulated List
+Mode}を参照してください。
+
+@node Mode Hooks
+@subsection モードフック
+
+  すべてのメジャーモードコマンドはモード独自のノーマルフック@code{change-major-mode-after-body-hook}、そのモードのモードフック、ノーマルフック@code{after-change-major-mode-hook}を実行することによって終了すべきです。これは@code{run-mode-hooks}を呼び出すことにより行われます。もしそのモードが派生モードなら自身のbody内で他のメジャーモード(親モード)を呼び出す場合には、親モードが自身でこれらのフックを実行しないように@code{delay-mode-hooks}の中でこれを行うべきです。かわりに派生モードは親のモードフックも実行する@code{run-mode-hooks}を呼び出します。@ref{Major
+Mode Conventions}を参照してください。
+
+  Emacs 22より前のバージョンのEmacsには@code{delay-mode-hooks}がありません。またEmacs
+24より前のバージョンには@code{change-major-mode-after-body-hook}がありません。ユーザー実装のメジャーモードが@code{run-mode-hooks}を使用せず、これらの新しい機能を使用するようにアップデートされていないときは、これらのメジャーモードは以下の慣習に完全にしたがわないでしょう。それらのモードは親のモードフックをあまりに早く実行したり、@code{after-change-major-mode-hook}の実行に失敗するかもしれません。これにより@code{define-globalized-minor-mode}で定義されたマイナーモードがこれらのメジャーモードを使用するバッファーで妨害されるという、望ましくない影響が生じるでしょう。そのようなメジャーモードに遭遇したら以下の慣習にしたがって修正をお願いします。
+
+  @code{define-derived-mode}を使用してメジャーモードを定義したときは、自動的にこれらの慣習にしたがうことが保証されます。@code{define-derived-mode}を使用せずにメジャーモードを``手動''で定義したら、これらの慣習を自動的に処理するように以下の関数を使用してください。
+
+@defun run-mode-hooks &rest hookvars
+メジャーモードはこの関数を使用してモードフックを実行すること。これは@code{run-hooks}
+(@ref{Hooks}を参照)と似ているが@code{change-major-mode-after-body-hook}、(バッファーがファイルをvisitしていれば)@code{hack-local-variables}
+(@ref{File Local
+Variables}を参照)、@code{after-change-major-mode-hook}も実行する。これは最後に親モード(@ref{Derived
+Modes}を参照)で宣言されている@code{:after-hook}フォームをすべて評価する。
+
+この関数が@code{delay-mode-hooks}フォーム実行中に呼び出されたときはフックや@code{hack-local-variables}の実行、およびフォームの評価を即座には行わない。かわりに次の@code{run-mode-hooks}呼び出しでそれらを実行するようにアレンジする。
+@end defun
+
+@defmac delay-mode-hooks body@dots{}
+あるメジャーモードコマンドが他のメジャーモードコマンドを呼び出すときは@code{delay-mode-hooks}の内部で行うこと。
+
+このマクロは@var{body}を実行するが、@var{body}実行中はすべての@code{run-mode-hooks}呼び出しにたいしてそれらのフックの実行を遅延するよう指示する。それらのフックは実際には@code{delay-mode-hooks}構造の最後の後、次の@code{run-mode-hooks}呼び出しの間に実行されるだろう。
+@end defmac
+
+@defvar change-major-mode-after-body-hook
+これは@code{run-mode-hooks}により実行されるノーマルフックである。これはそのモードのフックの前に実行される。
+@end defvar
+
+@defvar after-change-major-mode-hook
+これは@code{run-mode-hooks}により実行されるノーマルフックである。これはすべての適切に記述されたメジャーモードコマンドの一番最後に実行される。
+@end defvar
+
+@node Tabulated List Mode
+@subsection Tabulated Listモード
+@cindex Tabulated List mode
+
+  Tabulated
+Listモードとは、表形式データ(@dfn{エントリー}から構成されるデータで各エントリーはそれぞれテキストの1行を占め、エントリーの内容は列に分割されるようなデータ)を表示するためのメジャーモードです。Tabulated
+Listモードは行列の見栄えよくプリントする機能、および各列の値に応じて行をソートする機能を提供します。これはSpecialモードから派生されたモードです(@ref{Basic
+Major Modes}を参照)。
+
+@findex make-vtable
+@cindex variable pitch tables
+  Tabulated
+Listモードは単一のフォントとテキストサイズによりモノスペースフォントを使用してテキストを表示するように調整されています。可変ピッチフォントやイメージを使用したテーブルが表示したければ、かわりに@code{make-vtable}を使うことができます。vtableでは1つのバッファーに複数のテーブルをもったり、テーブルと追加のテキストの両方を含んだバッファーをもつことができます。詳細については@ref{Introduction,,,
+vtable}を参照してください。
+
+  Tabulated Listモードは、より特化したメジャーモードの親モードとして使用されることを意図しています。例としてはProcess
+Menuモード(@ref{Process Information}を参照)、Package Menuモード(@ref{Package Menu,,,
+emacs, The GNU Emacs Manual}を参照)が含まれます。
+
+@findex tabulated-list-mode
+  このような派生されたモードは@code{tabulated-list-mode}を2つ目の引数に指定して、通常の方法で@code{define-derived-mode}を使用するべきです(@ref{Derived
+Modes}を参照)。@code{define-derived-mode}フォームのbodyは以下にドキュメントされている変数に値を割り当てることにより、表形式データのフォーマットを指定するべきです。その後にオプションで列名のヘッダーを挿入する関数@code{tabulated-list-init-header}を呼び出すことができます。
+
+  派生されたモードは@dfn{リスティングコマンド(listing command)}も定義するべきです。これはモードコマンドではなく、(@kbd{M-x
+list-processes}のように)ユーザーが呼び出すコマンドです。リスティングコマンドはバッファーを作成または切り替えて、派生モードをオンにして表形式データを指定し、最後にそのバッファーを事前設定(populate)するために@code{tabulated-list-print}を呼び出すべきです。
+
+@defopt tabulated-list-gui-sort-indicator-asc
+この変数はGUIフレームにおいて列が昇順でソートされていることを示すために使用する文字を指定する。
+
+Tabulated Listバッファーでソート方向を変更するたびに、このインジケーターの昇順(``asc'')と降順(``desc'')が切り替わる。
+@end defopt
+
+@defopt tabulated-list-gui-sort-indicator-desc
+@code{tabulated-list-gui-sort-indicator-asc}と同様だが列が降順でソートされている際に使用される。
+@end defopt
+
+@defopt tabulated-list-tty-sort-indicator-asc
+@code{tabulated-list-gui-sort-indicator-asc}と同様だがテキストモードのフレームに使用される。
+@end defopt
+
+@defopt tabulated-list-tty-sort-indicator-desc
+@code{tabulated-list-tty-sort-indicator-asc}と同様だが列が降順でソートされている際に使用される。
+@end defopt
+
+@defvar tabulated-list-format
+このバッファーローカル変数は表形式データのフォーマットを指定する。値はベクターであり、ベクターの各要素はデータ列を表すリスト@code{(@var{name}
+@var{width} @var{sort} . @var{props})}である。ここで
+
+@itemize
+@item
+@var{name}は列の名前(文字列)。
+
+@item
+@var{width}は列にたいして予約される文字数幅(整数)。最終列は各行の終端までなので意味がない。
+
+@item
+@var{sort}は列によりエントリーをソートする方法を指定する。@code{nil}ならその列はソートに使用できない。@code{t}なら列の文字列値を比較することによりソートされる。それ以外なら@code{tabulated-list-entries}の要素と同じ形式の2つの引数をとる、@code{sort}にたいする述語関数(predicate
+function)であること。
+
+@item
+@var{props}は列の追加プロパティを指定するplist (@ref{Property
+Lists}を参照)。プロパティ@code{:right-align}の値が非@code{nil}なら列は右揃えとなり、プロパティ@code{:pad-right}が列右側にパディングとして追加されるスペースの数を指定する(省略時のデフォルトは1)。
+@end itemize
+@end defvar
+
+@defvar tabulated-list-entries
+このバッファーローカル変数はTabulated Listバッファー内に表示されるエントリーを指定する。値はリストか関数のいずれかであること。
+
+値がリストなら各リスト要素は1つのエントリーに対応し、@w{@code{(@var{id}
+@var{contents})}}という形式であること。ここで
+
+@itemize
+@item
+@var{id}は@code{nil}、またはエントリーを識別するLispオブジェクト。Lispオブジェクトならエントリーを再ソートした際、カーソルは同じエントリー上に留まる。比較は@code{equal}で行われる。
+
+@item
+@var{contents}は@code{tabulated-list-format}と要素数が同じベクター。ベクター要素は文字列(バッファーにそのまま挿入される)、あるいはイメージディスクリプター(イメージの挿入に使用される;
+@ref{Image Descriptors}を参照)、あるいは@w{@code{(@var{label}
+.
+@var{properties})}}という形式のリスト。これは@var{label}と@var{properties}を引数として@code{insert-text-button}を呼び出すことによりテキストボタンを挿入することを意味する(@ref{Making
+Buttons}を参照)。
+
+これらの文字列には改行を含めないこと。
+@end itemize
+
+それ以外なら、それは値は引数なしで呼び出されて上記形式のリストをリターンする関数であること。
+@end defvar
+
+@defvar tabulated-list-groups
+このバッファーローカル変数はTabulated Listバッファー内に表示されるエントリーのグループを指定する。値はリストか関数のいずれかであること。
+
+値がリストなら、リストの要素それぞれが1つのグループに対応した、@w{@code{(@var{group-name}
+@var{entries})}}という形式の要素からなるリストであること。ここで@var{group-name}はすべてのグループエントリーの前に挿入される文字列、@var{entries}は@code{tabulated-list-entries}の場合と同じフォーマット(上記参照)。
+
+それ以外なら、それは値は引数なしで呼び出されて上記形式のリストをリターンする関数であること。
+
+@code{tabulated-list-entries}から@code{tabulated-list-groups}を作成するために@code{seq-group-by}を使用できる。たとえば:
+
+@smallexample
+@group
+(setq tabulated-list-groups
+      (seq-group-by 'Buffer-menu-group-by-mode
+                    tabulated-list-entries))
+@end group
+@end smallexample
+
+@noindent
+@code{Buffer-menu-group-by-mode}は以下のようにすれば定義できる:
+
+@smallexample
+@group
+(defun Buffer-menu-group-by-mode (entry)
+  (concat "* " (aref (cadr entry) 5)))
+@end group
+@end smallexample
+@end defvar
+
+@defvar tabulated-list-revert-hook
+このノーマルフックはTabulated
+Listバッファーのリバートに先立ち実行される。派生モードは@code{tabulated-list-entries}を再計算するためにこのフックに関数を追加できる。
+@end defvar
+
+@defvar tabulated-list-printer
+この変数の値はポイント位置にエントリー(エントリーを終端する改行を含む)を挿入するために呼び出される関数である。この関数は@code{tabulated-list-entries}と同じ意味をもつ2つの引数@var{id}と@var{contents}を受け取る。デフォルト値はエントリーをそのまま挿入する関数である。より複雑な方法でTabulated
+Listモードを使用するモードは別の関数を指定できる。
+@end defvar
+
+@defvar tabulated-list-sort-key
+この変数の値はTabulated
+Listバッファーにたいするカレントのソートキーを指定する。@code{nil}ならソートは行われない。それ以外なら@code{(@var{name}
+.
+@var{flip})}という形式の値をもつ。ここで@var{name}は@code{tabulated-list-format}内の列目の1つとマッチする文字列、@var{flip}が非@code{nil}なら逆順でのソートを意味する。
+@end defvar
+
+@defun tabulated-list-init-header
+この関数はTabulated
+Listバッファーにたいする@code{header-line-format}を計算してセットし、列ヘッダー上でのクリックでソートを可能にするキーマップをヘッダー行に割り当てる。
+
+Tabulated
+Listから派生したモードは、上記の変数(特に@code{tabulated-list-format}をセットした後のみ)をセットした後にこれを呼び出すこと。
+@end defun
+
+@defun tabulated-list-print &optional remember-pos update
+この関数はカレントバッファーにエントリーを挿入する。これをリスティングコマンドとして呼び出すこと。この関数はバッファーを消去して@code{tabulated-list-entries}で指定されるエントリーを@code{tabulated-list-sort-key}にしたがってソートした後、各エントリーを挿入するために@code{tabulated-list-printer}で指定される関数を呼び出す。
+
+オプション引数@var{remember-pos}が非@code{nil}なら、この関数はカレント行で@var{id}要素を探して、もしあればすべてのエントリーを(再)挿入して、その後にそのエントリーの移動を試みる。
+
+オプション引数@var{update}が非@code{nil}なら、この関数は最後のプリント以降に変更されたエントリーの削除か追加だけを行う。この関数が最後に呼び出されて以降、ほとんどのエントリーが変更されていなければ、この関数は数倍高速になる。結果の違いは@code{tabulated-list-put-tag}を通じて配置されたタグが変更されていないエントリーから削除されないことだけである(通常はすべてのタグが削除される)。
+@end defun
+
+@defun tabulated-list-delete-entry
+この関数はポイント位置のエントリーを削除する。
+
+リスト@code{(@var{id}
+@var{cols})}をリターンする。ここで@var{id}は削除したエントリーのID、@var{cols}は列修飾子(column
+descriptors)のベクター。カレント行の先頭にポイントを移動する。ポイント位置にエントリーがなければ@code{nil}をリターンする。
+
+この関数はバッファーのコンテンツだけを変更することに注意。@code{tabulated-list-entries}は変更しない。
+@end defun
+
+@defun tabulated-list-get-id &optional pos
+この@code{defsubst}は@code{tabulated-list-entries}がリストならIDオブジェクト、関数なら@code{tabulated-list-entries}がリターンするリストからIDオブジェクトをリターンする。@var{pos}が省略か@code{nil}の場合のデフォルトはポイント位置。
+@end defun
+
+@defun tabulated-list-get-entry &optional pos
+この@code{defsubst}は@code{tabulated-list-entries}がリストならエントリーオブジェクト、関数なら@code{tabulated-list-entries}がリターンするリストからエントリーオブジェクトをリターンする。これは@var{pos}にあるIDにたいするベクターになるだろう。@var{pos}にエントリーがなければ、この関数は@code{nil}をリターンする。
+@end defun
+
+@vindex tabulated-list-use-header-line
+@defun tabulated-list-header-overlay-p &optional POS
+この@code{defsubst}は@var{pos}に偽ヘッダーがあれば非@code{nil}をリターンする。偽ヘッダー(fake
+header)はバッファー先頭に列名を配置するために@code{tabulated-list-use-header-line}が@code{nil}にセットされている場合に使用される。@var{pos}が省略か@code{nil}の場合のデフォルトは@code{point-min}。
+@end defun
+
+@vindex tabulated-list-padding
+@defun tabulated-list-put-tag tag &optional advance
+この関数はレント行のパディングエリアに@var{tag}を配置する。パディングエリアはその行の先頭にある空スペースであり、幅は@code{tabulated-list-padding}により制御される。@var{tag}は長さが@code{tabulated-list-padding}以下の文字列であること。@var{advance}が非@code{nil}なら、この関数は1行分ポイントを前方に移動する。
+@end defun
+
+@defun tabulated-list-clear-all-tags
+この関数はカレントバッファーのパディングエリアからすべてのタグをクリアーする。
+@end defun
+
+@defun tabulated-list-set-col col desc &optional change-entry-data
+この関数は@var{col}を@var{desc}にセットしてポイント位置にあるTabulated
+Listのエントリーを変更する。@var{col}は変更する列番号か列名、@var{desc}は新たな列記述子であり、@code{tabulated-list-print-col}を通じて挿入される。
+
+@var{change-entry-data}が非@code{nil}なら、この関数は列記述子のベクターを@code{desc}にセットすることにより、背後のデータ(通常はリスト@code{tabulated-list-entries}内の列記述子)を変更する。
+@end defun
+
+
+@node Generic Modes
+@subsection ジェネリックモード
+@cindex generic mode
+
+  @dfn{genericモード(汎用モード)}とは、コメント構文にたいする基本的なサポートとFont
+Lockモードをもつシンプルなメジャーモードです。genericモードを定義するにはマクロ@code{define-generic-mode}を使用します。@code{define-generic-mode}の使い方の例は、ファイル@file{generic-x.el}を参照してください。
+
+@defmac define-generic-mode mode comment-list keyword-list font-lock-list auto-mode-list function-list &optional docstring
+このマクロは@var{mode}
+(クォートされていないシンボル)という名前のgenericモードコマンドを定義する。オプション引数@var{docstring}は、そのモードコマンドにたいするドキュメント文字列。これを与えなければ@code{define-generic-mode}がデフォルトのドキュメント文字列を生成する。
+
+引数@var{comment-list}は要素が文字、2文字以下の文字列、またはコンスセルである。文字か文字列ならそのモードの構文テーブル内でコメント開始識別子としてセットアップされる。エントリーがコンスセルなら@sc{car}はコメント開始識別子、@sc{cdr}はコメント終了識別子としてセットアップされる(行末によりコメントを終端させたければ後者に@code{nil}を使用する)。構文テーブルのメカニズムには実際にコメントの開始および終了識別子に関する制限があることに注意。
+@ref{Syntax Tables}を参照のこと。
+
+引数@var{keyword-list}は@code{font-lock-keyword-face}でハイライトするキーワードのリストである。キーワードは文字列であること。一方、@var{font-lock-list}はハイライトするための追加の式リストである。このリストの各要素は@code{font-lock-keywords}の要素と同じ形式をもつこと。@ref{Search-based
+Fontification}を参照されたい。
+
+引数@var{auto-mode-list}は変数@code{auto-mode-alist}に追加する正規表現のリストである。これらのは、マクロ呼び出しの展開時ではなく、@code{define-generic-mode}の実行時に追加される。
+
+最後に@var{function-list}は追加セットアップのためにモードコマンドに呼び出される関数のリストである。これらの関数はモードフック変数@code{@var{mode}-hook}の実行の直前に呼び出される。
+@end defmac
+
+@node Example Major Modes
+@subsection メジャーモードの例
+
+  おそらくTextモードは、Fundamentalを除いてもっともシンプルなモードです。上述した慣習の多くを説明するために以下に@file{text-mode.el}の抜粋を示します:
+
+@smallexample
+@group
+;; @r{このモード用に構文テーブルを作成}
+(defvar text-mode-syntax-table
+  (let ((st (make-syntax-table)))
+    (modify-syntax-entry ?\" ".   " st)
+    (modify-syntax-entry ?\\ ".   " st)
+    ;; 'hello'の上でM-c押下により'hello'ではなく'Hello'となるよう'p'を追加
+    (modify-syntax-entry ?' "w p" st)
+    @dots{}
+    st)
+  "Syntax table used while in `text-mode'.")
+@end group
+@end smallexample
+
+  そして実際にモードコマンドが定義される方法が以下になります:
+
+@smallexample
+@group
+(define-derived-mode text-mode nil "Text"
+  "人間が読むために記述されたテキストを編集するためのメジャーモード
+このモードではパラグラフを区切るのはブランク行か空白行だけである
+したがって適応型フィル(adaptive filling)の全恩恵を受けられる
+ (変数`adaptive-fill-mode'を参照のこと)
+\\@{text-mode-map@}
+Textモードのオンによりノーマルフック`text-mode-hook'が実行される"
+@end group
+@group
+  (setq-local text-mode-variant t)
+  (setq-local require-final-newline mode-require-final-newline))
+@end group
+@end smallexample
+
+@cindex @file{lisp-mode.el}
+  3つのLisp用モード(Lispモード、Emacs Lispモード、Lisp
+Interactionモード)はTextモードより多くの機能をもち、それにふさわしくコードもより複雑です。そのようなモードの記述方法を説明するために@file{lisp-mode.el}の抜粋を示します。
+
+  以下はLispモードの構文テーブルとabbrevテーブルを定義する方法です:
+
+@cindex syntax table example
+@smallexample
+@group
+;; @r{モード固有のテーブル変数の作成}
+(define-abbrev-table 'lisp-mode-abbrev-table ()
+  "Abbrev table for Lisp mode.")
+
+(defvar lisp-mode-syntax-table
+  (let ((table (make-syntax-table lisp--mode-syntax-table)))
+    (modify-syntax-entry ?\[ "_   " table)
+    (modify-syntax-entry ?\] "_   " table)
+    (modify-syntax-entry ?# "' 14" table)
+    (modify-syntax-entry ?| "\" 23bn" table)
+    table)
+  "`lisp-mode'で使用される構文テーブル")
+@end group
+@end smallexample
+
+  Lisp用の3つのモードは多くのコードを共有します。たとえばLispモードとEmacs LispモードはLisp Dataモード、Lisp
+InteractionモードはEmacs Lispモードから派生したモードです。
+
+@noindent
+その中でも特にLisp Dataモードは、Lispコメントを処理するために変数@code{comment-start}をセットアップします:
+
+@smallexample
+@group
+  (setq-local comment-start ";")
+  @dots{}
+@end group
+@end smallexample
+
+  これらの異なるLisp用モードは、微妙に異なるキーマップをもちます。たとえばLispモードは@kbd{C-c
+C-z}を@code{run-lisp}にバインドしますが、他のLisp用モードはこれを行いません。とはいえすべてのLisp用モードに共通なコマンドがいくつかあります。以下のコードはそれらの共通コマンドをセットアップします:
+
+@smallexample
+@group
+(defvar-keymap lisp-mode-shared-map
+  :parent prog-mode-map
+  :doc "Keymap for commands shared by all sorts of Lisp modes."
+  "C-M-q" #'indent-sexp
+  "DEL" #'backward-delete-char-untabify)
+@end group
+@end smallexample
+
+@noindent
+そして以下がLispモードのためのキーマップをセットアップするコードです:
+
+@smallexample
+@group
+(defvar-keymap lisp-mode-map
+  :doc "Keymap for ordinary Lisp mode.
+All commands in `lisp-mode-shared-map' are inherited by this map."
+  :parent lisp-mode-shared-map
+  "C-M-x" #'lisp-eval-defun
+  "C-c C-z" #'run-lisp)
+@end group
+@end smallexample
+
+@noindent
+最後はLispモードのためのメジャーモードコマンドです:
+
+@smallexample
+@group
+(define-derived-mode lisp-mode lisp-data-mode "Lisp"
+  "GNU Emacs Lisp以外のLispコードを編集するためのメジャーモード
+コマンド:
+あたかも後方に移動するようにタブをスペースに削除変換する
+パラグラフ区切りはブランク行でコメント開始はセミコロン
+
+\\@{lisp-mode-map@}
+`run-lisp'はinferior Lispジョブの開始と既存ジョブ
+から戻るための両方に使われるかもしれないことに注意"
+@end group
+@group
+  (setq-local find-tag-default-function 'lisp-find-tag-default)
+  (setq-local comment-start-skip
+              "\\(\\(^\\|[^\\\n]\\)\\(\\\\\\\\\\)*\\)\\(;+\\|#|\\) *")
+  (setq imenu-case-fold-search t))
+@end group
+@end smallexample
+
+@node Minor Modes
+@section マイナーモード
+@cindex minor mode
+
+  @dfn{マイナーモード(minor
+mode)}はメジャーモードの選択とは無関係にユーザーが有効や無効にできるオプション機能の使用を提供します。マイナーモードは個別、あるいは組み合わせて有効にできます。
+
+  ほとんどのマイナーモードはメジャーモードとは独立した機能を実装するので、ほとんどのメジャーモードと一緒に使用することができます。たとえばAuto
+Fillモードはテキスト挿入を許容する任意のメジャーモードとともに機能します。しかし少数ながら特定のメジャーモードに特化したマイナーモードもあります。たとえばDiff
+Auto RefineモードはDiffモードとの使用だけを意図したマイナーモードです。
+
+  理想的にはマイナーモードは他のマイナーモードの効果と無関係に期待した効果をもつべきです。任意の順序でマイナーモードをアクティブや非アクティブにすることも可能であるべきです。
+
+@defvar local-minor-modes
+このバッファーローカル変数はカレントバッファーで有効なマイナーモード(シンボル)のリスト。
+@end defvar
+
+@defvar global-minor-modes
+このバッファーローカル変数はカレントで有効なマイナーグローバルモード(シンボル)のリスト。
+@end defvar
+
+@defvar minor-mode-list
+この変数の値はすべてのマイナーモードコマンドのリスト。
+@end defvar
+
+@menu
+* Minor Mode Conventions::   マイナーモードを記述するためのTips。
+* Keymaps and Minor Modes::  マイナーモードが自身のキーマップをもつための方法。
+* Defining Minor Modes::     マイナーモードを定義するための便利な機能。
+@end menu
+
+@node Minor Mode Conventions
+@subsection マイナーモード記述の規約
+@cindex minor mode conventions
+@cindex conventions for writing minor modes
+
+  メジャーモードにも監修があるように(@ref{Major
+Modes}を参照)、マイナーモードの記述にも慣習があります。その慣習について以下で説明します。これらの慣習にしたがうにはマクロ@code{define-minor-mode}を使用するのがもっとも簡単な方法です。@ref{Defining
+Minor Modes}を参照してください。
+
+@itemize @bullet
+@item
+@cindex mode variable
+名前が@samp{-mode}で終わる変数を定義する。これを@dfn{モード変数(mode
+variable)}と呼ぶ。マイナーモードコマンドはこの変数をセットすること。値はそのモードが無効なら@code{nil}、有効なら非@code{nil}になる。そのマイナーモードがバッファーローカルならこの変数もバッファーローカルであること。
+
+この変数はモードラインにマイナーモードの名前を表示するために@code{minor-mode-alist}と結合して使用される。これは@code{minor-mode-map-alist}を通じて、そのマイナーモードのキーマップがアクティブかどうかも判定する(@ref{Controlling
+Active Maps}を参照)。個々のコマンドやフックもこの変数の値をチェックできる。
+
+@item
+モード変数と同じ名前をもつ@dfn{モードコマンド(mode
+command)}と呼ばれるコマンドを定義する。このコマンドの役目はモード変数の値のセットに加えて、そのモードの機能を使用を実際に有効や無効にするために必要な他のすべてを行うことである。
+
+モードコマンドは1つのオプション引数を受け入れること。プレフィクス引数なしでinteractiveに呼び出されたらモードをトグルする(toggle:
+切り替える。たとえば無効なら有効に、有効なら無効にする)こと。プレフィクス引数とともにinteractiveに呼び出された場合にはその引数が正であればモードを有効にして、それ以外なら無効にすること。
+
+モードコマンドがLispから(つまり非interactiveに)呼び出された場合は、引数が省略または@code{nil}ならモードを有効にすること。引数がシンボル@code{toggle}ならモードをトグルして、それ以外なら上述の数引数とともにinteractiveに呼び出されたときと同じ方法によってその引数を扱うこと。
+
+以下はこの挙動の実装方法を示す例である(@code{define-minor-mode}マクロが生成するコードもこれに類似する)。
+
+@example
+(interactive (list (or current-prefix-arg 'toggle)))
+(let ((enable
+       (if (eq arg 'toggle)
+           (not foo-mode) ; @r{そのモードのモード変数}
+         (> (prefix-numeric-value arg) 0))))
+  (if enable
+      @var{do-enable}
+    @var{do-disable}))
+@end example
+
+やや複雑なこの挙動の理由は、ユーザーが簡単かつinteractiveにマイナーモードをトグルできることと、以下のようにモードフック内で簡単にマイナーモードを有効にできるからである:
+
+@example
+(add-hook 'text-mode-hook 'foo-mode)
+@end example
+
+@noindent
+@code{foo-mode}モードコマンドは引数なしでLispから呼び出されたときは無条件にそのマイナーモードを有効にするので、これは@code{foo-mode}がすでに有効でもそうでなくても正しく振る舞う。モードフック内でマイナーモードを無効にする場合は少々醜くなる:
+
+@example
+(add-hook 'text-mode-hook (lambda () (foo-mode -1)))
+@end example
+
+@noindent
+しかしこれは頻繁には行われない。
+
+  マイナーモードを2回連続で直接有効(や無効)にしても失敗せずに、1回だけ有効(や無効)にしたときと同じことを行うこと。言い換えるとマイナーモードコマンドはべき等であること。
+
+@item
+モードラインにマイナーモードを表示したければ、それぞれのマイナーモードにたいして要素を@code{minor-mode-alist}に追加する(@ref{Definition
+of minor-mode-alist}を参照)。この要素は以下の形式のリストであること:
+
+@smallexample
+(@var{mode-variable} @var{string})
+@end smallexample
+
+ここで@var{mode-variable}はマイナーモードの有効化を制御する変数、@var{string}はモードラインに表示するためのスペースで始まる短い文字列である。一度に複数モードの文字列がスペースを占有するので、これらの文字列は短くなければならない。
+
+@code{minor-mode-alist}に要素を追加する際は、重複を避けるために既存要素のチェックに@code{assq}を使用すること。たとえば:
+
+@smallexample
+@group
+(unless (assq 'leif-mode minor-mode-alist)
+  (push '(leif-mode " Leif") minor-mode-alist))
+@end group
+@end smallexample
+
+@noindent
+または以下のように@code{add-to-list}(@ref{List Variables}を参照)を使用すること:
+
+@smallexample
+@group
+(add-to-list 'minor-mode-alist '(leif-mode " Leif"))
+@end group
+@end smallexample
+@end itemize
+
+  これらに加えてメジャーモードにたいする慣習(@ref{Major Mode
+Conventions}を参照)のいくつかは、マイナーモードにたいしても同様に適用されます。それらの慣習はグローバルシンボルの名前、初期化関数の最後でのフックの使用、キーマップおよびその他のテーブルの使用です。
+
+  マイナーモードは、可能ならCustom(@ref{Customization}を参照)を通じた有効化と無効化をサポートするべきです。これを行うには、モード変数は@code{:type
+'boolean}とともに@code{defcustom}で通常は定義されるべきです。その変数をセットするだけではモードの有効化に不足なら、モードコマンドを呼び出すことによりモードを有効にする@code{:set}メソッドも指定するべきです。そしてその変数のドキュメント文字列にCustomを通じて変数をセットしなければ効果がないことを注記してください。さらにその定義をautoload
+cookie(@ref{autoload
+cookie}を参照)でマークして、その変数のカスタマイズによりモードを定義するライブラリーがロードされるように@code{:require}を指定します。たとえば:
+
+@smallexample
+@group
+;;;###autoload
+(defcustom msb-mode nil
+  "msb-modeをトグルする
+この変数を直接セットしても効果がない
+\\[customize]か関数`msb-mode'を使用すること"
+  :set 'custom-set-minor-mode
+  :initialize 'custom-initialize-default
+  :version "20.4"
+  :type    'boolean
+  :group   'msb
+  :require 'msb)
+@end group
+@end smallexample
+
+@node Keymaps and Minor Modes
+@subsection キーマップとマイナーモード
+
+  マイナーモードはそれぞれ自身のキーマップをもつことができ、そのモードが有効になるとそのキーマップがアクティブになります。マイナーモード用のキーマップをセットアップするには@code{minor-mode-map-alist}というalistに要素を追加します。@ref{Definition
+of minor-mode-map-alist}を参照してください。
+
+@cindex @code{self-insert-command}, minor modes
+  特定の自己挿入文字にたいして自己挿入と同様に他の何かを行うように振る舞いを変更するのは、マイナーモードキーマップの1つの使い方です。(@code{self-insert-command}をカスタマイズする別の方法は@code{post-self-insert-hook}を通じて行う方法。@ref{Commands
+for
+Insertion}を参照のこと。これ以外の@code{self-insert-command}カスタマイズ用の機能は特別なケースに限定されておりabbrevモードとAuto
+Fillモードのためにデザインされている。@code{self-insert-command}の標準定義から独自の定義への置き換えを試みてはならない。エディターコマンドループはこの関数を特別に処理する。)
+
+マイナーモードはコマンドを@kbd{C-c}とその後の区切り文字よって構成されるキーシーケンスにバインドできます。しかし@kbd{C-c}とその後の@kbd{@{@}<>:;}のいずれかの文字、またはコントロール文字、数字より構成されるシーケンスはメジャーモード用に予約済みです。また@kbd{C-c
+@var{letter}}はユーザー用に予約済みです。@ref{Key Binding Conventions}を参照してください。
+
+@node Defining Minor Modes
+@subsection マイナーモードの定義
+
+  マクロ@code{define-minor-mode}は、自己完結した単一定義内にモードを実装する便利な方法を提供します。
+
+@defmac define-minor-mode mode doc keyword-args@dots{} body@dots{}
+このマクロは名前が@var{mode}(シンボル)の新たなマイナーモードを定義する。これはドキュメント文字列として@var{doc}をもつマイナーモードをトグルするために@var{mode}という名前のコマンドを定義する。
+
+トグルコマンドは1つのオプション(プレフィクス)引数を受け取る。引数なしでinteractiveに呼び出されると、そのモードのオンとオフをトグルする。正のプレフィクス引数はモードを有効にして、それ以外のプレフィクス引数はモードを無効にする。Lispから呼び出すと引数が@code{toggle}ならモードをトグルして、引数が省略か@code{nil}ならモードを有効にする。これはたとえばメジャーモードフック内でマイナーモードを有効にするのを簡便にする。@var{doc}が@code{nil}なら、このマクロは上記を記述したデフォルトのドキュメント文字列を提供する。
+
+デフォルトではこれはモードを有効にすると@code{t}、無効にすると@code{nil}にセットされる、@var{mode}という名前の変数も定義する。
+
+@var{keyword-args}はキーワードとその後の対応する値により構成され、いくつかのキーワードは特別な意味をもつ:
+
+@table @code
+@item :global @var{global}
+非@code{nil}ならそのマイナーモードがバッファーローカルでなくグローバルであることを指定する。デフォルトは@code{nil}。
+
+マイナーモードをグローバルにしたときの効果の1つは、@var{mode}変数がカスタマイズ変数になることである。Customizeインターフェイスを通じてこの変数をトグルするとモードがオンやオフになり、変数の値は将来のEmacsセッション用に保存できるようになる(@ref{Saving
+Customizations,,, emacs, The GNU Emacs
+Manual}を参照)。保存された変数が機能するためには、Emacsが開始されるたびにマイナーモード関数が利用できるようにする必要がある。これは通常は@code{define-minor-mode}フォームをautoloadすることにより行われる。
+
+@item :init-value @var{init-value}
+これは@var{mode}変数を初期化するための値。特殊な状況(以下参照)を除き、この値は@code{nil}でなければならない。
+
+@item :lighter @var{lighter}
+文字列@var{lighter}はモード有効時にモードライン内に何を表示するか指定する。これが@code{nil}ならこのモードはモードライン内に表示されない。
+
+@item :keymap @var{keymap}
+オプション引数@var{keymap}はそのマイナーモードにたいするキーマップを指定する。非@code{nil}なら、それは(値がキーマップであるような)変数の名前かキーマップ、または以下の形式のalistであること
+
+@example
+(@var{key-sequence} . @var{definition})
+@end example
+
+@noindent
+ここで@var{key-sequence}と@var{definition}は@code{define-key}に渡すのに適した引数である(@ref{Changing
+Key
+Bindings}を参照)。@var{keymap}はキーマップかalistであり、これは変数@code{@var{mode}-map}も定義する。
+
+@item :variable @var{place}
+これはそのモードの状態を格納するために使用されるデフォルトの変数@var{mode}を置き換える。これを指定すると@var{mode}変数は定義されず、すべての@var{init-value}引数は使用されない。@var{place}は異なる名前の変数(あなた自身が定義しなければならない)、または@code{setf}関数とともに使用され得るすべてのもの(@ref{Generalized
+Variables}を参照)。@var{place}にはコンス@code{(@var{get}
+.
+@var{set})}も指定できる。ここで@var{get}はカレント状態をリターンする式であり、@var{set}はそれをセットする1つの引数(@var{place}に割り当てられる状態)をとる関数。
+
+@item :after-hook @var{after-hook}
+これはモードフック実行後に評価される単一のLispフォームを定義する。これをクォートしないこと。
+
+@item :interactive @var{value}
+デフォルトではインタラクティブコマンドであるようなマイナーモード。@code{nil}値を指定するとこれを抑制。@var{value}がシンボルのリストなら、そのマイナーモードが有用なメジャーモードを指定するために使用される。
+@end table
+
+その他のすべてのキーワード引数は変数@var{mode}にたいして生成された@code{defcustom}に直接渡される。これらのキーワードと値については@ref{Variable
+Definitions}を参照のこと。
+
+@var{mode}という名前のコマンドは最初に@var{mode}という名前の変数をセットする等の標準的な動作を処理した後に、もしあれば@var{body}フォームを実行する。それからモードフック変数@code{@var{mode}-hook}を実行してから@code{:after-hook}内のフォームを評価して終了する(フック実行を含めて、これらすべてはモードの有効化と無効化の両方で行われることに注意)。
+@end defmac
+
+  @var{init-value}の値は@code{nil}でなければなりません。ただし、(1)Emacsによりそのモードが事前ロードされている、または(2)たとえユーザーが要求しなくともモードを有効にするためにロードするのが容易な場合を除きます。たとえば他の何かが有効でなければそのモードの効果がなく、常にそのタイミングでロードされるような場合には、デフォルトでそのモードを有効にすることに害はありません。しかしこの状況は通常はあり得ません。通常は@var{init-value}の値は@code{nil}でなければなりません。
+
+  以下は@code{define-minor-mode}の使い方の例です:
+
+@smallexample
+(define-minor-mode hungry-mode
+  "Hungryモードをトグルする
+引数なしでinteractiveに呼び出すとモードをトグルする
+正のプレフィクス引数でモードを有効に、その他のプレフィクス引数で
+無効にする。Lispから呼び出す場合、引数を省略、またはnilなら
+モードを有効に、`toggle'なら状態をトグルする
+
+Hungryモードが有効なときは、C-DELキーは、
+最後を除く先行するすべての空白を飲み込む
+コマンド \\[hungry-electric-delete] を参照"
+ ;; 初期値
+ nil
+ ;; モードラインの標示
+ " Hungry"
+ ;; マイナーモードのバインディング
+ '(([C-backspace] . hungry-electric-delete)))
+@end smallexample
+
+@noindent
+これは``Hungry
+mode''という名前のマイナーモード、モードをトグルする@code{hungry-mode}という名前のコマンド、モードが有効かどうかを示す@code{hungry-mode}という名前の変数、モードが有効なときそのキーマップを保持する@code{hungry-mode-map}という名前の変数を定義します。これは@kbd{C-@key{DEL}}にたいするキーバインディングでキーマップを初期化します。@var{body}フォームはありません
+--- 多くのマイナーモードはそれを必要としません。
+
+  以下はこれを記述する等価な方法です:
+
+@smallexample
+(define-minor-mode hungry-mode
+  "Hungryモードをトグルする
+...省略..."
+ ;; 初期値
+ :init-value nil
+ ;; モードラインへのインジケーター
+ :lighter " Hungry"
+ ;; マイナーモードのバインディング
+ :keymap
+ '(([C-backspace] . hungry-electric-delete)
+   ([C-M-backspace]
+    . (lambda ()
+        (interactive)
+        (hungry-electric-delete t)))))
+@end smallexample
+
+@defmac define-globalized-minor-mode global-mode mode turn-on keyword-args@dots{} body@dots{}
+これは@var{global-mode}という名前をグローバルにトグルする。これは@var{mode}という名前のバッファーローカルなマイナーモードをすべてのバッファー(または一部のバッファー。以下参照)で有効か無効にするということを意味する。@var{body}フォームの実行も行う。あるバッファー内でそのマイナーモードをオンにするには関数@var{turn-on}を使用する。マイナーモードをオフにするには@minus{}1を引数として@var{mode}を呼び出す(@var{turn-on}は別の関数なのでそのマイナーモードを有効にすべきか先験的に明確でない場合でも有効にするかどうかを決定できる)。
+
+グローバルに有効化されたモードは、その後に作成されたバッファー、かつ@code{run-mode-hooks}を実行するためのこの規約にしたがうメジャーモードを使用するバッファーにのみ効果を及ぼす。この規約にしたがわないメジャーモードでは、マイナーモードは有効にならないだろう。
+
+これはCustomizeインターフェイスを通じて、そのマイナーモードのオン/オフを切り替えるカスタムオプション@var{global-mode}
+(@ref{Customization}を参照)を定義するマクロ。@code{define-minor-mode}と同様に、たとえば@code{:require}を与える等によってEmacs開始時に毎回確実に@code{define-globalized-minor-mode}フォームが評価されるようにすること。
+
+グローバルマイナーモードのモード変数にたいしてカスタムグループを指定するには@var{keyword-args}内で@code{:group
+@var{group}}を使用する。
+
+モードのオンかオフかを示すバッファーローカルなマイナーモード変数は、デフォルトではモード自身の名前なまと同じ。これが該当しない場合(状態情報を異なる変数に格納するいくつかのモード)には、@code{:variable
+@var{variable}}を使用すること。
+
+一般的にはグローバル化されたマイナーモードを定義するときは、ユーザーがバッファーごとにモードを使用(または無効に)できるように非グローバル版も定義すること。これにより特定のメジャーモード内でそのモードのフックを使用すればグローバルに有効化されたマイナーモードを無効にすることができるようになる。
+
+キーワード@code{:predicate}が与えられると、このマクロはグローバルモード変数と似ているが@code{-mode}ではなく@code{-modes}で終わるユーザーオプションを作成する(つまり@code{@var{global-mode}s}ということ)。この変数は特定のメジャーモードにおいてそのメジャーモードをアクティブにするかどうかを判断する述語関数で使用される。ユーザーは変数の値をカスタマイズして、そのマイナーモードをオンに切り替えるモードを制御できる。@code{:predicate}にたいする有効な値
+(つまりこれが作成するユーザーオプションの有効な値)には@code{t} (すべてのメジャーモードで使用)、@code{nil}
+(どのメジャーモードでも使用しない)、あるいはモード名のリスト(オプションで@w{@code{(not @var{mode-name}
+@dots{})}}のように@code{not}を前置して否定)が含まれる。以下の例のようにこれらの要素を混合させることもできる。
+
+@example
+(c-mode (not mail-mode message-mode) text-mode)
+@end example
+
+@noindent
+これは``@code{c-mode}の派生モードで使用、@code{message-mode}や@code{mail-mode}の派生モードでは使用せず、@code{text-mode}の派生モードでは使用，それ以外に使用するモードはない''ことを意味する。
+
+@example
+((not c-mode) t)
+@end example
+
+@noindent
+``@code{c-mode}の派生モードでは使用しないが、それ以外なら使用する''ことを意味する。
+
+@example
+(text-mode)
+@end example
+
+@noindent
+これは``@code{text-mode}の派生モードでは使用するが他では使用しない''ことを意味する(終端に@code{nil}要素が暗に存在する)。
+@end defmac
+
+@findex buffer-local-restore-state
+@defmac buffer-local-set-state variable value...
+Emacsの一部機能に影響を与えるようなバッファーローカル変数をマイナーモードがセットすることがよくある。あるモードをオフに切り替えた際には、これらの変数の元の状態へのリストアがモードには求められる。これはそれらのことを行う助けとなる利便的なマクロである。これは@code{setq-local}と同じように機能するが、(相方となる関数@code{buffer-local-restore-state}を使って)これらの変数を以前の値や状態をリストアするために使用できるオブジェクトをリターンする。
+@end defmac
+
+@node Mode Line Format
+@section モードラインのフォーマット
+@cindex mode line
+
+  Emacsの各ウィンドウ(ミニバッファーウィンドウを除く)には、通常は最下部にモードラインがあってそのウィンドウ内に表示されたバッファーに関するステータス情報がモードラインに表示されます。モードラインにはバッファー名、関連するファイル、再帰編集の深さ、およびメジャーモードやマイナーモードなどのようなそのバッファーに関する情報が含まれています。ウィンドウは@dfn{ヘッダーライン(header
+line)}をもつこともでき、これはモードラインによく似ていますがウィンドウの最上部に表示されます。
+
+  このセクションではモードラインおよびヘッダーラインのコンテンツの制御の仕方について説明します。このチャプターにモードラインを含めた理由は、モードラインに表示される情報の多くが有効化されたメジャーモードとマイナーモードに関連があるからです。
+
+@menu
+* Base: Mode Line Basics.    モードライン制御の基本概念。
+* Data: Mode Line Data.      モードラインを制御するデータ構造。
+* Top: Mode Line Top.        トップレベル変数、mode-line-format。
+* Mode Line Variables::      そのデータ構造で使用される変数。
+* %-Constructs::             モードラインへの情報の配置。
+* Properties in Mode::       モードライン内でのテキストプロパティの使用。
+* Header Lines::             モードラインに類似した最上部のライン。
+* Emulating Mode Line::      モードラインのようにテキストをフォーマットする。
+@end menu
+
+@node Mode Line Basics
+@subsection モードラインの基礎
+
+  各モードラインのコンテンツはバッファーローカル変数@code{mode-line-format}により指定されます(@ref{Mode Line
+Top}を参照)。この変数は@dfn{モードライン構文(mode line
+construct)}を保持します。これはバッファーのモードラインに何を表示するかを制御するテンプレートです。@code{header-line-format}の値は同じ方法によりバッファーのヘッダーラインを指定します。同一のバッファーにたいするすべてのウィンドウは、@code{mode-line-format}や@code{header-line-format}のパラメーター(@ref{Window
+Parameters}を参照)がそのウィンドウに指定されていなければ、同じ@code{mode-line-format}と@code{header-line-format}を使用します。
+
+  効率的な理由によりEmacsは各ウィンドウのモードラインとヘッダーラインを連続で再評価しません。たとえばウィンドウ構成(window
+configuration)の変更やバッファーの切り替え、バッファーのナローイング(narrowing)やワイドニング(widening)、スクロールやバッファーの変更等、それを呼び出す状況が出現したときにEmacsは再評価を行います。@code{mode-line-format}や@code{header-line-format}(@ref{Mode
+Line
+Variables}を参照)により参照されるすべての変数、またはテキストが表示される方法に影響を与えるデータ構造(@ref{Display}を参照)を変更する場合には、表示を更新するために関数@code{force-mode-line-update}を使用するべきです。
+
+@defun force-mode-line-update &optional all
+この関数は次の再表示サイクルの間にすべての関連する変数の最新の値にもとづいて、カレントバッファーのモードラインとヘッダーラインの更新をEmacsに強制する。オプション引数@var{all}が非@code{nil}なら、すべてのモードラインとヘッダーラインの更新を強制する。
+
+この関数はメニューバーとフレームタイトルの更新も強制する。
+@end defun
+
+  選択されたウィンドウのモードラインは、通常はフェイス@code{mode-line-active}を使用して異なるカラーで表示されます。かわりに他のウィンドウのモードラインはフェイス@code{mode-line-inactive}で表示されます。@ref{Faces}を参照してください。
+
+@defun mode-line-window-selected-p
+モードラインのウィンドウの選択/非選択の間にもっと大きな差異をもたせたければ、@code{:eval}構文内でこの述語を使うことができる。たとえば選択されているウィンドウのバッファー名をボールド(bold:
+太字)、他のウィンドウはイタリック(italic: 斜体)で表示したければ以下のように記述できる:
+
+@lisp
+(setq-default
+ mode-line-buffer-identification
+ '(:eval (propertize "%12b"
+		     'face (if (mode-line-window-selected-p)
+			       'bold
+			     'italic))))
+@end lisp
+@end defun
+
+@vindex mode-line-compact
+  モードラインに大量のデータを出力して、モードラインの最後にある要素を右側へ押し出すモードがあります。@code{mode-line-compact}変数が非@code{nil}なら、Emacsは連続する複数のスペースを単一のスペースにして、モードラインを``圧縮する''ことができます。この変数が@code{long}なら、モードラインがカレントで選択されたウィンドウより広いときだけこれを行います(これは文字の表示幅ではなく文字数にもとづく近似により計算される)。この変数は特定バッファーでのみモードラインを圧縮するために、バッファーローカルにすることができます。
+
+@node Mode Line Data
+@subsection モードラインのデータ構造
+@cindex mode line construct
+
+  モードラインのコンテンツは@dfn{モードライン構文(mode line
+construct)}と呼ばれるデータ構造によって制御されます。モードライン構文はリストやシンボル、数字を保持するバッファーローカル変数により構成されます。それぞれのデータ型は以下で説明するようにモードラインの外見にたいして特別な意味をもちます。フレームタイトル(@ref{Frame
+Titles}を参照)とヘッダーライン(@ref{Header Lines}を参照)にも同じデータ構造が使用されます。
+
+  固定文字列のようなシンプルなモードライン構文の場合もありますが、通常はモードライン構文のテキストを構築するために固定文字列と変数の値を組み合わせる方法を指定します。これらの変数の多くはその変数自体がその値によりモードライン構文を定義する変数です。
+
+  以下はモードライン構文における、さまざまなデータ型の意味です:
+
+@table @code
+@cindex percent symbol in mode line
+@item @var{string}
+モードライン構文における文字列は、文字列内に@dfn{@code{%}構文(@code{%}-constructs)}を含む以外はそのまま表現される。これらは他のデータによる置換を意味する。@ref{%-Constructs}を参照のこと。
+
+文字列の一部が@code{face}プロパティをもつ場合には、バッファー内でそれらが表示されるときと同じようにテキスト表示を制御する。@code{face}プロパティをもたない文字はデフォルトのフェイス@code{mode-line}、または@code{mode-line-inactive}で表示される(@ref{Standard
+Faces,,, emacs, The GNU Emacs
+Manual}を参照)。@var{string}内の@code{help-echo}プロパティと@code{keymap}プロパティは特別な意味をもつ。@ref{Properties
+in Mode}を参照のこと。
+
+@item @var{symbol}
+モードライン構文におけるシンボルはその値を意味する。モードライン構文としては、@var{symbol}の値は@var{symbol}の位置に使用される。しかしシンボル@code{t}と@code{nil}は値がvoidであるようなシンボルとして無視される。
+
+例外が1つある。@var{symbol}の値が文字列なら、それはそのまま表示されて@code{%}構文は認識されない。
+
+@var{symbol}がrisky(危険)とマークされていない(非@code{nil}の@code{risky-local-variable}プロパティをもつ)場合には、@var{symbol}の値中で指定されたテキストプロパティはすべて無視される。これには@var{symbol}の値中の文字列のテキストプロパティ、同様に文字列内の@code{:eval}フォームと@code{:propertize}フォームすべてが含まれる(これはセキュリティー上の理由による。危険とマークされていない変数は、ユーザーへの問い合わせなしでファイル変数から自動的にセットされ得る)。
+
+@item (@var{string} @var{rest}@dots{})
+@itemx (@var{list} @var{rest}@dots{})
+最初の要素が文字列、またはすべての要素を再帰的に処理して結果を結合することを意図したリスト。これはもっとも一般的なモードライン構文である(モードラインへの文字列表示時には、テキストプロパティは(効率的理由により)特別に処理されることに注意。文字列の最初の文字のテキストプロパティだけを考慮して、それを文字列全体に使用する。別のテキストプロパティをもつ文字列が必要なら、特別モードライン構文@code{:propertize}を使う必要がある)。
+
+@item (:eval @var{form})
+最初の要素がシンボル@code{:eval}であるようなリストは、@var{form}を評価してその結果を表示する文字列として使用するよう指示する。この評価が任意のファイルをロードできないことを確認すること。ファイルをロードすると無限再帰が発生するかもしれない。
+
+@item (:propertize @var{elt} @var{props}@dots{})
+最初の要素がシンボル@code{:propertize}であるようなリストはモードライン構文@var{elt}を再帰的に処理して、@var{props}により指定されるテキストプロパティに結果を加えるよう指示する。引数@var{props}は0個以上の@var{text-property}と@var{value}のペアーで構成されること。@var{elt}がテキストプロパティをもつ文字列、またはテキストプロパティをもつ文字列を生成する場合には、その文字列内のすべての文字は同一のプロパティをもつこと。さもなければ@code{:propertize}によっていくつかのプロパティは削除されるかもしれない。
+
+@item (@var{symbol} @var{then} @var{else})
+最初の要素がキーワード以外のシンボルであるようなリストは条件文を指定する。その意味は@var{symbol}の値に依存する。@var{symbol}が非@code{nil}値をもつ場合は、モードライン構文として2つ目の要素@var{then}が再帰的に処理され、それ以外は3つ目の要素@var{else}が再帰的に処理される。@var{else}は省略でき、その場合には@var{symbol}の値が@code{nil}かvoidならモードライン構文は何も表示しない。
+
+@item (@var{width} @var{rest}@dots{})
+最初の要素が整数であるようなリストは@var{rest}の結果の切り詰め、またはパディングを指定する。残りの要素@var{rest}はモードライン構文として再帰的に処理されて互いに結合される。@var{width}が正で結果の幅が@var{width}より少なければ右側にスペースがパディングされる。@var{width}が負で結果の幅が@minus{}@var{width}より大きければ右側が切り詰められる。
+
+たとえばウィンドウ最上部からのバッファー位置をパーセント表示するには@code{(-3 "%p")}のようなリストを使用すればよい。
+@end table
+
+@node Mode Line Top
+@subsection モードライン制御のトップレベル
+
+  変数@code{mode-line-format}はモードラインの全体的な制御を行います。
+
+@defopt mode-line-format
+この変数の値はモードラインのコンテンツを制御するモードライン構文である。これはすべてのバッファーにおいて常にバッファーローカルである。
+
+あるバッファー内でこの変数に@code{nil}をセットすると、そのバッファーはモードラインをもたない(高さが1行しかないウィンドウもモードラインを表示しない)。
+@end defopt
+
+  @code{mode-line-format}のデフォルト値は@code{mode-line-position}や@code{mode-line-modes}
+(これは@code{mode-name}と@code{minor-mode-alist}の値を組み込む)のような、他の変数の値を使用するようデザインされています。@code{mode-line-format}自体を変更する必要があるモードはほとんどありません。ほとんどの用途にたいしては、@code{mode-line-format}が直接または間接的に参照するいくつかの変数を修正すれば十分です。
+
+  @code{mode-line-format}l自体の変更を行う場合には、コンテンツを複製したり異なる様式で情報を表示するのではなく、新たな値にはデフォルト値(@ref{Mode
+Line
+Variables}を参照)に出現する同じ変数を使用するべきです。この方法を使用すればユーザーや(@code{display-time}やメジャーモードのような)Lispプログラムにより行われたカスタマイズは、それらの変数への変更を通じて効力を保ちます。
+
+  以下はShellモードにたいして有用かもしれない架空の@code{mode-line-format}の例です(実際にはShellモードは@code{mode-line-format}をセットしない):
+
+@example
+@group
+(setq mode-line-format
+  (list "-"
+   'mode-line-mule-info
+   'mode-line-modified
+   'mode-line-frame-identification
+   "%b--"
+@end group
+@group
+   ;; @r{これはリスト作成中に評価されることに注意}
+   ;; @r{これは単なる文字列のモードライン構文を作成する}
+   (getenv "HOST")
+@end group
+   ":"
+   'default-directory
+   "   "
+   'global-mode-string
+   "   %[("
+   '(:eval (format-time-string "%F"))
+   'mode-line-process
+   'minor-mode-alist
+   "%n"
+   ")%]--"
+@group
+   '(which-function-mode ("" which-func-format "--"))
+   '(line-number-mode "L%l--")
+   '(column-number-mode "C%c--")
+   '(-3 "%p")))
+@end group
+@end example
+
+@noindent
+(変数@code{line-number-mode}、@code{column-number-mode}、@code{which-function-mode}は特定のマイナーモードを有効にする。これらの変数名は通常のようにマイナーモードコマンド名でもある。)
+
+@node Mode Line Variables
+@subsection モードラインで使用される変数
+
+  このセクションでは@code{mode-line-format}の標準的な値としてモードラインテキストに組み込まれる変数を説明します。これらの変数は本質的には特別なものではありません。@code{mode-line-format}が使用する変数を他の変数に変更すれば、それらはモードライン上で同様の効果をもちます。しかしEmacsのさまざまな部分は、それらの変数がモードラインを制御するという認識の元でそれらの変数をセットします。したがって事実上モードラインでそれらの変数を使用するのは必須なのです。@ref{Optional
+Mode Line,,, emacs, The GNU Emacs Manual}も参照してください。
+
+@defvar mode-line-mule-info
+この変数は言語環境(language environment)、バッファーコーディングシステム、カレント入力メソッド(current input
+method)に関する情報のモードライン構文の値を保持する。@ref{Non-ASCII Characters}を参照のこと。
+@end defvar
+
+@defvar mode-line-modified
+この変数はカレントバッファーが変更されたかどうかを表示するモードライン構文の値を保持する。デフォルト値ではバッファーが変更されていれば@samp{**}、バッファーが変更されていなければ@samp{--}、バッファーが読み取り専用なら@samp{%%}、読み取り専用だが変更されているときは@samp{%*}を表示する。
+
+この変数を変更してもモードラインは強制的に更新されない。
+@end defvar
+
+@defvar mode-line-frame-identification
+この変数はカレントフレームを識別する。デフォルト値では複製フレームを表示可能なウィンドウシステムを使用している場合は@code{"
+"}、一度に1つのフレームだけを表示する通常の端末では@code{"-%F "}を表示する。
+@end defvar
+
+@defvar mode-line-buffer-identification
+この変数はそのウィンドウ内で表示されているバッファーを識別する。デフォルト値では少なくとも12列になるようスペースパディングされたバッファー名を表示する。
+@end defvar
+
+@defvar mode-line-position
+この変数はバッファー内での位置を表示する。デフォルト値ではバッファーのパーセント位置、オプションでバッファーサイズ、行番号、列番号を表示する。
+@end defvar
+
+@defopt mode-line-percent-position
+このオプションは@code{mode-line-position}の中で使用される。これの値はバッファーのパーセンテージ(@code{nil}、@code{"%o"}、@code{"%p"}、@code{"%P"}、@code{"%q"}のいずれか。@ref{%-Constructs}を参照)とフィルするスペースか切り詰めの幅の両方を指定する。このオプションは@code{customize-variable}機能でセットすることを推奨する。
+@end defopt
+
+@defvar vc-mode
+変数@code{vc-mode}は各バッファーにたいしてバッファーローカルであり、そのバッファーがvisitしているファイルがバージョンコントロールで保守されているかどうか、保守されている場合はバージョンコントロールシステムの種別を表示する。値はモードラインに表示される文字列、またはバージョンコントロールされていなければ@code{nil}。
+@end defvar
+
+@defvar mode-line-modes
+この変数はそのバッファーのメジャーモードとマイナーモードを表示する。デフォルト値では再帰編集レベル(recursive editing
+level)、プロセス状態の情報、ナローイング(narrowing)効果の有無を表示する。
+@end defvar
+
+@defvar mode-line-remote
+この変数はカレントバッファーの@code{default-directory}がリモートかどうかを表示するために使用される。
+@end defvar
+
+@defvar mode-line-client
+この変数は@code{emacsclient}フレームを識別するために使用される。
+@end defvar
+
+@defvar mode-line-format-right-align
+@code{mode-line-format}内でこのシンボルの後に続くものは、すべて右揃えされる。
+@end defvar
+
+@defvar mode-line-right-align-edge
+この変数は@code{mode-line-format-right-align}によりコンテンツが正確に位置揃えされるように制御する。
+@end defvar
+
+  以下の3つの変数は@code{mode-line-modes}内で使用されます:
+
+@defvar mode-name
+このバッファーローカル変数はカレントバッファーのメジャーモードの``愛称(pretty
+name)''を保持する。モードラインにモード名が表示されるように、すべてのメジャーモードはこの変数をセットすること。値は文字列である必要はなく、モードライン構文内で有効な任意のデータ型(@ref{Mode
+Line
+Data}を参照)を使用できる。モードライン内でモード名を識別する文字列の計算には@code{format-mode-line}を使用する(@ref{Emulating
+Mode Line}を参照)。
+@end defvar
+
+@defvar mode-line-process
+このバッファーローカル変数には、そのモードにおいてサブプロセスとの通信にたいするプロセス状態のモードライン情報が含まれる。これはメジャーモード名の直後(間にスペースはない)に表示される。たとえば@file{*shell*}バッファーでの値は@code{(":%s")}であり、これは@samp{(Shell:run)}のように、メジャーモードとともにその状態を表示する。この変数は通常は@code{nil}。
+@end defvar
+
+@defvar mode-line-front-space
+この変数はモードラインの一番前に表示される。memory-fullメッセージがある場合を除き、デフォルトではこの構文はモードライン先頭の右側に表示される。
+@end defvar
+
+@defvar mode-line-end-spaces
+この変数はモードラインの終端に表示される。
+@end defvar
+
+@defvar mode-line-misc-info
+その他の情報にたいするモードライン構文。デフォルトでは@code{global-mode-string}で指定される情報を表示する。
+@end defvar
+
+@defvar mode-line-position-line-format
+@code{line-number-mode} (@ref{Optional Mode Line,,, emacs, The GNU Emacs
+Manual}を参照)がオンの際に行番号表示に使用するフォーマット。フォーマット内の@samp{%l}は行番号に置き換えられる。
+@end defvar
+
+@defvar mode-line-position-column-format
+@code{column-number-mode} (@ref{Optional Mode Line,,, emacs, The GNU Emacs
+Manual}を参照)をオンに切り替えた際に列番号の表示に使用するフォーマット。フォーマット内の@samp{%c}は0基準、@samp{%C}は1基準の列番号に置き換えられる。
+@end defvar
+
+@defvar mode-line-position-column-line-format
+@code{line-number-mode}と@code{column-number-mode}の両方がオンの際に列番号表示に使用するフォーマット。フォーマットspecsの@samp{%l}、@samp{%c}、@samp{%C}の意味については、前出の2つの変数を参照のこと。
+@end defvar
+
+@defvar minor-mode-alist
+@anchor{Definition of minor-mode-alist}
+この変数はアクティブなマイナーモードをモードラインに示す方法を指定する要素をもった連想リスト(association
+list)を保持する。@code{minor-mode-alist}の各要素は以下のような2要素のリストであること:
+
+@example
+(@var{minor-mode-variable} @var{mode-line-string})
+@end example
+
+より一般的には@var{mode-line-string}は任意のモードライン構文を指定できる。@var{minor-mode-variable}の値が非@code{nil}ならモードラインに表示され、それ以外なら表示されない。混合しないようにこれらの文字列はスペースで始めること。慣例的に特定のモードにたいする@var{minor-mode-variable}は、そのマイナーモードがアクティブになった際に非@code{nil}値にセットされる。
+
+@code{minor-mode-alist}自体はバッファーローカルではない。このalist内で参照される各変数は、そのマイナーモードをバッファーごとに個別に有効にできるならバッファーローカルであること。
+@end defvar
+
+@defvar global-mode-string
+この変数は、デフォルトでは@code{mode-line-misc-info}の一部としてモードラインに表示されるモードライン構文が保持されている。マイナーモード@code{which-function-mode}が有効ならこのモード情報の直後、有効でなければ@code{mode-line-modes}の後に表示される。この構文に追加する要素は通常はスペース内に収まること(後続の@code{global-mode-string}要素が正しく表示されるために)。
+
+@samp{%M}構文は@code{global-mode-string}の値を置き換える。この変数自体は@code{mode-line-misc-info}で使用されているので、この構文はデフォルトのモードライン使用されない。
+@end defvar
+
+以下は@code{mode-line-format}のデフォルト値の簡略化バージョンです。実際のデフォルト値には追加のテキストプロパティ指定も含まれます。
+
+@example
+@group
+("-"
+ mode-line-mule-info
+ mode-line-modified
+ mode-line-frame-identification
+ mode-line-buffer-identification
+@end group
+ "   "
+ mode-line-position
+ (vc-mode vc-mode)
+ "   "
+@group
+ mode-line-modes
+ (which-function-mode ("" which-func-format "--"))
+ (global-mode-string ("--" global-mode-string))
+ "-%-")
+@end group
+@end example
+
+@node %-Constructs
+@subsection モードラインでの@code{%}構文
+@cindex @code{%}-constructs in the mode line
+
+  モードライン構文として使用される文字列では、さまざまな種類のデータを置き換えるために@code{%}構文を使用できます。以下は定義済みの@code{%}構文と意味のリストです。
+
+  @samp{%%}以外の構文では、フィールドの最小幅を指定するために@samp{%}の後に10進整数を追加できます。幅がそれより小さければそのフィールドは最小幅にパディングされます。純粋に数値的な構文(@samp{c}、@samp{i}、@samp{I}、@samp{l})は左側、それ以外は右側にスペースを追加してパディングされます。
+
+@table @code
+@item %b
+@code{buffer-name}関数により取得されるカレントバッファー名。@ref{Buffer Names}を参照のこと。
+
+@item %c
+ポイント位置のカレント列番号。そのウィンドウの左マージンより0からカウントされる。
+
+@item %C
+ポイント位置のカレント列番号。そのウィンドウの左マージンより1からカウントされる。
+
+@item %e
+EmacsがLispオブジェクトにたいしてメモリー不足になりそうなときは、それを伝える簡略なメッセージを示す。それ以外の場合は空。
+
+@item %f
+@code{buffer-file-name}関数により取得されるvisit中のファイル名。@ref{Buffer File Name}を参照のこと。
+
+@item %F
+選択されたフレームのタイトル(ウィンドウシステム上のみ)か名前。@ref{Basic Parameters}を参照のこと。
+
+@item %i
+カレントバッファーのアクセス可能な範囲のサイズ。基本的には@code{(- (point-max) (point-min))}。
+
+@item %I
+@samp{%i}と同様だが10^3は@samp{k}、10^6は@samp{M}、10^9は@samp{G}を使用して略記することで、より読みやすい方法でサイズをプリントする。
+
+@item %l
+ポイント位置のカレント行番号。そのバッファーのアクセス可能な範囲内でカウントされる。
+
+@item %M
+@code{global-mode-string}の値(デフォルトでは@code{mode-line-misc-info}の一部)。
+
+@item %n
+ナローイングが有効なときは@samp{Narrow}、それ以外は何も表示しない(@ref{Narrowing}の@code{narrow-to-region}を参照)。
+
+@item %o
+バッファー(の可視な範囲)を通じてウィンドウが@dfn{travel}
+した割合(ウィンドウ外部にあるすべてのテキストにたいしてウィンドウ上端の上にあるテキストのサイズのパーセンテージまたは@samp{Top}、@samp{Bottom}、@samp{All})。
+
+@item %p
+ウィンドウの@strong{最上部}より上にあるバッファーテキストのパーセント表示、または@samp{Top}、@samp{Bottom}、@samp{All}のいずれか。デフォルトのモードライン構文は、これを3文字に切り詰めることに注意。
+
+@item %P
+ウィンドウの@strong{最下部}より上にあるバッファーテキスト(ウィンドウ内の可視なテキストと最上部の上にあるテキスト)のパーセント表示、およびバッファーの最上部がスクリーン上で可視なら、それに加えて@samp{Top}。または@samp{Bottom}か@samp{All}。
+
+@item %q
+@samp{-}で区切ったウィンドウの@strong{上端}および@strong{下端}より上にあるテキストのパーセンテージ、または@samp{All}。
+
+@item %s
+@code{process-status}により取得されるカレントバッファーに属するサブプロセスの状態。@ref{Process
+Information}を参照のこと。
+
+@item %z
+キーボード、端末、およびバッファーコーディングシステムのニーモニック。
+
+@item %Z
+@samp{%z}と同様だが、EOL形式(end-of-line format: 改行形式)を含む。
+
+@item %&
+バッファーが変更されてれば@samp{*}、それ以外は@samp{-}。
+
+@item %*
+バッファーが読み取り専用(@code{buffer-read-only}を参照)なら@samp{%}、@*
+変更(@code{buffer-modified-p}を参照)されていればは@samp{*}、@* それ以外は@samp{-}。@ref{Buffer
+Modification}を参照のこと。
+
+@item %+
+バッファーが変更(@code{buffer-modified-p}を参照)されていれば@samp{*}@*
+バッファーが読み取り専用(@code{buffer-read-only}を参照)なら@samp{%}、@*
+それ以外は@samp{-}。これは読み取り専用バッファーの変更にたいしてのみ@samp{%*}と異なる。@ref{Buffer
+Modification}を参照のこと。
+
+@item %@@
+バッファーの@code{default-directory} (@ref{File Name
+Expansion}を参照)がリモートマシンなら@samp{@@}、それ以外なら@samp{-}。
+
+@item %[
+再帰編集レベルの深さを表示する(ミニバッファーレベルは勘定しない)編集レベル1つが@samp{[}。@ref{Recursive
+Editing}を参照のこと。
+
+@item %]
+編集レベル1つが@samp{]}(ミニバッファーレベルは勘定しない)。
+
+@item %-
+モードラインの残りを充填するのに十分なダッシュ。
+
+@item %%
+文字@samp{%}。@code{%}構文が許される文字列内にリテラル@samp{%}を含めるにはこの方法を使用する。
+@end table
+
+@subsubheading 廃止となる@code{%}-構文
+
+  以下の構文は今後使用するべきではありません。
+
+@table @code
+@item %m
+廃止;
+かわりに@code{mode-name}変数を使うこと。@code{mode-name}の値が(たとえば@code{emacs-lisp-mode}の値のように)非文字列のモードライン構文の場合には、@code{%m}構文は空文字列を生成するので不十分である。
+@end table
+
+@node Properties in Mode
+@subsection モードラインでのプロパティ
+@cindex text properties in the mode line
+
+  モードライン内では特定のテキストプロパティが意味をもちます。@code{face}プロパティはテキストの外見に影響します。@code{help-echo}プロパティはそのテキストのヘルプ文字列に関連し、@code{keymap}によりテキストをマウスに感応させることができます。
+
+  モードライン内のテキストにたいしてテキストプロパティを指定するには4つの方法があります:
+
+@enumerate
+@item
+モードラインデータ構造内にテキストプロパティをもつ文字列を直接配置するが、それに関する注意点は@ref{Mode Line Data}を参照のこと。
+
+@item
+@samp{%12b}のようなモードライン%構文にテキストプロパティを配置する。その場合には%構文を展開すると同じテキストプロパティをもつことになる。
+
+@item
+@var{props}で指定されるテキストプロパティを@var{elt}に与えるために@code{(:propertize @var{elt}
+@var{props}@dots{})}構文を使用する。
+
+@item
+@var{form}がテキストプロパティをもつ文字列に評価されるようにモードラインデータ構造内に@code{:eval
+@var{form}}を含むリストを使用する。
+@end enumerate
+
+  キーマップを指定するために@code{keymap}プロパティを使用できます。このキーマップはマウスクリックにたいしてのみ実際の効果をもちます。モードライン内にポイントを移動させるのは不可能なので、これに文字キーやファンクションキーをバインドしても効果はありません。
+
+  @code{risky-local-variable}が非@code{nil}であるようなプロパティをもつ変数をモードラインが参照する場合には、その変数の値から取得または指定されるテキストプロパティはすべて無視されます。そのようなプロパティは呼び出される関数を指定するかもしれず、その関数はファイルローカル変数に由来するかもしれないからです。
+
+@node Header Lines
+@subsection ウィンドウのヘッダーライン
+@cindex header line (of a window)
+@cindex window header line
+
+  最下部にモードラインをもつことができるのと同じように、ウィンドウは最上部に@dfn{ヘッダーライン(header
+line)}をもつことができます。ヘッダーライン機能は、それが@code{header-line-format}によって制御されることを除けばモードラインと同じように機能します。
+
+@defvar header-line-format
+すべてのバッファーにたいしてローカルなこの変数は、そのバッファーを表示するバッファーにたいしてヘッダーラインを表示する方法を指定する。この変数の値のフォーマットは@code{mode-line-format}にたいするフォーマットと同じ(@ref{Mode
+Line Data}を参照)。この変数は通常は@code{nil}なので、通常のバッファーはヘッダーラインをもたない。
+@end defvar
+
+バッファーで@code{display-line-numbers-mode} (@ref{Display Custom,
+display-line-numbers-mode,, emacs, The GNU Emacs
+Manual}を参照)がオンになっていると、バッファーのテキストは行番号の表示に必要なスクリーンスペース分インデントされて表示されます。それとは対照的にヘッダーラインのテキストは自動的にインデントされません。ヘッダーラインに行番号が表示されることはありませんし、ヘッダーラインとその下にあるバッファーのテキストが直接関連する必要はないからです。バッファーのテキストに合わせてヘッダーラインのテキストを位置揃えする必要があるLispプログラムや、@code{tabulated-list-mode}
+(@ref{Tabulated List
+Mode}を参照)のように列形式データを表示するバッファーは、マイナーモード@code{header-line-indent-mode}をオンにする必要があります。
+
+@deffn Command header-line-indent-mode
+このバッファーローカルなマイナーモードはスクリーン上で表示されている行番号の幅(そのウィンドウで表示されている行番号範囲に応じて大きく異なる可能性あり)の変更を追跡して、行番号の幅が変更された際にヘッダーラインとバッファーラインのテキストを常に位置揃えさせる手段をLispプログラムに提供する。このようなLispプログラムはバッファーでこのモードをオンにして、常時テキストのインデントを確実に調節するために、@code{header-line-format}の中で@code{header-line-indent}および@code{header-line-indent-width}という変数を使う必要がある。
+@end deffn
+
+@defvar header-line-indent
+そのウィンドウで表示されているバッファーで@code{header-line-indent-mode}の場合には、表示中の行番号のカレント幅と同じ幅をもつ空白文字列がこの変数の値となる。空白の個数はヘッダーラインのテキストのフェイスにおいて、サイズも含めてフレームのデフォルトフォントと同じフォントが使用されている前提で計算される。この前提が成り立たない場合には、かわりに下記の@code{header-line-indent-width}を使うこと。これは値をヘッダーラインのテキストの先頭に追加することによって、バッファーのテキストに合わせてヘッダーラインのテキスト全体のインデントを再調整するというシンプルな状況で使用されることを意図した変数である。たとえば以下の@code{header-line-format}の定義では:
+
+@lisp
+(setq header-line-format
+      `("" header-line-indent ,my-header-line))
+@end lisp
+
+@noindent
+ここで@code{my-header-line}はヘッダーラインの実際のテキストを生成するフォーマット文字列。これによりヘッダーラインのテキストはその下にあるバッファーと同じように常にインデントされることが保証される。
+@end defvar
+
+@defvar header-line-indent-width
+そのウィンドウで表示されているバッファーで@code{header-line-indent-mode}の場合には、この変数の値は行番号の表示に用いられるフレームの正規文字幅単位でカレント幅を提供するよう最新に保たれる。バッファーのテキストに合わせてヘッダーラインのテキストを位置揃えするにあたり、@code{header-line-indent}では柔軟性に欠けるような際に用いることができる。たとえばヘッダーラインでデフォルトフェイスのフォントと異なるメトリクス(訳注:
+個々の文字や全体の文字の平均について様々な値を定義する測定情報のこと)のフォントを使用している場合には、@code{frame-char-width}
+(@ref{Frame
+Font}を参照)のリターン値にこの変数の値を乗じて表示されている行番号のピクセル幅を計算、その結果を@code{header-line-format}の関連する部分にピクセル単位で適用するためにディスプレイプロパティ仕様@code{:align-to}
+(@ref{Specified Space}を参照)を用いてヘッダーラインのテキストの位置合わせをを行えばよい。
+@end defvar
+
+@defun window-header-line-height &optional window
+この関数は@var{window}のヘッダーラインの高さをピクセルでリターンする。@var{window}は生きたウィンドウでなければならずデフォルトは選択されたウィンドウ。
+@end defun
+
+  高さが1行しかないウィンドウがヘッダーラインを表示することは決してありません。また高さが2行しかないウィンドウは、同時にモードラインとヘッダーラインを表示できません。そのようなウィンドウがモードラインをもつ場合にはヘッダーラインは表示されません。
+
+@node Emulating Mode Line
+@subsection モードラインのフォーマットのエミュレート
+
+  関数@code{format-mode-line}を使用して、特定のモードライン構文にもとづいてモードラインやヘッダーラインに表示されるテキストを計算できます。
+
+@defun format-mode-line format &optional face window buffer
+この関数は、あたかも@var{window}にたいしてモードラインを生成するかのように@var{format}に応じてテキスト行をフォーマットするが、さらにそのテキストを文字列としてリターンする。引数@var{window}のデフォルトは選択されたウィンドウ。@var{buffer}が非@code{nil}なら、使用されるすべての情報は@var{buffer}から取得される。デフォルトでは@var{window}のバッファーから取得される。
+
+文字列の値は通常はモードラインがもつであろうフェイス、キーマップ等に対応したテキストプロパティをもつ。@var{format}により指定される@code{face}プロパティをもたないすべての文字は、@var{face}により決定されるデフォルト値を取得する。@var{face}が@code{t}の場合は@var{window}が選択されていれば@code{mode-line}、それ以外は@code{mode-line-inactive}であることを意味する。@var{face}が@code{nil}または省略された場合はデフォルトのフェイスを意味する。@var{face}が整数なら、この関数はテキストプロパティをもたない値をリターンするだろう。
+
+@var{face}の値として他の有効なフェイスを指定することもできる。指定された場合、それは@var{format}でフェイスを指定されていない文字の@code{face}プロパティのフェイスを提供する。
+
+@var{face}として@code{mode-line}、@code{mode-line-inactive}、@code{header-line}を使用することにより、フォーマットされた文字列のリターンに加えて、対応するフェイスのカレント定義を使用して実際にモードラインやヘッダーラインの再描画が行われることに注意(他のフェイスでは再描画は行われない)。
+
+たとえば@code{(format-mode-line
+header-line-format)}は選択されたウィンドウに表示されるテキスト(ヘッダーラインがない場合は@code{""})をリターンするだろう。@code{(format-mode-line
+header-line-format
+'header-line)}は、各文字がヘッダーライン内でもつであろうフェイスをもつ同じテキストをリターンするとともに、それに加えてヘッダーラインの再描画も行う。
+@end defun
+
+@node Imenu
+@section Imenu
+
+@cindex Imenu
+  @dfn{Imenu}とはバッファー内の定義やセクションをすべてリストするメニューをユーザーが選択することによって、バッファー内の該当箇所に直接移動する機能です。Imenuは定義(またはバッファーのその他の名前つき範囲)の名前とその定義のバッファー内での位置をリストするバッファーインデックスを構築して、ユーザーがそれを選択すればポイントをそこに移動できるようにして機能します。メジャーモードは@code{imenu-add-to-menubar}を使用して、メニューバーアイテムを追加することができます。
+
+@deffn Command imenu-add-to-menubar name
+この関数はImenuを実行するための@var{name}という名前のローカルメニューバーを定義する。
+@end deffn
+
+  Imenuを使用するためのユーザーレベルコマンドはEmacsマニュアルで説明されています(@ref{Imenu,, Imenu, emacs, the
+Emacs
+Manual}を参照)。このセクションでは特定のメジャーモードにたいして定義や名前つき範囲を見つけるImenuメソッドのカスタマイズ方法を説明します。
+
+  変数@code{imenu-generic-expression}をセットするのが通常、かつもっともシンプルな方法です:
+
+@defvar imenu-generic-expression
+この変数が非@code{nil}なら、それはImenuにたいして定義を探すための正規表現を指定するリストである。シンプルな@code{imenu-generic-expression}の要素は以下のようになる:
+
+@example
+(@var{menu-title} @var{regexp} @var{index})
+@end example
+
+ここで@var{menu-title}が非@code{nil}なら、それはこの要素にたいするマッチがバッファーインデックスのサブメニューとなることを指示する。@var{menu-title}自体はそのサブメニューにたいして名前を指定する。@var{menu-title}が@code{nil}なら、この要素にたいするマッチは直接トップレベルのバッファーインデックスとなる。
+
+このリストの2つ目の要素@var{regexp}は正規表現である(@ref{Regular
+Expressions}を参照)。これはバッファー内でこれにマッチするものは定義、あるいはバッファーインデックス内に記載すべき何かであると判断される。3つ目の要素@var{index}は0以上の整数なら、@var{regexp}内の部分式(subexpression)が定義名にマッチすることを示す。
+
+以下のような要素もある:
+
+@example
+(@var{menu-title} @var{regexp} @var{index} @var{function} @var{arguments}@dots{})
+@end example
+
+この要素にたいする各マッチはインデックスアイテムを作成して、ユーザーにがそのインデックスアイテムを選択したときアイテム名、バッファー位置、および@var{arguments}から構成される引数で@var{function}を呼び出す。
+
+Emacs Lispモードでは@code{imenu-generic-expression}は以下のようになるだろう:
+
+@c should probably use imenu-syntax-alist and \\sw rather than [-A-Za-z0-9+]
+@example
+@group
+((nil "^\\s-*(def\\(un\\|subst\\|macro\\|advice\\)\
+\\s-+\\([-A-Za-z0-9+]+\\)" 2)
+@end group
+@group
+ ("*Vars*" "^\\s-*(def\\(var\\|const\\)\
+\\s-+\\([-A-Za-z0-9+]+\\)" 2)
+@end group
+@group
+ ("*Types*"
+  "^\\s-*\
+(def\\(type\\|struct\\|class\\|ine-condition\\)\
+\\s-+\\([-A-Za-z0-9+]+\\)" 2))
+@end group
+@end example
+
+この変数はセットによりカレントバッファーにたいしてバッファーローカルになる。
+@end defvar
+
+@defvar imenu-case-fold-search
+この変数は@code{imenu-generic-expression}の値中の正規表現マッチがcase(大文字小文字)を区別するかどうかを制御する。@code{t}(デフォルト)ならcaseの違いを無視することを意味する。
+
+この変数はセットによりカレントバッファーにたいしてバッファーローカルになる。
+@end defvar
+
+@defvar imenu-syntax-alist
+この変数は@code{imenu-generic-expression}処理中に、カレントバッファーの構文テーブルをオーバーライドするために使用する構文テーブル変更用のalist。このalistの各要素は以下の形式をもつこと:
+
+@example
+(@var{characters} . @var{syntax-description})
+@end example
+
+@sc{car}の@var{characters}には文字か文字列を指定できる。この要素はその文字か文字列が@var{syntax-description}により指定される構文であることを示し、@code{modify-syntax-entry}に渡される(@ref{Syntax
+Table Functions}を参照)。
+
+典型的にはこの機能はシンボル構文(symbol syntax)をもつ文字にたいして単語構文(word
+syntax)を与えるために通常は使用され、それにより@code{imenu-generic-expression}が単純になってマッチングのスピードも向上する。たとえばFortranモードでは以下のようにこれを使用する:
+
+@example
+(setq imenu-syntax-alist '(("_$" . "w")))
+@end example
+
+@code{imenu-generic-expression}の正規表現は、@samp{\\(\\sw\\|\\s_\\)+}のかわりに、@samp{\\sw+}を使用できる。このテクニックは名前をモード名として許容されるより短い頭文字に制限する必要があるときは不便かもしれないことに注意。
+
+この変数はセットによりカレントバッファーにたいしてバッファーローカルになる。
+@end defvar
+
+  あるメジャーモードにたいしてImenuをカスタマイズする別の方法として@code{imenu-prev-index-position-function}と@code{imenu-extract-index-name-function}があります:
+
+@defvar imenu-prev-index-position-function
+この変数が非@code{nil}なら、その値はポイント位置からバッファーを後方にスキャンしてバッファーインデックスに配置すべき次の定義を探すための関数であること。そしてポイントより前に他の定義が見つからなければ@code{nil}をリターンすること。見つかった場合には定義を見つけた場所にポイントを残して任意の非@code{nil}値をリターンすること。
+
+この変数はセットによりカレントバッファーにたいしてバッファーローカルになる。
+@end defvar
+
+@defvar imenu-extract-index-name-function
+この変数が非@code{nil}なら、その値はポイントが定義中にある(@code{imenu-prev-index-position-function}関数がポイントを残す場所)という想定にもとづき、その定義の名前をリターンする関数であること。
+
+この変数はセットによりカレントバッファーにたいしてバッファーローカルになる。
+@end defvar
+
+  メジャーモードにたいしてImenuをカスタマイズするための最後の方法は変数@code{imenu-create-index-function}のセットです:
+
+@defvar imenu-create-index-function
+この変数はバッファーインデックスを作成するために使用する関数を指定する。この関数は引数がを受け取らず、カレントバッファーにたいするインデックスalist(index
+alist)をリターンすること。この関数は@code{save-excursion}内で呼び出されるので、どこにポイントを残しても違いはない。
+
+このインデックスalistは3つのタイプの要素をもつことができる。以下はシンプル要素(simple element)の例:
+
+@example
+(@var{index-name} . @var{index-position})
+@end example
+
+シンプル要素の選択はそのバッファー内の位置@var{index-position}に移動する効果をもつ。スペシャル要素(special
+element)は以下のようなもの:
+
+@example
+(@var{index-name} @var{index-position} @var{function} @var{arguments}@dots{})
+@end example
+
+スペシャル要素の選択により以下が処理される:
+
+@example
+(funcall @var{function}
+         @var{index-name} @var{index-position} @var{arguments}@dots{})
+@end example
+
+ネストされたサブalist要素(nested sub-alist element)は以下のようなもの:
+
+@example
+(@var{menu-title} . @var{sub-alist})
+@end example
+
+これは@var{sub-alist}により指定されるサブメニュー@var{menu-title}を作成する。
+
+@code{imenu-create-index-function}のデフォルト値は@code{imenu-default-create-index-function}。この関数はインデックスalistを生成するために@code{imenu-prev-index-position-function}の値と@code{imenu-extract-index-name-function}の値を呼び出す。しかしこれら2つ変数のいずれかが@code{nil}なら、デフォルト関数はかわりに@code{imenu-generic-expression}を使用する。
+
+この変数はセットによりカレントバッファーにたいしてバッファーローカルになる。
+@end defvar
+
+tree-sitterとともにEmacsをビルドしていてメジャーモードが関連する変数をセットしていれば、自動的にImenuのインデックスが生成されます。
+
+@defvar treesit-simple-imenu-settings
+これはどのようにImenuインデックスを生成するかをEmacsに指示するための変数である。@w{(@var{category} @var{regexp}
+@var{pred} @var{name-fn})}という形式のリストであること。
+
+@var{category}は"Function"、"Class"等のようなカテゴリー名、@var{regexp}は@var{category}に属すノードタイプにマッチするregexp、@var{pred}は@code{nil}、または引数としてノードを受け取る関数であること。この関数はノードが@var{category}にたいして有効なら非@code{nil}、そうでなければ@code{nil}をリターンする必要がある。
+
+@var{category}は@code{nil}でもよく、その場合には@var{regexp}と@var{regexp}でマッチされたエントリーは@var{category}下にグループ化されない。
+
+@var{name-fn}は@code{nil}、あるいはdefunノードを受け取りそのdefunの名前(関数定義にたいする関数名)をリターンする関数のいずれかであること。@var{name-fn}が@code{nil}の場合には、かわりに@code{treesit-defun-name}
+(@ref{Tree-sitter Major Modes}を参照)が使用される。
+
+この変数が非@code{nil}の場合には、@code{treesit-major-mode-setup} (@ref{Tree-sitter
+Major Modes}を参照)が自動的にImenuをセットアップする。
+@end defvar
+
+@node Outline Minor Mode
+@section Outlineマイナーモード
+
+@cindex Outline minor mode
+  @dfn{Outlineマイナーモード}とは、バッファーの一部を隠してヘッダー行だけを見えるように残すバッファーローカルなマイナーモードです。このマイナーモードは、他のメジャーモードと組み合わせて使用することができます(@ref{Outline
+Minor Mode,, Outline Minor Mode, emacs, the Emacs Manual}を参照)。
+
+  どの行をヘッダーとするかは変数@code{outline-regexp}、または@code{outline-search-function}で定義する2つの方法があります。
+
+@defvar outline-regexp
+この変数には正規表現をセットする。行頭がこのregexpにマッチするすべての行がヘッダー行とみなされる。行中(左マージン以外)のマッチは勘定されない。
+@end defvar
+
+@defvar outline-search-function
+ヘッダー行にマッチする regexpの作成が不可能なら、Outlineマイナーモードにかわりにヘッダー行を見つけるヘルパー関数を定義できる。
+
+変数@code{outline-search-function}は@var{bound}、@var{move}、@var{backward}、@var{looking-at}という4つの引数を受け取る関数を指定する。この関数はカレントヘッダー行へのマッチ、および次または前のヘッダー行を探すという2つのタスクを完遂する。引数@var{looking-at}が非@code{nil}の場合には、ポイントがoutlineヘッダー行の先頭にあれば関数は非@code{nil}をリターンすること。引数@var{looking-at}が@code{nil}の場合には、最初の3つの引数が使用される。引数@var{bound}は検索の境界となるバッファー位置であり、検索の終了はこの位置より後であってはならない。値nilはバッファーのアクセス可能範囲終端まで検索することを意味する。引数@var{move}が非@code{nil}の場合には、検索の失敗により検索限界まで移動してnilをリターンすること。引数@var{backward}が非@code{nil}の場合には、関数は後方に向かって前のヘッダー行を検索すること。
+@end defvar
+
+@defvar outline-level
+この変数は引数を受け取らずカレントヘッダーのレベルをリターンする関数である。この関数は@code{outline-regexp}または@code{outline-search-function}のいずれかを定義する際に必要となる。
+@end defvar
+
+tree-sitterとともにEmacsをビルドしていてメジャーモードが以下の変数をセットしていれば、自動的にOutlineマイナーモードを使用します。
+
+@defvar treesit-outline-predicate
+この変数はoutlineヘッダーとなる行を探す方法をEmacsに指示する。ヘッダー行のノードにマッチする術後であること。
+@end defvar
+
+@node Font Lock Mode
+@section Font Lockモード
+@cindex Font Lock mode
+@cindex syntax highlighting and coloring
+
+  @dfn{Font Lockモード}とはバッファーの特定の部分にたいして、それらの構文的役割(syntactic
+role)にもとづき自動的に@code{face}プロパティをアタッチするバッファーローカルなマイナーモードです。このモードがバッファーをパースする方法はそのメジャーモードに依存します。ほとんどのメジャーモードは、どのコンテキストでどのフェイスを使用するかにたいして構文的条件(syntactic
+criteria)を定義します。このセクションでは特定のメジャーモードにたいしてFont Lockをカスタマイズする方法を説明します。
+
+  Font
+Lockモードは(通常は外部のライブラリーやプログラムを介した)本格的なパーサー、Emacs組み込みの構文テーブルにもとづく構文解析、(通常は正規表現にたいする)検索という3つの手法によりハイライトするテキストを見つけます。有効になっていればまずパーサーベース(@ref{Parser-based
+Font
+Lock}を参照)のフォント表示、次にコメントと文字列定数を見つけてハイライトする構文的なフォント表示、最後に検索ベースのフォント表示が行われます。
+
+@menu
+* Font Lock Basics::         Font Lockカスタマイズの概要。
+* Search-based Fontification::  正規表現にもとづくフォント表示。
+* Customizing Keywords::     検索ベースフォント表示のカスタマイズ。
+* Other Font Lock Variables::  追加のカスタマイズ機能。
+* Levels of Font Lock::      多なりとも少ユーザーが選択できるように、それぞれのモードは代替レベルを定義できる。
+* Precalculated Fontification::  バッファーコンテンツを生成するLispプログラムが、どのようにしてそれをフォント表示する方法も指定できるか。
+* Faces for Font Lock::      Font 
+                               Lockにたいする具体的な特殊フェイス。
+* Syntactic Font Lock::      構文テーブルにもとづくフォント表示。
+* Multiline Font Lock::      Font 
+                               Lockに複数行構文の正しいハイライトを強制する方法。
+* Parser-based Font Lock::   解析データを用いたフォント表示。
+@end menu
+
+@node Font Lock Basics
+@subsection Font Lockの基礎
+
+  Font
+Lock機能はいくつかの基本的な関数にもとづきます。これらはそれぞれ対応する変数により指定される関数を呼び出します。このインダイレクションによりメジャーモードとマイナーモードはそのモードにあるバッファーのフォント表示が機能する方法を変更したり、フォント表示を何も行わない機能にたいしてさえFont
+Lockメカニズムを使用することが可能になります(以下の記述で関数が何を行うか説明する際に``should(すること、するべき)''と表現しているのはこれが理由。モードは完全に異なる何かを行うように対応する変数をカスタマイズできる)。以下で言及される変数は@ref{Other
+Font Lock Variables}で説明されています。
+
+@ftable @code
+@item font-lock-fontify-buffer
+この関数は@code{font-lock-fontify-buffer-function}で指定される関数の呼び出しにより、カレントバッファーのアクセス可能範囲をフォント表示すること。
+
+@item font-lock-unfontify-buffer
+フォント表示削除のためにFont
+Lockをオフに切り替える際に使用する。@code{font-lock-unfontify-buffer-function}で指定される関数を呼び出す。
+
+@item font-lock-fontify-region beg end &optional loudly
+@var{beg}と@var{end}の間のリージョンをフォント表示すること。@var{loudly}が非@code{nil}なら、フォント表示中にステータスメッセージを表示すること。@code{font-lock-fontify-region-function}で指定される関数を呼び出す。
+
+@item font-lock-unfontify-region beg end
+@var{beg}と@var{end}の間のリージョンのフォント表示を削除すること。@code{font-lock-unfontify-region-function}で指定される関数を呼び出す。
+
+@item font-lock-flush &optional beg end
+この関数は@var{beg}と@var{end}の間のリージョンのフォント表示を期限切れ(outdated)とマークすること。@var{beg}と@var{end}が未指定または@code{nil}なら、デフォルトはそのバッファーのアクセス可能範囲の先頭と終端。@code{font-lock-flush-function}で指定される関数を呼び出す。
+
+@item font-lock-ensure &optional beg end
+この関数は@var{beg}と@var{end}の間のリージョンのフォント表示を保証すること。オプション引数@var{beg}と@var{end}のデフォルトは、そのバッファーのアクセス可能範囲の先頭と終端。@code{font-lock-ensure-function}で指定される関数を呼び出す。
+
+@item font-lock-debug-fontify
+これはモード用のFont
+Lock開発時の使用を意図した利便的なコマンドであり、Lispコードから呼び出すべきではありません。これは関連するすべての変数を再計算してから、バッファー全体にたいして@code{font-lock-fontify-region}を呼び出します。
+@end ftable
+
+  Font
+Lockモードのテキストのハイライト方法を制御する変数がいくつかあります。しかしメジャーモードはこれらの変数を直接セットするべきではありません。かわりにメジャーモードはバッファーローカル変数として@code{font-lock-defaults}をセットするべきです。Font
+Lockモードが有効なときは、他のすべての変数をセットするためにこの変数に割り当てられた値が使用されます。
+
+@defvar font-lock-defaults
+この変数はそのモード内のテキストをフォント表示する方法を指定するためにモードによりセットされる。この変数はセットした際に自動的にバッファーローカルになる。変数の値が@code{nil}ならFont
+Lockモードはハイライトを行わず、バッファー内のテキストに明示的にフェイスを割り当てるために@samp{Faces}メニュー(メニューバーの@samp{Edit}の下の@samp{Text
+Properties})を使用できる。
+
+非@code{nil}なら値は以下のようであること:
+
+@example
+(@var{keywords} [@var{keywords-only} [@var{case-fold}
+ [@var{syntax-alist} @var{other-vars}@dots{}]]])
+@end example
+
+1つ目の要素@var{keywords}は検索ベースのフォント表示を制御する@code{font-lock-keywords}の値を間接的に指定する。値にはシンボル、変数、または@code{font-lock-keywords}にたいして使用するリストが値であるような関数を指定できる。またそれぞれのシンボルがフォント表示の可能なレベルであるような、いくつかのシンボルからなるリストも指定できる。この場合には、1つ目のシンボルはフォント表示の@samp{モードデフォルト(mode
+default)}レベル、次のシンボルはフォント表示のレベル1、その次はレベル2、...のようになる。@samp{モードデフォルト}レベルは通常はレベル1と等しい。これは@code{font-lock-maximum-decoration}が@code{nil}値をもつとき使用される。@ref{Levels
+of Font Lock}を参照のこと。
+
+2つ目の要素@var{keywords-only}は変数@code{font-lock-keywords-only}の値を指定する。これが省略または@code{nil}なら、(文字列とコメントの)構文的フォント表示も行われる。非@code{nil}なら構文的フォント表示は行われない。@ref{Syntactic
+Font Lock}を参照のこと。
+
+3つ目の要素@var{case-fold}は@code{font-lock-keywords-case-fold-search}の値を指定する。非@code{nil}なら検索ベースフォント表示の間、Font
+Lockモードはcaseの違いを無視する。
+
+4つ目の要素@var{syntax-alist}が非@code{nil}なら、それは@code{(@var{char-or-string}
+.
+@var{string})}という形式のコンスセルのリストであること。これらは構文的フォント表示にたいする構文テーブルのセットアップに使用される。結果となる構文テーブルは@code{font-lock-syntax-table}に格納される。@var{syntax-alist}が省略または@code{nil}なら、構文的フォント表示は@code{syntax-table}関数によりリターンされる構文テーブルを使用する。@ref{Syntax
+Table Functions}を参照のこと。
+
+(もしあれば)残りすべての要素はまとめて@var{other-vars}と呼ばれる。これらの要素はすべて@code{(@var{variable}
+.
+@var{value})}という形式をもつこと。これは@var{variable}をバッファーローカルにしてから、それに@var{value}をセットすることを意味する。これら@var{other-vars}を使用して、最初の5つの要素による制御とは別にフォント表示に影響する他の変数をセットできる。@ref{Other
+Font Lock Variables}を参照のこと。
+@end defvar
+
+  モードが@code{font-lock-face}プロパティ追加により明示的にテキストをフォント表示する場合には、自動的なフォント表示すべてをオフにするために@code{font-lock-defaults}に@code{(nil
+t)}を指定できます。しかしこれは必須ではありません。@code{font-lock-face}を使用して何かをフォント表示して、それ以外の部分のテキストを自動的にフォント表示するようにセットアップすることが可能です。
+
+@node Search-based Fontification
+@subsection 検索ベースのフォント化
+
+  検索ベースのフォント表示を直接制御する変数は@code{font-lock-keywords}です。この変数は通常は@code{font-lock-defaults}内の要素@var{keywords}を通じて指定されます。
+
+@defvar font-lock-keywords
+この変数の値はハイライトするキーワードのリスト。Lispプログラムはこの変数を直接セットしないこと。通常は@code{font-lock-defaults}内の要素@var{keywords}を使用してFont
+Lockモードが自動的に値をセットする。この値は関数@code{font-lock-add-keywords}と@code{font-lock-remove-keywords}を使用して変更することもできる(@ref{Customizing
+Keywords}を参照)。
+@end defvar
+
+  @code{font-lock-keywords}の各要素は、特定の例に該当するテキストを見つける方法や、それらをハイライトする方法を指定します。Font
+Lockモードは@code{font-lock-keywords}の要素を逐次処理してマッチを探して、すべてのマッチを処理します。通常はテキストの一部はすでに一度はフォント表示されており、同じテキスト内で連続するマッチによりこれをオーバーライドすることははできません。しかし@var{subexp-highlighter}の要素@var{override}を使用して異なる挙動を指定できます。
+
+  @code{font-lock-keywords}の各要素は以下の形式のいずれかをもつべきです:
+
+@table @code
+@item @var{regexp}
+@code{font-lock-keyword-face}を使用して@var{regexp}にたいするすべてのマッチをハイライトする。たとえば、
+
+@example
+;; @r{@code{font-lock-keyword-face}を使用して}
+;; @r{単語@samp{foo}をハイライトする}
+"\\<foo\\>"
+@end example
+
+これらの正規表現を作成するときは慎重に行うこと。下手に記述されたパターンによりスピードが劇的に低下し得る! 関数@code{regexp-opt}
+(@ref{Regexp Functions}を参照)は、いくつかのキーワードとマッチするために最適な正規表現の計算に有用である。
+
+@item @var{function}
+@var{function}を呼び出すことによりテキストを探し、@code{font-lock-keyword-face}を使用して見つかったマッチをハイライトする。
+
+@var{function}は呼び出される際に1つの引数(検索のリミット)を受け取る。検索はポイント位置から開始しリミットを超えた検索は行わないこと。これは検索が成功したら非@code{nil}をリターンして見つかったマッチを表すマッチデータをセットすること。@code{nil}のリターンは検索の失敗を示す。
+
+フォント表示は前の呼び出しでポイントが残された位置から同じリミットを用いて@var{function}を呼び出し、@var{function}が失敗するまで@var{function}を繰り返し呼び出すだろう。検索が失敗しても何らかの特別な方法で@var{function}がポイントをリセットする必要はない。
+
+@item (@var{matcher} . @var{subexp})
+この種の要素では@var{matcher}は上述のregexpかfunctionのいずれかである。@sc{cdr}の@var{subexp}は、(@var{matcher}がマッチするテキスト全体のかわりに)@var{matcher}のどの部分式(subexpression)がハイライトされるべきかを指定する。
+
+@example
+;; @r{@code{font-lock-keyword-face}を使用して}
+;; @r{@samp{bar}が@samp{fubar}の一部のときに}
+;; @r{ハイライトする}
+("fu\\(bar\\)" . 1)
+@end example
+
+@item (@var{matcher} . @var{facespec})
+この種の要素では@var{facespec}の値がハイライトに使用するフェイスを指定する。もっともシンプルな例では@var{facespec}は値がフェイス名であるようなはLisp変数(シンボル)。
+
+@example
+;; @r{@code{fubar-face}の値のフェイスを使用して}
+;; @r{@samp{fubar}をハイライトする}
+("fubar" . fubar-face)
+@end example
+
+しかし@var{facespec}は以下のような形式のリストに評価されてもよい:
+
+@example
+(@var{subexp}
+(face @var{face} @var{prop1} @var{val1} @var{prop2} @var{val2}@dots{}))
+@end example
+
+@noindent
+これはマッチしたテキストにフェイス@var{face}を指定し、さまざまなテキストプロパティをputする。これを行う場合には、この方法によって@code{font-lock-extra-managed-props}に値をセットする、他テキストプロパティ名を確実に追加すること。そうすればそれらのプロパティが妥当性を失ったとき、それらのプロパティもクリアーされるだろう。これらのプロパティをクリアーする関数を変数@code{font-lock-unfontify-region-function}にセットすることもできる。@ref{Other
+Font Lock Variables}を参照のこと。
+
+@item (@var{matcher} . @var{subexp-highlighter})
+この種の要素では@var{subexp-highlighter}は@var{matcher}により見つかったマッチをハイライトする方法を指定するリストである。これは以下の形式をもつ。
+
+@example
+(@var{subexp} @var{facespec} [@var{override} [@var{laxmatch}]])
+@end example
+
+@sc{car}の@var{subexp}はマッチのどの部分式をフォント表示するかを指定する整数(0はマッチしたテキスト全体を意味する)。これの2つ目の要素@var{facespec}は上述したような、値がフェイスを指定する式である。
+
+@var{subexp-highlighter}内の残りの値@var{override}と@var{laxmatch}はオプションのフラグである。@var{override}が@code{t}なら、この要素は前の@code{font-lock-keywords}の要素により作成された既存のフォント表示をオーバーライドできる。値が@code{keep}なら、すでに他の要素によりフォント表示されていない文字がフォント表示される。値が@code{prepend}なら、@var{facespec}により指定されたフェイスが@code{font-lock-face}プロパティの先頭に追加される。値が@code{append}なら、そのフェイスが@code{font-lock-face}プロパティの最後に追加される。
+
+@var{laxmatch}が非@code{nil}なら、それは@var{matcher}内で番号付けされた部分式@var{subexp}が存在しなくてもエラーにならないことを意味する。番号付けされた部分式@var{subexp}のフォント表示は当然発生しない。しかし他の部分式(と他のregexp)のフォント表示は継続されるだろう。@var{laxmatch}が@code{nil}、かつ指定された部分式が存在しなければ、エラーがシグナルされて検索ベースのフォント表示は終了する。
+
+以下はこのタイプの要素とそれが何を行うかの例:
+
+@smallexample
+;; @r{@code{foo-bar-face}を使用して、たとえハイライト済みでも}
+;; @r{@samp{foo}と@samp{bar}をハイライトする}
+;; @r{@code{foo-bar-face}は値がフェイスであるような変数であること}
+("foo\\|bar" 0 foo-bar-face t)
+
+;; @r{@code{fubar-face}の値のフェイスを使用して}
+;; @r{関数@code{fubar-match}が見つけた各マッチの}
+;; @r{最初の部分式をハイライトする}
+(fubar-match 1 fubar-face)
+@end smallexample
+
+@item (@var{matcher} . @var{anchored-highlighter})
+この種の要素では@var{anchored-highlighter}は@var{matcher}が見つけたマッチに後続するテキストをハイライトする方法を指定する。つまり@var{matcher}が見つけたマッチは、@var{anchored-highlighter}により指定されるその先の検索にたいするアンカー(anchor)として機能する。@var{anchored-highlighter}は以下の形式のリストである:
+
+@c Don't wrap the line in the next @example, because that tends to
+@c produce ugly indentation in Info
+@example
+(@var{anchored-matcher} @var{pre-form} @var{post-form} @var{subexp-highlighters}@dots{})
+@end example
+
+ここで@var{anchored-matcher}は@var{matcher}と同様、正規表現か関数である。@var{matcher}にたいするマッチを見つけた後に、ポイントはそのマッチの終端に移動する。そこでFont
+Lockはフォーム@var{pre-form}を評価する。それから@var{anchored-matcher}にたいするマッチを検索し、@var{subexp-highlighters}を使用してそれらのマッチをハイライトする。@var{subexp-highlighter}については上記を参照のこと。最後にFont
+Lockは@var{post-form}を評価する。
+
+フォーム@var{pre-form}と@var{post-form}は、@var{anchored-matcher}使用時の事前の初期化と事後のクリーンアップに使用できる。@var{pre-form}は通常は@var{anchored-matcher}の開始前に、@var{matcher}のマッチに関連する何らかの位置にポイントを移動するために使用される。@var{post-form}は、@var{matcher}の再開前にポイントを戻すために使用できる。
+
+@var{pre-form}を評価した後、Font
+Lockはその行の終端の先にたいして@var{anchored-matcher}の検索を行わない。しかし@var{pre-form}が@var{pre-form}評価後のポイント位置より大きいバッファー位置をリターンした場合には、かわりに@var{pre-form}によりリターンされた位置が検索リミットとして使用される。その行の終端より大きい位置をリターンするのは、一般的にはよいアイデアではない。言い換えると@var{anchored-matcher}検索は複数行にわたる(span
+lines)べきではない。
+
+たとえば、
+
+@smallexample
+;; @r{@code{item-face}の値を使用して}
+;; @r{単語@samp{anchor}に(同一行内で)}
+;; @r{後続する単語@samp{item}をハイライトする}
+("\\<anchor\\>" "\\<item\\>" nil nil (0 item-face))
+@end smallexample
+
+ここでは@var{pre-form}と@var{post-form}は@code{nil}である。したがって@samp{item}にたいする検索は@samp{anchor}にたいするマッチの終端から開始されて、後続する@samp{anchor}インスタンスにたいする検索は@samp{item}にたいする検索が終了した位置から再開される。
+
+@item (@var{matcher} @var{highlighters}@dots{})
+この種の要素は単一の@var{matcher}にたいして複数の@var{highlighter}リストを指定する。@var{highlighter}リストには、上述した@var{subexp-highlighter}か@var{anchored-highlighter}のいずれかを指定できる。
+
+たとえば、
+
+@smallexample
+;; @r{@code{anchor-face}の値内に現れる単語@samp{anchor}、}
+;; @r{および、(同じ行の)後続の@code{item-face}の}
+;; @r{ 値内に現れる単語@samp{item}をハイライトする}
+("\\<anchor\\>" (0 anchor-face)
+                ("\\<item\\>" nil nil (0 item-face)))
+@end smallexample
+
+@item (eval . @var{form})
+ここで@var{form}はバッファー内でこの@code{font-lock-keywords}の値が最初に使用されるときに評価される式である。この値は上述のテーブルで説明したいずれかの形式をもつこと。
+@end table
+
+@strong{警告:}
+複数行にわたるテキストにたいするマッチさせるために、@code{font-lock-keywords}の要素をデザインしてはならない。これは確実に機能するとは言えない。詳細は@ref{Multiline
+Font Lock}を参照のこと。
+
+検索ベースのフォント表示がcaseを区別すべきかどうかを告げる@code{font-lock-keywords-case-fold-search}の値を指定するために@code{font-lock-defaults}内で@var{case-fold}を使用できる。
+
+@defvar font-lock-keywords-case-fold-search
+非@code{nil}は@code{font-lock-keywords}のための正規表現マッチングがcaseを区別すべきではないことを意味する。
+@end defvar
+
+@node Customizing Keywords
+@subsection 検索ベースのフォント化のカスタマイズ
+
+  メジャーモードにたいして検索ベースフォント表示ルールを追加するために@code{font-lock-add-keywords}、削除には@code{font-lock-remove-keywords}を使用することができます。特定の条件にマッチするキーワードにたいして選択的にフォント表示を無効にするよう、@code{font-lock-ignore}オプションをカスタマイズすることもできます。
+
+@defun font-lock-add-keywords mode keywords &optional how
+この関数はカレントバッファー、またはメジャーモード@var{mode}にたいしてハイライトする@var{keywords}を追加する。引数@var{keywords}は変数@code{font-lock-keywords}と同じ形式のリストであること。
+
+@var{mode}が、@code{c-mode}のようにメジャーモードのコマンド名であるようなシンボルなら、その@var{mode}内でFont
+Lockモードを有効にすることによって@var{keywords}が@code{font-lock-keywords}に追加される効果がある。非@code{nil}値の@var{mode}による呼び出しは@file{~/.emacs}ファイル内でのみ正しい。
+
+@var{mode}が@code{nil}なら、この関数はカレントバッファーの@code{font-lock-keywords}に@var{keywords}を追加する。この方法での@code{font-lock-add-keywords}呼び出しは通常はモードフック関数内で使用される。
+
+デフォルトでは@var{keywords}は@code{font-lock-keywords}の先頭に追加される。オプション引数@var{how}が@code{set}なら、それらは@code{font-lock-keywords}の値の置換に使用される。@var{how}がそれ以外の非@code{nil}値なら、これらは@code{font-lock-keywords}の最後に追加される。
+
+追加のハイライトパターンの使用を可能にする、特別なサポートを提供するモードがいくつかある。それらの例については変数@code{c-font-lock-extra-types}、@code{c++-font-lock-extra-types}、@code{java-font-lock-extra-types}を参照のこと。
+
+@strong{警告:}
+メジャーモードコマンドはモードフックを除き、いかなる状況においても直接間接を問わず@code{font-lock-add-keywords}を呼び出してはならない(これを行うといくつかのマイナーモードは不正な振る舞いを起こしかねない)。メジャーモードコマンドは@code{font-lock-keywords}をセットすることにより、検索ベースフォント表示のルールをセットアップすること。
+@end defun
+
+@defun font-lock-remove-keywords mode keywords
+この関数はカレントバッファーやメジャーモード@var{mode}にたいして、@code{font-lock-keywords}から@var{keywords}を削除する。@code{font-lock-add-keywords}の場合と同様に@var{mode}はメジャーモードコマンド名か@code{nil}であること。この関数にも@code{font-lock-add-keywords}にたいするすべての制約と条件が適用される。引数@var{keywords}は対応する@code{font-lock-add-keywords}が使用するキーワードと正確に一致しなければならない。
+@end defun
+
+  たとえば以下はCモードに2つのフォント表示パターンを追加するコードの例である。フォント表示の1つはたとえコメント内であろうとも単語@samp{FIXME}をフォント表示し、もう1つは@samp{and}、@samp{or}、@samp{not}をキーワードとしてフォント表示する。
+
+@smallexample
+(font-lock-add-keywords 'c-mode
+ '(("\\<\\(FIXME\\):" 1 font-lock-warning-face prepend)
+   ("\\<\\(and\\|or\\|not\\)\\>" . font-lock-keyword-face)))
+@end smallexample
+
+@noindent
+この例は厳密にCモードだけに効果がある。Cモード、@emph{および}その派生モードにたいして同じパターンを追加するには、かわりに以下を行う:
+
+@smallexample
+(add-hook 'c-mode-hook
+ (lambda ()
+  (font-lock-add-keywords nil
+   '(("\\<\\(FIXME\\):" 1 font-lock-warning-face prepend)
+     ("\\<\\(and\\|or\\|not\\)\\>" .
+      font-lock-keyword-face)))))
+@end smallexample
+
+@defopt font-lock-ignore
+@cindex selectively disabling font-lock fontifications
+このオプションは特定のFont
+Lockキーワードによってフォント表示を選択的に無効にするための条件を定義する。非@code{nil}なら、値は以下のような形式の要素からなるリストであること:
+
+@example
+(@var{symbol} @var{condition} @dots{})
+@end example
+
+ここで@var{symbol}はシンボル(通常はメジャーモードかマイナーモード)。@var{symbol}の後のリスト要素@var{condition}は@var{symbol}がバインドされていて、なおかつ値が非@code{nil}なら効力をもつ。あるモードのシンボルについて考えると、カレントのメジャーモードがそのモードの派生モードであること、あるいはバッファーでそのマイナーモードが有効であることを意味する。@var{condition}が効力をもつ間は要素@code{font-lock-keywords}に因をなすすべてのフォント表示は、@var{condition}がマッチした場合には無効化される。
+
+@var{condition}にはそれぞれ以下のいずれかを指定できる:
+
+@table @asis
+@item シンボル
+この条件はそのシンボルを参照するFont
+Lockキーワード要素すべてにマッチする。通常はフェイスだが、@code{font-lock-keywords}リストの要素によって参照される任意のシンボルを指定できる。シンボルにはワイルドカードを含めることができる。@code{*}はシンボルの名前に含まれる任意の文字列にマッチ、@code{?}は1文字にマッチ、そして@code{[@var{char-set}]}
+(@var{char-set}は1文字以上の文字列はその文字セットの1文字にマッチする。
+
+@item 文字列
+この条件は@var{matcher}が文字列にマッチするregexpであるようなFont
+Lockキーワード要素すべてにマッチする。言い換えると、これはその文字列をハイライトさせるようなFont
+Lockルールにマッチする条件である。したがってこの文字列に、ハイライトを無効にしたい特定のプログラムキーワードを指定できるかもしれない。
+
+@item @code{(pred @var{function})}
+この条件は、その要素を引数として@var{function}を呼び出した際に非@code{nil}がリターンされるようなFont
+Lockキーワード要素すべてにマッチする。
+
+@item @code{(not @var{condition})}
+これは@var{condition}が成り立たなければマッチする。
+
+@item @code{(and @var{condition} @dots{})}
+これはすべての@var{condition}がマッチすればマッチする。
+
+@item @code{(or @var{condition} @dots{})}
+これは少なくとも1つの@var{condition}がマッチすればマッチする。
+
+@item @code{(except @var{condition})}
+この条件はトップレベルか@code{or}節内だけで使用できる。同一レベルにおいて前にマッチした条件の効果を取り消す。
+@end table
+@end defopt
+
+セッティングの例として以下を考えてみましょう:
+
+@smallexample
+(setq font-lock-ignore
+      '((prog-mode font-lock-*-face
+                   (except help-echo))
+        (emacs-lisp-mode (except ";;;###autoload)")
+        (whitespace-mode whitespace-empty-at-bob-regexp)
+        (makefile-mode (except *))))
+@end smallexample
+
+これは1行ごとに以下のことを行っています:
+
+@enumerate
+@item
+すべてのプログラミング用モードで、標準のfont-lockフェイスのいずれかを適用するようなfont-lockキーワードによるフォント表示を無効にする構文的なFont
+Lockが受けもつ文字列やコメントは除外)。
+
+@item
+ただしテキストプロパティ@code{help-echo}に追加を行うキーワードはすべて保持。
+
+@item
+Emacs Lispモードでは最初の条件で除外され得るautoload cookieのハイライトは保持。
+
+@item
+@code{whitespace-mode} (マイナーモード)が有効なら、バッファー先頭の空行もハイライトさせない。
+
+@item
+最後にMakefileモードでは条件を何も適用しない。
+@end enumerate
+
+@node Other Font Lock Variables
+@subsection Font Lockのその他の変数
+
+  このセクションでは@code{font-lock-defaults}内の@var{other-vars}を用いて、メジャーモードがセットできる追加の変数について説明します(@ref{Font
+Lock Basics}を参照)。
+
+@defvar font-lock-mark-block-function
+この変数が非@code{nil}なら、それはコマンド@kbd{M-x
+font-lock-fontify-block}で再フォント表示するテキスト範囲を選択するために引数なしで呼び出される関数であること。
+
+この関数は結果を報告するために選択されたテキスト範囲にリージョンを配置すること。正しい結果を与えるのに十分、かつ再フォント表示が低速にならない程度のテキスト範囲がよい選択である。典型的な値はプログラミングのモードにたいしては@code{mark-defun}、テキストを扱うモードにたいしては@code{mark-paragraph}。
+@end defvar
+
+@defvar font-lock-extra-managed-props
+この変数は、(@code{font-lock-face}以外の)Font
+Lockにより管理される追加プロパティを指定する。これらの追加プロパティは通常は@code{font-lock-face}プロパティだけを管理する、@code{font-lock-default-unfontify-region}により使用される。他のプロパティも同様にFont
+Lockに管理させたければ、このリストに追加するのと同じように@code{font-lock-keywords}内の@var{facespec}内でもこれらを指定しなければならない。@ref{Search-based
+Fontification}を参照のこと。
+@end defvar
+
+@defvar font-lock-fontify-buffer-function
+そのバッファーをフォント表示するために使用する関数。デフォルト値は@code{font-lock-default-fontify-buffer}。
+@end defvar
+
+@defvar font-lock-unfontify-buffer-function
+そのバッファーを非フォント表示するために使用する関数。デフォルト値は@code{font-lock-default-unfontify-buffer}。
+@end defvar
+
+@defvar font-lock-fontify-region-function
+リージョンをフォント表示するための関数。この関数はリージョンの開始と終了の2つを引数に受け取り、オプションで3つ目の引数@var{verbose}を受け取ること。@var{verbose}が非@code{nil}なら、その関数はステータスメッセージをプリントすべきである。デフォルト値は@code{font-lock-default-fontify-region}。
+@end defvar
+
+@defvar font-lock-unfontify-region-function
+リージョンを非フォント表示するための関数。この関数はリージョンの開始と終了の2つを引数に受け取ること。デフォルト値は@code{font-lock-default-unfontify-region}。
+@end defvar
+
+@defvar font-lock-flush-function
+リージョンのフォント表示の期限切れの宣言に使用する関数。そのリージョンの開始と終了という2つの引数を受け取る。この変数のデフォルト値は@code{font-lock-after-change-function}。
+@end defvar
+
+@defvar font-lock-ensure-function
+カレントバッファーのリージョンのフォント表示の保証に使用する関数。そのリージョンの開始と終了という2つの引数を受け取る。この変数のデフォルト値は、バッファーがフォント表示されていないときに@code{font-lock-default-fontify-buffer}を呼び出す関数。効果はそのバッファーのアクセス可能範囲全体がフォント表示されることの保証。
+@end defvar
+
+@defun jit-lock-register function &optional contextual
+この関数はカレントバッファーの一部をフォント表示/非表示する必要がある任意のタイミングで、Font
+LockモードがLisp関数@var{function}を実行することを宣言する。これはデフォルトのフォント表示関数が呼び出される前に、フォント表示/非表示するリージョンを指定する2つの引数@var{start}と@var{end}で@var{function}を呼び出す。@var{function}がフォント表示を行う場合には、フォント表示したリージョン領域を示すためにフォーム@w{@code{(jit-lock-bounds
+@var{beg}
+.
+@var{end})}}のリストをリターンできる。後続する再表示サイクルおよび将来@var{function}に渡されるバッファーテキストの最適化に、Just-In-Time(いわゆる@acronym{``JIT''})なfont-lockがこの情報を使用するだろう。
+
+オプション引数@var{contextual}が非@code{nil}なら、行が更新されたときに限らずそのバッファーの構文的に関連する部分を常にフォント表示するようFont
+Lockモードに強制する。この引数は通常は省略できる。
+
+バッファーでFont Lockがアクティブのときには、もし@code{font-lock-keywords-only} (@ref{Syntactic
+Font Lock}を参照)の値が@code{nil}なら、非@code{nil}値の@var{contextual}でこの関数を呼び出す。
+@end defun
+
+@defun jit-lock-unregister function
+以前に@code{jit-lock-register}を使用してフォント表示関数として@var{function}を登録した場合は、その関数を未登録にする。
+@end defun
+
+@cindex debugging font-lock
+@cindex jit-lock functions, debugging
+@deffn Command jit-lock-debug-mode &optional arg
+これはJIT
+font-lockが実行するコードのデバッグを支援するためのマイナーモード。このモードが有効だと、(Lispエラーが抑制される)再表示サイクル中にJIT
+font-lockが実行する通常のコードのほとんどがタイマーによって実行される。したがってこのモードではfont-lockやJIT
+font-lockが実行するその他のコード内の問題を見つけて訂正するために、@code{debug-on-error} (@ref{Error
+Debugging}を参照)やEdebug
+(@ref{Edebug}を参照)のようなデバッグ支援機能を使用することができる。font-lockの開発やデバッグを行う際に役に立つかもしれないコマンドとしては@code{font-lock-debug-fontify}がある。@ref{Font
+Lock Basics}を参照のこと。
+@end deffn
+
+@node Levels of Font Lock
+@subsection Font Lockのレベル
+
+  フォント表示にたいして3つの異なるレベルを提供するモードがいくつかあります。@code{font-lock-defaults}内の@var{keywords}にたいしてシンボルのリストを使用することにより複数のレベルを定義できます。このリストのシンボルはそれぞれフォント表示の1レベルを指定します。これらのレベルの選択は、通常は@code{font-lock-maximum-decoration}をセットすることによりユーザーの責任で行われます(@ref{Font
+Lock,,, emacs, the GNU Emacs
+Manual}を参照)。選択されたレベルのシンボルの値は@code{font-lock-keywords}の初期化に使用されます。
+
+  フォント表示レベルの定義方法に関する慣習を以下に挙げます:
+
+@itemize @bullet
+@item
+レベル1:
+関数宣言、(includeやimportのような)ファイルディレクティブ、文字列、コメントをハイライトする。これは、もっとも重要かつトップレベルのコンポーネントだけをフォント表示すれば高速になるという発想である。
+
+@item
+レベル2:
+レベル1に加えて、すべての言語のキーワード(キーワードと同様に作用する型名を含む)、および名前付き定数値をハイライトする。これは、(構文的、または意味的な)すべてのキーワードは適切にフォント表示されるべきという発想である。
+
+@item
+レベル3: レベル2に加えて、関数内で定義されるシンボル、変数宣言、およびすべてのビルトイン関数名にたいして、それがどこに出現しようとハイライトする。
+@end itemize
+
+@node Precalculated Fontification
+@subsection 事前計算されたフォント化
+
+  @code{list-buffers}や@code{occur}のようないくつかのメジャーモードは、バッファーのテキストをプログラム的に構築します。これらにたいしてFont
+Lockモードをサポートするためには、そのバッファーにテキストを挿入するタイミングでテキストのフェイスを指定するのがもっとも簡単な方法です。
+
+  これはスペシャルテキストプロパティ@code{font-lock-face} (@ref{Special
+Properties}を参照)により、テキスト内にフェイスを指定することによって行われます。Font
+Lockモードが有効になったとき、このプロパティは@code{face}と同じように表示を制御します。Font
+Lockモードが無効になると@code{font-lock-face}は表示に効果をもちません。
+
+  何らかのテキストにたいして@code{font-lock-face}を使用するモードや、通常のFont
+Lock機構を使用するモードでも問題はありません。しかし通常のFont
+Lock機構を使用しないモードでは、変数@code{font-lock-defaults}をセットするべきではありません。この場合には@code{face}プロパティはオーバーライドされないので、@code{face}プロパティの使用も機能します。しかし@code{font-lock-mode}の切り替えによりユーザーがフォント化を制御でき、かつモードのFont
+Lock機構の使用の有無に関わらずコードが機能するので、一般的には@code{font-lock-face}の使用の方が優っています。
+
+@node Faces for Font Lock
+@subsection Font Lockのためのフェイス
+@cindex faces for font lock
+@cindex font lock faces
+
+  Font
+Lockモードはハイライトに任意のフェイスを使用できますが、Emacsは特にFontLockがテキストのハイライトに使用するいくつかのフェイスを定義しています。これらの@dfn{Font
+Lockフェイス(Font Lock
+faces)}を以下にリストします。これらのフェイスはFontLockモードの外部における構文的なハイライトでメジャーモードが使用することもできます(@ref{Major
+Mode Conventions}を参照)。
+
+  以下の各シンボルはフェイス名であり、かつデフォルト値がシンボル自身であるような変数でもあります。つまり@code{font-lock-comment-face}のデフォルト値は@code{font-lock-comment-face}です。
+
+  リストはそのフェイスの典型的な使い方の説明とともに、重要度が高い順にソートされています。あるモードの構文的カテゴリーが以下の使い方の記述にうまく適合しない場合には、この並び順をガイドとして使用することによってフェイスを割り当てることができるでしょう。
+
+@table @code
+@item font-lock-warning-face
+@vindex font-lock-warning-face
+特有な構文(たとえば@samp{‘foo}のようにEmacs Lispシンボルにおけるエスケープされていない判りにくいクォート)や、Emacs
+Lispの@samp{;;;###autoload}、Cの@samp{#error}のような他のテキストの意味を大きく変更する構文にたいして使用される。
+
+@item font-lock-function-name-face
+@vindex font-lock-function-name-face
+定義、または宣言される関数の名前にたいして使用される。
+
+@item font-lock-function-call-face
+@vindex font-lock-function-call-face
+呼び出される関数の名前にたいして使用される。このフェイスはデフォルトでは@code{font-lock-function-name-face}を継承する。
+
+@item font-lock-variable-name-face
+@vindex font-lock-variable-name-face
+定義、または宣言される変数の名前にたいして使用される。
+
+@item font-lock-variable-use-face
+@vindex font-lock-variable-use-face
+参照される変数の名前にたいして使用される。このフェイスはデフォルトでは@code{font-lock-variable-name-face}を継承する。
+
+@item font-lock-keyword-face
+@vindex font-lock-keyword-face
+Cの@samp{for}や@samp{if}のように、構文的に特別な意味をもつキーワードにたいして使用される。
+
+@item font-lock-comment-face
+@vindex font-lock-comment-face
+コメントにたいして使用される。
+
+@item font-lock-comment-delimiter-face
+@vindex font-lock-comment-delimiter-face
+Cの@samp{/*}と@samp{*/}のようなコメント区切りにたいして使用される。ほとんどの端末ではこのフェイスは@code{font-lock-comment-face}を継承する。
+
+@item font-lock-type-face
+@vindex font-lock-type-face
+ユーザー定義データ型にたいして使用される。
+
+@item font-lock-constant-face
+@vindex font-lock-constant-face
+Cの@samp{NULL}のような定数の名前にたいして使用される。
+
+@item font-lock-builtin-face
+@vindex font-lock-builtin-face
+ビルトイン関数の名前にたいして使用される。
+
+@item font-lock-preprocessor-face
+@vindex font-lock-preprocessor-face
+プロセッサーコマンドにたいして使用される。デフォルトでは、@code{font-lock-builtin-face}を継承する。
+
+@item font-lock-string-face
+@vindex font-lock-string-face
+文字列定数にたいして使用される。
+
+@item font-lock-doc-face
+@vindex font-lock-doc-face
+特別な形式のコメントや文字列内のプログラムコード内に埋め込まれたドキュメントにたいして使用される。デフォルトでは@code{font-lock-string-face}を継承する。
+
+@item font-lock-doc-markup-face
+@vindex font-lock-doc-markup-face
+@code{font-lock-doc-face}を使用するテキスト内のmark-up要素にたいして使用される。これは通常はHaddock、Javadoc、Doxygenなどの慣例にしたがってプログラムコード内に埋め込まれた、ドキュメント内のマークアップ構文にたいして使用される。このフェイスは、デフォルトでは@code{font-lock-constant-face}を継承する。
+
+@item font-lock-negation-char-face
+@vindex font-lock-negation-char-face
+見逃しやすい否定文字にたいして使用される。
+
+@item font-lock-escape-face
+@vindex font-lock-escape-face
+文字列内のエスケープシーケンスにたいして使用される。このフェイスはデフォルトでは@code{font-lock-regexp-grouping-backslash}を継承する。
+
+以下はPythonでエスケープシーケンス@code{\n}が使用されている例:
+
+@smallexample
+@group
+print('Hello world!\n')
+@end group
+@end smallexample
+
+@item font-lock-number-face
+@vindex font-lock-number-face
+数値にたいして。
+
+@item font-lock-operator-face
+@vindex font-lock-operator-face
+演算子にたいして。
+
+@item font-lock-property-name-face
+@vindex font-lock-property-name-face
+構造体におけるフィールド定義のようなオブジェクトのプロパティにたいして使用される。このフェイスはデフォルトでは@code{font-lock-variable-name-face}を継承する。
+
+@item font-lock-property-use-face
+@vindex font-lock-property-use-face
+構造体のフィールドの使用のように、オブジェクトのプロパティにたいして使用される。このフェイスはデフォルトでは@code{font-lock-property-name-face}を継承する。
+
+たとえば、
+
+@smallexample
+@group
+typedef struct
+@{
+  int prop;
+//    ^ property
+@} obj;
+
+int main()
+@{
+  obj o;
+  o.prop = 3;
+//  ^ property
+@}
+@end group
+@end smallexample
+
+@item font-lock-punctuation-face
+@vindex font-lock-punctuation-face
+カッコや区切り文字などの句読点文字。
+
+@item font-lock-bracket-face
+@vindex font-lock-bracket-face
+カッコ(@code{()}、@code{[]}、@code{@{@}})にたいして使用される。このフェイスはデフォルトでは@code{font-lock-punctuation-face}を継承する。
+
+@item font-lock-delimiter-face
+@vindex font-lock-delimiter-face
+区切り文字(@code{;}、@code{:}、@code{,})にたいして使用される。このフェイスはデフォルトでは@code{font-lock-punctuation-face}を継承する。
+
+@item font-lock-misc-punctuation-face
+@vindex font-lock-misc-punctuation-face
+カッコや区切り文字以外の句読点文字にたいして使用される。このフェイスはデフォルトでは@code{font-lock-builtin-face}を継承する。
+@end table
+
+@node Syntactic Font Lock
+@subsection 構文的なFont Lock
+@cindex syntactic font lock
+
+構文的フォント表示(syntactic
+fontification)は、構文的に関連性のあるテキストを探してハイライトするために構文テーブル(syntax table: @ref{Syntax
+Tables}を参照)を使用します。有効な場合には検索ベースのフォント表示に先立って実行されます。以下で説明する変数@code{font-lock-syntactic-face-function}はどの構文的構造をハイライトするかを決定します。構文的フォント表示に影響を与える変数がいくつかあります。@code{font-lock-defaults}のためにそれらをセットするべきです(@ref{Font
+Lock Basics}を参照)。
+
+  Font
+Lockモードが一連のテキストにたいして構文的フォント表示を処理するときは、常に@code{syntax-propertize-function}で指定される関数を最初に呼び出します。メジャーモードは特別なケースでは@code{syntax-table}テキストプロパティを適用してバッファーの構文テーブルをオーバーライドするために、これを使用することができます。@ref{Syntax
+Properties}を参照してください。
+
+@defvar font-lock-keywords-only
+この変数の値が非@code{nil}なら、Font
+Lockは構文的フォント表示を行わずに@code{font-lock-keywords}にもとづく検索ベースのフォント表示だけを行う。これは通常は@code{font-lock-defaults}内の@var{keywords-only}要素にもとづいてFont
+Lockモードによりセットされる。値が@code{nil}ならFont Lockは@code{jit-lock-register}
+(@ref{Other Font Lock
+Variables}を参照)を呼び出して、変更行以降のバッファーテキストに変更による新たな構文コンテキストを反映するために、自動的な再フォント表示をセットアップする。
+
+構文的なフォント表示だけを使用するにはこの変数に非@code{nil}、そして@code{font-lock-keywords}に@code{nil}をセットする必要がある(@ref{Font
+Lock Basics}を参照)。
+@end defvar
+
+@defvar font-lock-syntax-table
+この変数はコメントと文字列のフォント表示に使用するための構文テーブルを保持する。これは通常は@code{font-lock-defaults}内の@var{syntax-alist}要素にもとづいてFont
+Lockモードによりセットされる。この値が@code{nil}なら、構文的フォント表示はバッファーの構文テーブル(関数@code{syntax-table}がリターンする構文テーブル。@ref{Syntax
+Table Functions}を参照)を使用する。
+@end defvar
+
+@defvar font-lock-syntactic-face-function
+この変数が非@code{nil}なら、それは与えられた構文的要素(文字列かコメント)にどのフェイスを使用するかを決定する関数であること。
+
+この関数は1つの引数で呼び出され、@code{parse-partial-sexp}がリターンするポイントの状態をパースしてフェイスをリターンすること。リターンされるデフォルト値はコメントにたいしては@code{font-lock-comment-face}、文字列にたいしては@code{font-lock-string-face}
+(@ref{Faces for Font Lock}を参照)。
+
+この変数は通常は@code{font-lock-defaults}内の``他''の要素を通じてセットされる:
+
+@lisp
+(setq-local font-lock-defaults
+            `(,python-font-lock-keywords
+              nil nil nil nil
+              (font-lock-syntactic-face-function
+               . python-font-lock-syntactic-face-function)))
+@end lisp
+@end defvar
+
+@node Multiline Font Lock
+@subsection 複数行のFont Lock構造
+@cindex multiline font lock
+
+  @code{font-lock-keywords}の要素は、通常は複数行にわたるマッチを行うべきではありません。それらの動作に信頼性はありません。なぜならFont
+Lockは通常はバッファーのごく一部をスキャンするので、そのスキャンが開始される行境界をまたがる複数行構造を見逃しかねないからです(スキャンは通常は行頭から開始される)。
+
+  ある要素にたいして複数行構造にたいするマッチを正しく機能させるために2つの観点があります。それは@emph{識別(identification)}の補正と、@emph{再ハイライト(rehighlighting)}の補正です。1つ目はFont
+Lockがすべての複数行構造を探すことを意味します。2つ目は複数行構造が変更されたとき、たとえば以前は複数行構造の一部だったテキストが複数行構造から除外されたときに、関連するすべてのテキストをFont
+Lockに正しく再ハイライトさせることを意味します。これら2つの観点は密接に関連しており、一方を機能させることがもう一方を機能させるようなことが多々あります。しかし信頼性のある結果を得るためには、これら2つの観点双方にたいして明示的に注意しなければなりません。
+
+  複数行構造の識別を確実に補正するには3つの方法があります:
+
+@itemize
+@item
+スキャンされるテキストが複数行構造の途中で開始や終了することがないように@emph{識別}を行ってスキャンを拡張する関数を@code{font-lock-extend-region-functions}に追加する。
+@item
+同様に、スキャンされるテキストが複数行構造の途中で開始や終了することがないようスキャンを拡張するために、@code{font-lock-fontify-region-function}フックを使用する。
+@item
+複数行構造がバッファーに挿入されたとき(または挿入後にFont
+Lockがハイライトを試みる前の任意のタイミングで)、何らかの方法によりそれを正しく認識して、Font
+Lockが複数行構造の途中で開始や終了しないように指示する@code{font-lock-multiline}でそれをマークする。
+@end itemize
+
+  複数行構造の再ハイライトを行うにはいくつかの方法があります:
+
+@itemize
+@item
+その構造にたいして正しく@code{font-lock-multiline}を配置する。これによりその構造の一部が変更されると構造全体が再ハイライトされるだろう。あるケースにおいてはそれを参照する@code{font-lock-multiline}変数をセットすることにより自動的にこれを行うことができる。
+@item
+@code{jit-lock-contextually}を確実にセットしてそれが行う処理に委ねる。これにより、実際の変更に続いて構造の一部だけが若干の遅延の後に再ハイライトされるだろう。これは複数行構造のさまざまな箇所のハイライトが後続行のテキストに依存しない場合のみ機能する。@code{jit-lock-contextually}はデフォルトでアクティブなので、これは魅力的な解決策になり得る。
+@item
+その構造上に正しく@code{jit-lock-defer-multiline}を配置する。これは@code{jit-lock-contextually}が使用された場合のみ機能し、再ハイライト前に同様の遅延を伴うが、@code{font-lock-multiline}のように後続行に依存する箇所のハイライトも処理する。
+@item
+構造(construct)の@emph{構文(syntax)}のパースが単一のchunkでパースされることに依存している場合には、問題となっている構造にテキストプロパティ@code{syntax-multiline}を追加できる。これのもっとも一般的な用途は、@samp{FOO}に適用する構文プロパティ(syntax
+property)が後出するテキスト@samp{BAR}に依存する場合である。このテキストプロパティを@samp{FOO...BAR}全体に配置することによって、@samp{BAR}にたいする任意の変更が@samp{FOO}の構文プロパティに影響を与えて再計算されることが保証される。これが機能するためには、モードが@code{syntax-propertize-extend-region-functions}に@code{syntax-propertize-multiline}を追加する必要があることに注意。
+@end itemize
+
+@menu
+* Font Lock Multiline::      テキストプロパティで複数行塊をマークする。
+* Region to Refontify::      バッファー変更後にどのリージョンを再フォント表示するかを制御する。
+@end menu
+
+@node Font Lock Multiline
+@subsubsection 複数行のFont Lock
+
+  複数行構造のFont
+Lockを確実に再ハイライトする方法の1つは、それらをテキストプロパティ@code{font-lock-multiline}にputする方法です。複数行構造の一部であるようなテキストには値が非@code{nil}であるようなこのプロパティが存在するべきです。
+
+  Font
+Lockがテキスト範囲をハイライトしようとする際は、まずそれらが@code{font-lock-multiline}プロパティでマークされたテキストにならないように必要に応じて範囲の境界を拡張します。それからその範囲のすべての@code{font-lock-multiline}を削除してハイライトします。ハイライト指定(大抵は@code{font-lock-keywords})は、適宜このプロパティを毎回再インストールしなければなりません。
+
+  @strong{警告:}
+ハイライトが低速になるので大きなテキスト範囲にたいして@code{font-lock-multiline}を使用してはならない。
+
+@defvar font-lock-multiline
+@code{font-lock-multiline}変数が@code{t}にセットされているとFont
+Lockは自動的に複数行構造にたいして@code{font-lock-multiline}プロパティの追加を試みる。しかしこれによりFont
+Lockが幾分遅くなるので普遍的解決策ではない。これは何らかの複数行構造を見逃したり、必要なものより多く、または少なくプロパティをセットするかもしれない。
+
+@var{matcher}が関数であるような要素は、たとえ少量のサブパート(subpart)だけがハイライトされるような場合でも、submatch
+0(訳注:正規表現の後方参照においてsubmatch
+0はマッチした文字列全体を指す)が関連する複数行構造全体を確実に網羅するようにすべきである。単に手動で@code{font-lock-multiline}を追加するのが容易な場合も多々ある。
+@end defvar
+
+  @code{font-lock-multiline}プロパティは正しい再フォント表示を確実に行うことを意図しています。これは新たな複数行構造を自動的に認識しません。それらを認識するためにはFont
+Lockが一度に十分な大きさのchunkを処理することを要求します。これは多くの場合にアクシデントにより発生し得るかもしれないので、複数行構造が不可解に機能するような印象を与えるかもしれません。変数@code{font-lock-multiline}を非@code{nil}にセットした場合には、発見されたこれらの構造にたいするハイライトは変数をセットした後は正しく更新されるので、さらにこの印象が強くなるでしょう。しかしこれは信頼性をもって機能しません。
+
+  信頼性を保ち複数行構造を見つけるためには、Font
+Lockが調べる前にテキストの@code{font-lock-multiline}プロパティを手動で配置するか、@code{font-lock-fontify-region-function}を使用しなければなりません。
+
+@node Region to Refontify
+@subsubsection バッファー変更後のリージョンのフォント化
+
+  バッファーが変更されたときFont
+Lockが再フォント表示するリージョンは、デフォルトではその変更に関連する最小の行全体からなるシーケンスです。これはほとんどの場合は良好に機能しますが、うまく機能しないとき(たとえば変更がそれより前の行のテキストの構文的な意味を変更してしまうとき)もあります。
+
+  以下の変数をセットすることにより、再フォント表示するリージョンを拡張(または縮小さえ)することができます:
+
+@defvar font-lock-extend-after-change-region-function
+このバッファーローカル変数は@code{nil}、またはFont
+Lockモードにたいしてスキャンしてフォント表示すべきリージョンを決定するために呼び出される関数である。
+
+この関数には標準的な@var{beg}と@var{end}、および@code{after-change-functions}の@var{old-len}
+(@ref{Change
+Hooks}を参照)という3つのパラメーターが渡される。この関数はフォント表示するリージョンのバッファー位置の開始と終了(この順)からなるコンスセル、または@code{nil}
+(標準的な方法でリージョンを選択することを意味する)のいずれかをリターンすること。この関数はポイント位置、match-data、カレントのナローイングを保つ必要がある。これがリターンするリージョンは、行の途中で開始や終了するかもしれない。
+
+この関数はバッファーを変更するたびに呼び出されるので有意に高速であること。
+@end defvar
+
+@node Parser-based Font Lock
+@subsection パーサーベースのFont Lock
+@cindex parser-based font-lock
+
+@c This node is written when the only parser Emacs has is tree-sitter;
+@c if in the future more parser are supported, this should be
+@c reorganized and rewritten to describe multiple parsers in parallel.
+
+シンプルな構文的Font LockやregexpベースのFont Lockに加えて、Emacsはパーサーを用いた完全な構文的Font
+Lockも提供します。Emacsでは現在のところは、この目的のためにtree-sitterライブラリーを使用しています(@ref{Parsing
+Program Source}を参照)。
+
+パーサーベースのFont Lockそれ以外のFont Lockのメカニズムは互いに排他ではありません。もしパーサーベースのFont
+Lockが有効なら、最初に構文的Font Lock置き換わり実行されて、その後にregexpベースのFont Lockが実行されます。
+
+パーサーベースのFont LockがregexpベースのFont
+Lockと同じカスタマイズ変数を共有しないとしても、カスタマイズでは類似したスキームを使用します。tree-sitterにおいて@code{font-lock-keywords}のカウンターパートとなるのが@code{treesit-font-lock-settings}です。
+
+@cindex tree-sitter fontifications, overview
+@cindex fontifications with tree-sitter, overview
+tree-sitterのフォント表示は一般的には以下のように機能します:
+
+@itemize @bullet
+@item
+Lispプログラム(通常はメジャーモードの一部)が@dfn{パターン(pattern)}から構成される@dfn{query}を提供する。ここでパターンはそれぞれ@dfn{キャプチャ名(capture
+name)}に関連付けられている。
+
+@item
+tree-sitterライブラリーがこれらのパターンにマッチするパースツリー(parse tree:
+解析木)からノードを探して、そのノードに対応するキャプチャ名でタグ付けして、それらをLispプログラムにリターンする。
+
+@item
+Lispプログラムはリターンされたノードを用いて、それぞれのノードに対応するバッファーのテキスト部分にたいして、ノードにタグ付けされたキャプチャ名から正しいフォント表示を決定して適切にハイライトする。たとえば@code{font-lock-keyword}とタグ付けされたノードなら、@code{font-lock-keyword}フェイスによってハイライトされることになるだろう。
+@end itemize
+
+クエリー、パターン、キャプチャ名ｎ関する詳細については@ref{Pattern Matching}を参照してください。
+
+tree-sitterのフォント表示をセットアップするためには、まずメジャーモードが@code{treesit-font-lock-rules}の出力を@code{treesit-font-lock-settings}にセットしてから@code{treesit-major-mode-setup}を呼び出す必要があります。
+
+@defun treesit-font-lock-rules &rest query-specs
+これは@code{treesit-font-lock-settings}のセットに使用される関数である。この関数はクエリーのコンパイルやその他の後処理を受けもち、@code{treesit-font-lock-settings}が受け入れる値を出力する。以下は例:
+
+@example
+@group
+(treesit-font-lock-rules
+ :language 'javascript
+ :feature 'constant
+ :override t
+ '((true) @@font-lock-constant-face
+   (false) @@font-lock-constant-face)
+ :language 'html
+ :feature 'script
+ "(script_element) @@font-lock-builtin-face")
+@end group
+@end example
+
+この関数は一連の@var{query-spec}
+(@var{query-spec}とは1つ以上の@var{keyword}/@var{value}が前置された@var{query}のこと)を受け取る。@var{query}とはそれぞれ文字列、S式、あるいはコンパイル済みフォームのいずれかによるtree-sitterクエリーのこと。
+
+@c FIXME: Cross-ref treesit-font-lock-level to user manual.
+@var{query}それぞれの前にはクエリーにメタ情報を付加する@var{keyword}/@var{value}ペアーが前置される。キーワード@code{:language}は@var{query}の言語を宣言、キーワード@code{:feature}は@var{query}のfeature名をセットする。ユーザーｈ@code{treesit-font-lock-level}と@code{treesit-font-lock-feature-list}によって、どのfeatureを有効にするかを制御できる(後述)。いずれのキーワードも必須(例外あり)。
+
+その他のキーワードはオプションである:
+
+@multitable @columnfractions .15 .15 .6
+@headitem キーワード @tab 値 @tab 意味
+@item @code{:override} @tab @code{nil}
+@tab そのリージョンにすでにフェイスがセットされていれば新たなフェイスを破棄
+@item @tab @code{t} @tab 常に新たなフェイスを適用する
+@item @tab @code{append} @tab 既存フェイスの後に新たなフェイスを追加
+@item @tab @code{prepend} @tab 既存フェイスの前に新たなフェイスを追加
+@item @tab @code{keep} @tab 既存フェイスなしでリージョンをフィルする
+@item @code{:default-language} @tab @var{language}
+@tab このキーワードの後の@var{query}は、デフォルトではすべて@var{language}を使用する。
+@end multitable
+
+Lispプログラムは@var{query}内のパターンをキャプチャ名(@code{@@}で始まる名前)でマークする。そしてtree-sitterは同じキャプチャ名でタグ付けされたノードをリターンする。フォント表示という目的のために、@var{query}のキャプチャ名は@code{font-lock-keyword-face}のようなフェイス名であること。キャプチャされたノードはそのフェイスによってフォント表示されることになる。
+
+@findex treesit-fontify-with-override
+キャプチャ名は関数でもよい。この場合には@var{node} and
+@var{override}、@var{start}、@var{end}という4つの引数で呼び出される関数であること。ここで@var{node}はそのノード自身、@var{override}はそのノードにキャプチャされたルールの@code{:override}プロパティ、@var{start}と@var{end}はこの関数がフォント表示するべきリージョンを制限する(この関数が@var{override}を尊重したければ@code{treesit-fontify-with-override}を使用できる)。
+
+機能拡張を可能にするために、その関数は5つ以上の引数が与えられた場合にはそれらをオプションの引数として受け入れる必要がある。
+
+キャプチャ名がフェイスと関数のどちらにも当てはまる場合にはフェイスが優先される。フェイスにも関数にも当てはまらないキャプチャ名は無視される。
+@end defun
+
+@c FIXME: Cross-ref treesit-font-lock-level to user manual.
+@defvar treesit-font-lock-feature-list
+これはfeatureシンボル(feature symbol:
+機能シンボル)のリストのリスト。このリストの要素はそれぞれ装飾レベルを表すためのリストである。どのレベルをアクティブにするかを制御するのが@code{treesit-font-lock-level}。
+
+リストの要素はそれぞれ@w{@code{(@var{feature}
+@dots{})}}という形式のリスト。ここで@var{feature}はそれぞれ@code{treesit-font-lock-rules}内で定義されるクエリーで対応する@code{:feature}の値。このリストからfeatureシンボルを削除することによって、font-lockの間に対応するクエリーが無効なる。
+
+多くのプログラミング言語にとって一般的なfeature名には@code{definition}、@code{type}、@code{assignment}、@code{builtin}、@code{constant}、@code{keyword}、@code{string-interpolation}、@code{comment}、@code{doc}、@code{string}、@code{operator}、@code{preprocessor}、@code{escape-sequence}、@code{key}が含まれる。メジャーモードはこれらの一般的なfeatureを自由に分割あるいは拡張ができる。
+
+これらのfeatureのうちいくつかは説明が必要だろう。@code{definition}は何であれ定義されつつあるものをハイライトする(関数定義の関数名、構造体定義構造体名、変数定義の変数など)。@code{assignment}は何であれ割り当てされつつあるものをハイライトする(割り当て命令の変数やフィールドなど)。@code{key}はキー/値ペアーのキーをハイライトする(JSONオブジェクトのキーやPythonのdictionaryなど)。@code{doc}はdoc文字列やdocコメントをハイライトする。
+
+この変数の値はたとえば以下のようになるかもしれない:
+@example
+@group
+((comment string doc) ; level 1
+ (function-name keyword type builtin constant) ; level 2
+ (variable-name string-interpolation key)) ; level 3
+@end group
+@end example
+
+メジャーモードは@code{treesit-major-mode-setup}の呼び出し前にこの変数をセットすること。
+
+@findex treesit-font-lock-recompute-features
+この変数が効力をもつためには、Lispプログラムが(適宜@code{treesit-font-lock-settings}をリセットする)@code{treesit-font-lock-recompute-features}、または(@code{treesit-font-lock-recompute-features}を呼び出す)@code{treesit-major-mode-setup}を呼び出す必要がある。
+@end defvar
+
+@defvar treesit-font-lock-settings
+tree-sitterベースのfont
+lock用のセッティングのリスト。セッティングそれぞれの正確なフォーマットは内部的なフォーマットとみなされる。この変数のセットには、常に@code{treesit-font-lock-rules}を使うこと。
+
+@c Because the format is internal, we don't document them here.  Though
+@c we do have it explained in the docstring.  We also expose the fact
+@c that it is a list of settings, so one could combine two of them with
+@c append.
+@end defvar
+
+複数言語用のメジャーモードは@code{treesit-range-functions}でrange関数(range function:
+範囲関数)を提供する必要があり、Emacsはリージョンのフォント表示を行う前にrangeを適宜セットします(@ref{Multiple
+Languages}を参照)。
+
+@node Auto-Indentation
+@section コードの自動インデント
+
+プログラミング言語のメジャーモードにとって、自動的なインデントの提供は重要な機能です。これには2つのパートがあります。1つ目は正しい行のインデントが何か、そして2つ目はいつ行を再インデントするかの判断です。デフォルトでは@code{electric-indent-chars}に含まれる文字(デフォルトでは改行のみ)をタイプしたとき、Emacsは常に行を再インデントします。メジャーモードはその言語の構文に合わせて@code{electric-indent-chars}に文字を追加できます。
+
+正しいインデントの決定は@code{indent-line-function}によりEmacs内で制御されます(@ref{Mode-Specific
+Indent}を参照)。いくつかのモードでは@emph{右}へのインデントは信頼性がないことが知られています。これは通常は複数のインデントが有効であり、それぞれが異なる意味をもつのでインデント自体が重要だからです。そのような場合には、そのモードは行が常にユーザーの意に反して行が毎回再インデントされないことを保証するために@code{electric-indent-inhibit}をセットするべきです。
+
+よいインデント関数の記述は難しく、その広範な領域において未だ黒魔術の域を脱していません。メジャーモード作者の多くは、単純なケース(たとえば前のテキスト行のインデントとの比較)にたいして機能する、単純な関数の記述からスタートすることでしょう。実際には行ベースではないほとんどのプログラミング言語にたいして、これは貧弱なスケールになりがちです。そのような関数にたいして、より多様な状況を処理するような改良を行うと関数はより一層複雑になり、最終的な結果は誰にも触れようとする気を起こさせない、巨大で複雑な保守不可能のインデント関数になる傾向があります。
+
+よいインデント関数は、通常はその言語の構文に応じて実際にテキストをパースする必要があるでしょう。幸運なことにこのテキストパースはコンパイラーが要するほど詳細である必要はないでしょうが、その一方でインデントコードに埋め込まれたパーサーは構文的に不正なコードにたいして、コンパイラーより幾分寛容な振る舞いを求められるでしょう。
+
+保守可能なよいインデント関数は、通常は2つのカテゴリーに落ち着きます。どちらも何らかの安全な開始ポイントから、関心のある位置まで前方か後方へパースを行います。この2つの方法は、いずれも一方が他方に明快に優る選択ではありません。後方へのパースはプログラミング言語が前方にパースされるようデザインされているため、前方へのパースに比べて難しいことが多々ありますが、インデントという目的においては安全な開始ポイントを推測する必要がないという利点があり、一般的にある行のインデントの判断のために分析を要するのは最小限のテキストだけという特性に恵まれているので、前の無関係なコード片内にある何らかの構文エラーの影響をインデントが受けにくくなる傾向があります。一方で前方へのパースは通常はより簡単であり、一度のパースでリージョン全体を効果的に再インデントすることが可能になるという利点があります。
+
+インデント関数をスクラッチから記述するよりも、既存のインデント関数の使用と再利用、または一般的なインデントエンジンに委ねるほうが優る場合がしばしばあります。しかしそのようなエンジンは悲しむべきほど少数しかありません。(C、C++、Java、Awk、およびその類のモードに使用される)CCモードのインデントコードは年月を経てより一般化されてきているので、あなたの言語にこれらの言語と何らかの類似点があるなら、このエンジンの使用を試みるかもしれません。もう一方のSMIEはLispのsexp精神によるアプローチを採用して、それを非Lisp言語に適応します。他にもたとえばtree-sitterライブラリーのような本格的なパーサーに頼る方法もあります。
+
+@menu
+* SMIE::                     SMIE: Simple Minded Indentation 
+                               Engine(純真なインデントエンジン)
+* Parser-based Indentation::  パーサーベースのインデントエンジン
+@end menu
+
+@node SMIE
+@subsection SMIE: 無邪気なインデントエンジン
+@cindex SMIE
+
+SMIEは一般的な操作とインデントを提供するエンジンです。これは演算子順位文法(operator precedence
+grammar)を使用する非常にシンプルなパーサーにもとづいたエンジンであり、メジャーモードがLispのS式ベースの操作を非Lisp言語に拡張するのを助けるとともにシンプルに使用できるにも関わらず、信頼できる自動インデントを提供します。
+
+演算子順位文法はコンパイラー内で使用されるより一般的なパーサーと比較すると非常に原始的なパーステクノロジーです。このパーサーには次のような特徴があります。このパーサーのパース能力は非常に限定的で構文エラーを大概は検出できません。しかしアルゴリズム的に前方パースと同様に後方パースを効果的に行うことが可能です。実際にそれはSMIEが後方パースにもとづくインデントを使用でき、@code{forward-sexp}と@code{backward-sexp}の両方の機能を提供できるとともに、特別な努力を要さずに構文的に不正なコードにたいして自然に機能するであろうことを意味します。欠点はほとんどのプログラミング言語は、少なくとも何らかの特別なトリック(@ref{SMIE
+Tricks}を参照)で再分類しなければSMIEを使用して正しくパースできないことをも意味することです。
+
+@menu
+* SMIE setup::               SMIEのセットアップと機能。
+* Operator Precedence Grammars::  非常にシンプルなパース技術。
+* SMIE Grammar::             言語の文法を定義する。
+* SMIE Lexer::               トークンの定義。
+* SMIE Tricks::              パーサー制限の回避策。
+* SMIE Indentation::         インデントルールの指定。
+* SMIE Indentation Helpers::  インデントルールにたいするヘルパー関数。
+* SMIE Indentation Example::  インデントルールの例。
+* SMIE Customization::       インデントのカスタマイズ。
+@end menu
+
+@node SMIE setup
+@subsubsection SMIEのセットアップと機能
+
+SMIEは構造的な操作とコードの構造的構造にもとづくその他さまざまな機能、特に自動インデントにたいするワンストップショップ(一カ所で必要な全ての買い物ができる店やそのような場所)であることを意図しています。メインのエントリーポイントは@code{smie-setup}で、これは通常はメジャーモードセットアップの間に呼び出される関数です。
+
+@defun smie-setup grammar rules-function &rest keywords
+SMIEの操作とインデントをセットアップする。@var{grammar}は@code{smie-prec2->grammar}により生成される文法テーブル(grammar
+table)、@var{rules-function}は@code{smie-rules-function}で使用されるインデントルールのセット、@var{keywords}は追加の引数であり以下のキーワードを含むことができる:
+@itemize
+@item
+@code{:forward-token} @var{fun}: 使用する前方lexer(lexer=lexical analyzer:
+字句解析プログラム)を指定する。
+@item
+@code{:backward-token} @var{fun}: 使用する後方lexerを指定する。
+@end itemize
+@end defun
+
+この関数を呼び出せば@code{forward-sexp}、@code{backward-sexp}、@code{transpose-sexps}のようなコマンドが、すでに構文テーブルにより処理されている単なるカッコのペア以外の、構造的な要素を正しく扱うことができるようになります。たとえば与えられた文法が十分に明快ならば、@code{transpose-sexps}はその言語の優先順位のルールを考慮して@code{+}演算子の2つの引数を正しく入れ替えることができます。
+
+@code{smie-setup}の呼び出しは@code{begin...end}のような要素に適用するために@code{blink-matching-paren}を拡張して@key{TAB}によるインデントを期待通り機能させるとともに、メジャーモードのキーマップ内でバインドできるいくつかのコマンドの提供を満足します。
+
+@deffn Command smie-close-block
+このコマンドは、もっとも最近オープンされた(まだクローズされていない)ブロックをクローズする。
+@end deffn
+
+@deffn Command smie-down-list &optional arg
+このコマンドは@code{down-list}と似ているが、@code{begin...end}のようなカッコ以外のネストされたトークンにも注意を払う。
+@end deffn
+
+@node Operator Precedence Grammars
+@subsubsection 演算子順位文法
+
+SMIEの演算子順位文法は、各トークンにたいしてシンプルに左優先(left-precedence)と右優先(right-precedence)という順位ペアを与えます。トークン@code{T1}の右優先がトークン@code{T2}の左優先より小さければ@code{T1
+< T2}であると言うことにしましょう。これを解読するには@code{<}をカッコの一種だとみなすのがよい方法です。@code{... T1
+something T2 ...}を見つけたら、これは@code{... T1 something) T2 ...}ではなく@code{... T1
+(something T2 ...}とパースされるべきです。@code{... T1 something) T2 ...}と解釈するのは@code{T1
+> T2}を見つけた場合でしょう。@code{T1 =
+T2}を見つけた場合、それはトークンT2とその後のトークンT1が同じ構文にあり、通常は@code{"begin" =
+"end"}を得ます。このような優先順位のペアは2項演算子(infix
+operator)、カッコのようなネストされたトークン、およびその他多くのケースにたいして左結合(left-associativity)や右結合(right-associativity)を表現するのに十分です。
+
+@c Let's leave this undocumented to leave it more open for change!
+@c @defvar smie-grammar
+@c The value of this variable is an alist specifying the left and right
+@c precedence of each token.  It is meant to be initialized by using one of
+@c the functions below.
+@c @end defvar
+
+@defun smie-prec2->grammar table
+この関数は@emph{prec2}文法@var{table}を引数に受け取り、@code{smie-setup}で使用するのに適したalistをリターンする。@emph{prec2}文法@var{table}は、それ自体が以下の関数のいずれかによりビルドされることを意図している。
+@end defun
+
+@defun smie-merge-prec2s &rest tables
+この関数は複数の@emph{prec2}文法@var{tables}を、新たな@emph{prec2}テーブルにマージする。
+@end defun
+
+@defun smie-precs->prec2 precs
+この関数は順位テーブル@var{precs}から@emph{prec2}テーブルをビルドする。@var{precs}は優先順(たとえば@code{"+"}は@code{"*"}より前にくる)にソートされたリストであり、要素は@code{(@var{assoc}
+@var{op}
+...)}の形式であること。ここで@var{op}は演算子として振る舞うトークン、@var{assoc}はそれらの結合法則であり@code{left}、@code{right}、@code{assoc}、@code{nonassoc}のいずれかである。与えられた要素内のすべての演算子は同じ優先レベルと結合法則を共有する。
+@end defun
+
+@defun smie-bnf->prec2 bnf &rest resolvers
+この関数によりBNF記法を使用した文法を指定することができる。これはその文法の@var{bnf}表記と、同様に競合解決ルール@var{resolvers}を受け取って@emph{prec2}テーブルをリターンする。
+
+@var{bnf}は@code{(@var{nonterm} @var{rhs1} @var{rhs2}
+...)}という形式の非終端定義、各@var{rhs}は終端記号(トークンとも呼ばれる)、または非終端記号の(空でない)リストである。
+
+すべての文法が許容される訳ではない:
+@itemize
+@item
+@var{rhs}に空のリストは指定できない(いずれにせよSMIEは空文字列にマッチさせるためにすべての非終端記号を許容するので空リストが必要になることは決してない)。
+@item
+@var{rhs}の後に連続する2つの非終端記号は指定できない。非終端記号の各ペアは終端記号(かトークン)で区切られる必要がある。これは演算子順位文法の基本的な制約である。
+@end itemize
+
+さらに競合が発生し得る:
+@itemize
+@item
+リターンされる@emph{prec2}テーブルはトークンのペア間の制約を保持し、与えられた任意のペアはT1 < T2、T1 = T2、T1 >
+T2のいずれかのうち1つの制約をだけ与えることができる。
+@item
+トークンは@code{opener}(開カッコに似た何か)、@code{closer}(閉カッコのようなもの)、またはこれら2つのいずれでもない@code{neither}(2項演算子や@code{"else"}のようなinnerトークン)である。
+@end itemize
+
+順位の競合は@var{resolvers}を通じて解決され得る。これは@emph{precs}テーブル(@code{smie-precs->prec2}を参照)のリストである。それぞれの順位競合にたいして、これらの@code{precs}テーブルが特定の制約を指定している場合は、かわりにこの制約により競合が解決され、それ以外は競合する制約のうち任意の1つが報告されて他は単に無視される。
+@end defun
+
+@node SMIE Grammar
+@subsubsection 言語の文法の定義
+@cindex SMIE grammar
+@cindex grammar, SMIE
+
+ある言語にたいしてSMIE文法を定義する通常の方法は、順位のテーブルを保持する新たなグローバル変数を定義してBNFルールのセットを与える方法です。たとえば小規模なPascal風言語の文法定義は以下のようになるでしょう:
+@example
+@group
+(require 'smie)
+(defvar sample-smie-grammar
+  (smie-prec2->grammar
+   (smie-bnf->prec2
+@end group
+@group
+    '((id)
+      (inst ("begin" insts "end")
+            ("if" exp "then" inst "else" inst)
+            (id ":=" exp)
+            (exp))
+      (insts (insts ";" insts) (inst))
+      (exp (exp "+" exp)
+           (exp "*" exp)
+           ("(" exps ")"))
+      (exps (exps "," exps) (exp)))
+@end group
+@group
+    '((assoc ";"))
+    '((assoc ","))
+    '((assoc "+") (assoc "*")))))
+@end group
+@end example
+
+@noindent
+注意すべき点がいくつかあります:
+
+@itemize
+@item
+上記の文法は関数呼び出しの構文に明示的に言及していない。SMIEは識別子、対応がとれたカッコ(balanced
+parentheses)、または@code{begin
+... end}ブロックのようなsexpの任意のシーケンスがどこに、どのように出現しても自動的にそれを許容するだろう。
+@item
+文法カテゴリー@code{id}は右側に何ももたない。これは@code{id}が空文字列だけにマッチ可能なことを意味しない。なぜなら上述のように任意のsexpシーケンスはどこに、どのような方法でも出現するからである。
+@item
+BNF文法では非終端記号が連続して出現し得ないので、終端記号として作用するトークンを正しく扱うのが困難なため、上述の文法ではSMIEが容易に扱える@code{";"}を@emph{セパレーター(separator)}ステートメントのかわりとして扱っている。
+@item
+シーケンス内で使用される、(上記の@code{","}や@code{";"}のような)セパレーターは、BNFルールでは@code{(foo (foo
+"separator" foo) ...)}のように定義するのが最善である。これは順位の競合を生成するが、明示的に@code{(assoc
+"separator")}を与えることにより解決される、
+@item
+SMIEは構文テーブル(syntax table)内でカッコ構文(paren
+syntax)をもつようにマークされた任意の文字をペアにするだろうから、@code{("(" exps
+")")}ルールにカッコをペアにする必要はなかった。(@code{exps}の定義と併せて)これはかわりに@code{","}がカッコの外に出現すべきではないことを明確にするためのルール。
+@item
+競合解決のための@emph{precs}テーブルは単一のテーブルより複数のテーブルをもつほうが、可能な場合は文法のBNF部分が関連する順位を指定できるので優れている。
+@item
+@code{left}や@code{right}を選択することが優るという明白な理由がなければ、通常は@code{assoc}を使用して演算子を結合演算子(associative)とマークするほうが優れている。この理由により上述の@code{"+"}と@code{"*"}は、たとえその言語がそれらを形式上は左結合(left
+associative)と定義していても@code{assoc}として定義されている。
+@end itemize
+
+@node SMIE Lexer
+@subsubsection トークンの定義
+@cindex SMIE lexer
+@cindex defining tokens, SMIE
+
+SMIEには事前定義された字句解析プログラムが付属しており、それは次の方法で構文テーブルを使用します:
+文字の任意のシーケンスはトークンとみなせる単語構文(word syntax)かシンボル構文(symbol
+syntax)をもち、区切り文字構文(punctuation
+syntax)をもつ任意の文字シーケンスもトークンとみなされます。このデフォルトのlexerは開始ポイントとして適している場合が多々ありますが、任意の与えられた言語にたいして実際に正しいことは稀です。たとえばこれは@code{"2,+3"}が3つのトークン@code{"2"}、@code{",+"}、@code{"3"}から構成されていると判断するでしょう。
+
+あなたの言語のlexerルールをSMIEにたいして説明するためには、次のトークンをfetchする関数と前のトークンをfetchする関数という2つの関数が必要になります。これらの関数は通常は最初に空白文字とコメントをスキップして、その後に次のテキストchunk(塊)を調べてそれが特別なトークンか確認します。これは通常は単にバッファーから抽出された文字列ですが、あなたが望む他の何かでも構いません。たとえば:
+@example
+@group
+(defvar sample-keywords-regexp
+  (regexp-opt '("+" "*" "," ";" ">" ">=" "<" "<=" ":=" "=")))
+@end group
+@group
+(defun sample-smie-forward-token ()
+  (forward-comment (point-max))
+  (cond
+   ((looking-at sample-keywords-regexp)
+    (goto-char (match-end 0))
+    (match-string-no-properties 0))
+   (t (buffer-substring-no-properties
+       (point)
+       (progn (skip-syntax-forward "w_")
+              (point))))))
+@end group
+@group
+(defun sample-smie-backward-token ()
+  (forward-comment (- (point)))
+  (cond
+   ((looking-back sample-keywords-regexp (- (point) 2) t)
+    (goto-char (match-beginning 0))
+    (match-string-no-properties 0))
+   (t (buffer-substring-no-properties
+       (point)
+       (progn (skip-syntax-backward "w_")
+              (point))))))
+@end group
+@end example
+
+これらのlexerがカッコの前にあるとき空文字列をリターンする方法に注目してください。これはSMIEが構文テーブル内で定義されているカッコにたいして自動的に配慮するからです。より厳密にはlexerが@code{nil}、または空文字列をリターンしたら、SMIEは構文テーブルにしたがって対応するテキストをsexpとして処理します。
+
+@node SMIE Tricks
+@subsubsection 非力なパーサーと歩む
+
+SMIEが使用するパーステクニックは、異なるコンテキストでトークンが異なる振る舞いをすることを許容しません。ほとんどのプログラミング言語にたいして、これは順位の競合によりBNF文法を変換するとき明らかになります。
+
+その文法を若干異なるように表現することにより、これらの競合を回避できる場合があります。たとえばModula-2にたいしては以下のようなBNF文法をもつことが自然に思えるかもしれません:
+
+@example
+  ...
+  (inst ("IF" exp "THEN" insts "ELSE" insts "END")
+        ("CASE" exp "OF" cases "END")
+        ...)
+  (cases (cases "|" cases)
+         (caselabel ":" insts)
+         ("ELSE" insts))
+  ...
+@end example
+
+しかしこれは@code{"ELSE"}にたいする競合を生み出すでしょう。その一方でIFルールは、(他の多くのものの中でも特に)@code{"ELSE"
+=
+"END"}を暗示します。しかしその一方で@code{"ELSE"}は@code{cases}内に出現しますが、@code{cases}は@code{"END"}の左に出現するので、わたしたちは@code{"ELSE"
+> "END"}も得ることになります。これは以下を使用して解決できます:
+@example
+  ...
+  (inst ("IF" exp "THEN" insts "ELSE" insts "END")
+        ("CASE" exp "OF" cases "END")
+        ("CASE" exp "OF" cases "ELSE" insts "END")
+        ...)
+  (cases (cases "|" cases) (caselabel ":" insts))
+  ...
+@end example
+または
+@example
+  ...
+  (inst ("IF" exp "THEN" else "END")
+        ("CASE" exp "OF" cases "END")
+        ...)
+  (else (insts "ELSE" insts))
+  (cases (cases "|" cases) (caselabel ":" insts) (else))
+  ...
+@end example
+
+文法書き換えによる競合の解決には欠点があります。なぜならSMIEはその文法がコードの論理的構造を反映すると仮定するからです。そのためBNFと意図する抽象的構文木の関係を密接に保つことが望まれます。
+
+注意深く考慮した結果、これらの競合が深刻ではなく、@code{smie-bnf->prec2}の@var{resolvers}引数を通じて解決する決心をする場合もあるでしょう。これは通常はその文法が単に不明瞭だからです。その文法により記述されるプログラムセットは競合の影響を受けませんが、それらのプログラムにたいする唯一の方法はパースだけです。@code{'((assoc
+"|"))}のようなリゾルバ(resolver:
+解決するもの)を追加したいと望むような場合、通常それはセパレーターと2項結合演算子にたいするケースです。これが発生し得る他のケースは@code{'((assoc
+"else" "then"))}を使用するような場合における、古典的な@emph{ぶら下がりelse問題(dangling else
+problem)}です。これは実際に競合があり解決不能なものの、実際のところ問題が発生しそうにないケースにたいしても発生し得ます。
+
+最後に多くのケースではすべての文法再構築努力にも関わらず、いくつかの競合が残るでしょう。しかし失望しないでください。パーサーをより賢くすることはできませんが、あなたの望むようにlexerをスマートにすることは可能です。その方法は競合が発生したら競合を引き起こしたトークンを調べて、それらのうちの1つを2つ以上の異なるトークンに分割する方法です。たとえばトークン@code{"begin"}にたいする互換性のない2つの使用を文法が区別する必要があり、見つかった@code{"begin"}の種類によってlexerに異なるトークン(たとえば@code{"begin-fun"}と@code{"begin-plain"})をリターンさせる場合です。これはlexerにたいして異なるケースを区別する処理を強制し、そのためにlexerは特別な手がかりを見つけるために周囲のテキストを調べる必要があるでしょう。
+
+@node SMIE Indentation
+@subsubsection インデントルールの指定
+@cindex indentation rules, SMIE
+
+提供された文法にもとづき、他に特別なことを行わなくてもSMIEは自動的なインデントを提供できるでしょう。しかし恐らく実際にはこのデフォルトのインデントスタイルでは十分ではありません。多くの異なる状況においてこれを微調整したいと思うかもしれません。
+
+SMIEのインデントは、インデントルールは可能な限りローカルであるべきという考えにもとづきます。@emph{バーチャルインデント(virtual
+indentation)}という考えによってこの目的を達成しています。これは特定のプログラムポイント(program
+point)は行頭にバーチャルインデントがあれば、それをもつだろう、という発想です。もちろんそのプログラムポイントが正に行頭にあれば、そのプログラムポイントのバーチャルインデントはプログラムポイントのカレントのインデントです。しかしそうでなければSMIEがそのポイントのバーチャルインデントを計算するためにインデントアルゴリズムを使用します。ところで実際にはあるプログラムポイントのバーチャルインデントは、その前に改行を挿入した場合にプログラムポイントがもつであろうインデントと等しい必要はありません。これが機能する方法を確認するためには、Cにおける@code{@{}の後のSMIEのインデントルールは@code{@{}がインデントする行自体にあるか、あるいは前の行の終端にあるかを配慮しないことが挙げられます。かわりにこれらの異なるケースは@code{@{}の前のインデントを決定するインデントルール内で処理されます。
+
+他の重要な考え方として@emph{parent}の概念があります。あるトークン@emph{parent}は周囲にある直近の構文構造の代表トークン(head
+token)です。たとえば@code{else}のparentはそれが属する@code{if}であり、@code{if}のparentは周囲を取り囲む構造の先導トークン(lead
+token)です。コマンド@code{backward-sexp}は、あるトークンからトークンのparentにジャンプしますが注意する点がいくつかあります。他のトークンではそのトークンの後のポイントから開始する必要があるのにたいして、@emph{opener}
+(@code{if}のようなある構造を開始するトークン)ではそのトークンの前のポイントから開始する必要があります。@code{backward-sexp}はparentトークンがそのトークンの@emph{opener}ならparentトークンの前のポイントで停止し、それ以外ではparentトークンの後のポイントで停止します。
+
+SMIEのインデントルールは、2つの引数@var{method}と@var{arg}を受け取る関数により指定されます。ここで@var{arg}の値と期待されるリターン値は@var{method}に依存します。
+
+@var{method}には以下のいずれかを指定できます:
+@itemize
+@item
+@code{:after}:
+この場合、@var{arg}はトークンであり関数は@var{arg}の後に使用するインデントにたいする@var{offset}をリターンすること。
+@item
+@code{:before}:
+この場合、@var{arg}はトークンであり関数は@var{arg}自体に使用するインデントの@var{offset}をリターンすること。
+@item
+@code{:elem}:
+この場合、関数は関数の引数に使用するインデントのオフセット(@var{arg}がシンボル@code{arg}の場合)、または基本的ナインデントステップ(@var{arg}がシンボル@code{basic}の場合)のいずれかをリターンすること。
+@item
+@code{:list-intro}:
+この場合、@var{arg}はトークンであり関数はそのトークンの後が単一の式ではなく、(任意のトークンにより区切られない)式のリストが続くなら非@code{nil}をリターンすること。
+@end itemize
+
+@var{arg}がトークンのとき関数はそのトークンの直前のポイントで呼び出されます。リターン値@code{nil}は常にデフォルトの振る舞いへのフォールバックを意味するので、関数は期待した引数でないときは@code{nil}をリターンするべきです。
+
+@var{offset}には以下のいずれかを指定できます:
+@itemize
+@item
+@code{nil}: デフォルトのインデントルールを使用する。
+@item
+@code{(column . @var{column})}: 列@var{column}にインデントする。
+@item
+@var{number}: 基本トークン(base token:
+@code{:after}にたいするカレントトークンであり、かつ@code{:before}にたいしてparentであるようなトークン)にたいして相対的な@var{number}によるオフセット。
+@end itemize
+
+@node SMIE Indentation Helpers
+@subsubsection インデントルールにたいするヘルパー関数
+
+SMIEはインデントを決定する関数内で使用するために特別にデザインされたさまざまな関数を提供します(これらの関数のうちのいくつかは異なるコンテキスト内で使用された場合に中断する)。これらの関数はすべてプレフィックス@code{smie-rule-}で始まります。
+
+@defun smie-rule-bolp
+カレントトークンが行の先頭にあれば非@code{nil}をリターンする。
+@end defun
+
+@defun smie-rule-hanging-p
+カレントトークンが@emph{hanging(ぶら下がり)}なら非@code{nil}をリターンする。トークンがその行の最後のトークンであり、他のトークンが先行する場合、そのトークンは@emph{hanging}である。行に単独のトークンはhangingではない。
+@end defun
+
+@defun smie-rule-next-p &rest tokens
+次のトークンが@var{tokens}内にあれば非@code{nil}をリターンする。
+@end defun
+
+@defun smie-rule-prev-p &rest tokens
+前のトークンが@var{tokens}内にあれば非@code{nil}をリターンする。
+@end defun
+
+@defun smie-rule-parent-p &rest parents
+カレントトークンのparentが@var{parents}内にあれば非@code{nil}をリターンする。
+@end defun
+
+@defun smie-rule-sibling-p
+カレントトークンのparentが実際はsibling(兄弟)なら非@code{nil}をリターンする。たとえば@code{","}のparentが直前の@code{","}のような場合が該当。
+@end defun
+
+@defun smie-rule-parent &optional offset
+カレントトークンをparentとアライン(align:
+桁揃え)するための適切なオフセットをリターンする。@var{offset}が非@code{nil}なら、それは追加オフセットとして適用される整数であること。
+@end defun
+
+@defun smie-rule-separator method
+@emph{セパレーター(separator)}としてカレントトークンをインデントする。
+
+ここでの@emph{セパレーター}とは周囲を取り囲む何らかの構文構造内でさまざまな要素を区切ることを唯一の目的とするトークンであり、それ自体は何も意味をもたないトークン(通常は抽象構文木内でノードとして存在しないこと)を意味する。
+
+このようなトークンは結合構文をもち、その構文的parentと密に結び付けられることが期待される。典型的な例としては引数リスト内の@code{","}
+(カッコで括られた内部)、または命令文シーケンス内の@code{";"}
+(@code{@{...@}}や@code{begin...end}で括られたブロックの内部)が挙げられる。
+
+@var{method}は@code{smie-rules-function}に渡されるメソッド名であること。
+@end defun
+
+@node SMIE Indentation Example
+@subsubsection インデントルールの例
+
+以下はインデント関数の例です:
+
+@example
+(defun sample-smie-rules (kind token)
+  (pcase (cons kind token)
+    (`(:elem . basic) sample-indent-basic)
+    (`(,_ . ",") (smie-rule-separator kind))
+    (`(:after . ":=") sample-indent-basic)
+    (`(:before . ,(or `"begin" `"(" `"@{"))
+     (if (smie-rule-hanging-p) (smie-rule-parent)))
+    (`(:before . "if")
+     (and (not (smie-rule-bolp)) (smie-rule-prev-p "else")
+          (smie-rule-parent)))))
+@end example
+
+@noindent
+注意すべき点がいくつかあります:
+
+@itemize
+@item
+最初のcaseは使用する基本的なインデントの増分を示す。@code{sample-indent-basic}が@code{nil}なら、SMIEはグローバルセッティング@code{smie-indent-basic}を使用する。メジャーモードがかわりに@code{smie-indent-basic}をバッファーローカルにセットするかもしれないが推奨しない。
+
+@item
+トークン@code{","}にたいするルールによってカンマセパレーターが行頭にある場合にSMIEをより賢明に振る舞わせようとしている。これはセパレーターのインデントを解除(outdent)、カンマの後のコードにアラインされるよう試みる。たとえば:
+
+@example
+x = longfunctionname (
+        arg1
+      , arg2
+    );
+@end example
+
+@item
+そうしなければSMIEが@code{":="}を2項演算子として扱い、左の引数に併せて右の引数をアラインするであろうから、@code{":="}の後のインデントのルールが存在する。
+
+@item
+@code{"begin"}の前のインデントのルールはバーチャルインデントの使用例である。このルールは@code{"begin"}がhangingのときだけ使用され、これは@code{"begin"}が行頭にないときのみ発生し得る。そのためこれは@code{"begin"}自体のインデントには使用されないが、この@code{"begin"}に関連する何かをインデントするときだけ使用される。このルールは具体的には以下のフォームを:
+
+@example
+    if x > 0 then begin
+            dosomething(x);
+        end
+@end example
+以下に変更する
+@example
+    if x > 0 then begin
+        dosomething(x);
+    end
+@end example
+
+@item
+@code{"if"}の前のインデントのルールは@code{"begin"}のインデントルールと似ているが、ここでの目的は@code{"else
+if"}を1単位として扱うことにあり、それにより各テストより右にインデントされずに一連のテストにアラインされる。この関数は@code{smie-rule-bolp}をテストして@code{"if"}が別の行にないときだけこれを行う。
+
+@code{"else"}がそれの属する@code{"if"}にたいして常にアラインされて、かつそれが常に行頭であるることが判っていれば、より効果的なルールを使用できる:
+@example
+((equal token "if")
+ (and (not (smie-rule-bolp))
+      (smie-rule-prev-p "else")
+      (save-excursion
+        (sample-smie-backward-token)
+        (cons 'column (current-column)))))
+@end example
+
+この式の利点はこれがシーケンスの最初の@code{"if"}まで戻ってすべてをやり直すのではなく、前の@code{"else"}のインデントを再利用することである。
+@end itemize
+
+@c In some sense this belongs more in the Emacs manual.
+@node SMIE Customization
+@subsubsection インデントのカスタマイズ
+
+SMIEにより提供されるインデントを使用するモードを使っている場合には、好みに合わせてインデントをカスタマイズできます。これはモードごと(オプション@code{smie-config}を使用)、またはファイルごと(ファイルローカル変数指定内で関数@code{smie-config-local}を使用)に行うことができます。
+
+@defopt smie-config
+このオプションによりモードごとにインデントをカスタマイズできる。これは@code{(@var{mode}
+.
+@var{rules})}という形式の要素をもつalist。rulesの正確な形式については変数のドキュメントを参照のこと。しかしコマンド@code{smie-config-guess}を使用したほうが、より簡単に見つけられるかもしれない。
+@end defopt
+
+@deffn Command smie-config-guess
+このコマンドは好みのスタイルのインデントを生成する適切セッティングの解決を試みる。あなたのスタイルでインデントされたファイルをvisitしているときに単にこのコマンドを呼び出せばよい。
+@end deffn
+
+@deffn Command smie-config-save
+@code{smie-config-guess}を使用した後にこのコマンドを呼び出すと将来のセッション用にセッティングを保存する。
+@end deffn
+
+@deffn Command smie-config-show-indent &optional move
+このコマンドはカレント行のインデントに使用されているルールを表示する。
+@end deffn
+
+@deffn Command smie-config-set-indent
+このコマンドはカレント行のインデントに合わせてローカルルールを追加する。
+@end deffn
+
+@defun smie-config-local rules
+この関数はカレントバッファーにたいするインデントルールとして@var{rules}を追加する。これらのルールは@code{smie-config}オプションにより定義された任意のモード固有ルールに追加される。特定のファイルにたいしてカスタムインデントルールを指定するには、@code{eval:
+(smie-config-local '(@var{rules}))}の形式のエントリーをそのファイルのローカル変数に追加する。
+@end defun
+
+@node Parser-based Indentation
+@subsection パーサーベースのインデント
+@cindex parser-based indentation
+
+@c This node is written when the only parser Emacs has is tree-sitter;
+@c if in the future more parsers are supported, this should be
+@c reorganized and rewritten to describe multiple parsers in parallel.
+
+tree-sitterライブラリー(@ref{Parsing Program
+Source}を参照)とともにEmacsをビルドした場合には、Emacsによるプログラムソースのパースと構文ツリー(syntax
+tree)の生成が可能になります。プログラムソースのインデントコマンドにたいするガイド役としてこの構文ツリーを使用することができます。柔軟性を最大限発揮できるように構文ツリーに問い合わせを行うインデント用のカスタマイズ関数を記述して、それぞれの言語に応じたインデントを行うことも可能ですが、これには多くの作業が伴います。より使いやすいのは、この後に説明するシンプルなインデント用エンジンでしょう。そうすればメジャーモードに要求されるのはいくつかのインデントルールの記述だけとなり、残りはこのエンジンが面倒を見てくれます。
+
+パーサーベースのインデントエンジンを有効にするには@code{treesit-simple-indent-rules}をセットして@code{treesit-major-mode-setup}を呼び出すか、@code{indent-line-function}の値を@code{treesit-indent}にセットしてください(どちらを選んでも同じ)。
+
+@defvar treesit-indent-function
+この変数は@code{treesit-indent}によって呼び出される実際の関数が格納される。デフォルトの値は@code{treesit-simple-indent}。将来より複雑なエンジンが追加されるかもしれない。
+@end defvar
+
+@heading インデントルールの記述
+@cindex indentation rules, for parser-based indentation
+
+@defvar treesit-simple-indent-rules
+このローカル変数にはすべての言語用のインデントルールが格納される。値は@w{@code{(@var{language}
+.
+@var{rules})}}というフォームのalist。ここで@var{language}は言語シンボル、@var{rules}は@w{@code{(@var{matcher}
+@var{anchor} @var{offset})}}という形式の要素をもつリスト。
+
+最初にEmacsはカレント行の先頭にある最小のtree-sitterノードを@var{matcher}に渡して、非@code{nil}がリターンされればそのルールが適用できる。その後にEmacsはそのノードを@var{anchor}に渡して、バッファーの位置がリターンされる。Emacsがその位置の列番号を取得して@var{offset}を追加すると、、その結果がカレント行のインデント列となる。
+
+@var{matcher}と@var{anchor}は関数。これらにたいしてEmacsは便利なデフォルトを提供している。
+
+@var{matcher}および@var{anchor}はそれぞれ@var{node}、@var{parent}、@var{bol}という3つの引数を受け取る関数。引数@var{bol}はインデントが要求されるバッファー位置(行頭の後の最初の非空白文字の位置)、引数@var{node}はその位置から開始されるもっとも大きい(かつルートではない)ノード、@var{parent}は@var{node}の親ノードである。ただしその位置にあるのが空白だったり、あるいは複数行文字列の内部の場合には、その位置から開始可能なノードは存在しないので、@var{node}は@code{nil}となる。このような場合には、その位置を跨ぐもっとも小さいノードが@var{parent}となる。
+
+ルールが適用可能なら@var{matcher}は非@code{nil}、@var{anchor}はバッファー位置をリターンすること。
+
+@var{offset}は整数、値が整数であるような変数、あるいは整数をリターンする関数を指定できる。関数の場合にはmatcherやanchorと同様に@var{node}、@var{parent}、@var{bol}が渡される。
+@end defvar
+
+@defvar treesit-simple-indent-presets
+これは@code{treesit-simple-indent-rules}の@var{matcher}と@var{anchor}にたいするデフォルトのリスト。これらはそれぞれ@var{node}、@var{parent}、@var{bol}という3つの引数を受け取る関数である。利用できるデフォルト関数は以下のとおり:
+
+@ftable @code
+@item no-node
+このmatcherは@var{node}、@var{parent}、@var{bol}という3つの引数で呼び出される。@var{node}が@code{nil}
+(@var{bol}で始まるノードが存在せず、@var{bol}が空行や複数行の内部に@var{bol}がある場合などが該当)の場合には、マッチを表す非@code{nil}をリターンする。
+
+@item parent-is
+このmatcherは@var{type}という1つの引数で呼び出される関数をリターンする。この関数は@var{node}、@var{parent}、@var{bol}という3つの引数とともに呼び出されて、@var{parent}のタイプがregexpの@var{type}とマッチすれば非@code{nil}
+(マッチしたことを意味する)をリターンする。
+
+@item node-is
+このmatcherは@var{type}という1つの引数を受け取る関数。この関数は@var{node}、@var{parent}、@var{bol}という3つの引数とともに呼び出されて、@var{node}のタイプがregexpの@var{type}とマッチすれば非@code{nil}をリターンする。
+
+@item field-is
+このmatcherは@var{name}という1つの引数を受け取る関数。この関数は@var{node}、@var{parent}、@var{bol}という3つの引数とともに呼び出されて、@var{parent}の@var{node}のフィールド名がregexpの@var{name}とマッチすれば非@code{nil}をリターンする。
+
+@item query
+このmatcherは@var{query}という1つの引数を受け取る関数。この関数は@var{node}、@var{parent}、@var{bol}という3つの引数とともに呼び出されて、@var{query}で@var{parent}に問い合わせた場合に@var{node}をキャプチャすれば非@code{nil}をリターンする(@ref{Pattern
+Matching}を参照)。
+
+@item match
+このmatcherは@var{node-type}、@var{parent-type}、@var{node-field}、@var{node-index-min}、@var{node-index-max}という5つの引数とともに呼び出される関数。ここでリターンされた関数は@var{node}、@var{parent}、@var{bol}という3つの引数で呼び出される関数をリターンする。ここでリターンされた関数は@var{node}のタイプがregexpの@var{node-type}、@var{parent}のタイプがregexpの@var{parent-type}、@var{parent}の@var{node}のフィールド名がregexpの@var{node-field}、@var{node}のインデックスが兄弟ノード@var{node-index-min}と@var{node-index-max}の間にあれば非@code{nil}をリターンする。このmatcherは引数の値が@code{nil}であれば、その引数はチェックしない。たとえば親ノードとして@code{argument_list}をもつ最初の子ノードにマッチさせるには、以下のようにすればよい
+
+@example
+(match nil "argument_list" nil 0 0)
+@end example
+
+更に@var{node-type}は特別な値@code{null}でもよく、これは@var{node}の値が@code{nil}のときにマッチする。
+
+@item n-p-gp
+``node-parent-grandparent(ノード-親-祖父母)''の略。このmatcherは@var{node-type}、@var{parent-type}、@var{grandparent-type}という3つの引数を受け取る関数。これは@var{node}、@var{parent}、@var{bol}という3つの引数で呼び出されて(1)
+@var{node-type}が@var{node}'のタイプとマッチ、(2)
+@var{parent-type}が@var{parent}のタイプとマッチ (3)
+@var{grandparent-type}が@var{parent}の親のタイプという3つのマッチがすべて成り立てば非@code{nil}をリターンする関数をリターンする。この関数は@var{node-type}、@var{parent-type}、@var{grandparent-type}のいずれかが@code{nil}ならチェックを行わない。
+
+@item comment-end
+このmatcherは@var{node}、@var{parent}、@var{bol}という3つの引数で呼び出されて、コメント終了トークンｎ前にポイントがあれば非@code{nil}をリターンする関数。コメント終了トークンは@code{comment-end-skip}のregexpによって定義される。
+
+@item catch-all
+このmatcherは@var{node}、@var{parent}、@var{bol}という3つの引数で呼び出される関数。この関数はマッチを示すために常に非@code{nil}をリターンする。
+
+@item first-sibling
+このanchorは@var{node}、@var{parent}、@var{bol}という3つの引数とともに呼び出されて、@var{parent}の最初の子ノードの開始をリターンする関数。
+
+@item nth-sibling
+このanchorは@var{n}、オプションとして@var{named}という2つの引数を受け取る関数。@var{node}、@var{parent}、@var{bol}という3つｎ引数で呼び出されて、@var{parent}の@var{n}番目の開始をリターンする関数をリターンする。@var{named}が非@code{nil}なら、名前付きの子だけを考慮する(@ref{tree-sitter
+named node, named node}を参照)。
+
+@item parent
+このanchorは@var{node}、@var{parent}、@var{bol}という3つの引数とともに呼び出されて、@var{parent}の開始をリターンする関数。
+
+@item grand-parent
+このanchorは@var{node}、@var{parent}、@var{bol}という3つの引数とともに呼び出されて、@var{parent}の親の開始をリターンする関数。
+
+@item great-grand-parent
+このanchorは@var{node}、@var{parent}、@var{bol}という3つの引数とともに呼び出されて、@var{parent}の親の親の開始をリターンする関数。
+
+@item parent-bol
+このanchorは@var{node}、@var{parent}、@var{bol}という3つの引数とともに呼び出されて、@var{parent}の開始位置にある行の最初の非スペース文字をリターンする関数。
+
+@item standalone-parent
+このanchorは@var{node}、@var{parent}、@var{bol}という3つの引数で呼び出される関数。この関数は独自の行で始まるような@var{node}の最初の祖先(親、祖父母、etc)を探して、そのノードの開始をリターンする。``独自の行で始まる''とはそのノードが開始する行において、ノードの前に空白文字しか存在しないことを意味する。
+
+@item prev-sibling
+このanchorは@var{node}、@var{parent}、@var{bol}という3つの引数とともに呼び出されて、@var{node}の前の兄弟ノードの開始をリターンする関数。
+
+@item no-indent
+このanchorは@var{node}、@var{parent}、@var{bol}という3つの引数とともに呼び出されて、@var{node}の開始をリターンする関数。
+
+@item prev-line
+このanchorは@var{node}、@var{parent}、@var{bol}という3つの引数とともに呼び出されて、前の行の最初の必要空白文字をリターンする関数。
+
+@item column-0
+このanchorは@var{node}、@var{parent}、@var{bol}という3つの引数とともに呼び出されて、列0にあるカレント行先端をリターンする。
+
+@item comment-start
+このanchorは@var{node}、@var{parent}、@var{bol}という3つの引数とともに呼び出されて、コメント開始トークンの後の位置をリターンする。コメント開始トークンは正規表現@code{comment-start-skip}によって定義される。この関数は@var{parent}がコメントノードであるとみなす。
+
+@item prev-adaptive-prefix
+このanchorは@var{node}、@var{parent}、@var{bol}という3つの引数で呼び出される関数。前にある空ではない行の先頭にあるテキストにたいして、@code{adaptive-fill-regexp}とのマッチを試みる。マッチが存在すればマッチの終端、存在しなければ@code{nil}をリターンする。ただしカレント行がプレフィックス(例:
+@samp{-})で始まる場合には、前の行のプレフィックスと位置が揃うように、前の行のプレフィックスの開始をリターンする。このanchorはブロックコメントにたいして、@code{indent-relative}-*のような挙動のインデントを行う際に役に立つ。
+
+@end ftable
+@end defvar
+
+@heading インデント用のユーティリティー
+@cindex utility functions for parser-based indentation
+
+以下にパーサーベースのインデントルールを記述する助けとなるユーティリティー関数をいくつか挙げます。
+
+@deffn Command treesit-check-indent mode
+このコマンドはメジャーモード@var{mode}にたいするカレントバッファーのインデントをチェックする。この関数は@var{mode}に応じてカレントバッファーをインデントして、その結果をカレントのインデントと比較、その後に差分を表示するバッファーをポップアップする。(インデント対象の)正しいインデントはグリーン、カレントのインデントは赤のカラーで示される。  @end deffn
+
+インデントのルールを記述する際には、@code{treesit-inspect-mode}を使用するのも助けとなるでしょう(@ref{Language
+Grammar}を参照)。
+
+@node Desktop Save Mode
+@section Desktop Saveモード
+@cindex desktop save mode
+
+@dfn{Desktop Saveモード}とは、あるセッションから別のセッションへEmacs状態を保存する機能です。Desktop
+Saveモードの使用に関するユーザーレベルのコマンドについては、GNU Emacsマニュアルに記載されています(@ref{Saving Emacs
+Sessions,,, emacs, the GNU Emacs
+Manual}を参照)。バッファーでファイルをvisitしているモードでは、この機能を使うために何も行う必要はありません。
+
+ファイルをvisitしていないバッファーについて状態を保存するには、そのメジャーモードがバッファーローカル変数@code{desktop-save-buffer}を非@code{nil}値にバインドしなければなりません。
+
+@defvar desktop-save-buffer
+このバッファーローカル変数が非@code{nil}なら、デスクトップ保存時にそのバッファー状態がdesktopファイルに保存される。値が関数なら、その関数はデスクトップ保存時に引数@var{desktop-dirname}で呼び出されて、関数が呼び出されたバッファーの状態とともに関数の値がdesktopファイルに保存される。補助的な情報の一部としてファイル名がリターンされたとき、それらは以下を呼び出してフォーマットされること
+
+@example
+(desktop-file-name @var{file-name} @var{desktop-dirname})
+@end example
+
+@end defvar
+
+ファイルをvisitしていないバッファーがリストアされるようにするには、メジャーモードがその処理を行う関数を定義しなければならず、その関数は連想リスト@code{desktop-buffer-mode-handlers}にリストされなければならない。
+
+@defvar desktop-buffer-mode-handlers
+以下を要素にもつalist
+
+@example
+(@var{major-mode} . @var{restore-buffer-function})
+@end example
+
+関数@var{restore-buffer-function}は以下の引数リストで呼び出される
+
+@example
+(@var{buffer-file-name} @var{buffer-name} @var{desktop-buffer-misc})
+@end example
+
+この関数はリストアされたバッファーをリターンすること。ここで@var{desktop-buffer-misc}は、オプションで@code{desktop-save-buffer}にバインドされる関数がリターンする値。
+@end defvar

@@ -1,5 +1,5 @@
 @c This is part of the Emacs manual.
-@c Copyright (C) 2023 Free Software Foundation, Inc.
+@c Copyright (C) 2023--2024 Free Software Foundation, Inc.
 @c See file emacs.texi for copying conditions.
 @node Android
 @appendix Emacs and Android
@@ -143,11 +143,13 @@ that if that Emacs in turn does not start the Emacs server, subsequent
 attempts to open the file with the wrapper will fail.
 
 @cindex /content/by-authority directory, android
+@cindex /content/by-authority-named directory, android
   Some files are given to Emacs as ``content identifiers'' that the
 system provides access to outside the normal filesystem APIs.  Emacs
-uses a pseudo-directory named @file{/content/by-authority} to access
-those files.  Do not make any assumptions about the contents of this
-directory, or try to open files in it yourself.
+uses pseudo-directories named @file{/content/by-authority} and
+@file{/content/by-authority-named} to access those files.  Do not make
+any assumptions about the contents of these directories, or try to open
+files in it yourself.
 
   This feature is not provided on Android 4.3 and earlier, in which
 case such files are copied to a temporary directory before being
@@ -234,7 +236,7 @@ Document Providers}.)
 the (normally read-only) root directory named @file{content} or
 @file{assets}, you may want to access real files by these names if the
 Android installation in use has been customized.  These files will
-conflict with the aformentioned special directories, but can
+conflict with the aforementioned special directories, but can
 nevertheless be accessed by writing their names relative to the
 ``parent'' directory of the root directory, as so illustrated:
 @file{/../content}, @file{/../assets}.
@@ -258,7 +260,7 @@ at startup to symlink the application library directory to its
 traditional location within the parent of the app data directory.
 
   If Emacs is reinstalled and the location of the app library
-directory consequentially changes, that symlink will also be updated
+directory consequently changes, that symlink will also be updated
 to point to its new location the next time Emacs is started by the
 system.
 
@@ -297,8 +299,8 @@ on some proprietary versions of Android.
 @cindex /content/storage directory, Android
 
   Android 5.0 introduces a new sort of program, the ``document
-provider'': these programs are small programs that provide access to
-their own files outside both the asset manager and the Unix
+provider'': these programs are small services that provide access to
+their own files independently of the asset manager and the Unix
 filesystem.  Emacs supports accessing files and directories they
 provide, placing their files within the directory
 @file{/content/storage}.
@@ -309,12 +311,15 @@ first request the right to access it.  This is done by running the
 command (@pxref{M-x}) @code{android-request-directory-access}, which
 displays a file selection dialog.
 
-  If a directory is selected within this dialog, its contents are
+  If a directory is selected from this dialog, its contents are
 subsequently made available within a new directory named
-@file{/content/storage/@var{authority}/@var{id}}, where
-@var{authority} is the name of the document provider, and @var{id} is
-a unique identifier assigned to the directory by the document
-provider.
+@file{/content/storage/@var{authority}/@var{id}}, where @var{authority}
+is the name of the document provider, and @var{id} is a unique
+identifier assigned to the directory by the document provider.
+
+@findex android-relinquish-directory-access
+  Such a directory can be deleted once no longer required by providing
+its name to the command @code{android-relinquish-directory-access}.
 
   The same limitations applied to the @file{/assets} directory
 (@pxref{Android File System}) are applied when creating sub-processes
@@ -340,7 +345,7 @@ to its app data directory (@pxref{Android File
 System}.)@footnote{Except in cases where a ``shared user ID'' is
 specified and other applications signed using the same ``package
 signing key'' are installed, in which case Emacs runs as the same user
-and has access to the same files as each of the aformentioned
+and has access to the same files as each of the aforementioned
 applications.}
 
   Each application is also prohibited from accessing many system
@@ -409,15 +414,23 @@ Startup}) connect the Android system to another computer, and run:
 $ adb shell "settings put global settings_enable_monitor_phantom_procs false"
 @end example
 
+@cindex system language settings, Android
+  The ``Languages & Input'' preferences which apply to the operating
+system do not influence the C locale set for programs, but are taken
+into account by Emacs during startup: a locale name is generated from
+the selected language and regional variant and a language environment
+(@pxref{Language Environments}) is selected on that basis, which does
+not overwrite @code{LANG} or other locale-related environment
+variables.  The coding system for language environments set in this
+fashion is @code{utf-8-unix} without exception.
+
 @cindex C locale settings, Android
-  Emacs does not respect the locale configured for user applications
-in the system, for the selection of locales available there does not
-match that supplied by the C library.  When Emacs starts on Android
-5.0 or newer, the @code{LANG} environment variable is set to
-@code{en_US.utf8}, which induces subprocesses linked against the
-Android C library to print output sensibly.  Earlier versions of
-Android do not implement locales at all, on account of which the
-variable is set to @code{C} instead.
+  Instead, the @code{LANG} environment variable (@pxref{General
+Variables}) is set to @code{en_US.utf8} when Emacs starts on Android
+5.0 or newer, which induces subprocesses linked against the Android C
+library to print output sensibly.  Earlier versions of Android do not
+implement locales at all, and on that account, the variable is set to
+@code{C}.
 
 @cindex running emacs in the background, android
 @cindex emacs killed, android
@@ -466,33 +479,200 @@ version of Android being used:
 @itemize @bullet
 @item
 Under more or less recent releases of Android, such as Android 6.0 and
-later, Emacs only receives the following permissions upon
-installation:
+later, Emacs only receives the following permissions upon installation,
+subject to the presence or absence of individual permissions in the
+version of Android installed:
 
 @itemize @minus
 @item
-@code{android.permission.VIBRATE}
+@code{android.permission.ACCESS_ADSERVICES_AD_ID}
+@item
+@code{android.permission.ACCESS_ADSERVICES_ATTRIBUTION}
+@item
+@code{android.permission.ACCESS_ADSERVICES_CUSTOM_AUDIENCE}
+@item
+@code{android.permission.ACCESS_ADSERVICES_TOPICS}
+@item
+@code{android.permission.ACCESS_LOCATION_EXTRA_COMMANDS}
 @item
 @code{android.permission.ACCESS_NETWORK_STATE}
 @item
-@code{android.permission.INTERNET}
+@code{android.permission.ACCESS_NOTIFICATION_POLICY}
 @item
-@code{android.permission.SET_WALLPAPER}
+@code{android.permission.ACCESS_WIFI_STATE}
 @item
-@code{android.permission.NFC}
+@code{android.permission.AUTHENTICATE_ACCOUNTS}
 @item
-@code{android.permission.TRANSMIT_IR}
+@code{android.permission.BLUETOOTH}
 @item
-@code{android.permission.WAKE_LOCK}
+@code{android.permission.BLUETOOTH_ADMIN}
+@item
+@code{android.permission.BROADCAST_STICKY}
+@item
+@code{android.permission.CALL_COMPANION_APP}
+@item
+@code{android.permission.CHANGE_NETWORK_STATE}
+@item
+@code{android.permission.CHANGE_WIFI_MULTICAST_STATE}
+@item
+@code{android.permission.CHANGE_WIFI_STATE}
+@item
+@code{android.permission.CREDENTIAL_MANAGER_QUERY_CANDIDATE_CREDENTIALS}
+@item
+@code{android.permission.CREDENTIAL_MANAGER_SET_ALLOWED_PROVIDERS}
+@item
+@code{android.permission.CREDENTIAL_MANAGER_SET_ORIGIN}
+@item
+@code{android.permission.DELIVER_COMPANION_MESSAGES}
+@item
+@code{android.permission.DETECT_SCREEN_CAPTURE}
+@item
+@code{android.permission.DISABLE_KEYGUARD}
+@item
+@code{android.permission.ENFORCE_UPDATE_OWNERSHIP}
+@item
+@code{android.permission.EXPAND_STATUS_BAR}
+@item
+@code{android.permission.FLASHLIGHT}
 @item
 @code{android.permission.FOREGROUND_SERVICE}
 @item
+@code{android.permission.FOREGROUND_SERVICE_CAMERA}
+@item
+@code{android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE}
+@item
+@code{android.permission.FOREGROUND_SERVICE_DATA_SYNC}
+@item
+@code{android.permission.FOREGROUND_SERVICE_FILE_MANAGEMENT}
+@item
+@code{android.permission.FOREGROUND_SERVICE_HEALTH}
+@item
+@code{android.permission.FOREGROUND_SERVICE_LOCATION}
+@item
+@code{android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK}
+@item
+@code{android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION}
+@item
+@code{android.permission.FOREGROUND_SERVICE_MICROPHONE}
+@item
+@code{android.permission.FOREGROUND_SERVICE_PHONE_CALL}
+@item
+@code{android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING}
+@item
 @code{android.permission.FOREGROUND_SERVICE_SPECIAL_USE}
+@item
+@code{android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED}
+@item
+@code{android.permission.GET_PACKAGE_SIZE}
+@item
+@code{android.permission.GET_TASKS}
+@item
+@code{android.permission.HIDE_OVERLAY_WINDOWS}
+@item
+@code{android.permission.HIGH_SAMPLING_RATE_SENSORS}
+@item
+@code{android.permission.INTERNET}
+@item
+@code{android.permission.KILL_BACKGROUND_PROCESSES}
+@item
+@code{android.permission.MANAGE_ACCOUNTS}
+@item
+@code{android.permission.MANAGE_OWN_CALLS}
+@item
+@code{android.permission.MODIFY_AUDIO_SETTINGS}
+@item
+@code{android.permission.NFC}
+@item
+@code{android.permission.NFC_PREFERRED_PAYMENT_INFO}
+@item
+@code{android.permission.NFC_TRANSACTION_EVENT}
+@item
+@code{android.permission.PERSISTENT_ACTIVITY}
+@item
+@code{android.permission.QUERY_ALL_PACKAGES}
+@item
+@code{android.permission.READ_BASIC_PHONE_STATE}
+@item
+@code{android.permission.READ_INSTALL_SESSIONS}
+@item
+@code{android.permission.READ_NEARBY_STREAMING_POLICY}
+@item
+@code{android.permission.READ_PROFILE}
+@item
+@code{android.permission.READ_SOCIAL_STREAM}
+@item
+@code{android.permission.READ_SYNC_SETTINGS}
+@item
+@code{android.permission.READ_SYNC_STATS}
+@item
+@code{android.permission.READ_USER_DICTIONARY}
+@item
+@code{android.permission.RECEIVE_BOOT_COMPLETED}
+@item
+@code{android.permission.REORDER_TASKS}
+@item
+@code{android.permission.REQUEST_COMPANION_PROFILE_GLASSES}
+@item
+@code{android.permission.REQUEST_COMPANION_PROFILE_WATCH}
+@item
+@code{android.permission.REQUEST_COMPANION_RUN_IN_BACKGROUND}
+@item
+@code{android.permission.REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND}
+@item
+@code{android.permission.REQUEST_COMPANION_USE_DATA_IN_BACKGROUND}
+@item
+@code{android.permission.REQUEST_DELETE_PACKAGES}
+@item
+@code{android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS}
+@item
+@code{android.permission.REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE}
+@item
+@code{android.permission.REQUEST_PASSWORD_COMPLEXITY}
+@item
+@code{android.permission.RESTART_PACKAGES}
+@item
+@code{android.permission.RUN_USER_INITIATED_JOBS}
+@item
+@code{android.permission.SET_WALLPAPER}
+@item
+@code{android.permission.SET_WALLPAPER_HINTS}
+@item
+@code{android.permission.SUBSCRIBED_FEEDS_READ}
+@item
+@code{android.permission.SUBSCRIBED_FEEDS_WRITE}
+@item
+@code{android.permission.TRANSMIT_IR}
+@item
+@code{android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION}
+@item
+@code{android.permission.USE_BIOMETRIC}
+@item
+@code{android.permission.USE_CREDENTIALS}
+@item
+@code{android.permission.USE_EXACT_ALARM}
+@item
+@code{android.permission.USE_FINGERPRINT}
+@item
+@code{android.permission.USE_FULL_SCREEN_INTENT}
+@item
+@code{android.permission.VIBRATE}
+@item
+@code{android.permission.WAKE_LOCK}
+@item
+@code{android.permission.WRITE_PROFILE}
+@item
+@code{android.permission.WRITE_SMS}
+@item
+@code{android.permission.WRITE_SOCIAL_STREAM}
+@item
+@code{android.permission.WRITE_SYNC_SETTINGS}
+@item
+@code{android.permission.WRITE_USER_DICTIONARY}
 @end itemize
 
-Other permissions must be granted by the user through the system
-settings application.  Consult the manufacturer of your device for
-more details, as how to do this varies by device.
+Other permissions must be granted by the user from the system settings
+application.  Consult the manufacturer of your device for more details,
+as how to do this varies by device.
 
 @item
 On Android 5.1 and earlier, Emacs automatically receives the following
@@ -500,59 +680,139 @@ permissions it has requested upon being installed:
 
 @itemize @minus
 @item
-@code{android.permission.READ_CONTACTS}
-@item
-@code{android.permission.WRITE_CONTACTS}
-@item
-@code{android.permission.VIBRATE}
-@item
 @code{android.permission.ACCESS_COARSE_LOCATION}
 @item
-@code{android.permission.ACCESS_NETWORK_STATE}
+@code{android.permission.ACCESS_FINE_LOCATION}
 @item
-@code{android.permission.INTERNET}
+@code{android.permission.BODY_SENSORS}
 @item
-@code{android.permission.SET_WALLPAPER}
-@item
-@code{android.permission.READ_CALENDAR}
-@item
-@code{android.permission.WRITE_CALENDAR}
-@item
-@code{android.permission.READ_EXTERNAL_STORAGE}
-@item
-@code{android.permission.WRITE_EXTERNAL_STORAGE}
-@item
-@code{android.permission.SEND_SMS}
-@item
-@code{android.permission.RECEIVE_SMS}
-@item
-@code{android.permission.RECEIVE_MMS}
-@item
-@code{android.permission.WRITE_SMS}
-@item
-@code{android.permission.READ_SMS}
-@item
-@code{android.permission.NFC}
-@item
-@code{android.permission.TRANSMIT_IR}
-@item
-@code{android.permission.READ_PHONE_STATE}
-@item
-@code{android.permission.WAKE_LOCK}
-@item
-@code{android.permission.FOREGROUND_SEVICE}
-@item
-@code{android.permission.REQUEST_INSTALL_PACKAGES}
-@item
-@code{android.permission.REQUEST_DELETE_PACKAGES}
-@item
-@code{android.permission.SYSTEM_ALERT_WINDOW}
-@item
-@code{android.permission.RECORD_AUDIO}
+@code{android.permission.CALL_PHONE}
 @item
 @code{android.permission.CAMERA}
 @item
+@code{android.permission.CAPTURE_CONSENTLESS_BUGREPORT_ON_USERDEBUG_BUILD}
+@item
+@code{android.permission.GET_ACCOUNTS}
+@item
 @code{android.permission.POST_NOTIFICATIONS}
+@item
+@code{android.permission.PROCESS_OUTGOING_CALLS}
+@item
+@code{android.permission.READ_CALENDAR}
+@item
+@code{android.permission.READ_CALL_LOG}
+@item
+@code{android.permission.READ_CELL_BROADCASTS}
+@item
+@code{android.permission.READ_CONTACTS}
+@item
+@code{android.permission.READ_EXTERNAL_STORAGE}
+@item
+@code{android.permission.READ_PHONE_NUMBERS}
+@item
+@code{android.permission.READ_PHONE_STATE}
+@item
+@code{android.permission.READ_SMS}
+@item
+@code{android.permission.RECEIVE_MMS}
+@item
+@code{android.permission.RECEIVE_SMS}
+@item
+@code{android.permission.RECEIVE_WAP_PUSH}
+@item
+@code{android.permission.RECORD_AUDIO}
+@item
+@code{android.permission.REQUEST_INSTALL_PACKAGES}
+@item
+@code{android.permission.SEND_SMS}
+@item
+@code{android.permission.SMS_FINANCIAL_TRANSACTIONS}
+@item
+@code{android.permission.SYSTEM_ALERT_WINDOW}
+@item
+@code{android.permission.WRITE_CALENDAR}
+@item
+@code{android.permission.WRITE_CALL_LOG}
+@item
+@code{android.permission.WRITE_CONTACTS}
+@item
+@code{android.permission.WRITE_EXTERNAL_STORAGE}
+@item
+@code{android.permission.WRITE_SETTINGS}
+@item
+@code{android.permission.ACCESS_LOCATION_EXTRA_COMMANDS}
+@item
+@code{android.permission.ACCESS_NETWORK_STATE}
+@item
+@code{android.permission.ACCESS_WIFI_STATE}
+@item
+@code{android.permission.BLUETOOTH}
+@item
+@code{android.permission.BLUETOOTH_ADMIN}
+@item
+@code{android.permission.BROADCAST_STICKY}
+@item
+@code{android.permission.CHANGE_NETWORK_STATE}
+@item
+@code{android.permission.CHANGE_WIFI_MULTICAST_STATE}
+@item
+@code{android.permission.CHANGE_WIFI_STATE}
+@item
+@code{android.permission.DISABLE_KEYGUARD}
+@item
+@code{android.permission.EXPAND_STATUS_BAR}
+@item
+@code{android.permission.FLASHLIGHT}
+@item
+@code{android.permission.GET_PACKAGE_SIZE}
+@item
+@code{android.permission.GET_TASKS}
+@item
+@code{android.permission.INTERNET}
+@item
+@code{android.permission.KILL_BACKGROUND_PROCESSES}
+@item
+@code{android.permission.MODIFY_AUDIO_SETTINGS}
+@item
+@code{android.permission.NFC}
+@item
+@code{android.permission.PERSISTENT_ACTIVITY}
+@item
+@code{android.permission.QUERY_ALL_PACKAGES}
+@item
+@code{android.permission.READ_BASIC_PHONE_STATE}
+@item
+@code{android.permission.READ_SYNC_SETTINGS}
+@item
+@code{android.permission.READ_SYNC_STATS}
+@item
+@code{android.permission.READ_USER_DICTIONARY}
+@item
+@code{android.permission.RECEIVE_BOOT_COMPLETED}
+@item
+@code{android.permission.REORDER_TASKS}
+@item
+@code{android.permission.REQUEST_DELETE_PACKAGES}
+@item
+@code{android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS}
+@item
+@code{android.permission.REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE}
+@item
+@code{android.permission.RESTART_PACKAGES}
+@item
+@code{android.permission.SET_WALLPAPER}
+@item
+@code{android.permission.SET_WALLPAPER_HINTS}
+@item
+@code{android.permission.TRANSMIT_IR}
+@item
+@code{android.permission.VIBRATE}
+@item
+@code{android.permission.WAKE_LOCK}
+@item
+@code{android.permission.WRITE_SYNC_SETTINGS}
+@item
+@code{android.permission.WRITE_USER_DICTIONARY}
 @end itemize
 
 While most of these permissions are left unused by Emacs itself, they
@@ -563,49 +823,73 @@ example, the permission to access contacts may be useful for EUDC.
 @node Android Windowing
 @section The Android Window System
 
-  Android's window system is unusual, in that all windows are
-maximized or full-screen, and only one window can be displayed at a
-time.  On larger devices, the system permits simultaneously tiling up
-to four windows on the screen.
+  Android's window system is unusual in that all windows are reported to
+applications as maximized or full-screen, and, in the general case, only
+one window can be displayed at a time.  On larger devices, the system
+permits simultaneously tiling up to four windows on the screen, though
+in emulators or installations configured for ``desktop'' systems stacks
+freely resizable windows as other desktop window managers do.
 
-  Windows on Android do not exist indefinitely after they are created.
-Instead, the system may choose to close windows that are not on screen
-in order to conserve memory, with the assumption that the program will
-save its contents to disk and restore them later, when the user asks
-for it to be opened again.  As this is obviously not possible with
-Emacs, Emacs separates the resources associated with a frame from its
-system window.
+  Windows, or, in system nomenclature, activities, do not exist
+indefinitely after creation, as the system may choose to pause windows
+that are not visible in order to conserve memory, on the assumption that
+the program will save its contents to disk, to be restored when the user
+selects those windows from the task switcher.  Furthermore, a window is
+created by the operating system at Emacs startup that is afforded
+special treatment, which Emacs is expected to adopt.
 
-  Each system window created (including the initial window created
-during Emacs startup) is appended to a list of windows that do not
-have associated frames.  When a frame is created, Emacs looks up any
-window within that list, and displays the contents of the frame
-within; if there is no window at all, then one is created.  Likewise,
-when a new window is created by the system, Emacs places the contents
-of any frame that is not already displayed within a window inside.
-When a frame is closed, the corresponding system window is also
-closed.  Upon startup, the system creates a window itself (within
-which Emacs displays the first window system frame shortly
-thereafter.)  Emacs differentiates between that window and windows
-created on behalf of other frames to determine what to do when the
-system window associated with a frame is closed:
+  Emacs approaches window management with the general objective of
+minimizing differences in frame behavior exposed to Lisp from that of
+frames on ordinary window systems, such as X Windows; the degree to
+which this goal is actually attained varies by the availability of
+facilities for window management in the version of Android where it is
+installed, and operating system policy towards inactive windows.  When
+it is unavoidable that concessions should be made to such policy, Emacs
+prefers destroying frames to retaining ones with no activities to
+display them, unless such a frame is the initial frame and therefore
+displayed in the activity created at startup, which it is possible to
+open and identify so long as Emacs is yet executing.
+
+@cindex frames and windows, Android 5.0
+  Android 5.0 and later support an accurate implementation of window
+management where frames hold a one-to-one relation to the activities in
+which they are displayed, enabling deletion of activities in the task
+switcher to directly affect the frames concerned, and vice versa.  There
+are just two exceptions:
 
 @itemize @bullet
 @item
-When the system closes the window created during application startup
-in order to save memory, Emacs retains the frame for when that window
-is created later.
+After the system pauses an activity that remains in the task switcher in
+response to inactivity, removing it from the task switcher while it
+remains in its inactive state will not delete the frame inside, as Emacs
+is not notified of the deletion of its activities in such circumstances.
+The frame will be deleted upon the next window management operation that
+prompts an examination of the list of live windows.  Likewise, an
+inactive activity displaying a frame will not be immediately deleted
+with its frame, but will be if it is selected from the window list or
+upon another examination of the window list.
 
 @item
-When the user closes the window created during application startup,
-and the window was not previously closed by the system in order to
-save resources, Emacs deletes any frame displayed within that window.
-
-@item
-When the user or the system closes any window created by Emacs on
-behalf of a specific frame, Emacs deletes the frame displayed within
-that window.
+Any frame besides the initial frame might be deleted after 4 to 6 hours
+of inactivity in the background, if it is removed by the system in
+``trimming'' the task switcher of excess, and presumably unwanted,
+tasks; the initial frame is exempt from this treatment because it can be
+reopened otherwise than from the task switcher, but as deletion by this
+mechanism is indistinguishable from legitimate user action to remove
+activities from the task switcher, the latter will also be ignored by
+the initial frame after a 4-hour interval elapses from the time of last
+activity.
 @end itemize
+
+@cindex frames and windows, Android 4.4
+@cindex frames and windows, Android 2.2
+  Android 4.4 and earlier provide considerably inferior interfaces
+inadequate for a complete implementation of window management.  On such
+systems, Emacs substitutes a fairly primitive mechanism where all but
+the initial frame are deleted when their activities are paused, only a
+single activity (not counting the activity created at startup) is
+visible at a time, and unattached frames are displayed in the first
+unoccupied activity available.
 
 @cindex windowing limitations, android
 @cindex frame parameters, android
@@ -664,13 +948,16 @@ application via cut-and-paste.
 
 @vindex android-pass-multimedia-buttons-to-system
 @cindex volume/multimedia buttons, Android
-  The volume keys are normally reserved by Emacs and used to provide
-the ability to quit Emacs without a physical keyboard
-(@pxref{On-Screen Keyboards}.)  However, if you want them to adjust
-the volume instead, you can set the variable
+  The volume keys are normally reserved by Emacs and used to provide the
+ability to quit Emacs without a physical keyboard (@pxref{On-Screen
+Keyboards}).  However, if you want them to adjust the volume instead,
+you can set the variable
 @code{android-pass-multimedia-buttons-to-system} to a non-@code{nil}
 value; note that you will no longer be able to quit Emacs using the
-volume buttons in that case.
+volume buttons in that case, and that it is generally easier to activate
+the notification shade or another interface that momentarily deprives
+Emacs of the keyboard focus while the volume buttons are being
+depressed.
 
 @cindex dialog boxes, android
   Emacs is unable to display dialog boxes (@pxref{Dialog Boxes}) while
@@ -718,12 +1005,31 @@ customized through altering the variable
 @code{android-keyboard-bell-duration} to any value between @code{10}
 and @code{1000}.
 
+@vindex android-display-planes
+@cindex visual class, Android
+@cindex display color space, Android
+  Color-related characteristics of the display are not automatically
+detectable on Android, so the variable @code{android-display-planes}
+should be configured to a suitable value if Emacs is to realize faces
+and images in a manner consistent with the true visual attributes of a
+grayscale or monochrome display: to @code{8} for the former class of
+display, and @code{1} for the latter, which will, respectively, force
+all colors to be rendered in 256 grays, or in monochrome.  As this
+variable is processed at the time the display connection is established,
+customizations will not take effect unless they be performed from
+@code{early-init.el} (@pxref{Early Init File}).
+
+  The value of this variable does not affect anti-aliasing in the font
+driver, as monochrome displays nevertheless expect Emacs to provide
+antialiased text, which they receive after it is processed into bitmap
+data by the display driver.
+
 @node Android Fonts
 @section Font Backends and Selection under Android
 @cindex fonts, android
 
-  Emacs supports two font backends under Android: they are
-respectively named @code{sfnt-android} and @code{android}.
+  Emacs supports two font backends under Android: they are respectively
+named @code{sfnt-android} and @code{android}.
 
   Upon startup, Emacs enumerates all the TrueType format fonts in the
 directories @file{/system/fonts} and @file{/product/fonts}, and the

@@ -14,6 +14,7 @@ texi2any --html \
 	 --output=html/ \
 	 -c DATE_IN_HEADER=1 \
 	 -c PRE_BODY_CLOSE="This page has generated for branch:${GITHUB_REF_NAME}, commit:${GITHUB_SHA} to check Japanese translation." elisp-ja.texi
+cp -f elisp_type_hierarchy.jpg html/
 cd -;
 
 git config --global user.email "ayanokoji.takesi@gmail.com"

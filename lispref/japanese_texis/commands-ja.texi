@@ -1,0 +1,3025 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2024 Free Software
+@c Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+@node Command Loop
+@chapter コマンドループ
+@cindex editor command loop
+@cindex command loop
+
+  Emacsを実行すると、ほぼ即座に@dfn{エディターコマンドループ(editor command
+loop)}に移行します。このループはキーシーケンスを読み取り、それらの定義を実行して結果を表示します。このチャプターではこれらが行われる方法と、Lispプログラムがこれらを行えるようにするサブルーチンを説明します。
+
+@menu
+* Command Overview::         コマンドループがコマンドを読み取る方法。
+* Defining Commands::        関数が引数を読み取る方法を指定する。
+* Interactive Call::         引数を読み取るようにコマンドを呼び出す。
+* Distinguish Interactive::  インタラクティブな呼び出しとコマンドを区別する。
+* Command Loop Info::        検証用にコマンドループによりセットされる変数。
+* Adjusting Point::          コマンドの後にポイント位置を調整する。
+* Input Events::             入力を読み取るとき、入力がどのように見えるか。
+* Reading Input::            キーボードやマウスからの入力イベントを読み取る方法。
+* Special Events::           即座かつ個別に処理されるイベント。
+* Waiting::                  ユーザー入力または経過時間の待機。
+* Quitting::                 @kbd{C-g}が機能する方法。quitのcatchや延期する方法。
+* Prefix Command Arguments::  コマンドがプレフィクス引数が機能するようにセットするための方法。
+* Recursive Editing::        再帰編集への移行と、なぜ通常は再帰編集を行うべきでないのか。
+* Disabling Commands::       コマンドループが無効なコマンドを扱う方法。
+* Command History::          コマンドヒストリーがセットアップされる方法と、どのようにアクセスされるか。
+* Keyboard Macros::          キーボードマクロが実装される方法。
+@end menu
+
+@node Command Overview
+@section コマンドループの概要
+
+  コマンドループが最初に行わなければならないのはキーシーケンスの読み取りです。キーシーケンスはコマンドに変換される入力イベントのシーケンスです。これは関数@code{read-key-sequence}を呼び出すことによって行われます。Lispプログラムもこの関数を呼び出すことができます(@ref{Key
+Sequence Input}を参照)。これらはより低レベルの@code{read-key}や@code{read-event}
+(@ref{Reading One Event})で入力を読み取ったり、@code{discard-input} (@ref{Event Input
+Misc}を参照)で保留中の入力を無視することもできます。
+
+  キーシーケンスはカレントでアクティブなキーマップを通じてコマンドに変換されます。これが行われる方法については@ref{Key
+Lookup}を参照してください。結果はキーボードマクロかインタラクティブに呼び出し可能な関数になります。キーが@kbd{M-x}なら他のコマンドの名前を読み取って、それを呼び出します。これはコマンド@code{execute-extended-command}
+(@ref{Interactive Call}を参照)により行われます。
+
+  コマンドの実行に先立ち、Emacsはアンドゥ境界(undo
+boundary)を作成するために@code{undo-boundary}を実行します。@ref{Maintaining Undo}を参照してください。
+
+  コマンドを実行するために、Emacsはまず@code{command-execute}を呼び出してコマンドの引数を読み取ります(@ref{Interactive
+Call}を参照)。Lispで記述されたコマンドについては、@code{interactive}指定で引数を読み取る方法を指定します。これはプレフィクス引数(@ref{Prefix
+Command
+Arguments}を参照)を使用したり、ミニバッファー内(@ref{Minibuffers}を参照)で確認を求めて読み取りを行うかもしれません。たとえばコマンド@code{find-file}には@code{interactive}指定があり、これはミニバッファーを使用してファイル名を読み取ることを指定します。@code{find-file}の関数bodyはミニバッファーを使用しないので、Lispコードから関数として@code{find-file}を呼び出す場合には、通常のLisp関数引数としてファイル名を文字列で与えなければなりません。
+
+  コマンドがキーボードマクロ(文字列やベクター)なら、Emacsは@code{execute-kbd-macro}を使用してそれを実行します(@ref{Keyboard
+Macros}を参照)。
+
+@defvar pre-command-hook
+このノーマルフックはコマンドを実行する前に、エディターコマンドループにより実行される。その際、@code{this-command}には実行しようとするコマンドが含まれ、@code{last-command}には前のコマンドが記述される。@ref{Command
+Loop Info}を参照のこと。
+@end defvar
+
+@defvar post-command-hook
+このノーマルフックはコマンドを実行した後(quitやエラーにより早期に終了させられたコマンドを含む)に、エディターコマンドループにより実行される。その際、@code{this-command}は正に実行されたコマンド、@code{last-command}は前に実行されたコマンドを参照する。
+
+このフックはEmacsが最初にコマンドループにエンターしたときにも実行される(その時点では@code{this-command}と@code{last-command}はいずれも@code{nil})。
+@end defvar
+
+  @code{pre-command-hook}と@code{post-command-hook}の実行中は、quitは抑制されます。これらのフックのいずれかを実行中にエラーが発生しても、そのエラーはフックの実行を終了させません。そのかわりにエラーは黙殺されて、エラーが発生した関数はそのフックから取り除かれます。
+
+  Emacsサーバー(@ref{Emacs Server,,, emacs, The GNU Emacs
+Manual}を参照)に届くリクエストは、キーボードコマンドが行うのと同じように、これらの2つのフックを実行します。
+
+  バッファーのテキストに非常に長い行が含まれている場合には、これら2つのフックはあたかもポイント周辺の一部にナローイングされて、@code{long-line-optimizations-in-command-hooks}のラベルが付された@code{with-restriction}フォーム(@ref{Narrowing}を参照)の内部であるかのように呼び出されることに注意してください。
+
+@node Defining Commands
+@section コマンドの定義
+@cindex defining commands
+@cindex commands, defining
+@cindex functions, making them interactive
+@cindex interactive function
+
+  スペシャルフォーム@code{interactive}はLisp関数をコマンドに変更します。@code{interactive}フォームは関数bodyのトップレベルに置かなければならず、通常はbody内の最初のフォームとして記述されます。これはラムダ式(@ref{Lambda
+Expressions}を参照)と@code{defun} (@ref{Defining
+Functions}を参照)の両方を受け入れます。このフォームはその関数が実際に実行される間は何も行いません。このフォームの存在はフラグとしての役割りをもち、Emacsコマンドループにたいしてその関数がインタラクティブに呼び出せることを告げます。@code{interactive}フォームの引数はインタラクティブな呼び出しが引数を読み取る方法を指定します。
+
+@cindex @code{interactive-form} property
+  @code{interactive}フォームのかわりに、関数シンボルの@code{interactive-form}プロパティで指定されることもあります。このプロパティが非@code{nil}値なら、関数body内の@code{interactive}フォームより優先されます。この機能はほとんど使用されません。
+
+@anchor{The interactive-only property}
+@cindex @code{interactive-only} property
+  インタラクティブに呼び出されることだけを意図していて、決してLispから直接呼び出されない関数が時折あります。この場合には、直接あるいは@code{declare}
+(@ref{Declare
+Form}を参照)を通じて、その関数の@code{interactive-only}プロパティに非@code{nil}を与えます。これにより、そのコマンドがLispから呼び出されるとバイトコンパイラーが警告を発します。@code{describe-function}の出力にはこれに類似する情報が含まれます。このプロパティの値には文字列、@code{t}、または任意のシンボルを指定できます。文字列なら、それはバイトコンパイラーによる警告内で直接使用されます(最初は大文字でなくピリオドで終端される文字列であること。たとえば@code{"use
+(system-name) instead."})。シンボルなら、それはLispコード内で使用されるかわりの関数です。
+
+ジェネリック関数(@ref{Generic
+Functions}を参照)に@code{interactive}フォームを追加してコマンドにすることはできません。
+
+@menu
+* Using Interactive::        @code{interactive}にたいする一般的なルール。
+* Interactive Codes::        さまざまな方法で引数を読み取る標準的な文字のコード。
+* Interactive Examples::     インタラクティブ引数を読み取る方法の例。
+* Command Modes::            特定モード用コマンドの指定。
+* Generic Commands::         コマンド選択肢からの選択。
+@end menu
+
+@node Using Interactive
+@subsection @code{interactive}の使用
+@cindex arguments, interactive entry
+@cindex interactive spec, using
+
+  このセクションでは、Lisp関数をインタラクティブに呼び出し可能なコマンドにする@code{interactive}フォームの記述方法と、コマンドの@code{interactive}フォームの検証方法について説明します。
+
+@defspec interactive &optional arg-descriptor &rest modes
+このスペシャルフォームは関数がコマンドであり、したがって(@kbd{M-x}を通じて、またはそのコマンドにバインドされたキーシーケンスをエンターすることにより)インタラクティブに呼び出すことができることを宣言する。引数@var{arg-descriptor}は、そのコマンドがインタラクティブに呼び出されたときに引数を計算する方法を宣言する。
+
+コマンドは他の関数と同じようにLisp関数から呼び出されるかもしれないが、その場合には呼び出し側は引数を提供して、@var{arg-descriptor}は効果をもたない。
+
+@cindex @code{interactive-form}, symbol property
+@code{interactive}フォームは関数body内のトップレベルに置くか、関数シンボルの@code{interactive-form}プロパティ((@ref{Symbol
+Properties})を参照)になければならない。これはコマンドループが関数を呼び出す前にinteractiveフォームを調べることにより効果をもつ(@ref{Interactive
+Call}を参照)。一度関数が呼び出されると関数body内のすべてのフォームが実行される。このときbody内に@code{interactive}フォームが出現しても、そのフォームは引数の評価さえされず単に@code{nil}をリターンする。
+
+@var{modes}リストではコマンドの使用を意図したモードを指定できる。@var{modes}指定の効果と使用するタイミングに関する詳細は@ref{Command
+Modes}を参照のこと。
+
+慣例により@code{interactive}フォームは関数body内の最初のトップレベルフォームとするべきである。@code{interactive}フォームがシンボルの@code{interactive-form}プロパティと関数bodyの両方に存在する場合には前者が優先される。@code{interactive-form}フォームは既存の関数にinteractiveフォームを追加したり、その関数を再定義することなく引数をインタラクティブに処理する方法を変更するために使用できる。
+@end defspec
+
+引数@var{arg-descriptor}は以下の3つの可能性があります:
+
+@itemize @bullet
+@item
+省略または@code{nil}ならコマンドは引数なしで呼び出される。コマンドが1つ以上の引数を要求する場合は即座にエラーとなる。
+
+@item
+文字列なら、その文字列の内容は改行で区切られた要素シーケンスであり、1つの要素が1つの引数に対応する@footnote{いくつかの要素は実際に2つの引数を提供します。}。各要素はコード文字(@ref{Interactive
+Codes}を参照)と、オプションでその後のプロンプト(コード文字として使用される文字やコード文字としては無視されるものもある)により構成される。以下は例である:
+
+@smallexample
+(interactive "P\nbFrobnicate buffer: ")
+@end smallexample
+
+@noindent
+コード文字@samp{P}はそのコマンドの1つ目の引数をrawコマンドプレフィクス(@ref{Prefix Command
+Arguments}を参照)にセットする。@samp{bFrobnicate buffer: }は、ユーザーに@samp{Frobnicate
+buffer: }のプロンプトを示して既存のバッファーの名前の入力を促し、これは2つ目かつ最後の引数になる。
+
+プロンプト文字列には、プロンプト内の前の引数(1つ目の引数から始まる)の値を含めるために@samp{%}を使用できる。これは@code{format-message}
+(@ref{Formatting
+Strings}を参照)を使用して行われる。たとえば以下は既存のバッファーの名前を読み取って、その後にそのバッファーに与える新たな名前を読み取る例である:
+
+@smallexample
+@group
+(interactive "bBuffer to rename: \nsRename buffer %s to: ")
+@end group
+@end smallexample
+
+@cindex @samp{*} in @code{interactive}
+@cindex read-only buffers in interactive
+文字列の先頭に@samp{*}がある場合、そのバッファーが読み取り専用ならエラーがシグナルされる。
+
+@cindex @samp{@@} in @code{interactive}
+文字列の先頭が@samp{@@}で、そのコマンドの呼び出しに使用されたキーシーケンスに何らかのマウスイベントが含まれる場合は、そのコマンドを実行する前に、それらのうち最初のイベントに結びつくウィンドウが選択される。
+
+@cindex @samp{^} in @code{interactive}
+@cindex shift-selection, and @code{interactive} spec
+文字列の先頭が@samp{^}で、そのコマンドが@dfn{シフト転換(shift-translation)}を通じて呼び出された場合は、そのコマンドを実行する前にマークをセットして一時的にリージョンをアクティブにするか、すでにアクティブなリージョンを拡張する。コマンドがシフト転換なしで呼び出されて、リージョンが一時的にアクティブな場合は、コマンドを実行する前にそのリージョンを非アクティブにする。シフト転換は@code{shift-select-mode}によりユーザーレベルで制御される。@ref{Shift
+Selection,,, emacs, The GNU Emacs Manual}を参照のこと。
+
+@samp{*}、@samp{@@}、@code{^}は一緒に使用でき、その場合は順序に意味はない。実際の引数の読み取りは残りのプロンプト文字列(@samp{*}、@samp{@@}、@code{^}以外の最初の文字以降)により制御される。
+
+@item
+文字列以外のLisp式なら、そのコマンドに渡す引数リストを取得するために評価されるフォームである。このフォームは通常はユーザーから入力を読み取るためにさまざまな関数を呼び出し、そのためにほとんどの場合はミニバッファー(@ref{Minibuffers}を参照)を通じてか、キーボードから直接読み取りを行う(@ref{Reading
+Input}を参照)。
+
+引数値としてポイントやマークを提供するのも一般的だが、何かを行い@emph{かつ}(ミニバッファー使用の有無に関わらず)入力を読み取る場合には、読み取りの前にポイント値またはマーク値の整数を確実に取得しておくこと。カレントバッファーはサブプロセスの出力を受信するかもしれず、コマンドが入力を待つ間にサブプロセス出力が到着すると、ポイントやマークの再配置が起こり得る。
+
+以下は行っては@emph{いけない}例である:
+
+@smallexample
+(interactive
+ (list (region-beginning) (region-end)
+       (read-string "Foo: " nil 'my-history)))
+@end smallexample
+
+@noindent
+これにたいして以下はキーボード入力を読み取った後にポイントとマークを調べることにより、上記の問題を避ける例である:
+
+@smallexample
+(interactive
+ (let ((string (read-string "Foo: " nil 'my-history)))
+   (list (region-beginning) (region-end) string)))
+@end smallexample
+
+@strong{警告:}
+引数値にはプリントや読み取りが不可能なデータ型を含めないこと。いくつかの機能は後続のセッションに読み込ませるために@code{command-history}をファイルに保存する。コマンドの引数に@samp{#<@dots{}>}構文を使用してプリントされるデータ型が含まれていると、それらの機能は動作しなくなるだろう。
+
+しかしこれには少数の例外がある。@code{(point)}、@code{(mark)}、@code{(region-beginning)}、@code{(region-end)}などの一連の式に限定して使用することに問題はない。なぜならEmacsはこれらを特別に認識して、コマンドヒストリー内に(値ではなく)その式を配置すからである。記述した式がこれらの例外に含まれるかどうか確認するには、コマンドを実行した後に@code{(car
+command-history)}を調べればよい。
+@end itemize
+
+@cindex examining the @code{interactive} form
+@defun interactive-form function
+この関数は@var{function}の@code{interactive}フォームをリターンする。@var{function}がインタラクティブに呼び出し可能な関数(@ref{Interactive
+Call}を参照)なら、値はそのコマンドの引数を計算する方法を指定する@code{interactive}フォーム(@code{(interactive
+@var{spec})})である。それ以外なら値は@code{nil}。@var{function}がシンボルなら、そのシンボルの関数定義が使用される。OClosureで呼び出された場合には、処理はジェネリック関数@code{oclosure-interactive-form}に委譲される。
+@end defun
+
+@defun oclosure-interactive-form function
+この関数は@code{interactive-form}と同様にコマンドを受け取り、そのインタラクティブなフォームをリターンする。これがジェネリック関数であること、そして@var{function}がOClosureのときだけ呼び出される点が異なる。この関数の目的は一部のOClosureタイプ(@ref{OClosures}を参照)にたいしてそれらのスロットの1つにインタラクティブフォームを格納するのではなく、動的なインタラクティブフォームの計算を可能にすることにある。
+
+これはたとえばすべての@code{kmacro}は同じインタラクティブフォームを共有するので、@code{kmacro}に用いることでメモリーサイズを削減できる。インタラクティブフォームが関数のコンポーネントのインタラクティブフォームから計算される@code{advice}関数においても、いずれかのコンポーネントが再定義された際の計算を更に遅延でき、かつインタラクティブフォームをより正確に調整できる。
+@end defun
+
+@node Interactive Codes
+@subsection @code{interactive}にたいするコード文字
+@cindex interactive code description
+@cindex description for interactive codes
+@cindex codes, interactive, description of
+@cindex characters for interactive codes
+
+  ここで説明されているコード文字には、以下で定義されるいくつかのキーワードが含まれています:
+
+@table @b
+@item Completion
+@cindex interactive completion
+補完を提供する。@key{TAB}、@key{SPC}、@key{RET}は@code{completing-read}
+(@ref{Completion}を参照)を使用して引数を読み取って名前の補完を行う。@kbd{?}で利用可能な補完リストを表示する。
+
+@item Existing
+既存オブジェクトの名前を要求する。無効な名前は受け付けられない。カレント入力が有効でなければ、ミニバッファーをexitするコマンドはexitしない。
+
+@item Default
+@cindex default argument string
+ユーザーがテキストを何もエンターしなければ、ある種のデフォルト値が使用される。デフォルトはコード文字に依存する。
+
+@item No I/O
+このコード文字は入力を読み取らずに引数を計算する。したがってプロンプト文字列を使用せず、与えられたプロンプト文字列は無視される。
+
+たとえそのコード文字がプロンプト文字列を使用しなくても、それが文字列内で最後のコード文字でなければ、その後に改行を付加しなければならない。
+
+@item Prompt
+コード文字の直後にプロンプトが続く。プロンプトの終端は文字列の終端、または改行。
+
+@item Special
+このコード文字はインタラクティブ文字列の先頭にあるときのみ意味があり、プロンプトと改行を要求しない。単一の独立した文字。
+@end table
+
+@cindex reading interactive arguments
+  以下は@code{interactive}で使用されるコード文字です:
+
+@table @samp
+@item *
+カレントバッファーが読み取り専用ならエラーをシグナルする。[Special]
+
+@item @@
+このコマンドを呼び出したキーシーケンス内の最初のマウスイベントに関連するウィンドウを選択する。[Special]
+
+@item ^
+シフト転換を通じてコマンドが呼び出された場合はコマンドを実行する前に、マークをセットして一時的にリージョンをアクティブにするか、すでにリージョンがアクティブならリージョンを拡張する。シフト転換を通じずにコマンドが呼び出されて、リージョンが一時的にアクティブならコマンドを実行する前にそのリージョンを非アクティブにする。[Special]
+
+@item a
+関数名(@code{fboundp}を満足するシンボル)。[Existing]、[Completion]、[Prompt]
+
+@item b
+既存バッファーの名前。デフォルトではカレントバッファー(@ref{Buffers}を参照)の名前を使用する。[Existing]、[Completion]、[Default]、[Prompt]
+
+@item B
+バッファー名。そのバッファーが存在する必要はない。デフォルトではカレントバッファーではなくもっとも最近使用されたバッファーの名前を使用する。[Completion]、[Default]、[Prompt]
+
+@item c
+文字。カーソルはエコーエリアに移動しない。[Prompt]
+
+@item C
+コマンド名(@code{commandp}を満足するシンボル)。[Existing]、[Completion]、[Prompt]
+
+@item d
+@cindex position argument
+ポイント位置の整数(@ref{Point}を参照)。[No I/O]
+
+@item D
+ディレクトリー。デフォルトはカレントバッファーのカレントのデフォルトディレクトリー@code{default-directory} (@ref{File
+Name Expansion}を参照)。[Existing]、[Completion]、[Default]、[Prompt]
+
+@item e
+そのコマンドを呼び出したキーシーケンス内の1つ目か2つ目の非キーボードイベント。より正確には、@samp{e}はリストとしてイベントを取得するので、リスト内のデータを調べることができる。@ref{Input
+Events}を参照のこと。[No I/O]
+
+@samp{e}はマウスイベント、および特別なシステムイベント(@ref{Misc
+Events}を参照)にたいして使用する。コマンドが受け取るイベントリストは、そのイベントに依存する。@ref{Input
+Events}ではそれぞれのイベントのリスト形式を、対応するサブセクションでそれぞれ説明しているので参されたい。
+
+1つのコマンドのinteractive仕様の中で@samp{e}を複数回使用できる。そのコマンドを呼び出したキーシーケンスがイベント@var{n}(リスト)をもつなら、@samp{e}の@var{n}番目がそのイベントを提供する。フンクションキーや@acronym{ASCII}文字のようなリスト以外のイベントは、@samp{e}に関連するイベントとしてカウントされない。
+
+@item f
+既存ファイルのファイル名(@ref{File Names}を参照)。デフォルト値の詳細については@ref{Reading File
+Names}を参照のこと。[Existing]、[Completion]、[Default]、[Prompt]
+
+@item F
+ファイル名。ファイルが存在している必要はない。[Completion]、[Default]、[Prompt]
+
+@item G
+ファイル名。ファイルが存在している必要はない。ユーザーがディレクトリー名だけをエンターしたら値はそのディレクトリー名となり、そのディレクトリー名にファイル名は追加されない。[Completion]、[Default]、[Prompt]
+
+@item i
+無関係な引数。このコード文字は引数値として常に@code{nil}を与える。[No I/O]
+
+@item k
+キーシーケンス(@ref{Key
+Sequences}を参照)。これはカレントキーマップ内でコマンド(または未定義のコマンド)が見つかるまで、イベントを読み取り続ける。キーシーケンス引数は文字列かベクターで表される。カーソルはエコーエリアに移動しない。[Prompt]
+
+@samp{k}が(マウスの)down-eventで終わるキーシーケンスを読み取ると、後続の(マウスの)up-eventも読み取ってそれを廃棄する。コード文字@samp{U}によりup-eventへのアクセスを得られる。
+
+この種の入力は@code{describe-key}や@code{keymap-global-set}のようなコマンドにより使用される。
+
+@item K
+@code{keymap-set}のような関数の入力として使用されるフォーム上のキーシーケンス。これは@samp{k}と同じように機能するが、キーシーケンス内の最後の入力イベントにたいして、通常は(必要なら)使用される未定義キーから定義済みキーへの変換(@ref{Key
+Sequence
+Input}を参照)を抑制する。そのためこのフォームは、通常はコマンドにバインドするために新たなキーシーケンスの入力を求める際に使用される。
+
+@item m
+@cindex marker argument
+マーク位置の整数。[No I/O]
+
+@item M
+任意のテキスト。ミニバッファー内でカレントバッファーの入力メソッド(@ref{Input Methods,,, emacs, The GNU Emacs
+Manual}を参照)を使用して読み取りを行い、それを文字列でリターンする。[Prompt]
+
+@item n
+数字。ミニバッファーで読み取られる。入力が数字でなければユーザーは再試行する必要がある。@samp{n}は決してプレフィクス引数を使用しない。[Prompt]
+
+@item N
+数引数(numeric prefix
+argument)。ただしプレフィクス引数がなければ@kbd{n}のように数字を読み取る。値は常に数字。@ref{Prefix Command
+Arguments}を参照のこと。[Prompt]
+
+@item p
+@cindex numeric prefix argument usage
+数引数(小文字の@samp{p}であることに注意)。[No I/O]
+
+@item P
+@cindex raw prefix argument usage
+rawプレフィクス引数(大文字の@samp{P}であることに注意)。[No I/O]
+
+@item r
+@cindex region argument
+2つの数引数(ポイントとマーク)。小さいほうが先。これは1つではなく連続する2つの引数を指定する唯一のコード文字である。コマンド呼び出し時にカレントなバッファーにマークがセットされていなければエラーをシグナルする。Transient
+Markモード(@ref{The
+Mark}を参照)がオン(デフォルト)かつユーザーオプション@code{mark-even-if-inactive}が@code{nil}の場合には、たとえマークが@emph{セット}されていても非アクティブならEmacsはエラーをシグナルする。[No
+I/O]
+
+@item s
+任意のテキスト。ミニバッファー内で読み取りを行って文字列としてリターンする(@ref{Text from
+Minibuffer}を参照)。@kbd{C-j}か@key{RET}で入力を終端する(これらの文字を入力に含めるために@kbd{C-q}を使用できる)。[Prompt]
+
+@item S
+intern済みのシンボル。名前はミニバッファー内で読み取られる。@kbd{C-j}か@key{RET}で入力を終端する。ここでは通常はシンボルを終端するその他の文字(たとえば空白文字、丸カッコ、角カッコ)では終端されない。[Prompt]
+
+@item U
+キーシーケンスか@code{nil}。@samp{k}(または@samp{K})が読み取った後に、(もしあれば)捨てられる(マウスの)up-eventを取得するために、引数@samp{k}(または@samp{K})の後で使用され得る。捨てられたup-eventが存在しなければ、@samp{U}は引数として@code{nil}を提供する。[No
+I/O]
+
+@item v
+ユーザーオプションとして宣言された変数(述語@code{custom-variable-p}を満足する)。これは@code{read-variable}を使用して変数を読み取る。@ref{Definition
+of read-variable}を参照のこと。[Existing]、[Completion]、[Prompt]
+
+@item x
+Lispオブジェクト。そのオブジェクトの入力構文により指定され、@kbd{C-j}か@key{RET}で終端される。オブジェクトは評価されない。@ref{Object
+from Minibuffer}を参照のこと。[Prompt]
+
+@item X
+@cindex evaluated expression argument
+Lispフォームの値。@samp{X}は@samp{x}のように読み取りを行いフォームを評価して、その値がコマンドの引数になる。[Prompt]
+
+@item z
+コーディングシステム名(シンボル)。ユーザーがnull入力をエンターすると、引数値は@code{nil}になる。@ref{Coding
+Systems}を参照のこと。[Completion]、[Existing]、[Prompt]
+
+@item Z
+コマンドにプレフィクス引数があればコーディングシステム名。プレフィクス引数がなければ@samp{Z}は引数値として@code{nil}を提供する。[Completion]、[Existing]、[Prompt]
+@end table
+
+@node Interactive Examples
+@subsection @code{interactive}の使用例
+@cindex examples of using @code{interactive}
+@cindex @code{interactive}, examples of using
+
+  以下に@code{interactive}の例をいくつか示します:
+
+@example
+@group
+(defun foo1 ()              ; @r{@code{foo1}は1つの引数をとり}
+    (interactive)           ;   @r{単に2単語分前に移動する}
+    (forward-word 2))
+     @result{} foo1
+@end group
+
+@group
+(defun foo2 (n)             ; @r{@code{foo2}は引数を1つとる}
+    (interactive "^p")      ;   @r{引数は数引数}
+                            ; @r{@code{shift-select-mode}では、}
+                            ;   @r{リージョンをアクティブにするか、拡張する}
+    (forward-word (* 2 n)))
+     @result{} foo2
+@end group
+
+@group
+(defun foo3 (n)             ; @r{@code{foo3}は引数を1つとる}
+    (interactive "nCount:") ;   @r{引数はミニバッファーで読み取られる}
+    (forward-word (* 2 n)))
+     @result{} foo3
+@end group
+
+@group
+(defun three-b (b1 b2 b3)
+  "Select three existing buffers.
+Put them into three windows, selecting the last one."
+@end group
+    (interactive "bBuffer1:\nbBuffer2:\nbBuffer3:")
+    (delete-other-windows)
+    (split-window (selected-window) 8)
+    (switch-to-buffer b1)
+    (other-window 1)
+    (split-window (selected-window) 8)
+    (switch-to-buffer b2)
+    (other-window 1)
+    (switch-to-buffer b3))
+     @result{} three-b
+@group
+(three-b "*scratch*" "declarations.texi" "*mail*")
+     @result{} nil
+@end group
+@end example
+
+@node Command Modes
+@subsection コマンドにたいするモード指定
+@cindex commands, mode-specific
+@cindex commands, specify as mode-specific
+@cindex mode-specific commands
+
+Emacsのコマンドの多くは汎用であり、特定のモードに関連付けられていません。たとえば@kbd{M-x
+kill-region}は編集可能テキストをもつほとんどのモード、(@kbd{M-x
+list-buffers}のような)情報表示コマンドはほとんどのコンテキストで使用できます。
+
+しかしそれ以外の多くのコマンドはモードに具体的に関連付けられており、そのコンテキスト外部では意味をなしません。たとえばDiredバッファーの外部で@code{M-x
+dired-diff}を使用すると、単にエラーをシグナルするでしょう。
+
+したがってEmacsにはコマンドが``所属する''モードが何かを指定するためのメカニズムがあります:
+
+@lisp
+(defun dired-diff (...)
+  ...
+  (interactive "p" dired-mode)
+  ...)
+@end lisp
+
+これはそのコマンドを@code{dired-mode}
+(や@code{dired-mode}から派生したモード)だけに適用されるようにマークします。@code{interactive}フォームには任意個数のモードを追加できます。
+
+@vindex read-extended-command-predicate
+モードの指定は、@kbd{M-S-x}
+(@code{execute-extended-command-for-buffer})でのコマンド補完に影響を与えます(@ref{Interactive
+Call}を参照)。@code{read-extended-command-predicate}の値に応じて、モード指定が@kbd{M-x}での補完にも影響を与えるかもしれません。
+
+たとえば@code{read-extended-command-predicate}の値として@code{command-completion-default-include-p}述語を使用する際には、特定モードに適用されるとマークされたコマンドは@kbd{M-x}でリストされないでしょう(もちろんそのモードを使用するバッファーにいない場合)。これはメジャーモードとマイナーモードの両方に言えることです(対照的に@kbd{M-S-x}は適用されないコマンドを補完候補から常に省略する)。
+
+@code{read-extended-command-predicate}はデフォルトでは@code{nil}であり、@kbd{M-x}での補完ではカレントバッファーのモードに適用されるとマークされているか否かに関わらず、ユーザーがタイプしたものにマッチするすべてのコマンドがリストされます。
+
+あるモードにたいして適用されるものとしてコマンドをマークすると、(何らかのキーにバインドされていなければ)それらは@kbd{C-h
+m}でもリストされるようになります。
+
+(拡張@code{interactive}フォームをサポートしない古いバージョンのEmacsでは動作すると思われるコードがある等で)この拡張@code{interactive}フォームの使用が不便なら、かわりに等価な以下の宣言(@ref{Declare
+Form}を参照)を使用できます:
+
+@lisp
+(declare (modes dired-mode))
+@end lisp
+
+コマンドのモードへのタグ付けはある意味好みの問題ですが、そのモードの外部では動作しないことが明確なコマンドはタグ付けするべきです。これにはどこか別の場所で呼び出すとエラーをシグナルするだけではなく、期待しないモードからの呼び出しが破壊的なコマンドも含まれます(これは通常はスペシャルモード、すなわち編集不可なモード用に記述されたコマンドのほとんどが含まれる)。
+
+別モードから呼び出した際にも害がなく、``機能する''コマンドもありますが、それでも別の場所使用することが実際に無意味なコマンドには、依然としてタグ付けする必要があります。たとえば多くのスペシャルモードはバッファーのexitコマンドに@kbd{q}をバインドしており、これは"Goodbye
+from this
+mode"のようなメッセージを発行して@code{kill-buffer}を呼び出す以外は何も行わないかもしれません。このコマンドは別のモードでも``機能する''でしょうが、そのスペシャルモードのコンテキスト外部でこのコマンドを実際に使いたいと思う人が居るようには思えません。
+
+多くのモードには、そのモードを異なる方法で開始するために、一連の異なるコマンドがあります (例:
+@code{eww-open-in-new-buffer}と@code{eww-open-file})。このようなコマンドはユーザーがさまざまなコンテキストから発行し得るので、モード固有とタグ付けするべきでは決してありません。
+
+@node Generic Commands
+@subsection コマンド候補からの選択
+@cindex generic commands
+@cindex alternative commands, defining
+
+一連のコマンドセットのうちからユーザーのニーズに応じていずれか1つを呼び出すことができるような、``ジェネリックディスパッチャー(generic
+dispatcher)''としてコマンドを定義すると便利なときがあるかもしれません。たとえば複数の異なるオブジェクトを``オープン''して表示できる@samp{open}というコマンドを定義したいときを想像してください。あるいは@samp{mua}
+(Mail User Agent:
+電子メールクライアント)というコマンドを使ってRmail、Gnus、MH-Eのような複数の電子メールバックエンドのいずれか1つを用いることにより電子メールを読んだり送信ができるかもしれません。そのような@dfn{ジェネリックコマンド(generic
+commands)}を定義するために、マクロ@code{define-alternatives}を使用することができます。ジェネリックコマンドとは複数ある選択肢からユーザーが好みに応じて実装を選択できるインタラクティブな関数のことです。
+
+@defmac define-alternatives command &rest customizations
+このマクロは実装の候補を複数もつジェネリックな@var{command}を新たに定義する。引数@var{command}はクォートされていないシンボルであること。
+
+呼び出されると、このマクロはインタラクティブなLispクロージャ(@ref{Closures}を参照)を作成する。ユーザーが@w{@kbd{M-x
+@var{command}
+@key{RET}}}を最初に実行した際に、Emacsは@var{command}の実装候補から1つを選択するよう尋ねる(候補の名前にたいする補完が提供される)。候補の名前はこのマクロが作成した@code{@var{command}-alternatives}という名前のユーザーオプション(以前に存在していなければ)に由来する。利便性のためにこの変数の値は@w{@code{(@var{alt-name}
+.
+@var{alt-func})}}という形式の要素をもつalistであること。ここで@var{alt-name}は候補の名前、@var{alt-func}はその候補が選択された際に呼び出されるインタラクティブ関数。ユーザーがある候補を選択するとEmacsがその選択を記憶して、次回以降ユーザーが@kbd{M-x
+@var{command}}を呼び出した際には入力を求めることなく前に選択した候補を自動的に呼び出す。別の候補を選択するには@w{@kbd{C-u
+M-x @var{command}
+@key{RET}}}とタイプすれば、Emacsは再び候補のいずれかを選択するよう求めてその選択が以前選択された候補をオーバーライドする。
+
+@code{define-alternatives}を呼び出す前に、適切な値で変数@code{@var{command}-alternatives}を作成することも可能。作成しない場合にはマクロが@code{nil}値でこの変数を作成するので、候補を記述する連想値を設定する必要がある。既存のジェネリックコマンドにたいして独自の実装を提供したいパッケージは、たとえば以下のように@code{autoload}クッキー(@ref{Autoload}を参照)を用いて、alistに追加することができる:
+
+@lisp
+;;;###autoload (push '("My name" . my-foo-symbol) foo-alternatives
+@end lisp
+
+オプション引数@var{customizations}が非@code{nil}なら、@code{defcustom}キーワード(典型的には@code{:group}と@code{:version})、および@code{defcustom}
+@code{@var{command}-alternatives}の定義に追加する値により構成される選択肢。
+
+以下は3つｎ実装候補をもつ@code{open}という名前のシンプルなジェネリックディスパッチャーコマンドの例:
+
+@example
+@group
+(define-alternatives open
+  :group 'files
+  :version "42.1")
+@end group
+@group
+(setq open-alternatives
+      '(("file" . find-file)
+	("directory" . dired)
+	("hexl" . hexl-find-file)))
+@end group
+@end example
+
+@end defmac
+
+@node Interactive Call
+@section インタラクティブな呼び出し
+@cindex interactive call
+
+  コマンドループはキーシーケンスをコマンドに変換した後、関数@code{command-execute}を使用してその関数を呼び出します。そのコマンドが関数なら、@code{command-execute}は引数を読み取りコマンドを呼び出す@code{call-interactively}を呼び出します。自分でこれらの関数を呼び出すこともできます。
+
+  このコンテキストにおいて用語``command''はインタラクティブにコール可能な関数(または関数likeなオブジェクト)やキーボードマクロを指すことに注意してください。つまりコマンドを呼び出すキーシーケンスのことではありません(@ref{Keymaps}を参照)。
+
+@defun commandp object &optional for-call-interactively
+この関数は@var{object}がコマンドなら@code{t}、それ以外は@code{nil}をリターンする。
+
+コマンドには文字列とベクター(キーボードマクロとして扱われる)、トップレベルの@code{interactive}フォーム(@ref{Using
+Interactive}を参照)を含むラムダ式、そのようなラムダ式から作成されたバイトコンパイル関数オブジェクト、interactiveとして宣言(@code{autoload}の4つ目の引数が非@code{nil})されたautoloadオブジェクト、およびいくつかのプリミティブ関数が含まれる。@code{interactive-form}プロパティが非@code{nil}のシンボル、および関数定義が@code{commandp}を満足するシンボルもコマンドとされる。
+
+@var{for-call-interactively}が非@code{nil}なら、@code{call-interactively}が呼び出すことができるオブジェクトにたいしてのみ@code{commandp}は@code{t}をリターンする。したがってキーボードマクロは該当しなくなる。
+
+@code{commandp}を使用する現実的な例については、@ref{Accessing
+Documentation}内の@code{documentation}を参照のこと。
+@end defun
+
+@defun call-interactively command &optional record-flag keys
+この関数はinteractive呼び出し仕様にしたがって引数を取得し、インタラクティブに呼び出し可能な関数@var{command}を呼び出す。これは@var{command}がリターンするものが何であれ、それをリターンする。
+
+たとえばもし以下の署名をもつ関数があり:
+
+@example
+(defun foo (begin end)
+  (interactive "r")
+  ...)
+@end example
+
+以下を行うと
+
+@example
+(call-interactively 'foo)
+@end example
+
+これはリージョン(@code{point}と@code{mark})を引数として@code{foo}を呼び出すだろう。
+
+@var{command}が関数でない、またはインタラクティブに呼び出せない(コマンドでない)場合にはエラーをシグナルする。たとえコマンドだとしても、キーボードマクロ(文字列かベクター)は関数ではないので許容されないことに注意。@var{command}がシンボルなら@code{call-interactively}はそれの関数定義を使用する。
+
+@cindex record command history
+@var{record-flag}が非@code{nil}なら、このコマンドとコマンドの引数は無条件にリスト@code{command-history}に追加される。それ以外なら引数の読み取りにミニバッファーを使用した場合のみコマンドが追加される。@ref{Command
+History}を参照のこと。
+
+引数@var{keys}が与えらたら、それはコマンドを呼び出すためにどのイベントを使用するかコマンドが問い合わせた場合に与えるべきイベントシーケンスを指定するベクターである。@var{keys}が@code{nil}または省略された場合のデフォルトは、@code{this-command-keys-vector}のリターン値である。@ref{Definition
+of this-command-keys-vector}を参照のこと。
+@end defun
+
+@defun funcall-interactively function &rest arguments
+この関数は@code{funcall} (@ref{Calling
+Functions}を参照)と同様に機能するが、インタラクティブな呼び出しのように見える呼び出しを生成する。@var{function}内部での@code{called-interactively-p}の呼び出しは@code{t}をリターンするだろう。@var{function}がコマンドでなければ、エラーをシグラルすることなくそれを呼び出す。
+@end defun
+
+@defun command-execute command &optional record-flag keys special
+@cindex keyboard macro execution
+この関数は@var{command}を実行する。引数@var{command}は述語@code{commandp}を満足しなければならない。つまりインタラクティブに呼び出し可能な関数かキーボードマクロでなければならない。
+
+@var{command}が文字列かベクターなら、@code{execute-kbd-macro}により実行される。関数は@var{record-flag}および@var{keys}引数とともに@code{call-interactively}に渡される(上記参照)。
+
+@var{command}がシンボルなら、その位置にシンボルの関数定義が使用される。@code{autoload}定義のあるシンボルは、インタラクティブに呼び出し可能な関数を意味するよう宣言されていればコマンドとして判断される。そのような宣言は指定されたライブラリーのロードと、シンボル定義の再チェックにより処理される。
+
+引数@var{special}が与えられたら、それはプレフィクス引数を無視して、それをクリアーしないという意味である。これはスペシャルイベント(@ref{Special
+Events}を参照)を実行する場合に使用される。
+@end defun
+
+@deffn Command execute-extended-command prefix-argument
+@cindex read command name
+この関数は@code{completing-read}(@ref{Completion}を参照)を使用して、ミニバッファーからコマンド名を読み取る。その後で指定されたコマンドを呼び出すために@code{command-execute}を使用する。そのコマンドがリターンするのが何であれ、それが@code{execute-extended-command}の値となる。
+
+@cindex execute with prefix argument
+そのコマンドがプレフィクス引数を求める場合には、@var{prefix-argument}の値を受け取る。@code{execute-extended-command}がインタラクティブに呼び出されたら、カレントのrawプレフィクス引数が@var{prefix-argument}に使用され、それが何であれ実行するコマンドに渡される。
+
+@c !!! Should this be @kindex?
+@cindex @kbd{M-x}
+通常は@code{execute-extended-command}は@kbd{M-x}の定義なので、プロンプトとして文字列@w{@samp{M-x
+}}を使用する(@code{execute-extended-command}を呼び出したイベントからプロンプトを受け取るほうが良いのだろうが実装は苦痛を併なう)。プレフィクス引数の値の説明がもしあれば、それもプロンプトの一部となる。
+
+@example
+@group
+(execute-extended-command 3)
+---------- Buffer: Minibuffer ----------
+3 M-x forward-word @key{RET}
+---------- Buffer: Minibuffer ----------
+     @result{} t
+@end group
+@end example
+
+@vindex read-extended-command-predicate
+@findex command-completion-default-include-p
+このコマンドはカレントメジャーモード(や有効なマイナーモード)に不適切なコマンドを除外する@code{read-extended-command-predicate}変数を考慮する。この変数の値はデフォルトでは@code{nil}であり、除外されるコマンドはない。しかし関数@code{command-completion-default-include-p}を呼び出すようにカスタマイズすることで、モードに応じたフィルタリングを行うようになる。@code{read-extended-command-predicate}には任意の述語関数を指定できる。これはそのコマンドのシンボル、およびカレントバッファーという2つのパラメーターで呼び出される。そのバッファーニオイそのコマンドを補完に含めるなら非@code{nil}をリターンすること。
+@end deffn
+
+@kindex @kbd{M-X}
+@kindex @kbd{M-S-x}
+@deffn Command execute-extended-command-for-buffer prefix-argument
+これは@code{execute-extended-command}と似ているが、補完にたいしてカレントバッファー(や有効なマイナーモード)と特に関連するものに限定してコマンドを提案する。これらにはそのモードにタグ付けされたコマンド(@ref{Using
+Interactive}を参照)、およびローカルでアクティブなキーマップにバインドされたコマンドも含まれる。このコマンドは@kbd{M-S-x}
+(すなわち``meta shift x'')の通常の定義である。
+@end deffn
+
+これらのコマンドはいずれもコマンド名の入力を求めますが、補完ルールは異なります。入力を求められた際に@kbd{M-S-x}コマンドを使用することで、2つの補完モードを切り替えることができます。
+
+@node Distinguish Interactive
+@section インタラクティブな呼び出しの区別
+@cindex distinguish interactive calls
+@cindex is this call interactive
+
+  interactive呼び出しの際に、コマンドが(エコーエリア内の情報メッセージなどのような)視覚的な追加フィードバックを表示すべきときがあります。これを行うためには3つの方法があります。その関数が@code{call-interactively}を使用して呼び出されたかどうかテストするには、オプション引数@code{print-message}を与えるとともに、interactive呼び出しで非@code{nil}となるように@code{interactive}仕様を使うのが推奨される方法です。以下は例です:
+
+@example
+(defun foo (&optional print-message)
+  (interactive "p")
+  (when print-message
+    (message "foo")))
+@end example
+
+@noindent
+数プレフィクス引数は決して@code{nil}にならないので、わたしたちは@code{"p"}を使用します。この方法で定義された関数はキーボードマクロから呼び出されたときにメッセージを表示します。
+
+  追加引数による上記の手法は、呼び出し側に``この呼び出しをinteractiveとして扱うように''伝えることができるので通常は最善です。しかし@code{called-interactively-p}をテストすることによってこれを行うこともできます。
+
+@defun called-interactively-p kind
+この関数は呼び出された関数が@code{call-interactively}を使用して呼び出されえいたら@code{t}をリターンする。
+
+引数@var{kind}はシンボル@code{interactive}かシンボル@code{any}のいずれかである。これが@code{interactive}なら、@code{called-interactively-p}はユーザーから直接呼び出しが行われたとき
+---
+たとえば関数呼び出しにバインドされたキーシーケンスをユーザーがタイプした場合がそれに該当するが、ユーザーがその関数を呼び出すキーボードマクロ(@ref{Keyboard
+Macros}を参照)を実行中した場合は@emph{該当しない} ---
+だけ@code{t}をリターンする。@var{kind}が@code{any}なら、@code{called-interactively-p}はキーボードマクロを含む任意の種類のinteractive呼び出しにたいして@code{t}をリターンする。
+
+疑わしい場合には@code{any}を使用すること。@code{interactive}の使用が正しいと解っているのは、関数が実行中に役に立つメッセージを表示するかどうか判断が必要な場合だけである。
+
+Lisp評価(または@code{apply}や@code{funcall}))を通じて呼び出された場合には、関数は決してインタラクティブに呼び出されたとは判断されない。
+@end defun
+
+@noindent
+以下は@code{called-interactively-p}を使用する例:
+
+@example
+@group
+(defun foo ()
+  (interactive)
+  (when (called-interactively-p 'any)
+    (message "Interactive!")
+    'foo-called-interactively))
+@end group
+
+@group
+;; @r{@kbd{M-x foo}とタイプする}
+     @print{} Interactive!
+@end group
+
+@group
+(foo)
+     @result{} nil
+@end group
+@end example
+
+@noindent
+以下は@code{called-interactively-p}の直接呼び出しと間接呼び出しを比較した例。
+
+@example
+@group
+(defun bar ()
+  (interactive)
+  (message "%s" (list (foo) (called-interactively-p 'any))))
+@end group
+
+@group
+;; @r{@kbd{M-x bar}とタイプする}
+     @print{} (nil t)
+@end group
+@end example
+
+@node Command Loop Info
+@section コマンドループからの情報
+@cindex command loop variables
+
+エディターコマンドループは自分自身と実行するコマンドのために、いくつかのLisp変数にステータス記録を保持します。一般的に@code{this-command}と@code{last-command}以外は、Lispプログラム内でこれらの変数を変更するのは良いアイデアではありません。
+
+@defvar last-command
+この変数はコマンドループによって実行された以前のコマンド(前にカレントだったコマンド)の名前を記録する。値は通常は関数定義をもつシンボルだが、その保証はない。
+
+コマンドがコマンドループからリターンするとき、@code{this-command}から値がコピーされる。ただしそのコマンドが後続のコマンドにたいしてプレフィクス引数を指定されたときを除く。
+
+この変数は常にカレント端末にたいしてローカルであり、バッファーローカルにできない。@ref{Multiple Terminals}を参照のこと。
+@end defvar
+
+@defvar real-last-command
+この変数はEmacsにより@code{last-command}と同様にセットアップされるが、Lispプログラムから決して変更されない。
+@end defvar
+
+@defvar last-repeatable-command
+この変数は入力イベントの一部ではない、もっとも最近実行されたコマンドを格納する。これはコマンド@code{repeat}が再実行を試みるコマンドである。@ref{Repeating,,,
+emacs, The GNU Emacs Manual}を参照のこと。
+@end defvar
+
+@defvar this-command
+@cindex current command
+この変数はコマンドループにより現在実行中のコマンドの名前を記録する。@code{last-command}と同様、通常は関数定義をもつシンボルである。
+
+コマンドループはコマンドを実行する直前にこの変数をセットして、(そのコマンドが後続のコマンドのプレフィクス引数を指定しなければ)そのコマンドが終了したときにその値を@code{last-command}にコピーする。
+
+@cindex kill command repetition
+いくつかのコマンドは次に実行されるコマンドが何であれ、それにたいするフラグとして実行中の間この変数をセットする。特にテキストをkillする関数は@code{this-command}を@code{kill-region}にセットするので、直後に実行された任意のkillコマンドは、killしたテキストを前にkillされたテキストに追加するべきことが解かるだろう。
+@end defvar
+
+特定のコマンドでエラー発生時に前のコマンドとして認識されたくなければ、それを防ぐようにそのコマンドをコーディングしなければなりません。これを行う1つの方法は、以下のようにコマンドの最初で@code{this-command}に@code{t}をセットして、最後に@code{this-command}に正しい値をセットする方法です:
+
+@example
+(defun foo (args@dots{})
+  (interactive @dots{})
+  (let ((old-this-command this-command))
+    (setq this-command t)
+    @r{@dots{} 処理を行う @dots{}}
+    (setq this-command old-this-command)))
+@end example
+
+@noindent
+エラーなら@code{let}は古い値をリストアするので、わたしたちは@code{let}で@code{this-command}をバインドしません。この場合における@code{let}の機能は、わたしたちが正に避けたいと思っていることを行ってしまうでしょう。
+
+@defvar this-original-command
+コマンドのリマップ(@ref{Remapping
+Commands}を参照)が発生したときを除き、これは@code{this-command}と同じ値をもつ。リマップが発生すると@code{this-command}は実際に実行されたコマンド、@code{this-original-command}は実行を指定されたが他のコマンドにリマップされたコマンドを与える。
+@end defvar
+
+@defvar current-minibuffer-command
+これは@code{this-command}と同じ値をもつが、ミニバッファーへエンター時２再帰的にバインドされる。この変数はカレントミニバッファーセッションをオープンしたコマンドが何かを判定するために、ミニバッファーフック等から使用されるかもしれない。
+@end defvar
+
+@defun this-command-keys
+この関数は現在のコマンドを呼び出したキーシーケンスを含む文字列かベクターをリターンする。@code{read-event}を使用するコマンドにより、タイムアウトせずに読み取られたすべてのイベントが最後に加えられる。
+
+しかしそのコマンドが@code{read-key-sequence}を呼び出していたら、最後に読み取られたキーシーケンスをリターンする。@ref{Key
+Sequence Input}を参照のこと。シーケンス内のすべてのイベントが文字列として適当な文字なら文字列が値になる。@ref{Input
+Events}を参照のこと。
+
+@example
+@group
+(this-command-keys)
+;; @r{これを評価するために@kbd{C-u C-x C-e}を使用すると}
+     @result{} "^U^X^E"
+@end group
+@end example
+@end defun
+
+@defun this-command-keys-vector
+@anchor{Definition of this-command-keys-vector}
+@code{this-command-keys}と同様だが常にベクターでイベントをリターンするので、入力イベントを文字列内に格納する複雑さを処理する必要がない(@ref{Strings
+of Events}を参照)。
+@end defun
+
+@defun clear-this-command-keys &optional keep-record
+この関数は@code{this-command-keys}がリターンするイベントテーブルを空にする。@var{keep-record}が@code{nil}なら、その後に関数@code{recent-keys}(@ref{Recording
+Input}を参照)がリターンするレコードも空にする。これは特定のケースにおいてパスワードを読み取った後、次のコマンドの一部として不用意にパスワードがエコーされるのを防ぐために有用である。
+@end defun
+
+@defvar last-nonmenu-event
+この変数はキーシーケンス(マウスメニューからのイベントは勘定しない)の一部として読み取られた最後の入力イベントを保持する。
+
+この変数の1つの使い方は、@code{x-popup-menu}にたいしてどこにメニューをポップアップすべきか告げる場合である。これは内部的に
+@code{y-or-n-p}(@ref{Yes-or-No Queries}を参照)にも使用されている。
+@end defvar
+
+@defvar last-command-event
+この変数にはコマンドの一部としてコマンドループに読み取られた最後の入力イベントがセットされる。この変数は主に@code{self-insert-command}
+(どの文字が挿入されたか判断するため)、および@code{post-self-insert-hook}
+(挿入された文字にアクセスするため)の内部で使用されている(@ref{Commands for Insertion}を参照)。
+
+@example
+@group
+last-command-event
+;; @r{これを評価するために@kbd{C-u C-x C-e}を使用すると}
+     @result{} 5
+@end group
+@end example
+
+@noindent
+@kbd{C-e}の@acronym{ASCII}コードの5が値になる。
+@end defvar
+
+@defvar last-event-frame
+この変数は最後の入力イベントが送られたフレームを記録する。これは通常はそのイベントが生成されたときに選択されていたフレームだが、そのフレームの入力が他のフレームにリダイレクトされていたら、そのリダイレクトされていたフレームが値となる。@ref{Input
+Focus}を参照のこと。
+
+最後のイベントがキーボードマクロに由来する場合、値は@code{macro}になる。
+@end defvar
+
+@cindex input devices
+@cindex device names
+入力イベントには、その発生元となるどこかから送られてこなければなりません。それがキーボードマクロ、シグナル、あるいは`unread-command-events'のときもありますが、通常はコンピューターに接続されたユーザーの制御する物理的な入力デバイスからでしょう。これらのデバイスは@dfn{入力デバイス(input
+device)}と呼ばれており、Emacsは入力イベントそれぞれを発生元である入力デバイスに関連付けています。これらのデバイスは入力デバイスそれぞれにたいして一意な名前によって識別されます。
+
+使用された入力デバイスを正確に判別できる能力は、各システムの詳細に依存します。その情報が利用できなければ、Emacsはキーボードイベントの発生元を@samp{"Virtual
+core keyboard"}、その他のイベントの発生元を@samp{"Virtual core
+pointer"}のように報告します(これらは詳細なデバイス情報が不明なときにXサーバーが報告するデバイス名なので、すべてのプラットフォームでこれらの値をデバイス名として使用する)。
+
+@defvar last-event-device
+この変数は最後に読み取られた入力イベントの発生元となる入力デバイス名を記録する。そのようなデバイスが存在しなければ@code{nil}(たとえば最後の入力イベントを@code{unread-command-events}から読み取ったときや、キーボードマクロが発生元のとき)。
+
+XウィンドウでXInput拡張(X Input
+Extension)が使用される際のデバイス名はXサーバーに接続された物理キーボード、ポインティングデバイス、タッチスクリーンそれぞれにたいして一意な文字列となる。それ以外の場合には@samp{"Virtual
+core pointer"}か@samp{"Virtual core
+keyboard"}という文字列のいずれかであり、それはそのイベントが(マウスのような)ポインティングデバイス、あるいはキーボードのいずれによって生成されたかに依存する。
+@end defvar
+
+@defun device-class frame name
+異なるさまざまなタイプのデバイスがあり、それらのデバイスは名前によって判別できる。この関数は@var{frame}で発生したイベントにたいして、デバイス@var{name}の正しいタイプを決定するために使用できる。
+
+リターン値は以下のシンボル(``デバイスクラス'')のいずれか:
+
+@table @code
+@item core-keyboard
+コアキーボード(core keyboard)。そのデバイスがキーボードのようなデバイスだが、その他の特徴が不明なことを意味する。
+
+@item core-pointer
+コアキーボード(core pointer)。そのデバイスがポインティングデバイスのようなデバイスだが、その他の特徴が不明なことを意味する。
+
+@item mouse
+コンピューターマウス。
+
+@item trackpoint
+トラックポイントやジョイスティック(または同種のコントローラー)。
+
+@item eraser
+グラフィックタブレットのスタイラス(タッチペン)の反対側やスタンドアロンのイレイサー(消しゴム)。
+
+@item pen
+グラフィックタブレットのペン、スタイラス、または同種デバイスのペン先端。
+
+@item puck
+コンピュータのマウスのように見えるが、他の何かの面にたいする絶対座標を報告するデバイス。
+
+@item power-button
+電源ボタンやボリュームボタン(または同種のコントローラー)。
+
+@item keyboard
+コンピューターキーボード。
+
+@item touchscreen
+コンピュータータッチパッド。
+
+@item pad
+描画タブレットの周辺機器で一般的なセンシティブボタン(sensitive button)、リング(ring)、ストリップ(strip)のコレクション。
+
+@item touchpad
+タッチパッドのような二次的タッチデバイス。
+
+@item piano
+電子キーボードのような音楽器。
+
+@item test
+入力を報告するためにXTEST拡張が使用するデバイス。
+@end table
+@end defun
+
+@node Adjusting Point
+@section コマンド後のポイントの調整
+@cindex adjusting point
+@cindex invisible/intangible text, and point
+@cindex @code{display} property, and point display
+@cindex @code{composition} property, and point display
+
+  テキストシーケンスがプロパティ@code{display}や@code{composition}をもっていたり不可視な場合には、バッファー位置が複数存在するかもしれず、結果としてカーソルがスクリーン上で同じ位置に表示されるかもしれません。したがってコマンドが終了した後にコマンドループにリターンした後にそのようなシーケンス中にポイントがある場合には、そのシーケンスを効果的に不可触(intangible)にするために、コマンドループが通常はポイントを移動しようと試みます。
+
+この@emph{ポイント調整(point
+adjustment)}は次の一般的な規則にしたがいます。1つ目はこの調整がコマンド全体の方向を変更しないこと、2つ目はコマンドがポイントを移動する場合には調整によってカーソルも移動されるよう保証すること、3つ目はEmacsが不可触シーケンスのエッジ、特に新たに挿入されたテキストが可視になるようにそれらエッジの中でもstickiness(粘着性)のないエッジを優先するという規則です。
+
+  変数@code{disable-point-adjustment}をセットすることにより、コマンドはこの機能を抑制できます:
+
+@defvar disable-point-adjustment
+この変数が非@code{nil}ならコマンドがコマンドループにリターンするとき、コマンドループはこれらのテキストプロパティをチェックせず、これらのプロパティをもつシーケンスの外にポイントを移動しない。
+
+コマンドループは各コマンドを実行する前にこの変数を@code{nil}にセットするので、あるコマンドがこれをセットしても効果が適用されるのはそのコマンドにたいしてだけである。
+@end defvar
+
+@defvar global-disable-point-adjustment
+この変数を非@code{nil}にセットするとシーケンス外にポイントを移動する、これらの機能は完全にオフになる。
+@end defvar
+
+@node Input Events
+@section 入力イベント
+@cindex events
+@cindex input events
+
+Emacsコマンドループは@dfn{入力イベント(input
+events)}のシーケンスを読み取ります。入力イベントとはキーボードやマウスのアクティビティ、またはEmacsに送られるシステムイベントを表します。キーボードアクティビティにたいするイベントは文字かシンボルです。それ以外のイベントは常にリストになります。このセクションでは入力イベントの表現と意味について詳細を説明します。
+
+@defun eventp object
+この関数は@var{object}が入力イベントかイベント型なら非@code{nil}をリターンする。
+
+イベントまたはイベント型として非@code{nil}の任意のシンボルが使用されるかもしれないことに注意。@code{eventp}はLispコードによりイベントとして使用されることを意図したシンボルかどうかは区別できない。
+@end defun
+
+@menu
+* Keyboard Events::          通常の文字 --- 
+                               自身にシンボルされるキー。
+* Function Keys::            ファンクションキー --- 
+                               名前をもつがシンボルではない。
+* Mouse Events::             マウスイベントの概観。
+* Click Events::             マウスボタンのプッシュとリリース。
+* Drag Events::              ボタンをリリースする前のマウス移動。
+* Button-Down Events::       ボタンがプッシュされて、まだリリースされていない状態。
+* Repeat Events::            ダブル、トリプルのクリック(またはドラッグ、ダウン)
+* Motion Events::            ボタンを押さずに、マウスだけを移動する。
+* Touchscreen Events::       タッチスクリーン上での指によるタップや移動。
+* Focus Events::             フレーム間のマウス移動。
+* Xwidget Events::           Xwidgetが生成したイベント。.
+* Misc Events::              システムが生成可能なその他のイベント。
+* Event Examples::           マウスイベントの例。
+* Classifying Events::       イベントシンボル内の修飾キーを見つける。イベント型。
+* Accessing Mouse::          マウスイベントから情報抽出する関数。
+* Accessing Scroll::         スクロールバーイベントから情報取得する関数。
+* Strings of Events::        文字列内にキーボード文字イベントを配すための特別な配慮。
+@end menu
+
+@node Keyboard Events
+@subsection キーボードイベント
+@cindex keyboard events
+
+@cindex character event
+キーボードから取得できる入力には2つの種類があります。それは通常のキーとファンクションキーです。通常のキーは文字に対応しており(修飾されているかもしれない)、それらが生成するイベントはLisp内では文字で表現されます。文字イベントのイベント型は文字自身(整数)であり、何らかの修飾ビットがセットされているかもしれません。@ref{Classifying
+Events}を参照してください。
+
+@cindex modifier bits (of input character)
+@cindex basic code (of input character)
+入力文字イベントは0から524287までの@dfn{基本コード(basic code)}に加えて、以下の@dfn{修飾ビット(modifier
+bits)}の一部、またはすべてによって構成されます:
+
+@table @asis
+@item meta
+文字イベントコードのビット
+@tex
+@math{2^{27}}
+@end tex
+@ifnottex
+2**27
+@end ifnottex
+はメタキーが押下された状態で文字がタイプされたことを示す。
+
+@item control
+文字イベントコードのビット
+@tex
+@math{2^{26}}
+@end tex
+@ifnottex
+2**26
+@end ifnottex
+は非@acronym{ASCII}コントロール文字を示す。
+
+@kbd{C-a}のような非@sc{ascii}コントロール文字は、自身が特別な基本コードをもつため、それらを示すためにEmacsは特別なビットを必要としない。つまり@kbd{C-a}のコードは単なる1である。
+
+しかし@kbd{%}のような非@acronym{ASCII}とコントロールを組み合わせてタイプすると取得される数値は@kbd{%}に
+@tex
+@math{2^{26}}
+@end tex
+@ifnottex
+2**26
+@end ifnottex
+を加えた値となる(端末が非@acronym{ASCII}コントロール文字、すなわち27番目のビットがセットされた文字をサポートすると仮定する)。
+
+@item shift
+文字イベントコードのビット
+@tex
+@math{2^{25}}
+@end tex
+@ifnottex
+2**25
+@end ifnottex
+(26番目のビット)はシフトキーが押下された状態で@acronym{ASCII}コントロール文字がタイプされたことを示す。
+
+アルファベット文字にたいしては、基本コード自身が大文字か小文字かを示す。数字と句読点文字にたいしてシフトキーは、異なる基本コードをもつ完全に違う文字を選択する。可能な限り@acronym{ASCII}文字として保つために、Emacsはこれらの文字にたいしてビット
+@tex
+@math{2^{25}}
+@end tex
+@ifnottex
+2**25
+@end ifnottex
+を使用しない。
+
+しかし@acronym{ASCII}は@kbd{C-A}と@kbd{C-a}を区別する方法を提供しないので、Emacsは@kbd{C-A}にたいしてビット
+@tex
+@math{2^{25}}
+@end tex
+@ifnottex
+2**25
+@end ifnottex
+を使用し、@kbd{C-a}には使用しない。
+
+@item hyper
+文字イベントコードのビット
+@tex
+@math{2^{24}}
+@end tex
+@ifnottex
+2**24
+@end ifnottex
+はハイパーキーが押下された状態で文字がタイプされたことを示す。
+
+@item super
+文字イベントコードのビット
+@tex
+@math{2^{23}}
+@end tex
+@ifnottex
+2**23
+@end ifnottex
+はスーパーキーが押下された状態で文字がタイプされたことを示す。
+
+@item alt
+文字イベントコードのビット
+@tex
+@math{2^{22}}
+@end tex
+@ifnottex
+2**22
+@end ifnottex
+はアルトキーが押下された状態で文字がタイプされたことを示す(ほとんどのキーボードで@key{Alt}とラベルされたキーは、実際にはアルトキーではなくメタキーとして扱われる)。
+@end table
+
+  プログラム内での特定のビット数値の記述は避けるのが最善の方法です。文字の修飾ビットをテストするためには、関数@code{event-modifiers}
+(@ref{Classifying
+Events}を参照)を使用してください。@code{keymap-set}でキーバインディングを作成する際には、@samp{C-H-x}
+(``control hyper x'')のような文字列を使ってこれらのイベントを指定できます(@ref{Changing Key
+Bindings}を参照)。
+
+@node Function Keys
+@subsection ファンクションキー
+
+@cindex function keys
+ほとんどのキーボードには@dfn{ファンクションキー(function keys)}があります。これは名前や文字以外のシンボルをもつキーです。Emacs
+Lispではファンクションキーはシンボルとして表現されます。そのシンボル名はファンクションキーのラベルの小文字です。たとえば@key{F1}とラベルされたキーを押下すると、シンボル@code{f1}で表される入力イベントが生成されます。
+
+ファンクションキーのイベント型はイベントシンボル自身です。@ref{Classifying Events}を参照してください。
+
+ファンクションキーにたいするシンボルの命名規約には、以下のような特別なケースがいくつかあります:
+
+@table @asis
+@item @code{backspace}、@code{tab}、@code{newline}、@code{return}、@code{delete}
+これらのキーは、ほとんどのキーボードにおいて特別にキーをもつ、一般的な@acronym{ASCII}コントロール文字に対応する。
+
+@acronym{ASCII}では@kbd{C-i}と@key{TAB}は同じ文字である。端末がこれらを区別できるならEmacsは前者を整数の9、後者をシンボル@code{tab}で表現することによってLispプログラムにこれらの違いを伝える。
+
+ほとんどの場合はこれらの2つを区別するのは役に立たない。そのため@code{local-function-key-map}
+(@ref{Translation
+Keymaps}を参照)は@code{tab}を9にマップするようセットアップされている。したがって文字コード9(文字@kbd{C-i})へのキーバインディングは@code{tab}にも適用される。このグループ内の他のシンボルも同様である。関数@code{read-char}がこれらのイベントを文字に変換する場合も同様である。
+
+@acronym{ASCII}では@key{BS}は実際は@kbd{C-h}である。しかし@code{backspace}は文字コード8(@key{BS})ではなく、文字コード127(@key{DEL})に変換される。ほとんどのユーザーにとってこれは好ましいだろう。
+
+@item @code{left}、@code{up}、@code{right}、@code{down}
+矢印カーソルキー
+@item @code{kp-add}、@code{kp-decimal}、@code{kp-divide}、@dots{}
+キーパッドのキー(標準的なキーボードにおいては右側にある)。
+@item @code{kp-0}、@code{kp-1}、@dots{}
+キーパッドの数字キー。
+@item @code{kp-f1}、@code{kp-f2}、@code{kp-f3}、@code{kp-f4}
+キーパッドのPFキー。
+@item @code{kp-home}、@code{kp-left}、@code{kp-up}、@code{kp-right}、@code{kp-down}
+キーパッドの矢印キー。Emacsは通常これらを非キーパッドのキー@code{home}、@code{left}、@dots{}に変換する。
+@item @code{kp-prior}、@code{kp-next}、@code{kp-end}、@code{kp-begin}、@code{kp-insert}、@code{kp-delete}
+通常は他の箇所にあるキーと重複するキーパッド追加キー。Emacsは通常これらを同じような名前の非キーパッドキーに変換する。
+@end table
+
+ファンクションキーにたいしても修飾キー@key{ALT}、@key{CTRL}、@key{HYPER}、@key{META}、@key{SHIFT}、@key{SUPER}を使用できます。シンボル名のプレフィクスとしてこれらを表します:
+
+@table @samp
+@item A-
+アルト修飾。
+@item C-
+コントロール修飾。
+@item H-
+ハイパー修飾。
+@item M-
+メタ修飾。
+@item S-
+シフト修飾。
+@item s-
+スーパー修飾。
+@end table
+
+したがって@key{META}を押下した場合の@key{F3}キーにたいするシンボルは@code{M-f3}になります。複雑のプレフィクスを使用する場合には、アルファベット順の記述を推奨します。とはいえキーバインディングが修飾されたファンクションキーを探す際に引数の順序は関係ありません。
+
+@node Mouse Events
+@subsection マウスイベント
+
+Emacsは4つの種類のマウスイベントをサポートします。それはクリックイベント、ドラッグイベント、ボタンダウンイベント、モーションイベントです。すべてのマウスイベントはリストで表現されます。このリストの@sc{car}はイベント型です。イベント型はどのマウスボタンが関与するのか、それにたいしてどの修飾キーが使用されたかを示します。イベント型によりダブル、あるいはトリプルでボタンが押されたかを区別することもできます(@ref{Repeat
+Events}を参照)。残りのリスト要素は位置と時間の情報を提供します。
+
+キーの照合ではイベント型だけが問題になります。2つのイベントが同じコマンドを実行するには同じイベント型が必要です。実行されるコマンドはinteractiveのコード@samp{e}を使用して、これらのイベントの完全な値にアクセスできます。@ref{Interactive
+Codes}を参照してください。
+
+マウスイベントで開始されたキーシーケンスはカレントバッファーではなく、マウスのあったウィンドウ内のバッファーのキーマップを使用して読み取られます。これはウィンドウ内でクリックすることによりそのウィンドウやそのウィンドウのバッファーが選択されることを意味しません。つまりそれは完全にそのキーシーケンスのコマンドバインディングの制御下にあるのです。
+
+@node Click Events
+@subsection クリックイベント
+@cindex click event
+@cindex mouse click event
+@cindex mouse wheel event
+
+ユーザーが同じ場所でマウスボタンを押してからリリース(release:
+離す)すると、@dfn{click}イベントが生成されます。ウィンドウシステムがマウスホイールイベントを報告する方法に応じて、マウスホイールはマウスクリックかマウスホイールイベントを生成します。すべてのマウスイベントは同じフォーマットを共有します:
+
+@example
+(@var{event-type} @var{position} @var{click-count})
+@end example
+
+@table @asis
+@item @var{event-type}
+これはマウスボタンが使用されたことを示す。これはシンボル@code{mouse-1}、@code{mouse-2}、@dots{}のうちのいずれかで、マウスボタンは左から右に番号が付される。マウスホイールイベントなら@code{wheel-up}や@code{wheel-down}かもしれない。
+
+ファンクションキーにたいして行うのと同様にアルト、コントロール、ハイパー、メタ、シフト、スーパーの修飾にたいしてプレフィクス@samp{A-}、@samp{C-}、@samp{H-}、@samp{M-}、@samp{S-}、@samp{s-}も使用できる。
+
+このシンボルはイベントのイベント型としての役割りももつ。イベントのキーバインディングはこれらの型により示される。したがって@code{mouse-1}にたいするキーバインディングが存在すれば、そのバインディングは@var{event-type}が@code{mouse-1}であるようなすべてのイベントに適用されるだろう。
+
+@item @var{position}
+@cindex mouse position list
+これはマウスイベントがどこで発生したかを表す@dfn{マウス位置リスト(mouse position list)}である。詳細は以下を参照のこと。
+
+@item @var{click-count}
+これは同じマウスボタンを素早く繰り返し押下したときの回数、あるいはホイールを繰り返し回した回数である。@ref{Repeat
+Events}を参照のこと。
+@end table
+
+  マウスイベントの@var{position}スロット内にあるマウス位置リストの内容にアクセスするためには、一般的には@ref{Accessing
+Mouse}に記述された関数を使用するべきです。
+
+このリストの明示的なフォーマットはどこでイベントが発生したかに依存します。テキストエリア、モードライン、ヘッダーライン、タブライン、フリンジ、マージンエリアでのクリックにたいしてマウス位置リストは以下のフォーマットをもちます
+
+@example
+(@var{window} @var{pos-or-area} (@var{x} . @var{y}) @var{timestamp}
+ @var{object} @var{text-pos} (@var{col} . @var{row})
+ @var{image} (@var{dx} . @var{dy}) (@var{width} . @var{height}))
+@end example
+
+@noindent
+以下はこれらのリスト要素がもつ意味です:
+
+@table @asis
+@item @var{window}
+マウスイベントが発生したウィンドウ。
+
+@item @var{pos-or-area}
+テキストエリア内でクリックされた文字のバッファー位置。またはテキストエリア外がクリックされたなら、イベントが発生したウィンドウエリア。これはシンボル@code{mode-line}、@code{header-line}、@code{tab-line}、@code{vertical-line}、@code{left-margin}、@code{right-margin}、@code{left-fringe}、@code{right-fringe}のいずれか。
+
+特別なケースの1つとして@var{pos-or-area}が単なるシンボルではなく、(上記シンボルのいずれか1つの)シンボルを含むリストのような場合がある。これはEmacsにより登録されたイベントにたいする、イマジナリープレフィクスキー(imaginary
+prefix key)の後に発生する。@ref{Key Sequence Input}を参照のこと。
+
+@item @var{x}, @var{y}
+イベントの相対ピクセル座標(relative pixel
+coordinates)。あるウィンドウのテキストエリア内でのイベントにたいする座標原点@code{(0
+. 0)}は、テキストエリアの左上隅となる。@ref{Window
+Sizes}を参照のこと。モードライン、ヘッダーラインやタブライン内でのイベントにたいする座標原点は、そのウィンドウ自身の左上隅となる。フリンジ、マージン、垂直ボーダー(vertical
+border)では@var{x}は有意なデータをもたない。フリンジ、マージンでは@var{y}はヘッダーラインの最下端からの相対位置である。すべてのケースにおいて@var{x}と@var{y}の座標はそれぞれ右方向と下方向で増加する。
+
+@item @var{timestamp}
+そのイベントが発生した時刻をシステム依存の初期時刻(initial time)からの経過ミリ秒で表す整数。
+
+@item @var{object}
+@code{nil}
+(バッファーテキスト上でイベントが発生したことを意味する)、イベント箇所にテキストプロパティやオーバーレイがあれば@w{(@var{string}
+. @var{string-pos})}という形式のコンスセル。
+
+@table @asis
+@item @var{string}
+クリックされた文字列。すべてのテキストプロパティを含む。
+
+@item @var{string-pos}
+クリックが発生した文字列内の位置。
+@end table
+
+@item @var{text-pos}
+マージンエリアやフリンジにたいするクリックでは、そのウィンドウ内の対応する行内の最初の可視な文字のバッファー位置となる。モードライン、ヘッダーラインやタブラインにたいするクリックでは@code{nil}。他のイベントにたいしてはクリックされたバッファーのクリックされた最寄りの位置となる。
+
+@item @var{col}, @var{row}
+これらは@var{x}、@var{y}の位置にあるグリフ(gliph)の実際の行と列の座標数値である。行@var{x}がその行の実際のテキストの最後の列を超えるなら、@var{col}はデフォルトの文字幅をもつ仮想的な追加列数を加えた値が報告される。そのウィンドウがヘッダーラインをもてば行0はヘッダーライン、タブラインももてば行1はタブラインとなり、それ以外ならテキストエリアの上端ラインが行0となる。ウィンドウのテキストエリアのクリックにたいしては、テキストエリアの左端列が列0となり、モードラインまたはヘッダーラインのクリックにたいしてはそのラインの左端が列0となる。フリンジまたは垂直ボーダーのクリックにたいしては、これらは有意なデータをもたない。マージンのクリックにたいしては、@var{col}はマージンエリアの左端、@var{row}はマージンエリアの上端から測られる。
+
+@item @var{image}
+クリック箇所にイメージがあれば@code{find-image}がリターンするようなイメージオブジェクト(@ref{Defining
+Images}を参照)、それ以外は@code{nil}。
+
+@item @var{dx}, @var{dy}
+クリック位置からもっとも近い@var{object}のグリフ左上隅からクリック位置への相対オフセット(ピクセル)。関係のある@var{object}はバッファー、文字列、またはイメージ(上記参照)。@var{object}が@code{nil}か文字列なら、クリックされた文字グリフの左上隅からの相対座標。テキストモードのフレームではすべてのグリフのピクセルサイズは正確に1x1とみなされるので、@var{object}が@code{nil}ならオフセットは常に0になることに注意。
+
+@item @var{width}, @var{height}
+クリックがバッファーテキスト、あるいはオーバーレイ文字列やディスプレイ文字列の文字上の場合には、その文字のグリフのピクセル単位での幅と高さ。それ以外の場合にはクリックされた@var{object}のサイズ。
+@end table
+
+スクロールバーへのクリックにたいして、@var{position}は以下の形式をもちます:
+
+@example
+(@var{window} @var{area} (@var{portion} . @var{whole}) @var{timestamp} @var{part})
+@end example
+
+@table @asis
+@item @var{window}
+スクロールバーがクリックされたウィンドウ。
+
+@item @var{area}
+これはシンボル@code{vertical-scroll-bar}である。
+
+@item @var{portion}
+スクロールバーの上端からクリック位置までのピクセル数。GTK+を含むいくつかのツールキットでは、Emacsがこれらのデータを抽出できないので値は常に@code{0}。
+
+@item @var{whole}
+スクロールバーの全長のピクセル数。GTK+を含むいくつかのツールキットでは、Emacsがこれらのデータを抽出できないので値は常に@code{0}。
+
+@item @var{timestamp}
+イベントが発生したミリ秒時刻。GTK+を含むいくつかのツールキットでは、Emacsがこれらのデータを抽出できないので値は常に@code{0}。
+
+@item @var{part}
+@c The 'top', 'bottom', and 'end-scroll' codes don't seem to be used.
+クリックが発生したスクロールバー部分。これはシンボル@code{handle}(スクロールバーのハンドル)、@code{above-handle}(ハンドルの上側エリア)、@code{below-handle}(ハンドルの下側エリア)、@code{up}(スクロールバー端の上矢印)、@code{down}(スクロールバー端の下矢印)のいずれか。
+@end table
+
+フレームのインターナルボーダー(@ref{Frame Layout}を参照)、フレームのツールバー(@ref{Tool
+Bar}を参照)やタブバーにたいするクリックでは@var{position}は以下の形式をもちます:
+
+@example
+ (@var{frame} @var{part} (@var{X} . @var{Y}) @var{timestamp})
+@end example
+
+@table @asis
+@item @var{frame}
+インターナルボーダー、ツールバー、またはタブバーがクリックされたフレーム。
+
+@item @var{part}
+クリックされたフレームの部分。以下のいずれか:
+
+@table @code
+@cindex tool-bar mouse events
+@item tool-bar
+フレームにはツールバーがあり、イベントはツールバー領域。
+
+@cindex tab-bar mouse events
+@item tab-bar
+フレームにはタブバーがあり、イベントはタブバー領域。
+
+@item left-edge
+@itemx top-edge
+@itemx right-edge
+@itemx bottom-edge
+対応するボーダーの直近のコーナーから少なくとも1正規文字の範囲内がクリックされた。
+
+@item top-left-corner
+@itemx top-right-corner
+@itemx bottom-right-corner
+@itemx bottom-left-corner
+インターナルボーダーの対応するコーナーがクリックされた。
+
+@item nil
+フレームにインターナルボーダーがなく、イベントがツールバーやタブバー上ではない。これは通常はテキストモードフレームで発生する。これは非@code{nil}値にセットされた@code{drag-internal-border}パラメーター(@ref{Mouse
+Dragging Parameters}を参照)をもたないGUIフレームのインターナルボーダーでも発生し得る。
+@end table
+
+@end table
+
+
+@node Drag Events
+@subsection ドラッグイベント
+@cindex drag event
+@cindex mouse drag event
+
+Emacsでは特別なことをしなくてもドラッグイベントを取得できます。@dfn{ドラッグイベント(drag
+event)}はユーザーがマウスボタンを押下して、ボタンをリリースする前にマウスを異なる文字位置に移動すると毎回発生します。すべてのマウスイベントと同じように、ドラッグイベントはLispではリストで表現されます。このリストは以下のように開始マウス位置と最終位置ぼ両方を記録します:
+
+@example
+(@var{event-type} @var{start-position} @var{end-position})
+@end example
+
+ドラッグイベントにたいしては、シンボル@var{event-type}の名前にプレフィクス@samp{drag-}が含まれます。たとえばボタン2を押下したままマウスをドラッグすると@code{drag-mouse-2}イベントが生成されます。このイベントの上図で2つ目と3つ目の要素@var{start-position}と@var{end-position}は、マウス位置リスト(@ref{Click
+Events}を参照)としてドラッグの開始と終了の位置をセットします。任意のマウスイベントの2つ目の要素に同じ方法でアクセスできます。しかしドラッグイベントは最初に選択されていたフレームの境界外で終了するかもしれません。この場合のには3つ目の要素の位置リストに、ウィンドウのかわりにそのフレームが含まれます。
+
+@samp{drag-}プレフィクスは、その後に@samp{C-}や@samp{M-}のような修飾キープレフィクスが続きます。
+
+@code{read-key-sequence}がキーバインディングをもたず、対応するクリックイベントにキーバインディングがあるようなドラッグイベントを受け取ると、この関数はそのドラッグイベントをドラッグ開始位置でのクリックイベントに変更します。これはもし望まなければクリックイベントとドラッグイベントを区別する必要がないことを意味します。
+
+@node Button-Down Events
+@subsection ボタンダウンイベント
+@cindex button-down event
+
+クリックイベントとドラッグイベントは、ユーザーがマウスボタンをリリースしたときに発生します。ボタンがリリースされるまでクリックとドラッグを区別することはできないので、リリース前にイベントが発生することはありません。
+
+ボタンが押下されたらすぐに何か処理したいなら、@dfn{ボタンダウン(button-down)}イベントを処理する必要があります@footnote{ボタンダウンはドラッグの保守的なアンチテーゼです。@*訳注:
+原文は``Button-down is the conservative antithesis of
+drag.''。@*ちなみにIT用語で使用される前は"button-down"はボタンダウンシャツを表すとともに「保守的、堅苦しい」という意味もあり、一方の"drag"はIT用語として使用される前から「引っ張る、引きずる」という意味で用いられてきましたが「本来は異性が着る洋服」という意味もあります。}。これらは@var{event-type}のシンボル名に@samp{down-}が含まれることを除き、クリックイベントとまったく同じようなリストにより表現されます。@samp{down-}プレフィクスの後には@samp{C-}や@samp{M-}のような修飾キープレフィクスが続きます。
+
+関数@code{read-key-sequence}はコマンドバインディングをもたないボタンダウンイベントを無視します。したがってEmacsコマンドループもこれらを無視します。これはボタンダウンイベントで何かしたい場合以外は、ボタンダウンイベントの定義について配慮する必要がないことを意味します。ボタンダウンイベントを定義する通常の理由は、ボタンがリリースされるまで(モーションイベントを読み取ることにより)マウスモーションを追跡できるからです。@ref{Motion
+Events}を参照してください。
+
+@node Repeat Events
+@subsection リピートイベント
+@cindex repeat events
+@cindex double-click events
+@cindex triple-click events
+@cindex mouse events, repeated
+
+マウスを移動せずに同じマウスボタンを素早く2回以上連続して押下すると、Emacsは2回目とそれ以降の押下にたいして特別な@dfn{リピート(repeat)}マウスイベントを生成します。
+
+もっとも一般的なリピートイベントは@dfn{ダブルクリック(double-click)}イベントです。Emacsはボタンを2回クリックしたときにダブルクリックイベントを生成します。このイベントは、(すべてのクリックイベントが通常そうであるように)ボタンをリリースしたときに発生します。
+
+ダブルクリックイベントのイベント型にはプレフィクス@samp{double-}が含まれます。したがって@key{meta}を押しながら2つ目のマウスボタンをダブルクリックすると、Lispプログラムには@code{M-double-mouse-2}が渡されます。ダブルクリックイベントがバインディングをもたなければ、対応する通常のクリックイベントのバインディングが実行に使用されます。したがって実際に望んだ場合でなければダブルクリック機能に注意を払う必要はありません。
+
+ユーザーがダブルクリックを行うとき、Emacsはまず通常のクリックイベントを生成して、その後ダブルクリックイベントを生成します。したがってダブルクリックイベントのコマンドバインディングは、すでにシングルクリックイベントが実行された想定でデザインしなければなりません。つまりシングルクリックの結果から開始して、ダブルクリックの望むべき結果を生成しなければならないのです。
+
+これはダブルクリックの意味合いが、シングルクリックの意味合いの何らかにもとづいて構築される場合は便利です。これはダブルクリックにたいするユーザーインターフェイスにおける推奨されるデザインプラクティスです。
+
+ボタンをクリックした後にもう一度ボタンを押下して、そのままマウスの移動を開始すると、最終的にボタンをリリースしたとき@dfn{ダブルドラッグ(double-drag)}イベントが取得されます。このイベント型には単なる@samp{drag}のかわりに@samp{double-drag}が含まれます。ダブルドラッグイベントがバインディングをもたなければ、それがあたかも通常のドラッグイベントだったかのようにEmacsはかわりのバインディングを探します。
+
+ダブルクリックやダブルドラッグイベントの前に、Emacsはユーザーが2回目にボタンを押したタイミングで@dfn{ダブルダウン(double-down)}イベントを生成します。このイベント型には単なる@samp{down}のかわりに@samp{double-down}が含まれます。ダブルダウンイベントがバインディングをもたなければ、それがあたかも通常のボタンダウンイベントだったかのようにEmacsはかわりのバインディングを探します。どちらの方法でもバインディングが見つからなければダブルダウンイベントは無視されます。
+
+要約するとボタンをクリックしてすぐにまた押したとき、Emacsは1回目のクリックにたいしてダウンイベントとクリックイベントを生成して、2回目に再度ボタンを押したときにダブルダウンイベント、そして最後にダブルクリックまたはダブルドラッグイベントを生成します。
+
+ボタンを2回クリックした後にもう一度押したとき、それらすべてが素早く連続で行われたら、Emacsは@dfn{トリプルダウン(triple-down)}イベントと、その後続の@dfn{トリプルクリック(triple-click)}か@dfn{トリプルドラッグ(triple-drag)}イベントを生成します。これらイベントのイベント型には@samp{double}のかわりに@samp{triple}が含まれます。トリプルイベントがバインディングをもたなければEmacsは対応するダブルイベントに使用されるであろうバインディングを使用します。
+
+ボタンを3回以上クリックした後に再度ボタンを押すと、3回を超えた押下にたいするイベントはすべてトリプルイベントになります。Emacsはクワドループル(quadruple:
+4連)、クインティプル(quintuple:
+5連)、...等のイベントにたいして個別のイベント型をもちません。しかしボタンが何回押下されたかを正確に調べるためにイベントリストを調べることができます。
+
+@defun event-click-count event
+この関数は@var{event}を誘因した連続するボタン押下の回数をリターンする。@var{event}がダブルダウン、ダブルクリック、ダブルドラッグなら値は2である。@var{event}がトリプルイベントなら値は3以上になる。@var{event}が(リピートイベントではない)通常のマウスイベントなら値は1。
+@end defun
+
+@defopt double-click-fuzz
+リピートイベントを生成するためには、ほぼ同じスクリーン位置で連続でマウスボタンを押下しなければならない。@code{double-click-fuzz}の値はダブルクリックを生成するために連続する2回のクリック間で、マウスが移動(水平と垂直)するかもしれない最大ピクセル数を指定する。
+
+この変数はドラッグとみなされるマウスモーションの閾値でもある。
+@end defopt
+
+@defopt double-click-time
+リピートイベントを生成するためには、連続するボタン押下のミリ秒間隔が@code{double-click-time}の値より小さくなければならない。@code{double-click-time}を@code{nil}にセットすると複数回クリック検知が完全に無効になる。@code{t}にセットすると時間制限が取り除かれる。その場合はEmacsは位置だけで複数回のクリックを検知する。
+@end defopt
+
+@node Motion Events
+@subsection モーションイベント
+@cindex motion event
+@cindex mouse motion events
+
+Emacsは、ボタンアクティビティが何もないマウスのモーション(motion: 動き)を記述する@dfn{マウスモーション(mouse
+motion)}イベントを生成するときがあります。マウスモーションイベントは以下のようなリストによって表現されます:
+
+@example
+(mouse-movement POSITION)
+@end example
+
+@noindent
+@var{position}はマウスカーソルのカレント位置を指定するマウス位置リスト(@ref{Click
+Events}を参照)です。ドラッグイベントの終了位置のように、この位置リストは最初に選択されていた境界外の位置を表すかもしれず、その場合にはそのフレーム内のその位置のウィンドウが含まれます。
+
+マクロ@code{track-mouse}は、ボタン内でのモーションイベントの生成を有効にします。@code{track-mouse}のbodyの外側では、Emacsはマウスの単なるモーションにたいするイベントは生成せず、これらのイベントは発生しません。@ref{Mouse
+Tracking}を参照してください。
+
+@defvar mouse-fine-grained-tracking
+非@code{nil}ならたとえ非常に小さい移動でもマウスモーションイベントを生成する。それ以外ならテキスト内の同一グリフをマウスカーソルがポイントし続けるかぎりモーションイベントは生成されない。
+@end defvar
+
+@node Touchscreen Events
+@subsection タッチスクリーンイベント
+@cindex touchscreen events
+@cindex support for touchscreens
+
+一部のウィンドウシステムではユーザーがスクリーンにタッチしたり、タッチしながら指を動かすことで反応する入力デバイスがサポートされています。Emacsはこれらのタッチスクリーンと呼ばれる入力デバイスが生成したイベントを@dfn{タッチスクリーンイベント(touchscreen
+event)}として報告します。
+
+タッチスクリーンが生成した個々のイベントのほとんどは、他のイベントのより大きなシーケンスの一部としての意味しかもっていません。たとえばタッチスクリーンをタップするという単純な操作はユーザーがタッチスクリーンに指を置いて離すという操作、ディスプレイをスクロールためのスワイプはタッチスクリーンに指を置いて何度も上(下)に動かしてから指を離すという操作を引き起こすのです。
+
+@cindex touch point, in touchscreen events
+タップやスクロールにたいしては一本の指で構成される単純なモデルで十分ですが、より複雑なジェスチャーには複数の指を追跡するためのサポートが要求されまづ。指が複数の場合には、それぞれの指の位置は@dfn{タッチポイント(touch
+point)}によって表されることになります。たとえば``ズームするためのピンチアウト''というジェスチャーは、ユーザーが指を2本置いて、それらの指を別個に反対方向へ動かすことから構成されます。ここでこれら2本の指による個別のポイント位置の間の距離によってディスプレイのズーム量、これらの位置を結ぶ想像上の線の中央位置によってズーム後にどこにディスプレイをパンする(振る)かが決まります。
+
+下記の低レベルなタッチスクリーンイベントを使って、上述したタッチシーケンスすべてを実装できます。これらのイベントでは、ポイントはそれぞれポイントを識別する任意の番号、およびイベント発生時の指の位置を指定するマウス位置リスト(@ref{Click
+Events}を参照)のコンスセルによって表現されます。
+
+@table @code
+@cindex @code{touchscreen-begin} event
+@item (touchscreen-begin @var{point})
+これはユーザーがタッチスクリーンにたいして指を押すことで@var{point}が作成されたときに送信されるイベント。
+
+これらのイベントがフレームやウィンドウの特別な場所で発生した場合には、@code{read-key-sequence}は想像上のプレフィクスキーもこれらのイベントに付加する。@ref{Key
+Sequence Input}を参照のこと。
+
+@cindex @code{touchscreen-update} event
+@item (touchscreen-update @var{points})
+これはタッチスクリーン上のポイントの位置が変更されたときに送信されるイベント。@var{points}はカレントでタッチスクリーン上にあるタッチポイントの最新位置を含んだタッチポイントのリスト。
+
+@cindex @code{touchscreen-end} event
+@item (touchscreen-end @var{point} @var{canceled})
+これは他のプログラムにより奪われたりユーザーがタッチスクリーンから指を離したことによって@var{point}がディスプレイ上に存在しなくなった際に送信されるイベント。
+
+タッチシーケンスが(ウィンドウマネージャーのような)他のプログラムからインターセプト(intercept:
+横取り)されると@var{canceled}が非@code{nil}となり、Emacsはインターセプトされなければ得られたであろすべての編集コマンドの結果をアンドゥまたは破棄する必要がある。
+
+これらのイベントがフレームやウィンドウの特別な場所で発生した場合には、@code{read-key-sequence}は想像上のプレフィクスキーもこれらのイベントに付加する。
+@end table
+
+Emacsはメニューバーにたいしてタッチポイントが押下されるとそれに対応する@code{touchscreen-begin}や@code{touchscreen-end}のイベントを生成しません。そのかわりに他の状況においては@code{touchscreen-end}の配信後に表示されるメニューバーが表示されるかもしれません。
+
+@cindex mouse emulation from touch screen events
+@code{touchscreen-begin}、@code{touchscreen-end}、@code{touchscreen-update}にコマンドがバインドされていなければ、Emacsはタッチスクリーンイベントを含んだキーシーケンスを通常のマウスイベント(@ref{Mouse
+Events}を参照)に変換するために``キー変換関数(key translation
+function)''を呼び出します(@ref{Translation
+Keymaps}を参照)。Emacsは別個のマウスデバイスを発生源とするイベントの区別をサポートしていないので、変換が行われる際にアクティブなタッチポイントは最大で2つと仮定して、この制限を超えた際のイベント変換の結果については保証されていません。
+
+Emacsはタッチイベントからマウスイベントへの変換にたいして、@code{touchscreen-begin}イベントの位置でアクティブなキーマップにバインドされているコマンドといったような偶発的な要因に応じた2つの異なるストラテジー(strategiesl:
+戦略)を適用します。その位置においてあるコマンドが@code{down-mouse-1}にバインドされていれば、最初のイベントは単独の@code{down-mouse-1}として構成されて後続の@code{touchscreen-update}イベントがマウスモーションイベント(@ref{Motion
+Events}を参照)へと変換、最後に@code{touchscreen-end}イベントが@code{mouse-1}か@code{drag-mouse-1}のイベントに変換されます(他のプログラムによってタッチシーケンスがインターセプトされたことを@code{touchscreen-end}イベントが示す場合を除く)。これは``単純変換(simple
+translation)''と呼ばれるもので、タッチポイントとマウスモーションの間に単純な対応を生成する変換です。
+
+@cindex @code{ignored-mouse-command}, a symbol property
+ただし@code{down-mouse-1}にバインドされているコマンドの一部(たとえば@code{mouse-drag-region})は、(たとえば``long-press
+to
+drag''、長押ししてドラッグのような)定義済みのタッチスクリーンジェスチャーと競合するか、あるいはタッチ入力にたいするユーザーの期待に応えるためにもタッチシーケンスを単純な変換の対象にするべきではありません。名前にプロパティ@code{ignored-mouse-command}
+(@ref{Symbol
+Properties}を参照)を含むコマンドに遭遇した場合や@code{down-mouse-1}にバインドされているコマンドがない場合には、より変則的な変換形式が採用されます。この場合はまずEmacsはタッチスクリーンジェスチャー(@ref{Touchscreens,,,
+emacs, The GNU Emacs
+Manual}を参照)を処理してから、最後に(単純変換のときのように@var{canceled}パラメーターを@code{nil}にして)@code{touchscreen-end}イベントをクローズする前に何もジェスチャーが検知されなければタッチスクリーンイベントをマウスイベントへと変換、そのイベント位置で@code{mouse-1}にコマンドをバインドします。@code{mouse-1}イベントの生成に先立ちポイントを@code{touchscreen-end}イベントの位置にセット、@code{mouse-drag-region}がすでにすべてのマウスクリック位置を指すとともに、クリックされたウィンドウが選択されていると仮定するパッケージへの妥協策として、そのイベント位置を含むウィンドウを選択します。
+
+マウスメニューを閉じた後(@ref{Mouse
+Menus}を参照)に予期せぬ@code{mouse-1}イベントが到達するのを避けるために、@code{down-mouse-1}がキーマップにバインドされている場合には、Emacsがそれをプレフィクスキーにすることで単純な変換も回避します。Emacsは単純な変換を行うかわりに@code{touchscreen-end}のクローズを、イベント位置がタッチシーケンスの開始位置であるような@code{down-mouse-1}イベントに変換、それによりマウスメニューが表示されます。
+
+@cindex @code{mouse-1-menu-command}, a symbol property
+ポップアップメニューを表示する目的のための特定のコマンドも@code{down-mouse-1}にバインドされているので、@code{down-mouse-1}が名前にプロパティ@code{mouse-1-menu-command}をもつようなコマンドにバインドされている場合には、Emacsはさらに最後のパラグラフで示したような動作を行います。
+
+@cindex pinch-to-zoom touchscreen gesture translation
+あるタッチポイントがすでに変換中なので2つ目のタッチポイントを登録するとジェスチャーの変換は終了して、2つ目のタッチポイント(@dfn{ancillary
+tool}、いわゆる補助工具)から1つ目のタッチポイントまでの距離が測定されます。これらタッチポイントいずれかからの後続モーションによる新たな位置間の距離と、最初に測定された距離によって形成される比率を組み込んだ@code{touchscreen-pinch}イベントが生成されます(以下テーブルを参照)。
+
+@cindex touchscreen gesture events
+変換中にタッチジェスチャーが検知されると、以下の入力イベントのいずれかが生成されるかもしれません:
+
+@table @code
+@cindex @code{touchscreen-scroll} event
+@item (touchscreen-scroll @var{window} @var{dx} @var{dy})
+変換プロセス中に``スクロール(scrolling)''のジェスチャーが検知されると、それに続く@code{touchscreen-update}イベントはそれぞれ@code{touchscreen-scroll}イベントへと変換される。ここで@var{dx}と@var{dy}はそのシーケンスを開始した@code{touchscreen-begin}イベント、あるいは最後の@code{touchscreen-scroll}イベントのいずれか遅く発生したイベント位置からの相対的モーションをピクセル単位で指定する。
+
+@cindex @code{touchscreen-hold} event
+@item (touchscreen-hold @var{posn})
+単一のアクティブなタッチポイントが@code{touchscreen-begin}が生成されて以降@code{touch-screen-delay}秒を超える間静止した状態のままだと、変換プロセス中に``長押し(long-press)''のジェスチャーが検知されて、@var{posn}に@code{touchscreen-begin}のイベント位置を含んだマウス位置リストをセットした@code{touchscreen-hold}イベントが送出される。
+
+@cindex @code{touchscreen-drag} event
+@item (touchscreen-drag @var{posn})
+カレントのタッチシーケンスの変換中、あるいはユーザーオプション@code{touch-screen-extend-selection}により``ドラッグ選択(drag-to-select)''が再開されると、@var{posn}にタッチポイントの新たな位置をセットした@code{touch-screen-extend-selection}イベントが後続のイベントとしてそれぞれ送出される。
+
+@cindex @code{touchscreen-restart-drag} event
+@item (touchscreen-restart-drag @var{posn})
+このイベントは継続中の``ドラッグ選択(drag-to-select)''の結果としてタッチシーケンス開始時に、@var{posn}にそのタッチシーケンス中の最初の@code{touchscreen-begin}イベントの位置リストをセットして送出される。
+
+@cindex @code{touchscreen-pinch} event
+@item (touchscreen-pinch @var{posn} @var{ratio} @var{pan-x} @var{pan-y} @var{ratio-diff})
+このイベントは補助工具(ancillary tool)がアクティブな際にアクティブなタッチポイント位置が有意に変更されると配信される。
+
+@var{posn}は補助工具から観測中の別のタッチポイントに描画される線分の中間点にたいするマウス位置リスト。
+
+@var{ratio}は観測中の両方のタッチポイント間の距離を、補助工具が最初に登録された際の位置で除した値、すなわち``ピンチ(pinch)''のジェスチャーのスケールのこと。
+
+@var{pan-x}と@var{pan-y}は@var{posn}のピクセル位置とこの一連のタッチイベントに関して配信された最後のイベントにおけるこの位置の差、そのようなイベントが存在しない場合には補助工具が最初に登録された際の両方のタッチポイントの中心点。
+
+@var{ratio-diff}はこのイベントのratioと配信された最後のイベントの@var{ratio}。そのようなイベントが存在しない場合には@var{ratio}。
+
+イベントが表す変更の重大さと前のイベントで得られた@var{ratio}の差が@code{0.2}より大きい、あるいは@var{pan-x}と@var{pan-y}の和がそのフレームの文字(@ref{Frame
+Font}を参照)のピクセル幅の半分を超える場合にこのようなイベントが送出される。
+@end table
+
+@cindex handling touch screen events
+@cindex tap and drag, touch screen gestures
+タッチスクリーンイベントを処理するLispプログラム向けにいくつかの関数が提供されています。以下で説明する関数のうち最初期2つは、@code{touchscreen-begin}イベントに直接バインドされるコマンドからの使用を意図しています。これらの関数はマウスイベントの変換とは別に、一般的に使用されるタッチスクリーンジェスチャーへの応答も可能です。
+
+@defun touch-screen-track-tap event &optional update data threshold
+この関数は@code{touchscreen-begin}イベントである@var{event}を発生源とする単独の``タップ(tap)''ジェスチャーの追跡、およびポイントのセットやボタンのアクティブ化によく用いられる。同一のタッチ識別子をもつ@code{touchscreen-end}イベントの到着を待機して、到着するとその時点でジェスチャーの終了を意味する@code{t}をリターンする。
+
+待機中に@code{touchscreen-update}イベントが到着して、そのうち少なくとも1つのタッチポイントが@var{event}と同じ識別子をもつ場合には、その@code{touchscreen-update}イベント内のタッチポイントのリスト、@var{data}という2つの引数で関数@var{update}を呼び出す。
+
+@var{threshold}が非@code{nil}、かつ@var{event}で表されるタッチポイントが@var{threshold}、@var{event}位置からの数値でなければ10ピクセルといういずれかの閾値を超えて移動した場合には@code{nil}がリターンされて、そのシーケンスから生じる後続のタッチスクリーンジェスチャーの認識を阻害しないようにそのタッチポイントにたいするマウスイベント変換が再開される。
+
+待機中に他のイベントが到達すると@code{nil}をリターンする。この場合には呼び出し側は何のアクションも処理するべきではない。
+@end defun
+
+@defun touch-screen-track-drag event update &optional data
+この関数は@code{touchscreen-begin}イベントである@code{event}を発生源とする単独の``ドラッグ(drag)''ジェスチャーを追跡するために使用される。
+
+これは@code{touch-screen-track-tap}と同じように振る舞うが@code{no-drag}をリターンすること、および実際のドラッグとして認識されるほど十分にタッチポイントが移動しなかった場合(デフォルトでは@code{event}内の位置から5ピクセル)に@var{update}の呼び出しを控える点が異なる。
+@end defun
+
+上記2つの関数に加えて、マウスイベント変換を介して生成される一部のイベントタイプにバインドされるコマンド向けに、コマンド呼び出し後に予期せぬイベント生成を防ぐための関数が提供されています。
+
+@defun touch-screen-inhibit-drag
+この関数は呼び出された後のタッチシーケンス変換の間、マウスイベント変換中の@code{touchscreen-drag}イベントの生成を抑止する。この関数が@code{touchscreen-hold}か@code{touchscreen-drag}のイベントにバインドされたコマンドから呼び出さなければならず、それ以外に場合にはエラーをシグナルする。
+
+この関数はマウスイベント変換中にジェスチャーがすでに認識された後でのみ呼び出せるので、呼び出し後に前述したタッチシーケンスを構成するタッチイベントから生成されるマウスイベントは存在しない。
+@end defun
+
+@node Focus Events
+@subsection フォーカスイベント
+@cindex focus event
+
+このセクションではウィンドウシステムとEmacsフレームについて説明します。単に``フレーム(frames)''や``ウィンドウ(windows)''と述べた場合にはEmacsフレームとEmacsウィンドウのことを指しています。ウィンドウシステムのウィンドウ、これはEmacsフレームのことでもありますが、このセクションでは常に``ウィンドウシステムのウィンドウ(window
+system window)''と呼ぶことにします。
+
+@noindent
+ウィンドウシステムはユーザーにたいしてどのウィンドウシステムのウィンドウがキーボード入力を受け取るか制御するための一般的な方法を提供します。このウィンドウシステムのウィンドウ選択は@dfn{フォーカス(focus)}と呼ばれます。Emacsのフレームを切り替えるためにユーザーが何かを行うと、それは@dfn{フォーカスイベント(focus
+event)}を生成します。@var{mouse-autoselect-window}を用いてEmacsフレーム内でEmacsウィンドウ間を切り替える際に、Emacsはフォーカスイベントも生成します。
+
+キーシーケンスの途中におけるフォーカスイベントは、そのシーケンスを誤ったものにするかもしれません。そのためEmacsは決してキーシーケンスの途中でフォーカスイベントを生成しません。ユーザーがキーシーケンスの途中(つまりプレフィクス引数の後)でフォーカスを変更すると、複数イベントキーシーケンスの前か後にフォーカスイベントが到着するように、Emacsはフォーカスイベントを記録しておきます。
+
+@subsubheading Focus events for frames
+
+グローバルキーマップにおいてフレームを切り替えるフォーカスイベントの通常の定義は、ユーザーの期待に沿うようにEmacs内で新たなフレームを選択します。@ref{Input
+Focus}ではフレーム向けのフォーカスイベントに関連するフックについても説明しています。Lispではフレームにたいするフォーカスイベントは以下のようなリストとして表現されます:
+
+@example
+(switch-frame @var{new-frame})
+@end example
+
+@noindent
+ここで@var{new-frame}は切り替え先のフレームです。
+
+Xウィンドウマネージャーには、あるフレームにマウスを移動するだけで、そこにフォーカスされるようにセットアップするものがいくつかあります。通常は他の種類の入力が到着するまで、Lispプログラムがフォーカスの変更を知る必要はありません。Emacsはユーザーが新たなフレーム内で実際にキーボードのキーをタイプするかマウスボタンを押下したときしか、フォーカスイベントを生成しません。つまりフレーム間でマウスを移動させても、フォーカスイベントは生成されません。
+
+@subsubheading ウィンドウ向けフォーカスイベント
+
+@var{mouse-autoselect-window}をセットするとフレーム内の新たなウィンドウ上にマウスを移動することで選択されたウィンドウの切り替えもできるようになります。別の値については@ref{Mouse
+Window
+Auto-selection}を参照してください。マウスが新たなウィンドウ上に移動すると、ウィンドウを切り替えるフォーカスイベントが生成されます。Lispではウィンドウ向けのフォーカスイベントは以下のようなリストとして表されます:
+
+@example
+(select-window @var{new-window})
+@end example
+
+@noindent
+ここで@var{new-window}は切り替え先のウィンドウです。
+
+@node Xwidget Events
+@subsection Xwidgetイベント
+
+Xwidgetsは自身の状態によってLispプログラムを更新するためにイベントを送信することができます。(@ref{Xwidgets}を参照)。これらのイベントは@code{xwidget-events}という、変更の性質を説明するさまざまなデータを含んだイベントに置き換えられます。
+
+@table @code
+@cindex @code{xwidget-event} event
+@item (xwidget-event @var{kind} @var{xwidget} @var{arg})
+これは@var{xwidget}である種の更新が発生した際は常に送信されるイベント。更新には複数の種類があり、それらは@var{kind}によって識別される。
+
+@cindex xwidget callbacks
+これは@var{xwidget}にたいするxwidgetイベントを受信した際は常に呼び出されるようなコールバック(callback)をxwidgetに追加することによって処理する必要があるスペシャルイベントである(@ref{Special
+Events}を参照)。
+
+コールバックは引数として@var{xwidget}と@var{kind}を受け取る関数であること。コールバックはwidgetのプロパティリストの@code{callback}をセットすることによって追加できる。
+
+@table @code
+@cindex @code{load-changed} xwidget event
+@item load-changed
+これは@var{xwidget}がページローディングプロセスの特定のポイントに達したことを示すxwidgetイベント。@var{arg}にはこれらのイベントが送信される際には、widgetの状態が更に記述された文字列が含められる。
+
+@table @samp
+@cindex @samp{load-started} in xwidgets
+@item load-started
+これはそのwidgetがページローディング操作を開始したことを意味する。
+
+@cindex @samp{load-finished} in xwidgets
+@item load-finished
+これは@var{xwidget}が前に処理していたページローディング操作が何であれ処理が終了したことを意味する。
+
+@cindex @samp{load-redirected} in xwidgets
+@item load-redirected
+これは@var{xwidget}がページローディング操作中にリダイレクトに遭遇して、それをフォローしたことを意味する。
+
+@cindex @samp{load-committed} in xwidgets
+@item load-committed
+これは@var{xwidget}がページローディング操作中に与えられたURLにコミット(つまりそのURLがカレントのページローディング操作中にレンダリングする最終URL)したことを意味する。
+@end table
+
+@cindex @code{download-callback} xwidget events
+@item download-callback
+このイベントはある種のダウンロードが完了したことを示す。
+@end table
+
+上記イベントでは@var{arg}の後に引数があるかもしれない。その引数自体はダウンロードしたファイルを取得したURLを示す。@var{arg}の後の1つ目の引数はそのダウンロードのMIMEタイプ(文字列)を示し、2つ目の引数はダウンロードしたファイルの完全なファイル名が含まれる。
+
+@table @code
+@cindex @code{download-started} xwidget events
+@item download-started
+このイベントはダウンロードが開始したことを示す。これらのイベントにおいて、@var{arg}にはカレントでダウンロードされるファイルのURLが含まれる。
+
+@cindex @code{javascript-callback} xwidget events
+@item javascript-callback
+このイベントにはJavaScriptのコールバックデータが含まれる。これらのイベントは@code{xwidget-webkit-execute-script}によって内部的に使用される。
+@end table
+
+@cindex @code{xwidget-display-event} event
+@item (xwidget-display-event @var{xwidget} @var{source})
+このイベントはxwidgetが他のxwidgetの表示をリクエストした際は常に送信される。@var{xwidget}は表示されることになるxwidget、@var{source}は@var{xwidget}の表示を要求したxwidget。
+
+これはコールバックを通じて処理を要するスペシャルイベントでもある。そのようなコールバックは引数として@var{xwidget}と@var{source}を受け取る関数であり、@var{source}のプロパティリストの@code{display-callback}にセットして追加できる。
+
+@var{xwidget}のバッファーは一時バッファーにセットされる。widget表示の際には、@code{set-xwidget-buffer}
+(@ref{Xwidgets}を参照)を使用してバッファーをxwidgetが表示されるバッファーに置き換えるよう注意すること。
+@end table
+
+@node Misc Events
+@subsection その他のシステムイベント
+
+他にもシステム内での出来事を表現するイベント型がいくつかあります。
+
+@table @code
+@cindex @code{text-conversion} event
+@item text-conversion
+この種のイベントは1つ以上のバッファーを処理するシステムワイドな入力メソッドの@strong{後}に送出される。
+
+@vindex text-conversion-edits
+一度イベントが送出されると、異なる多数のフレーム内の複数のバッファーにたいして入力メソッドがすでに変更を行っているかもしれない。どのバッファーが変更されているか、どの編集がその変更を行ったかを判断するために変数@code{text-conversion-edits}を使用する。この変数は以下のような形式のリストであり、@code{text-conversion}それぞれの送出に先立ちセットされる:
+
+@example
+@w{@code{((@var{buffer} @var{beg} @var{end} @var{ephemeral}) ...)}}
+@end example
+
+ここで@var{ephemeral}は変更されたバッファー、@var{beg}と@var{end}はは編集完了時にマーカーがセットされた位置。@var{ephemeral}は挿入された文字列(または削除されたポイントの前にあるすべてのテキスト)、@code{t}
+(その編集が入力メソッドによって一時的に行われた編集であることを意味する)、あるいは@code{nil}
+(ポイントの後の一部テキストが削除されたことを意味する)のいずれか。
+
+@vindex text-conversion-style
+このイベントが送出されるかどうかはバッファーローカル変数@code{text-conversion-style}の値次第。この変数はバッファーコンテンツを編集する入力メソッドがどのように振る舞うかを決定する。
+
+以下の4つの値のいずれかを指定できる:
+
+@table @code
+@item nil
+入力メソッドは完全に無効になり、キーイベントはかわりにテキスト変換イベントに送出されることを意味する。
+
+@item action
+入力メソッドは有効になるが、入力メソッドが改行を挿入したいときは常に@key{RET}が送出されることを意味する。
+
+@item password
+これは大枠では@code{action}と同じだが入力メソッドにたいしてASCII文字を挿入する能力も要求すること、テキストの提案等の機密情報を処理できない入力メソッドの機能によって後から取得されたかもしれない場所に入力を保存しないように指示できる点が異なる。
+
+@item t
+これとその他の値の場合には、入力メソッドが有効であり編集後に@code{text-conversion}イベントが発生することを意味する。
+@end table
+
+@findex set-text-conversion-style
+この変数の値の変更は、そのバッファーがフレームの選択されたバッファーになった後の再表示のときだけ効果がある。すぐに効果がある方法でテキスト変換を無効にする必要がある場合には、かわりに関数@code{set-text-conversion-style}を呼び出すこと。これにより入力メソッドが無視できない時間ロックされる可能性があるので、慎重に使用すること。
+
+@vindex disable-inhibit-text-conversion
+さらにコマンドループや@code{read-key-sequence}がプレフィクスキーを読み取った後は、テキスト変換が自動的に無効になる。これは変数@code{disable-inhibit-text-conversion}に非@code{nil}値をセットまたはバインドして無効にできる。
+
+@cindex @code{delete-frame} event
+@item (delete-frame (@var{frame}))
+このイベントの種類はユーザーがウィンドウマネージャーに特定のウィンドウを削除するコマンドを与えたことを示し、Emacsのフレームにたいして発生する。
+
+@code{フレーム削除(delete-frame)}イベントの標準的な定義では@var{frame}が削除される。
+
+@cindex @code{iconify-frame} event
+@item (iconify-frame (@var{frame}))
+このイベントの種類はウィンドウマネージャーを使用してユーザーが@var{frame}をアイコン化したことを示す。標準的な定義は@code{ignore}。これはそのフレームがすでにアイコン化されているので、Emacsが行う必要のことは何もないからである。このイベント型の目的は、望むならこのようなイベントの追跡を可能にしておくためである。
+
+@cindex @code{make-frame-visible} event
+@item (make-frame-visible (@var{frame}))
+このイベントの種類はウィンドウマネージャーを使用してユーザーが@var{frame}を非アイコン化したことを示す。標準的な定義は@code{ignore}。これは、そのフレームがすでに可視化されているので、Emacsが行う必要のことは何もないからである。
+
+@cindex @code{touch-end} event
+@item (touch-end (@var{position}))
+この種のイベントはユーザーの指がマウスホイールやタッチパッドから離れたことを示す。マウス位置リストの@var{position}要素(@ref{Click
+Events}を参照)は、マウスホイールから指が離れた際のマウスカーソルの位置を指定する。
+
+@cindex @code{wheel-up} event
+@cindex @code{wheel-down} event
+@item (wheel-up @var{position} @var{clicks} @var{lines} @var{pixel-delta})
+@itemx (wheel-down @var{position} @var{clicks} @var{lines} @var{pixel-delta})
+これらのイベントはマウスホイールを動かすことによって発生する。@var{position}要素はそのイベント発生時のマウスカーソル位置を指定するマウス位置リスト(@ref{Click
+Events}を参照)。
+
+@vindex mwheel-coalesce-scroll-events
+@var{clicks}が与えられた場合には、ホイールが連続して素早く動いた回数を示す数値。@ref{Repeat
+Events}を参照のこと。@var{lines}が与えられて、それが@code{nil}でなければ、それはスクロールされるべきスクリーン行を表す正の行数である(イベントが@code{wheel-up}ならスクロールアップ、@code{wheel-down}ならスクロールダウン)。@var{pixel-delta}が与えられた場合には、それが@w{@code{(@var{x}
+.
+@var{y})}}という形式のコンスセルであれば、@var{x}と@var{y}はそれぞれの軸方向にたいしてスクロールされたピクセル数、いわゆる@dfn{ピクセル単位デルタ(pixelwise
+delta)}である。通常だと2つのうちの一方が非0、もう一方は0もしくは0に非常に近い値となる。大きい数値はウィンドウをスクロールする軸を示します。変数@code{mwheel-coalesce-scroll-events}が@code{nil}の場合には、たとえ非@code{nil}であってもスクロールコマンドは@var{lines}要素を無視@var{pixel-delta}のデータを使用する。この場合にはイベント種別によって暗示される方向(アップかダウン)を無視して、ピクセル単位デルタの符号によりスクロール方向を判断する。
+
+@cindex pixel-resolution wheel events
+これらのピクセル単位デルタ@var{x}と@var{y}を用いれば、マウスホイールがピクセル解像度で実際にどれだけ動いたかを判断できる。たとえばピクセル単位デルタを使うことによって、ユーザーが回したマウスホイールとまったく同じようにディスプレイをスクロールできるだろう。このピクセル単位のスクロールが可能なのは@code{mwheel-coalesce-scroll-events}が@code{nil}のときだけであり、この変数が非@code{nil}の場合には通常は@var{pixel-delta}データは生成されない。
+
+@vindex mouse-wheel-up-event
+@vindex mouse-wheel-down-event
+@code{wheel-up}と@code{wheel-down}は一部のシステムでのみ生成されるイベントである。他のシステムではかわりに@code{mouse-4}や@code{mouse-5}のようなイベントが用いられる。コードに可搬性をもたせる場合には@code{wheel-up}と@code{wheel-down}以外にも、@file{mwheel.el}で定義されている変数@code{mouse-wheel-up-event}と@code{mouse-wheel-down-event}で指定されているイベントも処理できる必要がある。歴史的な理由により@code{mouse-wheel-@emph{up}-event}は@code{wheel-@emph{down}}と同じように処理されるべきイベントを保持する変数であり、その逆についても同様であることに注意。
+
+@vindex mouse-wheel-left-event
+@vindex mouse-wheel-right-event
+通常は@code{wheel-left}と@code{wheel-right}によって表現される水平ホイールの移動についても同じことが当てはまるが、コードに可搬性をもたせるには@file{mwheel.el}で定義されている変数@code{mouse-wheel-left-event}と@code{mouse-wheel-right-event}にもしたがう必要がある。ただしこれらのスクロールイベントと同時に別のイベントをも生成するマウスもいくつかあり、邪魔をするかもしれない。この問題を解決するにはこれらのイベントにたいするバインドを削除する方法が一般的である(たとえば@code{mouse-6}や@code{mouse-7}等を削除するがバインドはハードウェアとオペレーティングシステムに大きく依存する)。
+
+@cindex @code{pinch} event
+@item (pinch @var{position} @var{dx} @var{dy} @var{scale} @var{angle})
+この種のイベントはタッチパッドに指を2本置いてそれらを互いに近づけたり離したりする、``ピンチ(pinch)''というジェスチャーをユーザーが行った際に生成される。@var{position}はイベント発生時のマウスポインターの位置を提供するマウス位置リスト(@ref{Click
+Events}を参照)、@var{dx}は同一シーケンス内の最後のイベントから2本の指の間の水平距離の変分、@var{dy}は同じく垂直距離の変分、@var{scale}はこのシーケンス開始時の2本の指の間の距離とカレント距離の比率、@var{angle}はこのイベントで指と指をつなぐ線分の方向と同一シーケンスの最後のイベントにおける同線分方向との間の角度差(degree)である。
+
+ピンチイベントが送信されるのはピンチシーケンスの開始かその間だけであり、ユーザーがタッチパッド置いた2本の指をピンチではなく回転(rotate)させるように動かすジェスチャーは報告されない。
+
+@var{position}の後の引数はすべて浮動小数点数。
+
+これはユーザーがタッチパッドに2本の指を置いたときが開始、指を離したときに終了するイベントであり、通常はあるシーケンスの一部として送信される。先頭のイベントでは@var{dx}、@var{dy}、@var{angle}は@code{0.0}になる。後続するイベントではこのイベント構造のこれらのメンバーにたいしては非0値が報告されるだろう。
+
+@var{dx}と@var{dy}は@code{1.0}がそれぞれタッチパッドの幅と高さに相当するような想像上の相対的単位として報告される。これらは通常はジェスチャーの下にあるイメージやウィンドウ等のオブジェクトサイズに相対的なものと解釈される。
+
+@cindex @code{preedit-text} event
+@item (preedit-text @var{arg})
+これは何が挿入されるかをユーザーに示すために、システムのインプットメソッドがEmacsに何らかのテキストを表示するよう伝える際に送信されるイベント。@var{arg}の内容は使用中のウィンドウシステムに依存する。
+
+Xでは@var{arg}はカーソルの向こうに配置するテキストを記述する文字列。@code{nil}なら前に表示していたすべてのテキストの削除を意味する。
+
+PGTKフレーム(@ref{Frames}を参照)では、@var{arg}はカラーとアンダーラインの属性に関する情報をもつ文字列リスト。以下の形式をもつ:
+
+@example
+@group
+   ((@var{string1}
+     (ul . @var{underline-color})
+     (bg . @var{background-color})
+     (fg . @var{foreground-color}))
+    (@var{string2}
+     (ul . @var{underline-color})
+     (bg . @var{background-color})
+     (fg . @var{foreground-color}))
+    @dots{}
+   )
+@end group
+@end example
+
+文字列に関するテキストを残してカラーの情報は省略可。@var{underline-color}が@code{t}ならテキストのアンダーラインがデフォルトのアンダーラインカラーになること、文字列ならそのカラー名によってアンダーラインが描画されることを意味する。
+
+これは通常ならユーザーがコマンドにバインドするべきではないスペシャルイベントである(@ref{Special
+Events}を参照)。Emacsは通常はこのイベントを受信すると、ポインター背後にあるオーバーレイにイベントに含まれるテキストを表示する。
+
+@cindex @code{drag-n-drop} event
+@item (drag-n-drop @var{position} @var{files})
+この種類のイベントはEmacs外部アプリケーション内でファイルグループが選択されて、それがEmacsフレーム内にドラッグアンドドロップされたときに発生する。
+
+要素@var{position}は、そのイベント位置を記述しマウスクリックイベントで使用されるフォーマット(@ref{Click
+Events}を参照)と同じ。要素@var{files}はドラッグアンドドロップされたファイル名のリスト。通常はそれらのファイルをvisitすることによってこのイベントは処理される。
+
+この種類のイベントは現在のところある種のシステムでのみ生成される。
+
+@cindex @code{help-echo} event
+@item help-echo
+この種類のイベントは、テキストプロパティ@code{help-echo}をもつバッファーテキスト部分上にマウスポインターが移動したときに生成される。生成されるイベントは以下の形式をもつ:
+
+@example
+(help-echo @var{frame} @var{help} @var{window} @var{object} @var{pos})
+@end example
+
+@noindent
+イベントパラメーターの正確な意味とヘルプテキストを表示するためにこれらのパラメーターを使用する方法は、@ref{Text
+help-echo}で説明されている。
+
+@cindex @code{sigusr1} event
+@cindex @code{sigusr2} event
+@cindex user signals
+@item sigusr1
+@itemx sigusr2
+これらのイベントはEmacsプロセスがシグナル@code{SIGUSR1}や@code{SIGUSR2}を受け取ったときに生成される。シグナルは追加情報を運搬しないので追加データは含まれない。これらのシグナルはデバッグに有用(@ref{Error
+Debugging}を参照)。
+
+ユーザーシグナルをcatchするためには、@code{special-event-map} (@ref{Controlling Active
+Maps}を参照)内で対応するイベントにバインドする。そのコマンドは引数なしで呼び出され、@code{last-input-event}内の特定のシグナルイベントが利用できる(@ref{Event
+Input Misc}を参照)。たとえば:
+
+@smallexample
+(defun sigusr-handler ()
+  (interactive)
+  (message "Caught signal %S" last-input-event))
+
+(keymap-set special-event-map "<sigusr1>" 'sigusr-handler)
+@end smallexample
+
+シグナルハンドラーをテストするために、自身でEmacsにシグナルを送信できる:
+
+@smallexample
+(signal-process (emacs-pid) 'sigusr1)
+@end smallexample
+
+@cindex @code{language-change} event
+@item language-change
+この種類のイベントはMS-Windows上で入力言語が変更されたときに生成される。これは通常はキーボードキーが異なる言語の文字でEmacsに送られることを意味する。生成されるイベントは以下の形式をもつ:
+
+@smallexample
+(language-change @var{frame} @var{codepage} @var{language-id})
+@end smallexample
+
+@noindent
+ここで@var{frame}は言語が変更されたときカレントだったフレーム、@var{codepage}は新たなコードページ番号(codepage
+number)、@var{language-id}は新たな入力言語の数値IDである。@var{codepage}に対応するコーディングシステム(@ref{Coding
+Systems}を参照)は、@code{cp@var{codepage}}か@code{windows-@var{codepage}}。@var{language-id}を文字列に変更する(たとえば@code{set-language-environment}のようなさまざまな言語依存機能にたいしこれを使用する)には、以下のように@code{w32-get-locale-info}関数を使用する:
+
+@smallexample
+;; 英語にたいする"ENU"のような言語の省略形を取得する
+(w32-get-locale-info language-id)
+;; "English (United States)"のような
+;; その言語の完全な英語名を取得する
+(w32-get-locale-info language-id 4097)
+;; その言語の完全なローカライズ名を取得する
+(w32-get-locale-info language-id t)
+@end smallexample
+
+@cindex @code{end-session} event
+@item end-session
+このイベントはMS-Windowsにおいてユーザーがインタラクティブなセッションを終了したとき、またはシステムがシャットダウンすることをオペレーティングシステムがEmacsに知らせる際に生成される。このイベントの標準的な定義では、秩序に則ってEmacsをシャットダウンできるように@code{kill-emacs}コマンドを呼び出す(@ref{Killing
+Emacs}を参照)。未保存の変更が存在する場合には、ユーザーが後で未保存の変更をリストアするセッションの再起動に使用できるauto-saveファイルを生成する(@ref{Auto-Saving}を参照)。
+@end table
+
+  キーシーケンスの途中、つまりプレフィクスキーの後にこれらのイベントの1つが到着すると、複数イベントキー内ではなくその前か後にそのイベントが到着するようにEmacsはそのイベントを記録する。
+
+  いくつかの@code{delete-frame}のようなスペシャルイベントは、デフォルトではEmacsコマンドを呼び出します(他のイベントはバインドされない)。@code{special-event-map}を通じて、あるスペシャルイベントがコマンドを呼び出すようにすることができます。このマップでファンクションキーにバインドしたコマンドは、@code{last-input-event}内でそれが呼び出された完全なイベントを調べることができます。@ref{Special
+Events}を参照してください。
+
+@node Event Examples
+@subsection イベントの例
+
+ユーザーが同じ場所でマウス左ボタンを押して離すと、それは以下のようなイベントシーケンスを生成します:
+
+@smallexample
+(down-mouse-1 (#<window 18 on NEWS> 2613 (0 . 38) -864320))
+(mouse-1      (#<window 18 on NEWS> 2613 (0 . 38) -864180))
+@end smallexample
+
+コントロールキーを押したままユーザーがマウス第2ボタンを押してマウスをある行から次の行へドラッグすると、以下のような2つのイベントが生成されます:
+
+@smallexample
+(C-down-mouse-2 (#<window 18 on NEWS> 3440 (0 . 27) -731219))
+(C-drag-mouse-2 (#<window 18 on NEWS> 3440 (0 . 27) -731219)
+                (#<window 18 on NEWS> 3510 (0 . 28) -729648))
+@end smallexample
+
+メタキーとシフトキーを押したままユーザーがそのウィンドウのモードライン上でマウス第2ボタンを押して他ウィンドウへマウスをドラッグすると、以下のようなイベントのペアが生成されます:
+
+@smallexample
+(M-S-down-mouse-2 (#<window 18 on NEWS> mode-line (33 . 31) -457844))
+(M-S-drag-mouse-2 (#<window 18 on NEWS> mode-line (33 . 31) -457844)
+                  (#<window 20 on carlton-sanskrit.tex> 161 (33 . 3)
+                   -453816))
+@end smallexample
+
+全画面表示されていないフレームに入力フォーカスがあってユーザーがマウスをそのフレームのスコープ外へマウスを移動すると、マクロ@code{track-mouse}内では以下のようなイベントが生成されます:
+
+@smallexample
+(mouse-movement (#<frame *ielm* 0x102849a30> nil (563 . 205) 532301936))
+@end smallexample
+
+@node Classifying Events
+@subsection イベントの分類
+@cindex event type
+@cindex classifying events
+
+  すべてのイベントは@dfn{イベント型(event
+type)}をもっています。イベント型はキーバインディング目的でイベントをクラス分けします。キーボードイベントにたいするイベント型はイベント値と等しく、したがって文字のイベント型は文字、ファンクションキーシンボルのイベント型はそのシンボル自身になります。リストであるようなイベントのイベント型は、そのリストの@sc{car}内のシンボルです。したがってイベント型は常にシンボルか文字です。
+
+  同じ型の2つのイベントはキーバインディングに関する限りは同じものです。したがってそれらは常に同じコマンドを実行します。これらが同じことを行う必要があるという意味ではありませんが、イベント全体を調べてから何を行うか決定するコマンドもいくつかあります。たとえばバッファー内でどこに作用するか決定するためにマウスイベントの場所を使用するコマンドもいくつかあります。
+
+  広範なイベントのクラス分けが役に立つときもあります。たとえば他の修飾キーやマウスボタンが使用されたかとは無関係に、@key{META}キーとともに呼び出されたイベントを尋ねたいと思うかもしれません。
+
+  関数@code{event-modifiers}や@code{event-basic-type}は、そのような情報を手軽に取得するために提供されています。
+
+@defun event-modifiers event
+この関数は@var{event}がもつ修飾子のリストをリターンする。この修飾子はシンボルであり@code{shift}、@code{control}、@code{meta}、@code{alt}、@code{hyper}、@code{super}が含まれる。さらにマウスイベントシンボルの修飾子リストには常に@code{click}、@code{drag}、@code{down}のいずれか1つが含まれる。ダブルイベントとトリプルイベントには、@code{double}や@code{triple}も含まれる。
+
+引数@var{event}はイベントオブジェクト全体、または単なるイベント型かもしれない。@var{event}がカレントEmacsセッション内で入力として読み取られたイベント内で決して使用されないシンボルなら、実際に@var{event}が変更されたときでも@code{event-modifiers}は@code{nil}をリターンできる。
+
+いくつか例を挙げる:
+
+@example
+(event-modifiers ?a)
+     @result{} nil
+(event-modifiers ?A)
+     @result{} (shift)
+(event-modifiers ?\C-a)
+     @result{} (control)
+(event-modifiers ?\C-%)
+     @result{} (control)
+(event-modifiers ?\C-\S-a)
+     @result{} (control shift)
+(event-modifiers 'f5)
+     @result{} nil
+(event-modifiers 's-f5)
+     @result{} (super)
+(event-modifiers 'M-S-f5)
+     @result{} (meta shift)
+(event-modifiers 'mouse-1)
+     @result{} (click)
+(event-modifiers 'down-mouse-1)
+     @result{} (down)
+@end example
+
+クリックイベントにたいする修飾子リストは明示的に@code{click}を含むが、イベントシンボル名自体には@samp{click}が含まれない。同じように@samp{C-a}のような@acronym{ASCII}コントロール文字にたいする修飾子リストでは、たとえ@samp{C-a}の修飾ビットを取り除いて値1をリターンする@code{read-char}を通じて読み取られたイベントであっても@code{control}が含まれる。
+@end defun
+
+@defun event-basic-type event
+この関数は@var{event}を記述するキー、またはマウスボタンをリターンする。@var{event}引数は@code{event-modifiers}の場合と同様。たとえば:
+
+@example
+(event-basic-type ?a)
+     @result{} 97
+(event-basic-type ?A)
+     @result{} 97
+(event-basic-type ?\C-a)
+     @result{} 97
+(event-basic-type ?\C-\S-a)
+     @result{} 97
+(event-basic-type 'f5)
+     @result{} f5
+(event-basic-type 's-f5)
+     @result{} f5
+(event-basic-type 'M-S-f5)
+     @result{} f5
+(event-basic-type 'down-mouse-1)
+     @result{} mouse-1
+@end example
+@end defun
+
+@defun mouse-movement-p object
+@var{object}がマウス移動イベントなら、この関数は非@code{nil}をリターンする。@ref{Motion Events}を参照のこと。
+@end defun
+
+@node Accessing Mouse
+@subsection マウスイベントへのアクセス
+@cindex mouse events, data in
+@cindex keyboard events, data in
+
+  このセクションではマウスボタンやモーションイベント内のデータアクセスに役立つ関数を説明します。同じ関数を使用してキーボードイベントデータにもアクセスできますが、キーボードイベントに不適切なデータ要素は0か@code{nil}になります。
+
+  以下の2つの関数は、マウスイベントの位置を指定するマウス位置リスト(@ref{Click Events}を参照)をリターンします。
+
+@defun event-start event
+これは@var{event}の開始位置をリターンする。
+
+@var{event}がクリックイベントかボタンダウンイベントなら、この関数はそのイベントの位置をリターンする。@var{event}がドラッグイベントなら、そのドラッグの開始位置をリターンする。
+@end defun
+
+@defun event-end event
+これは@var{event}の終了位置をリターンする。
+
+@var{event}がドラッグイベントなら、この関数はユーザーがマウスボタンをリリースした位置をリターンする。@var{event}がクリックイベントかボタンダウンイベントなら、値はそのイベント固有の開始位置となる。
+@end defun
+
+@defun posnp object
+この関数は@var{object}が(@ref{Click
+Events}に記述されたフォーマットの)マウス位置リストなら非@code{nil}、それ以外では@code{nil}をリターンする。
+@end defun
+
+@cindex mouse position list, accessing
+  以下の関数は引数にマウス位置リストを受け取り、そのリストのさまざまな部分をリターンします:
+
+@defun posn-window position
+@var{position}があったウィンドウをリターンする。@var{position}が最初にイベントがあったフレームの外部の位置を表す場合には、かわりにそのフレームをリターンする。
+@end defun
+
+@defun posn-area position
+@var{position}内に記録されたウィンドウエリアをリターンする。そのウィンドウのテキストエリアでイベントが発生したときは@code{nil}、それ以外ではイベントがどこで発生したかを識別するシンボルをリターンする。
+@end defun
+
+@defun posn-point position
+@var{position}内のバッファー位置をリターンする。ウィンドウのテキストエリア、マージンエリア、フリンジでイベントが発生したときはバッファー位置を識別する整数値、それ以外では値は未定義。
+@end defun
+
+@defun posn-x-y position
+@var{position}内のピクセル単位のxy座標を、コンスセル@w{@code{(@var{x}
+. @var{y})}}でリターンする。これらは@code{posn-window}により与えられるウィンドウにたいする相対座標である。
+
+以下はあるウィンドウのテキストエリア内のウィンドウ相対座標をフレーム相対座標に変換する方法を示す例:
+
+@example
+(defun frame-relative-coordinates (position)
+  "POSITIONのフレーム相対座標をリターンする。
+POSITIONはウィンドウのテキストエリアにあるものとする。"
+  (let* ((x-y (posn-x-y position))
+         (window (posn-window position))
+         (edges (window-inside-pixel-edges window)))
+    (cons (+ (car x-y) (car edges))
+          (+ (cdr x-y) (cadr edges)))))
+@end example
+@end defun
+
+@defun posn-col-row position &optional use-window
+この関数は@var{position}で記述されるのバッファー位置で推定される列と行を含むコンスセル@w{@code{(@var{col} .
+@var{row})}}をリターンする。リターン値は@var{position}にたいする@var{x}と@var{y}の値より計算され、そのフレームのデフォルト文字幅とデフォルト行高(行間スペースを含む)の単位で与えられる(そのため実際の文字サイズが非デフォルト値の場合には、実際の行と列は計算された値とは異なるかもしれない)オプションの。@var{window}引数が非@code{nil}の場合には、フレームではなく@var{position}で示されるウィンドウのデフォルト文字幅を使用する(これはたとえば非デフォルトのズームレベルでバッファーを表示しているウィンドウで違いが生じる)。
+
+@var{row}はそのテキストエリアの上端から数えられることに注意。@var{position}により与えられるウィンドウがヘッダーライン(@ref{Header
+Lines}を参照)やタブラインをもつなら、それらは@var{row}の数に@emph{含まれない}。
+@end defun
+
+@defun posn-actual-col-row position
+@var{position}内の実際の行と列をコンスセル@w{@code{(@var{col}
+. @var{row})}}でリターンする。値は@var{position}与えられるウィンドウの実際の行と列。@ref{Click
+Events}を参照のこと。@var{position}が実際のポジション値を含まなければ、この関数は@code{nil}をリターンする。この場合にはおおよその値を取得するために@code{posn-col-row}を使用できる。
+
+この関数はタブ文字やイメージによるビジュアル列数のように、ディスプレイ上の文字のビジュアル幅を意味しない。標準的な文字単位の座標が必要なら、かわりに@code{posn-col-row}を使用すること。
+@end defun
+
+@defun posn-string position
+@var{position}に記述された文字列オブジェクトをリターンする。@code{nil}
+(@var{position}がバッファーテキストを記述することを意味する)、またはコンスセル@w{@code{(@var{string}
+. @var{string-pos})}}のいずれか。
+@end defun
+
+@defun posn-image position
+@var{position}にあるイメージオブジェクトをリターンする。@code{nil}
+(@var{position}にイメージがない)、またはイメージspec @w{@code{(image @dots{})}}のいずれか。
+@end defun
+
+@defun posn-object position
+@var{position}により記述されるイメージオブジェクトか文字列オブジェクトをリターンする。@code{nil}
+(@var{position}がバッファーテキストを記述することを意味する)、イメージ@w{@code{(image
+@dots{})}}、またはコンスセル@w{@code{(@var{string} . @var{string-pos})}}のいずれか。
+@end defun
+
+@defun posn-object-x-y position
+@var{position}で記述されるオブジェクトの左上隅からのピクセル単位のxy座標を、コンスセル@w{@code{(@var{dx}
+.
+@var{dy})}}でリターンする。@var{position}がバッファーテキストを記述する場合には、その位置にもっとも近いバッファーテキストの相対位置をリターンする。
+@end defun
+
+@defun posn-object-width-height position
+@var{position}で記述されるオブジェクトのピクセル幅とピクセル高さを、コンスセル@code{(@var{width}
+. @var{height})}でリターンする。@var{position}がバッファー位置を記述する場合には、その位置の文字のサイズをリターンする。
+@end defun
+
+@cindex timestamp of a mouse event
+@defun posn-timestamp position
+@var{position}のタイムスタンプをリターンする。これはミリ秒で表したイベント発生時刻である。このようなタイムスタンプは使用しているウィンドウシステムに応じてさまざまに異なる任意の開始時刻からの相対時刻として報告される。たとえばXウィンドウシステムでは、そのXサーバー開始から経過したミリ秒数となる。
+@end defun
+
+  以下の関数は与えられた特定のバッファー、またはスクリーン位置によって位置リストを計算します。上述の関数でこの位置リスト内のデータにアクセスできます。
+
+@defun posn-at-point &optional pos window
+この関数は@var{window}内の位置@var{pos}にたいする位置リストをリターンする。@var{pos}のデフォルトは@var{window}内のポイント、@var{window}のデフォルトは選択されたウィンドウ。
+
+@var{window}内で@var{pos}が不可視なら、@code{posn-at-point}は@code{nil}をリターンする。
+@end defun
+
+@defun posn-at-x-y x y &optional frame-or-window whole
+この関数は指定されたフレームかウィンドウ@var{frame-or-window}(デフォルトは選択されたウィンドウ)内のピクセル座標@var{x}と@var{y}に対応する位置情報をリターンする。@var{x}と@var{y}は、選択されたウィンドウのテキストエリアにたいする相対座標である。@var{whole}が非@code{nil}なら、@var{x}座標はスクロールバー、マージン、フリンジを含むウィンドウエリア全体にたいする相対座標。
+@end defun
+
+@defopt mouse-prefer-closest-glyph
+この変数が非@code{nil}なら、マウス位置リストの@code{posn-point}は、マウスポイント自体の下にあるグリフ位置とは対照的に、マウスクリックにもっとも近いようなグリフの最左エッジの位置にセットされる。たとえば@var{x}に@code{9}
+(列0にある幅10の文字を含む)をセットして@code{posn-at-x-y}を呼び出すと、マウス位置リストに保存されるのはその文字の@emph{前}ではなく@emph{後}になる。
+@end defopt
+
+@node Accessing Scroll
+@subsection スクロールバーイベントへのアクセス
+@cindex scroll bar events, data in
+
+  以下の関数はスクロールバーイベントの解析に役立ちます。
+
+@defun scroll-bar-event-ratio event
+この関数はスクロールバーで発生したスクロールバーイベントの位置の垂直位置の割り合いをリターンする。値は位置の割り合いを表す2つの整数を含むコンスセル@code{(@var{portion}
+. @var{whole})}。
+@end defun
+
+@defun scroll-bar-scale ratio total
+この関数は、(実質的には)@var{ratio}に@var{total}を乗じて、結果を整数に丸める。引数@var{ratio}は数字ではなく、@code{scroll-bar-event-ratio}によってリターンされる典型的な値ペア@code{(@var{num}
+. @var{denom})}である。
+
+この関数はスクロールバー位置をバッファー位置にスケーリングするのに有用。以下のように行う:
+
+@example
+(+ (point-min)
+   (scroll-bar-scale
+      (posn-x-y (event-start event))
+      (- (point-max) (point-min))))
+@end example
+
+スクロールバーイベントは、xy座標ペアのかわりに割り合いを構成する2つの整数をもつことを思い出してほしい。
+@end defun
+
+@node Strings of Events
+@subsection 文字列内へのキーボードイベントの配置
+@cindex keyboard events in strings
+@cindex strings with keyboard events
+
+  文字列が使用される場所のほとんどにおいて、わたしたちはテキスト文字を含むもの、つまりバッファーやファイル内で見出すのと同種のものとして文字列を概念化します。Lispプログラムはときおりキーボード文字、たとえばキーシーケンスやキーボードマクロ定義かもしれないキーボード文字を概念的に含んだ文字列を使用します。しかし文字列内へのキーボード文字の格納は、歴史的な互換性の理由から複雑な問題であり、常に可能なわけではありません。
+
+  新たに記述するプログラムでは文字列内にコントロール文字類を含むキーボードイベントを格納せずに、@code{key-valid-p}が理解できるEmacsの一般形式で格納することを推奨する。
+
+  @code{read-key-sequence-vector}(あるいは@code{read-key-sequence})でキーシーケンスを読み取ったり、@code{this-command-keys-vector}(あるいは@code{this-command-keys})でキーシーケンスにアクセスする場合には、@code{key-description}を使用することでキーシーケンスを推奨フォーマットに変換することができます。
+
+  複雑さはキーボード入力に含まれるかもしれない修飾ビットに起因します。メタ修飾以外の修飾ビットは文字列に含めることができず、メタ文字も特別な場合だけ許容されます。
+
+  GNU
+Emacsの初期のバージョンでは、メタ文字を128から255のコードで表していました。その頃は基本的な文字コードの範囲は0から127だったので、すべてのキーボード文字を文字列内に適合させることができました。Lispプログラムの多くは、特に@code{define-key}やその種の関数の引数として文字列定数内にメタ文字を意味する@samp{\M-}を使用していて、キーシーケンスとイベントシーケンスは常に文字列として表現されていました。
+
+  127超のより大きい基本文字コードと追加の修飾ビットにたいするサポートを加えたとき、わたしたちはメタ文字の表現を変更する必要がありました。現在では文字のメタ修飾を表すフラグは
+@tex
+@math{2^{27}}
+@end tex
+@ifnottex
+2**27
+@end ifnottex
+であり、そのような値は文字列内に含めることができません。
+
+  プログラムで文字列定数内の@samp{\M-}をサポートするために、文字列内に特定のメタ文字を含めるための特別なルールがあります。以下は入力文字シーケンスとして文字列を解釈するためのルールです:
+
+@itemize @bullet
+@item
+キーボード文字の値の範囲が0から127なら、文字列を変更せずに含めることができる。
+
+@item
+これらの
+@tex
+@math{2^{27}}
+@end tex
+@ifnottex
+2**27
+@end ifnottex
+から
+@tex
+@math{2^{27} + 127},
+@end tex
+@ifnottex
+2**27+127,
+@end ifnottex
+までの文字のコード範囲にあるメタ修飾された変種も文字列に含めることができるが、それらの数値を変更しなければならない。値が128から255の範囲となるように、ビット
+@tex
+@math{2^{7}}
+@end tex
+@ifnottex
+2**7
+@end ifnottex
+のかわりにビット
+@tex
+@math{2^{27}}
+@end tex
+@ifnottex
+2**27
+@end ifnottex
+をセットしなければならない。ユニバイト文字列だけがこれらの文字を含むことができる。
+
+@item
+265を超える非@acronym{ASCII}文字はマルチバイト文字に含めることができる。
+
+@item
+その他のキーボード文字イベントは文字列に適合させられない。これには128から255の範囲のキーボードイベントが含まれる。
+@end itemize
+
+  キーボード入力文字の文字列定数を構築する@code{read-key-sequence}のような関数は、イベントが文字列内に適合しないときは文字列のかわりにベクターを構築するというルールにしたがいます。
+
+  文字列内で入力構文@samp{\M-}を使用すると、それは128から255の範囲のコード、つまり対応するキーボードイベントを文字列内に配すために変更するとき取得されるのと同じコードが生成されます。したがって文字列内のメタイベントは、それが文字列内にどのように配置されたかと無関係に一貫して機能します。
+
+  しかしほとんどのプログラムはこのセクションの冒頭の推奨にしたがって、これらの問題を避けたほうがよいでしょう。
+
+@node Reading Input
+@section 入力の読み取り
+@cindex read input
+@cindex keyboard input
+
+  エディターコマンドループはキーシーケンスの読み取りに関数@code{read-key-sequence}を使用して、この関数は@code{read-event}を使用します。イベント入力にたいしてこれらの関数、およびその他の関数がLisp関数から利用できます。@ref{Temporary
+Displays}の@code{momentary-string-display}、および@ref{Waiting}の@code{sit-for}も参照してください。端末の入力モードの制御、および端末入力のデバッグに関する関数と変数については、@ref{Terminal
+Input}を参照してください。
+
+  高レベル入力機能については@ref{Minibuffers}を参照してください。
+
+@menu
+* Key Sequence Input::       キーシーケンスを読み取る方法。
+* Reading One Event::        イベントを1つだけ読み取る方法。
+* Event Mod::                Emacsが読み取られたイベントを変更する方法。
+* Invoking the Input Method::  入力メソッドを使用するイベントを読み取る方法。
+* Quoted Character Input::   文字の指定をユーザーに問い合わせる。
+* Event Input Misc::         入力イベントの最読み取りや破棄の方法。
+@end menu
+
+@node Key Sequence Input
+@subsection キーシーケンス入力
+@cindex key sequence input
+
+  コマンドループは@code{read-key-sequence}を呼び出すことによって、キーシーケンスの入力を一度に読み取ります。Lisp関数もこの関数を呼び出すことができます。たとえば@code{describe-key}はキーを記述するためにこの関数を使用します。
+
+@defun read-key-sequence prompt &optional continue-echo dont-downcase-last switch-frame-ok command-loop disable-text-conversion
+この関数はキーシーケンスを読み取って、それを文字列かベクターでリターンする。この関数は完全なキーシーケンスに蓄積されるまで、つまりカレントでアクティブなキーマップを使用してプレフィクスなしでコマンドを指定するのに十分なキーシーケンスとなるまでイベントの読み取りを継続する(マウスイベントで始まるキーシーケンスは、カレントバッファーではなくマウスのあったウィンドウ内のバッファーのキーマップを使用して読み取られることを思い出してほしい)。
+
+イベントがすべて文字で、それらがすべて文字列に適合すれば、@code{read-key-sequence}は文字列をリターンする(@ref{Strings
+of
+Events}を参照)。それ以外なら文字、シンボル、リストなどすべての種類のイベントを保持できるベクターをリターンする。文字列やベクターの要素は、キーシーケンス内のイベント。
+
+キーシーケンスの読み取りには、そのイベントを変換するさまざまな方法が含まれる。@ref{Translation Keymaps}を参照のこと。
+
+引数@var{prompt}はプロンプトとしてエコーエリアに表示される文字列、プロンプトを表示しない場合は@code{nil}。引数@var{continue-echo}が非@code{nil}なら、それは前のキーの継続としてそのキーをエコーすることを意味する。
+
+元となる大文字のイベントが未定義で、それと等価な小文字イベントが定義されていれば、通常は大文字のイベントが小文字のイベントに変換される。引数@var{dont-downcase-last}が非@code{nil}なら、それは最後のイベントを小文字に変換しないことを意味する。これはキーシーケンスを定義するときに適している。
+
+引数@var{switch-frame-ok}が非@code{nil}なら、たとえ何かをタイプする前にユーザーがフレームを切り替えたとしても、この関数が@code{switch-frame}を処理すべきではないことを意味する。キーシーケンスの途中でユーザーがフレームを切り替えた場合、またはシーケンスの最初だが@var{switch-frame-ok}が@code{nil}のときにフレームを切り替えた場合、そのイベントはカレントキーシーケンスの後に延期される。
+
+引数@var{command-loop}が非@code{nil}なら、そのキーシーケンスがコマンドを逐次読み取る何かによって読み取られることを意味する。呼び出し側が1つのキーシーケンスだけを読み取る場合には、@code{nil}を指定すること。
+
+引数@var{disable-text-conversion}が非@code{nil}なら、システム入力メソッドはそのキーシーケンス読み取り中はバッファーテキストの編集を直接処理せず、かわりにユーザー入力が常に個別にキーイベントを生成する。テキスト変換の詳細については@ref{Misc
+Events}を参照のこと。
+
+以下の例ではEmacsはエコーエリアにプロンプト@samp{?}を表示して、その後ユーザーが@kbd{C-x C-f}をタイプする。
+
+@example
+(read-key-sequence "?")
+
+@group
+---------- Echo Area ----------
+?@kbd{C-x C-f}
+---------- Echo Area ----------
+
+     @result{} "^X^F"
+@end group
+@end example
+
+関数@code{read-key-sequence}はquitを抑制する。この関数による読み取りの間にタイプされた@kbd{C-g}は他の文字と同じように機能し、@code{quit-flag}をセットしない。@ref{Quitting}を参照のこと。
+@end defun
+
+@defun read-key-sequence-vector prompt &optional continue-echo dont-downcase-last switch-frame-ok command-loop disable-text-conversion
+これは@code{read-key-sequence}と同様だが、キーシーケンスを常にベクターでリターンして、文字列では決してリターンしない点が異なる。@ref{Strings
+of Events}を参照のこと。
+@end defun
+
+@cindex upper case key sequence
+@cindex downcasing in @code{lookup-key}
+@cindex shift-translation
+@vindex translate-upper-case-key-bindings
+入力文字が大文字(またはシフト修飾をもつ)でキーバインディングをもたないものの、等価な小文字はキーバインディングをもつ場合には、@code{read-key-sequence}はその文字を小文字に変換します(この挙動はユーザーオプション@code{translate-upper-case-key-bindings}を@code{nil}にセットして無効にできる)。@code{lookup-key}はこの方法によるcase変換を行わないことに注意してください。
+
+@vindex this-command-keys-shift-translated
+入力を読み取った結果が@dfn{シフト変換(shift-translation)}されていたら、Emacsは変数@code{this-command-keys-shift-translated}に非@code{nil}値をセットします。シフト変換されたキーにより呼びだされたときに挙動を変更する必要があるLispプログラムは、この変数を調べることができます。たとえば関数@code{handle-shift-selection}はリージョンをアクティブ、または非アクティブにするかを判断するためにこの変数の値を調べます(@ref{The
+Mark, handle-shift-selection}を参照)。
+
+関数@code{read-key-sequence}もマウスイベントのいくつかを変換します。これはバインドされていないドラッグイベントをクリックイベントに変換して、バインドされていないボタンダウンイベントを完全に破棄します。さらにフォーカスイベントとさまざまなウィンドウイベントの再配置も行うため、これらのイベントはキーシーケンス中に他のイベントととも出現することは決してありません。
+
+@cindex @code{tab-line}, prefix key
+@cindex @code{header-line}, prefix key
+@cindex @code{mode-line}, prefix key
+@cindex @code{vertical-line}, prefix key
+@cindex @code{horizontal-scroll-bar}, prefix key
+@cindex @code{vertical-scroll-bar}, prefix key
+@cindex @code{menu-bar}, prefix key
+@cindex @code{tab-bar}, prefix key
+@cindex @code{left-margin}, prefix key
+@cindex @code{right-margin}, prefix key
+@cindex @code{left-fringe}, prefix key
+@cindex @code{right-fringe}, prefix key
+@cindex @code{right-divider}, prefix key
+@cindex @code{bottom-divider}, prefix key
+@cindex mouse events, in special parts of window or frame
+@cindex touch screen events, in special parts of window or frame
+モードラインやスクロールバーのような、ウィンドウやフレームの特別な箇所でマウスや@code{touchscreen-begin}、@code{touchscreen-end}のイベントが発生したとき、そのイベント型は特別なことは何も示さずにマウスボタンと修飾キーの組み合わせを通常表すのと同じシンボルになります。ウィンドウの箇所についての情報はイベント内の別のどこか、すなわち座標に保持されています。しかし@code{read-key-sequence}はこの情報を仮想的なプレフィクスキーに変換します。これらはすべてシンボルであり@code{tab-line}、@code{header-line}、@code{horizontal-scroll-bar}、@code{menu-bar}、@code{tab-bar}、@code{mode-line}、@code{vertical-line}、@code{vertical-scroll-bar}、@code{left-margin}、@code{right-margin}、@code{left-fringe}、@code{right-fringe}、@code{right-divider}、@code{bottom-divider}です。これらの仮想的なプレフィクスキーを使用してキーシーケンスを定義することにより、ウィンドウの特別な部分でのカウスクリックにたいして意味を定義できます。
+
+たとえば@code{read-key-sequence}を呼び出した後にそのウィンドウのモードラインをマウスでクリックすると、以下のように2つのマウスイベントが取得されます:
+
+@example
+(read-key-sequence "Click on the mode line: ")
+     @result{} [mode-line
+         (mouse-1
+          (#<window 6 on NEWS> mode-line
+           (40 . 63) 5959987))]
+@end example
+
+@defvar num-input-keys
+この変数の値は、そのEmacsセッション内で処理されたキーシーケンスの数である。これには端末からのキーシーケンスと、実行されるキーボードマクロによって読み取られたキーシーケンスが含まれる。
+@end defvar
+
+@node Reading One Event
+@subsection 単一イベントの読み取り
+@cindex reading a single event
+@cindex event, reading only one
+
+  @code{read-event}、@code{read-char}、@code{read-char-exclusive}はコマンド入力にたいするもっとも低レベルの関数です。
+
+ミニバッファーを使用して1文字を読み取る関数が必要なら@code{read-char-from-minibuffer}を使用してください(@ref{Multiple
+Queries}を参照)。
+
+@defun read-event &optional prompt inherit-input-method seconds
+この関数はコマンド入力の次のイベントを読み取ってリターンする。必要ならイベントが利用可能になるまで待機する。
+
+リターンされるイベントはユーザーからの直接のイベントかもしれないし、キーボードマクロからのイベントかもしれない。イベントはキーボードの入力コーディングシステム(@ref{Terminal
+I/O Encoding}を参照)によりデコードされていない。
+
+オプション引数@var{prompt}が非@code{nil}なら、それはエコーエリアにプロンプトとして表示される文字列。
+@var{prompt}が@code{nil}か文字列@samp{""}なら、@code{read-event}は入力待ちを示すメッセージを何も表示せず、エコーを行うことによってプロンプトの代用とする。エコーに表示される記述はカレントコマンドに至ったイベントや読み取られたイベント。@ref{The
+Echo Area}を参照のこと。
+
+@var{inherit-input-method}が非@code{nil}なら、(もしあれば)非@acronym{ASCII}文字の入力を可能にするためにカレントの入力メソッドが採用される。それ以外では、このイベントの読み取りにたいして入力メソッドの処理が無効になる。
+
+@code{cursor-in-echo-area}が非@code{nil}の場合、@code{read-event}はカーソルを一時的にエコーエリアの、そこに表示されているメッセージの終端に移動する。それ以外では、@code{read-event}はカーソルを移動しない。
+
+@var{seconds}が非@code{nil}なら、それは入力を待つ最大秒数を指定する数値である。その時間内に入力が何も到着しなければ、@code{read-event}は待機を終えて@code{nil}をリターンする。浮動小数点数@var{seconds}は待機する秒の分数を意味する。いくつかのシステムではサポートされるのは整数の秒数だけであり、そのようなシステムでは@var{seconds}は切り捨てられる。@var{seconds}が@code{nil}なら、@code{read-event}は入力が到着するのに必要なだけ待機する。
+
+@var{seconds}が@code{nil}ならユーザー入力が到着するのを待つ間、Emacsはアイドル状態にあるとみなされる。この期間中にアイドルタイマー
+--- @code{run-with-idle-timer} (@ref{Idle Timers}を参照) ---
+を実行できる。しかし@var{seconds}が非@code{nil}なら、非アイドル状態は変更されずに残る。@code{read-event}が呼び出されたときEmacsが非アイドルだったら、@code{read-event}の処理を通じて非アイドルのままとなる。Emacsがアイドルだった場合(これはアイドルタイマー内部からその呼び出しが行われた場合に起こり得る)は、アイドルのままとまる。
+
+@code{read-event}がヘルプ文字として定義されたイベントを取得すると、ある状況においては@code{read-event}がリターンせずに直接イベントを処理することがある。@ref{Help
+Functions}を参照のこと。その他の@dfn{スペシャルイベント(special events)}(@ref{Special
+Events}を参照)と呼ばれる特定のイベントも@code{read-event}で直接処理される。
+
+以下は@code{read-event}を呼び出してから右矢印キーを押下したとき何が起こるかの例:
+
+@example
+@group
+(read-event)
+     @result{} right
+@end group
+@end example
+@end defun
+
+@defun read-char &optional prompt inherit-input-method seconds
+この関数は文字入力イベントを読み取ってリターンする。ユーザーが文字以外(たとえばマウスクリックやファンクションキー)のイベントを生成した場合には、@code{read-char}はエラーをシグナルする。引数は@code{read-event}と同じように機能する。
+
+イベントが修飾子をもつ場合には、Emacsはそれらの解決を試みて対応する文字のコードをリターンする。たとえばユーザーが@kbd{C-a}をタイプすると、関数は文字@samp{C-a}の@acronym{ASCII}コードである1をリターンする。いくつかの修飾子を文字コードに反映できない場合には、@code{read-char}は未解決の修飾子ビットをセットしたままイベントをリターンする。たとえばユーザーが@kbd{C-M-a}をタイプすると、関数は134217729(16進の8000001であり、これはメタ修飾子がセットされた@samp{C-a})をリターンする。この値は有効な文字コードではないので、@code{characterp}のテストに失敗する(@ref{Character
+Codes}を参照)。修飾子ビットが削除された文字の復元には@code{event-basic-type} (@ref{Classifying
+Events}を参照)、@code{read-char}がリターンした文字イベント内の修飾子をテストするには@code{event-modifiers}を使用すること。
+
+以下の1つ目の例ではユーザーは文字@kbd{1}(@acronym{ASCII}コード49)をタイプしている。2つ目の例では@code{eval-expression}を使用してミニバッファーから@code{read-char}を呼び出すキーボード定義を示している。@code{read-char}はキーボードマクロの直後の文字@kbd{1}を読み取る。その後に@code{eval-expression}はリターン値をエコーエリアに表示する。
+
+@example
+@group
+(read-char)
+     @result{} 49
+@end group
+
+@group
+;; @r{@kbd{M-:}を使用して以下を評価するものとする}
+(symbol-function 'foo)
+     @result{} "^[:(read-char)^M1"
+@end group
+@group
+(execute-kbd-macro 'foo)
+     @print{} 49
+     @result{} nil
+@end group
+@end example
+@end defun
+
+@defun read-char-exclusive &optional prompt inherit-input-method seconds
+この関数は文字入力イベントを読み取ってリターンする。ユーザーが文字イベント以外を生成した場合には、@code{read-char-exclusive}はそれを無視して文字を取得するまで他のイベントを読み取る。引数は@code{read-event}と同じように機能する。リターン値には@code{read-char}のように修飾ビットが含まれるかもしれない。
+@end defun
+
+  上記の関数でquitを抑制するものはありません。
+
+@defvar num-nonmacro-input-events
+この変数は端末から受信した入力イベント(キーボードマクロにより生成されたイベントは勘定しない)の総数を保持する。
+@end defvar
+
+  @code{read-key-sequence}と異なり関数@code{read-event}、@code{read-char}、@code{read-char-exclusive}は@ref{Translation
+Keymaps}で説明した変換を行わないことを強調しておきます。単一キー読み取りでこれらの変換を行う ---
+たとえば端末からファンクションキー(@ref{Function
+Keys}を参照)、@code{xterm-mouse-mode}からマウスイベント(@ref{Mouse Events}を参照)を読み取る場合 ---
+には関数@code{read-key}を使用してください。
+
+@defun read-key &optional prompt disable-fallbacks
+この関数は1つのキーを読み取る。これは@code{read-key-sequence}と@code{read-event}の間の中間的な関数である。@code{read-key-sequence}と異なるのは、キーシーケンスではなく単一キーを読み取ることである。@code{read-event}と異なるのは、rawイベントをリターンせずに@code{input-decode-map}、@code{local-function-key-map}、@code{key-translation-map}
+(@ref{Translation Keymaps}を参照)に合わせてデコードと変換を行うことである。
+
+引数@var{prompt}はプロンプトとしてエコーエリアに表示する文字列で、@code{nil}はプロンプトを表示しないことを意味する。
+
+引数@var{disable-fallbacks}が非@code{nil}なら、@code{read-key-sequence}でバインドされないキーにたいする通常のフォールバックロジックは適用されない。これはbutton-downちmulti-clickのイベントは棄却されず、@code{local-function-key-map}と@code{key-translation-map}が適用されないことを意味する。@code{nil}または指定されなければ、フォールバックの無効化は最後のイベントのダウンキャスト(訳注:
+基本イベントから継承イベントへの型変換)となる。
+@end defun
+
+@vindex read-char-choice-use-read-key
+@defun read-char-choice prompt chars &optional inhibit-quit
+この関数は@var{chars}のメンバーであるような文字を読み取って1文字をリターンするために@code{read-from-minibuffer}を使用する。@var{chars}のメンバーではない文字が入力されると、その旨を伝えるメッセージして入力を破棄する。
+
+オプション引数@var{inhibit-quit}はデフォルトでは無視されるが、変数@code{read-char-choice-use-read-key}が非@code{nil}ならこの関数は@code{read-from-minibuffer}ではなく@code{read-key}を使用する。この場合には@var{inhibit-quit}が非@code{nil}だと、有効な入力待機中のkeyboard-quitイベントを無視することを意味する。加えて@code{read-char-choice-use-read-key}が非@code{nil}の場合には、この関数の呼び出し中に@code{help-form}に非@code{nil}値をバインドすることによって、ユーザーが@code{help-char}文字を押下した際に@code{help-form}を評価してその結果を表示、その後は有効な入力文字、あるいはkeyboard-quitの待機を継続する。
+@end defun
+
+@defun read-multiple-choice prompt choices &optional help-string show-help long-form
+複数の選択肢のある問いをユーザーに尋ねる。@var{prompt}はプロンプトとして表示する文字列であること。
+
+@var{choices}は各エントリーの1つ目の要素が入力される文字、2つ目の要素がプロンプトを表示する際にそのエントリーにたいして表示する短い名前であるようなalist(スペースがあれば短縮され得る)であり、3つ目のオプションのエントリーはユーザーがより多くのヘルプを要求した際にヘルプバッファーに表示する長い説明。
+
+オプション引数@var{help-string}が非@code{nil}なら、すべてのchoiceをより詳細に記述する文字列であること。これはユーザーが@kbd{?}をタイプした際に、自動生成されたデフォルトの説明のかわりとしてヘルプバッファーに表示される。
+
+オプション引数@var{show-help}が非@code{nil}なら、ユーザーが入力する前に即座にヘルプバッファーが表示される。文字列ならそれがヘルプバッファーの名前として用いられる。
+
+オプション引数@var{long-form}が非@code{nil}なら、ユーザーは単一キーではなく(@code{completing-read}を使用して)長い形式をタイプして応答する必要がある。この応答はリスト@var{choices}の2つ目の要素内に存在しなければならない。
+
+リターン値は@var{choices}のマッチする値。
+
+@lisp
+(read-multiple-choice
+ "Continue connecting?"
+ '((?a "always" "Accept certificate for this and future sessions.")
+   (?s "session only" "Accept certificate this session only.")
+   (?n "no" "Refuse to use certificate, close connection.")))
+@end lisp
+
+グラフィカル端末で名前文字列にマッチする文字をハイライトするために@code{read-multiple-choice-face}フェイスが使用される。
+
+@end defun
+
+@node Event Mod
+@subsection 入力イベントの変更と変換
+@cindex modifiers of events
+@cindex translating input events
+@cindex event translation
+
+  Emacsは@code{extra-keyboard-modifiers}に合わせて読み取ったすべてのイベントを変更して@code{read-event}からリターンする前に、(もし適切なら)@code{keyboard-translate-table}を通じてそれを変換します。
+
+@defvar extra-keyboard-modifiers
+この変数はLispプログラムにキーボード上の修飾キーを``押下''させる。値は文字。文字の修飾子だけが対象となる。ユーザーがキーボードのキーを押下するたびに、その修飾キーがすでに押下されたかのように処理される。たとえば@code{extra-keyboard-modifiers}を@code{?\C-\M-a}にバインドすると、このバインディングのスコープ内にある間、すべてのキーボード入力文字はコントロール修飾とメタ修飾を適用されるだろう。文字@code{?\C-@@}は0と等価なので、この目的にたいしてはコントロール文字として勘定されないが、修飾無しの文字として扱われる。したがって@code{extra-keyboard-modifiers}を0にセットすることによって、すべての修飾をキャンセルできる。
+
+ウィンドウシステムを利用していれば、この方法によってプログラムが任意の修飾キーを押下できる。それ以外では@key{CTL}と@key{META}のキーだけを仮想的に押下できる。
+
+この変数は実際にキーボードに由来するイベントだけに適用され、マウスイベントやその他のイベントには効果がないことに注意。
+@end defvar
+
+@defvar keyboard-translate-table
+この端末ローカルな変数はキーボード文字にたいする変換テーブルである。これによりコマンドバインディングを変更することなく、キーボード上のキーを再配置できる。値は通常は文字テーブル、または@code{nil}(文字列かベクターも指定できるが時代遅れとされている)。
+
+@code{keyboard-translate-table}が文字テーブル(@ref{Char-Tables}を参照)なら、キーボードから読み取られた各文字はその文字テーブルを調べる。非@code{nil}の値が見つかったら実際の入力文字のかわりにそれを使用する。
+
+この変換は文字が端末から読み取られた後、最初に発生することに注意。@code{recent-keys}のような記録保持機能や文字を記録するdribbleファイルは、この変換の後に処理される。
+
+さらにこの変換は入力メソッド(@ref{Input
+Methods}を参照)に文字を提供する前に行われることにも注意。入力メソッド処理の後に文字を変換したいなら@code{translation-table-for-input}
+(@ref{Translation of Characters}を参照)を使用すること。
+@end defvar
+
+@defun key-translate from to
+この関数は文字コード@var{from}を文字コード@var{to}に変換するために@code{keyboard-translate-table}を変更する。
+必要ならキーボード変換テーブルを作成する。
+@end defun
+
+  以下は@kbd{C-x}でカット、@kbd{C-}でコピー、@kbd{C-v}でペーストを処理するように@code{keyboard-translate-table}を使用する例:
+
+@example
+(key-translate "C-x" "<control-x>")
+(key-translate "C-c" "<control-c>")
+(key-translate "C-v" "<control-v>")
+(keymap-global-set "<control-x>" 'kill-region)
+(keymap-global-set "<control-c>" 'kill-ring-save)
+(keymap-global-set "<control-v>" 'yank)
+@end example
+
+@noindent
+拡張@acronym{ASCII}入力をサポートするグラフィカルな端末上では、シフトキーとともにタイプすることによって、標準的なEmacsにおける意味をこれらの文字から依然として取得することが可能です。これはキーボード変換が関与する文字とは異なりますが、それらは通常と同じ意味をもちます。
+
+  @code{read-key-sequence}のレベルでイベントシーケンスを変換するメカニズムについては、@ref{Translation
+Keymaps}を参照してください。
+
+@node Invoking the Input Method
+@subsection 入力メソッドの呼び出し
+@cindex invoking input method
+
+  イベント読み取り関数は、もしあればカレント入力メソッドを呼び出します(@ref{Input
+Methods}を参照)。@code{input-method-function}の値が非@code{nil}なら関数を指定します。@code{read-event}が修飾ビットのないプリント文字(@key{SPC}を含む)を読み取ったときは、その文字を引数としてその関数を呼び出します。
+
+@defvar input-method-function
+これが非@code{nil}なら、その値はカレントの入力メソッド関数を指定する。
+
+@strong{警告:}
+この変数を@code{let}でバインドしてはならない。この変数はバッファーローカルであることが多く、入力の前後(これは正にあなたがバインド@emph{するであろう}タイミングである)でバインドすると、Emacsが待機中に非同期にバッファーを切り替えた場合に、誤ったバッファーに値がリストアされてしまう。
+@end defvar
+
+  入力メソッド関数は入力として使用されるイベントのリストをリターンするべきです(このリストが@code{nil}なら、それは入力がないことを意味するので@code{read-event}は他のイベントを待機する)。これらのイベントは@code{unread-command-events}
+(@ref{Event Input
+Misc}を参照)内のイベントの前に処理されます。入力メソッドによってリターンされるイベントは、たとえそれらが修飾ビットのないプリント文字であっても再度入力メソッドに渡されることはありません。
+
+  入力メソッド関数が@code{read-event}や@code{read-key-sequence}を呼び出したら、再帰を防ぐために最初に@code{input-method-function}を@code{nil}にバインドするべきです。
+
+  キーシーケンスの2つ目および後続のイベントを読み取るときは、入力メソッド関数は呼び出されません。したがってそれらの文字は入力メソッドの処理対象外です。入力メソッド関数は@code{overriding-local-map}と@code{overriding-terminal-local-map}の値をテストするべきです。これらの変数のいずれかが非@code{nil}なら入力メソッドは引数をリストにputして、それ以上の処理を行わずにそのリストをリターンするべきです。
+
+@node Quoted Character Input
+@subsection クォートされた文字の入力
+@cindex quoted character input
+
+  ユーザーが手軽にコントロール文字やメタ文字、リテラルや8進文字コードを指定できるように文字の指定をもとめることができます。コマンド@code{quoted-insert}はこの関数を使用しています。
+
+@defun read-quoted-char &optional prompt
+@cindex octal character input
+@cindex control characters, reading
+@cindex nonprinting characters, reading
+この関数は@code{read-char}と同様だが、最初に読み取った文字が8進数(0--7)なら任意の個数の8進数(8進数以外の文字を見つけた時点でストップする)を読み取って、その文字コードにより表される文字をリターンする。8進シーケンスを終端させた文字が@key{RET}ならそれは無視される。他の終端文字はこの関数がリターンした後の入力として使用される。
+
+最初の文字の読み取り時にはquitは抑制されるので、ユーザーはは@kbd{C-g}を入力できる。@ref{Quitting}を参照のこと。
+
+@var{prompt}が与えられたら、それはユーザーへのプロンプトに使用する文字列を指定する。プロンプト文字列はその後に1つの@samp{-}とともに常にエコーエリアに表示される。
+
+以下の例ではユーザーは8進数の177(10進数の127)をタイプしている。
+
+@example
+(read-quoted-char "What character")
+
+@group
+---------- Echo Area ----------
+What character @kbd{1 7 7}-
+---------- Echo Area ----------
+
+     @result{} 127
+@end group
+@end example
+@end defun
+
+@need 2000
+@node Event Input Misc
+@subsection その他のイベント入力の機能
+
+このセクションではイベントを使い切らずに先読みする方法と、入力の保留や保留の破棄の方法について説明します。@ref{Reading a
+Password}の関数@code{read-passwd}も参照してください。
+
+@defvar unread-command-events
+@cindex next input
+@cindex peeking at input
+この変数はコマンド入力として読み取り待機中のイベントのリストを保持する。イベントはこのリスト内の出現順に使用され、使用されるごとにリストから取り除かれる。
+
+ある関数がイベントを読み取ってそれを使用するかどうか決定する場合がいくつかあるためにこの変数が必要になる。この変数にイベントを格納するとコマンドループやコマンド入力を読み取る関数によってイベントは通常のように処理される。
+
+@cindex prefix argument unreading
+たとえば数引数を実装する関数は、任意の個数の数字を読み取る。数字イベントが見つからないとき、関数はそのイベントを読み戻す(unread)ので、そのイベントはコマンドループによって通常通り読み取られることができる。同様にインクリメンタル検索は、検索において特別な意味をもたないイベントを読み戻すためにこの機能を使用する。なぜならそれらのイベントは検索をexitして、通常どおり実行されるべきだからである。
+
+@code{unread-command-events}にイベントを置くためにキーシーケンスからイベントを抽出するには、@code{listify-key-sequence}
+(以下参照)を使用するのが簡単で信頼のおける方法である。
+
+もっとも最近読み戻したイベントが最初に再読み取りされるように、通常はこのリストの先頭にイベントを追加する。
+
+このリストから読み取ったイベントは、通常はそのイベントが最初に読み取られたときにすでに一度追加されたときのように、カレントコマンドのキーシーケンスに(たとえば@code{this-command-keys}にリターンされたときのように)追加される。フォーム@w{@code{(t
+. @var{event})}}の要素はカレントコマンドのキーシーケンスに@var{event}を強制的に追加する。
+
+@cindex not recording input events
+@cindex input events, prevent recording
+このリストから読み取った要素は通常は記録保持機能(@ref{Recording
+Input}を参照)により記録されるとともに、キーボードマクロ定義の間(@ref{Keyboard
+Macros}を参照)は記録される。しかし@w{@code{(no-record
+. @var{event})}}という形式の要素は、通常は記録されることなく@var{event}が処理される。
+@end defvar
+
+@defun listify-key-sequence key
+この関数は文字列かベクターの@var{key}を@code{unread-command-events}にputすることができる個別のイベントのリストに変換する。
+@end defun
+
+@defun input-pending-p &optional check-timers
+@cindex waiting for command key input
+この関数はコマンド入力がカレントで読み取り可能かどうか判断する。入力が利用可能なら@code{t}、それ以外は@code{nil}を即座にリターンする。非常に稀だが入力が利用できないときは@code{t}をリターンする。
+
+オプション引数@var{check-timers}が非@code{nil}なら、Emacsは準備ができるとすべてのタイマーを実行する。@ref{Timers}を参照のこと。
+@end defun
+
+@defvar last-input-event
+この変数は最後に読み取られた端末入力イベントがコマンドの一部なのか、それともLispプログラムによる明示的なものなのかを記録する。
+
+以下の例では文字@kbd{1}(@acronym{ASCII}コード49)をLispプログラムが読み取っている。@kbd{C-e} (@kbd{C-x
+C-e}は式を評価するコマンドとする)が@code{last-command-event}に値として残っている間は、それが@code{last-input-event}の値となる。
+
+@example
+@group
+(progn (print (read-char))
+       (print last-command-event)
+       last-input-event)
+     @print{} 49
+     @print{} 5
+     @result{} 49
+@end group
+@end example
+@end defvar
+
+@defmac while-no-input body@dots{}
+この構文は@var{body}フォームを実行して、入力が何も到着しない場合だけ最後のフォームの値をリターンする。@var{body}フォームを実行する間に何らかの入力が到着したら、それらの入力をabortする(quitのように機能する)。@code{while-no-input}フォームは実際のquitによりabortしたら@code{nil}、入力の到着によってabortしたら@code{t}をリターンする。
+
+@var{body}の一部で@code{inhibit-quit}を非@code{nil}にバインドすると、その部分の間に到着した入力はその部分が終わるまでabortしない。
+
+両方のabort条件を@var{body}により計算された可能なすべての値で区別できるようにしたければ、以下のようにコードを記述する:
+
+@example
+(while-no-input
+  (list
+    (progn . @var{body})))
+@end example
+@end defmac
+
+@defvar while-no-input-ignore-events
+この変数は@code{while-no-input}が無視するべきスペシャルイベントのセッティングを可能にする。これはイベントシンボルのリスト(@ref{Event
+Examples}を参照)。
+
+@end defvar
+
+@defun discard-input
+@cindex flushing input
+@cindex discarding input
+@cindex keyboard macro, terminating
+この関数は端末入力バッファーの内容を破棄して定義処理中かもしれないキーボードマクロをキャンセルする。この関数は@code{nil}をリターンする。
+
+以下の例ではフォームの評価開始直後にユーザーが数字か文字をタイプするかもしれない。@code{sleep-for}がスリープを終えた後に@code{discard-input}はスリープ中にタイプされた文字を破棄する。
+
+@example
+(progn (sleep-for 2)
+       (discard-input))
+     @result{} nil
+@end example
+@end defun
+
+@node Special Events
+@section スペシャルイベント
+
+@cindex special events
+特定の@dfn{スペシャルイベント(special
+event)}は、読み取られると即座に非常に低レベルで処理されます。@code{read-event}関数はそれらのイベントを自身で処理してそれらを決してリターンしません。かわりにスペシャルイベント以外の最初のイベントを待ってそれをリターンします。
+
+  スペシャルイベントはエコーされず、決してキーシーケンスにグループ化されず、@code{last-command-event}や@code{(this-command-keys)}の値として出現することもありません。スペシャルイベントは数引数を破棄して、@code{unread-command-events}による読み戻しができず、キーボードマクロ内に出現することもなく、キーボードマクロ定義中にキーボードマクロに記録されることもありません。
+
+  しかしスペシャルイベントは読み取られた直後に@code{last-input-event}内に出現するので、これがイベント定義にたいして実際のイベントを探す方法になります。
+
+  イベント型@code{iconify-frame}、@code{make-frame-visible}、@code{delete-frame}、@code{drag-n-drop}、@code{language-change}、および@code{sigusr1}ようなユーザーシグナルは通常はこの方法によって処理されます。何がスペシャルイベントで、スペシャルイベントをどのように処理するかを定義するキーマップは変数@code{special-event-map}
+(@ref{Controlling Active Maps}を参照)の中にあります。
+
+@node Waiting
+@section 時間の経過や入力の待機
+@cindex waiting
+
+  待機関数(wait
+function)は特定の時間が経過するか、入力があるまで待機するようにデザインされています。たとえば計算の途中でユーザーがディスプレイを閲覧できるように一時停止したいときがあるかもしれません。@code{sit-for}は一時停止して画面を更新して、@code{sleep-for}は画面を更新せずに一時停止して入力が到着したら即座にリターンします。
+
+@defun sit-for seconds &optional nodisp
+この関数は、(ユーザーからの保留中入力がければ)再描画を行ってから@var{seconds}秒、または入力が利用可能になるまで待機する。@code{sit-for}の通常の目的は、表示したテキストをユーザーが読み取る時間を与えるためである。入力が何も到着せず(@ref{Event
+Input Misc}を参照)、時間をフルに待機したら@code{t}、それ以外は@code{nil}が値となる。
+
+引数@var{seconds}は整数である必要はない。浮動小数点数なら@code{sit-for}は小数点数の秒を待機する。整数の秒だけをサポートするいくつかのシステムでは@var{seconds}は切り捨てられる。
+
+保留中の入力が存在しなければ、式@code{(sit-for
+0)}は遅延なしで再描画をリクエストする@code{(redisplay)}と等価である。@ref{Forcing Redisplay}を参照のこと。
+
+@var{nodisp}が非@code{nil}なら@code{sit-for}は再描画を行わないが、それでも入力が利用可能になると(またはタイムアウト時間が経過すると)即座にリターンする。
+
+batchモード(@ref{Batch
+Mode}を参照)では、たとえ標準入力ディスクリプタからの入力でも割り込みできない。これは以下で説明する@code{sleep-for}でも同様。
+@end defun
+
+@defun sleep-for seconds
+この関数は表示を更新せず単に@var{seconds}秒の間一時停止する。これは利用可能な入力に注意を払わない。この関数は@code{nil}をリターンする。
+
+引数@var{seconds}は整数である必要はない。浮動小数点数なら@code{sleep-for}は小数点数の秒を待機する。
+
+@code{(sleep-for @var{seconds}
+@var{millisec})}のように2つの引数で@code{sleep-for}を呼び出すことも可能だが、時代遅れだと考えられており将来削除されるだろう。
+
+遅延を保証したければ@code{sleep-for}を使用すること。
+@end defun
+
+  現在時刻を取得する関数については@ref{Time of Day}を参照してください。
+
+@node Quitting
+@section quit
+@cindex @kbd{C-g}
+@cindex quitting
+@cindex interrupt Lisp functions
+
+  Lisp関数を実行中に@kbd{C-g}をタイプすると、Emacsが何を行っていてもEmacsを@dfn{quit(中止、終了)}させます。これはアクティブなコマンドループの最内に制御がリターンすることを意味します。
+
+  コマンドループがキーボード入力の待機中に@kbd{C-g}をタイプしてもquitはしません。これは通常の入力文字として機能します。もっともシンプルなケースでは、通常@kbd{C-g}はquitの効果をもつ@code{keyboard-quit}を実行するので区別はできません。しかしプレフィクスキーの後の@kbd{C-g}は、未定義のキー組み合わせになります。これはプレフィクスキーやプレフィクス引数も同様にキャンセルする効果をもちます。
+
+  ミニバッファー内では@kbd{C-g}は異なる定義をもち、それはミニバッファーをabort(失敗、中止、中断)します。これは実際にはミニバッファーをexitしてquitします(単にquitするのは@emph{ミニバッファー内}のコマンドループにリターンするだろう)。@kbd{C-g}がなぜコマンドリーダーが入力読み取り時に直接quitしないかという理由は、ミニバッファー内での@kbd{C-g}の意味をこの方法によって再定義可能にするためです。プレフィクスキーの後の@kbd{C-g}はミニバッファー内で再定義されておらず、プレフィクスキーおよびプレフィクス引数のキャンセルという通常の効果をもちます。もし@kbd{C-g}が常に直接quitするならこれは不可能でしょう。
+
+  @kbd{C-g}が直接quitを行うときは、変数@code{quit-flag}を@code{t}にセットすることによってそれを行います。Emacsは適切なタイミングでこの変数をチェックして、@code{nil}でなじぇればquitします。どのような方法でも@code{quit-flag}を非@code{nil}にセットするとquitが発生します。
+
+  Cコードのレベルでは任意の場所でquitを発生させることはできず、@code{quit-flag}をチェックする特別な場所でのみquitが発生します。この理由は他の場所でquitすると、Emacsの内部状態で矛盾が生じるかもしれないからです。安全な場所までquitが遅延されるので、quitがEmacsをクラッシュさせることがなくなります。
+
+  @code{read-key-sequence}や@code{read-quoted-char}のような特定の関数は、たとえ入力を待機中でもquitを抑制します。quitするかわりに@kbd{C-g}は要求された入力として処理されます。@code{read-key-sequence}の場合、これはコマンドループ内での@kbd{C-g}の特別な振る舞いを引き起こすのに役立ちます。@code{read-quoted-char}の場合、これは@kbd{C-g}をクォートするのに@kbd{C-q}を使用できるようにします。
+
+@cindex preventing quitting
+  変数@code{inhibit-quit}を非@code{nil}値にバインドすることにより、Lisp関数の一部でquitを抑止できます。その場合は@code{quit-flag}が@code{t}にセットされていても、@kbd{C-g}の通常の結果であるquitは抑止されます。@code{let}フォームの最後でこのバインディングがunwindされるなどして、結果として@code{inhibit-quit}は再び@code{nil}になります。このとき@code{quit-flag}が@code{nil}なら、即座に要求されたquitが発生します。この挙動はプログラム中のクリティカルセクション内でquitが発生しないことを確実にしたいときに理想的です。
+
+@cindex @code{read-quoted-char} quitting
+  (@code{read-quoted-char}のような)いくつかの関数では、quitを起こさない特別な方法で@kbd{C-g}が処理されます。これは@code{inhibit-quit}を@code{t}にバインドして入力を読み取り、再び@code{inhibit-quit}が@code{nil}になる前に@code{quit-flag}を@code{nil}にセットすることにより行われます。以下はこれを行う方法を示すための@code{read-quoted-char}の抜粋です。この例は入力の最初の文字の後で通常のquitを許す方法も示しています。
+
+@example
+(defun read-quoted-char (&optional prompt)
+  "@dots{}@var{documentation}@dots{}"
+  (let ((message-log-max nil) done (first t) (code 0) char)
+    (while (not done)
+      (let ((inhibit-quit first)
+            @dots{})
+        (and prompt (message "%s-" prompt))
+        (setq char (read-event))
+        (if inhibit-quit (setq quit-flag nil)))
+      @r{@dots{} 変数@code{code}をセット @dots{}})
+    code))
+@end example
+
+@defvar quit-flag
+この変数が非@code{nil}で@code{inhibit-quit}が@code{nil}なら、Emacsは即座にquitする。@kbd{C-g}をタイプすると通常は@code{inhibit-quit}とは無関係に@code{quit-flag}を非@code{nil}にセットする。
+@end defvar
+
+@defvar inhibit-quit
+この変数は@code{quit-flag}が非@code{nil}にセットされているときEmacsがquitするかどうかを決定する。@code{inhibit-quit}が非@code{nil}なら@code{quit-flag}に特に効果はない。
+@end defvar
+
+@defmac with-local-quit body@dots{}
+このマクロは@var{body}を順番に実行するが、たとえこの構文の外部で@code{inhibit-quit}が非@code{nil}でも、少なくともローカルに@var{body}内でのquitを許容する。このマクロはquitによりexitしたら@code{nil}、それ以外は@var{body}内の最後のフォームの値をリターンする。
+
+@code{inhibit-quit}が@code{nil}なら@code{with-local-quit}へのエントリーで@var{body}だけが実行され、@code{quit-flag}をセットすることにより通常のquitが発生する。しかし通常のquitが遅延されるように@code{inhibit-quit}が非@code{nil}にセットされていれば、非@code{nil}の@code{quit-flag}は特別な種類のローカルquitを引き起こす。これは@var{body}の実行を終了して、@code{quit-flag}を非@code{nil}のままにして@code{with-local-quit}のbodyをexitするので、許され次第(通常の)別のquitが発生する。@var{body}の先頭ですでに@code{quit-flag}が非@code{nil}なら即座にローカルquitが発生して結局bodyは実行されない。
+
+このマクロは主にタイマー、プロセスフィルター、プロセスセンチネル、@code{pre-command-hook}、@code{post-command-hook}、および@code{inhibit-quit}が通常のように@code{t}にバイドされている場所で役に立つ。
+@end defmac
+
+@deffn Command keyboard-quit
+この関数は@code{(signal 'quit
+nil)}によって@code{quit}条件をシグナルする。これはquitが行うことと同じ(@ref{Errors}の@code{signal}を参照)。
+@end deffn
+
+  キーボードマクロの定義や実行をabortさせることなくquitするために、@code{minibuffer-quit}条件をシグナルすることができます。これはキーボードマクロの定義や実行をexitせずに、コマンド内のエラーハンドラーがこの条件を処理することを除き、@code{quit}とほとんど同じ効果をもつ。
+
+  quitに使用する@kbd{C-g}以外の文字を指定できます。@ref{Input
+Modes}内の関数@code{set-input-mode}を参照してください。
+
+@node Prefix Command Arguments
+@section プレフィクスコマンド引数
+@cindex prefix argument
+@cindex raw prefix argument
+@cindex numeric prefix argument
+
+  ほとんどのEmacsコマンドは@dfn{プレフィクス引数(prefix
+argument)}を使用できます。プレフィクス引数はコマンド自身の前に数字を指定するものです(プレフィクス引数とプレフィクスキーを混同しないこと)。プレフィクス引数は常に値により表され、@code{nil}のときはカレントでプレフィクス引数が存在しないことを意味します。すべてのコマンドはプレフィクス引数を使用するか、あるいは無視します。
+
+  プレフィクス引数には2つの表現があります。それは@dfn{raw(生の、加工していない、原料のままの、未加工の)}と@dfn{数字(numeric)}です。エディターコマンドループは内部的にraw表現を使用し、Lisp変数もその情報を格納するのにこれを使用しますが、コマンドはいずれかの表現を要求できます。
+
+  以下は利用できるrawプレフィクス引数の値です:
+
+@itemize @bullet
+@item
+@code{nil}はプレフィクス引数がないことを意味する。これの数値的な値は1だが多くのコマンドは@code{nil}と整数1を区別する。
+
+@item
+整数はそれ自身を意味する。
+
+@item
+整数の要素を1つもつリスト。プレフィクス引数のこの形式は、1つまたは数字無しの連続する@kbd{C-u}の結果である。数値的な値はリスト内の整数だが、そのようなリストと単独の整数を区別するコマンドがいくつかある。
+
+@item
+シンボル@code{-}。これは後に数字をともなわない@kbd{M--}か@kbd{C-u
+-}がタイプされたことを示す。数値的に等価な値は@minus{}1だが、整数の@minus{}1をシンボルの@code{-}を区別するコマンドがいくつかある。
+@end itemize
+
+以下の関数をさまざまなプレフィクスで呼び出して、これらの可能なプレフィクスを説明しましょう:
+
+@example
+@group
+(defun display-prefix (arg)
+  "rawプレフィクス引数の値を表示する"
+  (interactive "P")
+  (message "%s" arg))
+@end group
+@end example
+
+@noindent
+以下はさまざまなrawプレフィクス引数で@code{display-prefix}を呼び出した結果です:
+
+@example
+        M-x display-prefix  @print{} nil
+
+C-u     M-x display-prefix  @print{} (4)
+
+C-u C-u M-x display-prefix  @print{} (16)
+
+C-u 3   M-x display-prefix  @print{} 3
+
+M-3     M-x display-prefix  @print{} 3      ; @r{(@code{C-u 3}と同じ)}
+
+C-u -   M-x display-prefix  @print{} -
+
+M--     M-x display-prefix  @print{} -      ; @r{(@code{C-u -}と同じ)}
+
+C-u - 7 M-x display-prefix  @print{} -7
+
+M-- 7   M-x display-prefix  @print{} -7     ; @r{(@code{C-u -7}と同じ)}
+@end example
+
+  Emacsにはプレフィクス引数を格納するために2つの変数@code{prefix-arg}と@code{current-prefix-arg}があります。他のコマンドにたいしてプレフィクス引数をセットアップする@code{universal-argument}のようなコマンドは、プレフィクス引数を@code{prefix-arg}内に格納します。対照的に@code{current-prefix-arg}はカレントコマンドにプレフィクス引数を引き渡すので、これらの変数をセットしても将来のコマンドにたいするプレフィクス引数に効果はありません。
+
+  コマンドは通常は@code{interactive}内で、プレフィクス引数にたいしてrawと数値のどちらの表現を使用するかを指定します(@ref{Using
+Interactive}を参照)。そのかわりに関数は変数@code{current-prefix-arg}内のプレフィクス引数の値を直接調べるかもしれませんが、これは明確さで劣っています。
+
+@defun prefix-numeric-value arg
+この関数は@var{arg}の有効なrawプレフィクス引数の数値的な意味をリターンする。引数はシンボル、数字、またはリストかもしれない。これが@code{nil}なら値1、@code{-}なら@minus{}1がリターンされる。これが数字なら、その数字がリターンされる。リスト(数字であること)なら、そのリストの@sc{car}がリターンされる。
+@end defun
+
+@defvar current-prefix-arg
+この変数は@emph{カレント}のコマンドにたいするrawプレフィクス引数を保持する。コマンドはこの変数を直接調べるかもしれないが、この変数にたいするアクセスには通常は@code{(interactive
+"P")}を使用する。
+@end defvar
+
+@defvar prefix-arg
+この変数の値は@emph{次}の編集コマンドにたいするrawプレフィクス引数である。後続のコマンドにたいしてプレフィクス引数を指定する@code{universal-argument}のようなコマンドは、この変数をセットすることによって機能する。
+@end defvar
+
+@defvar last-prefix-arg
+このrawプレフィクス引数の値は、前のコマンドにより使用された値である。
+@end defvar
+
+  以下のコマンドは、後続のコマンドにたいしてプレフィクス引数をセットアップするために存在します。これらを他の用途で呼び出さないでください。
+
+@deffn Command universal-argument
+このコマンドは入力を読み取って、後続のコマンドにたいするプレフィクス引数を指定する。何をしているかわかっているのでなければ、このコマンドを自分で呼び出してはならない。
+@end deffn
+
+@deffn Command digit-argument arg
+このコマンドは、後続のコマンドにたいしてプレフィクス引数を追加する。引数@var{arg}はこのコマンドの前のrawプレフィクス引数であり、これはプレフィクス引数を更新するために使用される。何をしているかわかっているのでなければ、このコマンドを自分で呼び出してはならない。
+@end deffn
+
+@deffn Command negative-argument arg
+このコマンドは、次のコマンドにたいして数引数を追加する。引数@var{arg}はこのコマンドの前のrawプレフィクス引数であり、この値に負の符号が付されて新しいプレフィクス引数を構築する。何をしているかわかっているのでなければ、このコマンドを自分で呼び出してはならない。
+@end deffn
+
+@node Recursive Editing
+@section 再帰編集
+@cindex recursive command loop
+@cindex recursive editing level
+@cindex command loop, recursive
+
+  Emacsはスタートアップ時に、自動的にEmacsコマンドループに移行します。このトップレベルのコマンドループ呼び出しは決してexitすることなく、Emacs実行中は実行を継続します。Lispプログラムもコマンドループを呼び出せます。これは複数のコマンドループを活性化するので、@dfn{再帰編集(recursive
+editing)}と呼ばれています。再帰編集レベルは呼び出したコマンドが何であれそれをサスペンドして、そのコマンドを再開する前にユーザーが任意の編集を行うことを可能にする効果をもちます。
+
+  再帰編集の間に利用可能なコマンドは、トップレベルの編集ループ内で利用できるコマンドと同じでありキーマップ内で定義されます。数少ない特別なコマンドだけが再帰編集レベルをexitして、他のコマンドは再帰編集レベルが終了したときに再帰編集レベルからリターンします(exitするための特別なコマンドは常に利用できるが再帰編集が行われていないときは何も行わない)。
+
+  再帰コマンドループを含むすべてのコマンドループは、コマンドループから実行されたコマンド内のエラーによってそのループをexitしないように、汎用エラーハンドラーをセットアップします。
+
+@cindex minibuffer input
+  ミニバッファー入力は特殊な再帰編集です。これはミニバッファーとミニバッファーウィンドウの表示を有効にするなどの欠点をもちますが、それはあなたが思うより少ないでしょう。ミニバッファー内では特定のキーの振る舞いが異なりますが、これははミニバッファーのローカルマップによるものです。ウィンドウを切り替えれば通常のEmacsコマンドを使用できます。
+
+@cindex @code{throw} example
+@kindex exit
+@cindex exit recursive editing
+@cindex aborting
+  再帰編集レベルを呼び出すには関数@code{recursive-edit}を呼び出します。この関数はコマンドループを含んでいます。さらに@code{exit}をthrowすることにより再帰編集レベルのexitを可能にする、タグ@code{exit}をともなった@code{catch}呼び出しも含んでいます(@ref{Catch
+and Throw}を参照)。コマンド@kbd{C-M-c}
+(@code{exit-recursive-edit})がこれを行います。値@code{t}をthrowすることによって@code{recursive-edit}がquitされるので、1レベル上位のコマンドループに制御がリターンされます。これは@dfn{abort}と呼ばれ、@kbd{C-]}(@code{abort-recursive-edit})がこれを行います。同様に@code{recursive-edit}にエラーをシグナルさせるために文字列値をthrowできます。この文字列はメッセージとしてプリントされます。関数値をthrowすると。@code{recursive-edit}はリターンする前に引数なしでそれを呼び出します。それ以外の値をthrowすると、@code{recursive-edit}は自身を呼び出した関数に正常にリターンします。コマンド@kbd{C-M-c}
+(@code{exit-recursive-edit})がこれを行います。
+
+  ほとんどのアプリケーションはミニバッファー使用の一部として使用する場合を除き、再帰編集を使用するべきではありません。カレントバッファーのメジャーモードから特殊なメジャーモードに一時的に変更する場合に、そのモードに戻るコマンドをもつ必要があるときは、通常は再帰編集のほうが便利です(Rmailの@kbd{e}コマンドはこのテクニックを使用)。またはユーザーが新たなバッファーの特殊なモードで、異なるテキストを再帰的に編集・作成・選択できるようにしたい場合が該当します。このモードでは処理を完了させるコマンドを定義して前のバッファーに戻ります(Rmailの@kbd{m}コマンドはこれを使用)。
+
+  再帰編集はデバッグに便利です。一種のブレークポイントとして関数定義内に@code{debug}を挿入して、関数がそこに達したときにその箇所を調べることができます。@code{debug}は再帰編集を呼び出しますが、デバッガのその他の機能も提供します。
+
+  @code{query-replace}内で@kbd{C-r}をタイプしたときや@kbd{C-x q}
+(@code{kbd-macro-query})を使用したときにも再帰編集レベルが使用されます。
+
+@deffn Command recursive-edit
+@cindex suspend evaluation
+この関数はエディターコマンドループを呼び出す。これはユーザーに編集を開始させるために、Emacsの初期化により自動的に呼び出される。Lispプログラムから呼び出されたときは再帰編集レベルにエンターする。
+
+カレントバッファーが選択されたウィンドウのバッファーと異なる場合、@code{recursive-edit}はカレントバッファーの保存とリストアを行う。それ以外ではバッファーを切り替えると、@code{recursive-edit}がリターンした後にその切り替えたバッファーがカレントになる。
+
+以下の例では関数@code{simple-rec}が最初にポイントを1単語分進めてからメッセージをエコーエリアにプリントして再帰編集にエンターする。その後ユーザーは望む編集を行い、@kbd{C-M-c}をタイプすれば再帰編集をexitして@code{simple-rec}の実行を継続できる。
+
+@example
+(defun simple-rec ()
+  (forward-word 1)
+  (message "Recursive edit in progress")
+  (recursive-edit)
+  (forward-word 1))
+     @result{} simple-rec
+(simple-rec)
+     @result{} nil
+@end example
+@end deffn
+
+@deffn Command exit-recursive-edit
+この関数は最内の再帰編集(ミニバッファー入力を含む)からexitする。関数の実質的な定義は@code{(throw 'exit nil)}。
+@end deffn
+
+@deffn Command abort-recursive-edit
+この関数は再帰編集をexitした後に@code{quit}をシグナルすることにより、最内の再帰編集(ミニバッファー入力を含む)を要求したコマンドをabortする。関数の実質的な定義は@code{(throw
+'exit t)}。@ref{Quitting}を参照のこと。
+@end deffn
+
+@deffn Command top-level
+この関数はすべての再帰編集レベルをexitする。これはすべての計算を直接抜け出してメインのコマンドループに戻って値をリターンしない。
+@end deffn
+
+@defun recursion-depth
+この関数は再帰編集のカレントの深さをリターンする。アクティブな再帰編集が存在しなければ0をリターンする。
+@end defun
+
+@node Disabling Commands
+@section コマンドの無効化
+@cindex disabled command
+
+  @dfn{コマンドを無効化(disabling a
+command)}とは、それを実行可能にする前にユーザーによる確認を要求するようにコマンドをマークすることです。無効化は初めてのユーザーを混乱させるかもしれないコマンドにたいして、意図せずそのコマンドが使用されるのを防ぐために使用されます。
+
+@kindex disabled
+  コマンド無効化の低レベルにおけるメカニズムは、そのコマンドにたいするLispシンボルの@code{disabled}プロパティに非@code{nil}をputすることです。これらのプロパティは、通常はユーザーのinitファイル(@ref{Init
+File}を参照)で以下のようなLisp式によりセットアップされます:
+
+@example
+(put 'upcase-region 'disabled t)
+@end example
+
+@noindent
+いくつかのコマンドにたいしては、これらのプロパティがデフォルトで与えられています(これらを削除したければinitファイルで削除できる)。
+
+  @code{disabled}プロパティの値が文字列なら、そのコマンドが無効化されていることを告げるメッセージにその文字列が含まれます。たとえば:
+
+@example
+(put 'delete-region 'disabled
+     "この方法で削除されたテキストはyankで戻せない!\n")
+@end example
+
+  無効化されたコマンドをインタラクティブに呼び出したときに何が起こるかの詳細は、@ref{Disabling,,, emacs, The GNU
+Emacs Manual}を参照してください。コマンドの無効化は、それをLispプログラムから関数として呼び出したときは効果がありません。
+
+@findex command-query
+  @code{disabled}プロパティの値には、1つ目の要素がシンボル@code{query}であるようなリストも指定できます。この場合には、ユーザーはそのコマンドを実行するかどうか問い合わせられることになります。このリストの2つ目の要素には@code{y-or-n-p}を使用するなら@code{nil}、@code{yes-or-no-p}なら非@code{nil}を指定する必要があり、3つ目に要素は質問として使用されます。コマンドにたいする問い合わせを有効にするには、利便性のための関数@code{command-query}を使う必要があります。
+
+@deffn Command enable-command command
+その時点から特別な確認なしで@var{command}(シンボル)が実行されることを許す。さらにユーザーのinitファイル(@ref{Init
+File}を参照)も修正するので将来のセッションにもこれが適用される。
+@end deffn
+
+@deffn Command disable-command command
+その時点から@var{command}(シンボル)の実行に特別な確認を要求する。さらにユーザーのinitファイル(@ref{Init
+File}を参照)も修正するので将来のセッションにもこれが適用される。
+@end deffn
+
+@defvar disabled-command-function
+この変数の値は関数であること。ユーザーが無効化されたコマンドを呼び出したときは無効化されたコマンドのかわりにその関数が呼び出される。そのコマンドを実行するためにユーザーが何のキーをタイプしたかを判断するために@code{this-command-keys}を使用して、そのコマンド自体を探すことができる。
+
+値は@code{nil}もあり得る。その場合にはたとえ無効化されたコマンドでも、すべてのコマンドが通常のように機能する。
+
+デフォルトでは値はユーザーに処理を行うかどうかを尋ねる関数。
+@end defvar
+
+@node Command History
+@section コマンドのヒストリー
+@cindex command history
+@cindex complex command
+@cindex history of commands
+
+  コマンドループは複雑なコマンドを手軽に繰り返せるように、すでに実行された複雑なコマンドのヒストリー(history:
+履歴)を保持します。@dfn{複雑なコマンド(complex
+command)}とは、ミニバッファーを使用してinteractive引数を読み取るコマンドです。これには@kbd{M-x}コマンド、@kbd{M-:}コマンド、および@code{interactive}指定によりミニバッファーから引数を読み取るすべてのコマンドが含まれます。コマンド自身の実行の間に明示的にミニバッファーを使用するものは、複雑なコマンドとは判断されません。
+
+@defvar command-history
+この変数の値は最近実行された複雑なコマンドのリストであり、それぞれが評価されるべきフォームとして表現される。このリストは編集セッションの間、すべての複雑なコマンドを蓄積するが、最大サイズ(@ref{Minibuffer
+History}を参照)に達したときは、もっとも古い要素が削除されて新たな要素が追加される。
+
+@example
+@group
+command-history
+@result{} ((switch-to-buffer "chistory.texi")
+    (describe-key "^X^[")
+    (visit-tags-table "~/emacs/src/")
+    (find-tag "repeat-complex-command"))
+@end group
+@end example
+@end defvar
+
+  このヒストリーリストは実際にはミニバッファーヒストリーの特殊ケースであり、それは要素が文字列ではなく式であることです。
+
+  以前のコマンドを編集したり再呼び出しするためのコマンドがいくつかあります。コマンド@code{repeat-complex-command}と@code{list-command-history}はユーザーマニュアルに説明されています(@ref{Repetition,,,
+emacs, The GNU Emacs Manual}を参照)。ミニバッファー内では通常のミニバッファーヒストリーコマンドが利用できます。
+
+@node Keyboard Macros
+@section キーボードマクロ
+@cindex keyboard macros
+
+  @dfn{キーボードマクロ(keyboard
+macro)}はコマンドとして考えることが可能な入力イベントの記録されたシーケンスであり、キー定義によって作成されます。キーボードマクロのLisp表現はイベントを含む文字列かベクターです。キーボードマクロとLispマクロ(@ref{Macros}を参照)を混同しないでください。
+
+@defun execute-kbd-macro kbdmacro &optional count loopfunc
+この関数はイベントシーケンスとして@var{kbdmacro}を実行する。@var{kbdmacro}が文字列かベクターなら、たとえそれがユーザーによる入力であっても、その中のイベントは忠実に実行される。シーケンスは単一のキーシーケンスであることを@emph{要求されない}。キーボードマクロ定義は、通常は複数のキーシーケンスを結合して構成される。
+
+@var{kbdmacro}がシンボルなら、そのシンボルの関数定義は@var{kbdmacro}の箇所に使用される。それが別のシンボルならこのプロセスを繰り返す。最終的に結果は文字列かベクターになる。結果がシンボル、文字列、ベクターでなければエラーがシグナルされる。
+
+引数@var{count}は繰り返すカウントであり、@var{kbdmacro}がその回数実行される。@var{count}が省略または@code{nil}なら1回実行される。0なら@var{kbdmacro}はエラーに遭遇するか検索が失敗するまで何度も実行される。
+
+@var{loopfunc}が非@code{nil}なら、それはマクロの繰り返しごとに呼び出される引数なしの関数である。@var{loopfunc}が@code{nil}をリターンするとマクロの実行が停止する。
+
+@code{execute-kbd-macro}の使用例は@ref{Reading One Event}を参照のこと。
+@end defun
+
+@defvar executing-kbd-macro
+この変数はカレントで実行中のキーボードマクロを定義する文字列かベクター。@code{nil}ならカレントで実行中のマクロは存在しない。マクロの実行により実行されたときに異なる振る舞いをするように、コマンドはこの変数をテストできる。この変数を自分でセットしてはならない。
+@end defvar
+
+@defvar defining-kbd-macro
+この変数はキーボードマクロの定義中のときだけ非@code{nil}である。マクロ定義中の間は異なる振る舞いをするように、コマンドはこの変数をテストできる。既存のマクロ定義に追加する間、値は@code{append}になる。コマンド@code{start-kbd-macro}、@code{kmacro-start-macro}、@code{end-kbd-macro}はこの変数をセットする。この変数を自分でセットしてはならない。
+
+この変数は常にカレント端末にたいしてローカルであり、バッファーローカルにできない。@ref{Multiple Terminals}を参照のこと。
+@end defvar
+
+@defvar last-kbd-macro
+この変数はもっとも最近定義されたキーボードマクロの定義である。値は文字列、ベクター、または@code{nil}。
+
+この変数は常にカレント端末にたいしてローカルであり、バッファーローカルにできない。@ref{Multiple Terminals}を参照のこと。
+@end defvar
+
+@defvar kbd-macro-termination-hook
+これはキーボードマクロが終了したときに実行されるノーマルフックであり、何がキーボードマクロを終了させたか(マクロの最後に到達したのか、あるいはエラーにより最後到達する前に終了したのか)は問わない。
+@end defvar

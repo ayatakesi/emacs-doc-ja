@@ -1,0 +1,813 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@c This is part of the Emacs manual.
+@c Copyright (C) 2023--2024 Free Software Foundation, Inc.
+@c See file emacs-ja.texi for copying conditions.
+@node Android
+@appendix EmacstとAndroid
+@cindex Android
+
+  AndroidとはOpen Handset Allianceが開発したモバイル向けオペレーティングシステムです。このセクションではAndroid
+2.2以降を実行するAndroidデバイスにおいてEmacsを使用する際の特色について説明します。
+
+  Androidデバイスにおけるユーザー入力は、一般的にタッチスクリーンやデジタイザーデバイス、仮想キーボードに依存します。この種のデバイスをEmacsで使用することに関する詳細については@ref{Other
+Input}を参照してください。
+
+@menu
+* What is Android?::         前置き。
+* Android Startup::          AndroidにおけるEmacsの起動。
+* Android File System::      Androidのファイルシステム。
+* Android Document Providers::  別プログラムからのファイルアクセス。
+* Android Environment::      AndroidでのEmacs実行。
+* Android Windowing::        Androidのウィンドウシステム。
+* Android Fonts::            Androidでのフォント選択。
+* Android Troubleshooting::  問題への対処。
+* Android Software::         追加ソフトウェアの入手。
+@end menu
+
+@node What is Android?
+@section Androidの歴史
+
+  Androidは共通(おそらくはフリー)なソフトウェア集合を実行可能な携帯機器の開発に関心をもつ企業グループである、Open Handset
+Allianceによって開発されたモバイルデバイス用オペレーティングシステムです。
+
+  かつてのXコンソーシアムと同じように``オープン度''、すなわちAndroidのソースコードの定期的なリリースは、Androidプラットフォームの人気を高めるための単なるツールだとOpen
+Handset Allianceは考えています。コンピューター企業が作り出すのは、通常はプロプライエタリーソフトウェア(訳注:
+利用者の権利を制限して自身の利益を確保する、フリーソフトウェアとは対極なソフトウェアを指す)です。Open Handset
+Allianceに所属する企業も同じです。デバイスにインストールされるAndroidのほとんどは、多くの場合はユーザーによる置き換えさえできないプライエタリーなコンポーネントを含んでいるのでプロプライエタリーなバージョンです。
+
+  Androidはユーザーの自由を尊重するようにはデザインされていません。Androidのほとんどのバージョン(フリーソフトウェアと思われるものを含む)には、DRM(Digital
+Restrictions Management:
+デジタル著作権管理)にたいするサポートが含まれています。これはユーザーがユーザー自身のデバイス間でメディアを複製する能力を制限する技術のことです。さらにAndroidデバイスのほとんどにはシステム、および他の多くのアプリケーションの実行に必要なGoogleのプロプライエタリーなアプリケーションも付属するのです。
+
+  したがってAndroidのプロプライエタリーソフトウェアにたいする判断は、実用的観点から考える必要性がつきまとうのです。これは公正ではありません。あなたがAndroidユーザーなら、単にあなたが自由を獲得するという目的のためにも、フリーなオペレーティングシステムに切り替えることをお勧めします。
+
+  この自由を味わうことにより、プロプライエタリーなオペレーティングシステムシステムから抜け出すようユーザーが啓発されることを希望に、わたしたちはプロプライエタリーなオペレーティングシステム上でGNU
+Emacsをサポートしているのです。
+
+@node Android Startup
+@section AndroidでのEmacsの起動 
+
+  AndroidデバイスでのEmacsのインストールは、ソースコードやパッケージマネージャーを経由しません。別のオペレーティングシステム上でAndroid用にEmacsをコンパイル、そのバイナリーをアーカイブにパッケージングしてからシステムに転送してインストールします。
+
+  インストール後にシステムがアプリケーションアイコンをデスクトップ(``ホームスクリーン''とも呼ばれる)に配置します。そのアプリケーションアイコンをクリックすると、Emacsが起動します。
+
+@cindex ``adb logcat''
+
+  Emacsはスタートアップ中のメッセージをシステムログバッファーに表示します。スタートアップ中にこのバッファーを読み取るためには、別のコンピューターに@command{adb}ユーティリティー(Android
+Debug Bridge)が必要になります。
+
+  Androidシステムで``USB
+Debugging(USBデバッグ)''の機能を有効にした後に、@command{adb}ユーティリティーがインストールされている別のシステムで以下のコマンドをUSB経由で実行すれば、ログを閲覧できます:
+
+@example
+$ adb logcat | grep -E "(android_run_debug_thread|[Ee]macs)"
+@end example
+
+  @command{adb}ユーティリティーがGNU/LinuxあるいはUnixシステムにインストールされていると仮定すると、以下の手順にしたがってデバイスに接続できます。
+
+@enumerate
+@item
+システム設定アプリケーションの``About''ページで``build version''か``kernel
+version''を5から7回クリックして``developer options(開発者オプション)''を有効にする。
+
+@item
+設定ページ``developer options''をオープンする(設定アプリケーションの``system''ページの下にあるはず)。
+
+@item
+``USB debugging''をオンに切り替える。
+
+@item
+USBケーブルの終端にあるデバイスと、もう一方の終端にあるコンピューターのUSBポートを接続する。
+
+@item
+コンピューターでコマンド@command{adb
+shell}を実行する。接続済みデバイスへのアクセス権限をコンピューターにまだ付与していないので失敗、あるいはハングするだろう。
+
+@item
+コンピューターからのアクセスを許可するかどうかを尋ねる画面がデバイス上にポップアップされる。
+@end enumerate
+
+  Androidおよびインストールした@command{adb}のバージョンに応じて接続を確立する方法は異なるかもしれない。詳細については公式ドキュメント@url{https://developer.android.com/studio/command-line/adb}を参照してください。
+
+  Emacsが起動したら、非同期シェルコマンド(@ref{Shell}を参照)としてコマンド@command{logcat}を実行するだけでログバッファーが表示されるでしょう。
+
+@cindex emacsclient wrapper, android
+  別のAndroidプログラムから@command{emacsclient}プログラム(@ref{Emacs
+Server}を参照)を開始する方法が存在しないので、すべてのファイルをオープン可能なアプリケーションとして、Emacsが@command{emacsclient}のラッパープログラムを提供してシステムに登録します。
+
+  ファイルをオープンするプログラムとしてこのラッパーが選択されると、ラッパーがオプション@command{--reuse-frame}、@command{--timeout=10}、@command{--no-wait}、およびオープンするファイルの名前とともに@command{emacsclient}を呼び出します。それが成功するとオープンされているEmacsフレームにフォーカスが移ります。
+
+  ラッパーのオープン時にEmacsが実行中でなければ、オープンするファイルを引数としてEmacsを開始します。起動されたEmacsがその後にEmacsサーバーを開始しなければ、その後のラッパーによるファイルのオープンは失敗することに注意してください。
+
+@cindex /content/by-authority directory, android
+@cindex /content/by-authority-named directory, android
+  一部のファイルは``content
+identifiers''(システムにより提供される通常のファイルシステムAPIの範囲外へのアクセス)としてEmacsに与えられます。一部のファイルは``content
+identifiers''(システムによって提供される通常のファイルシステムAPI外部へのアクセス)としてEmacsに与えられます。これらのファイルにアクセスするために、Emacsは@file{/content/by-authority}および@file{/content/by-authority-named}という名前の疑似ディレクトリーを使用します。これらのディレクトリーの内容について何か仮定したり、ディレクトリーのファイルを自分でオープンしないでください。
+
+  この機能はAndroid 4.3以前では提供されていないので、それらのファイルはオープン前に一時ディレクトリーにコピーされます。
+
+@cindex ``org-protocol'' links, android
+  普通のテキストファイルに加えて、Emacsは@command{emacsclient}ラッパーを``org-protocol''リンク(@ref{Protocols,,,org,
+The Org Manual}を参照)をオープン可能なプログラムとしても登録します。
+
+@cindex ``mailto'' links, android
+  さらにこのラッパーは@code{mailto}のURIにメールを送信可能なプログラムとしても登録されます。そのようなURLをオープンするために呼び出されると、そのURIを1つ目の引数として関数@code{message-mailto}を呼び出します。この機能はEmacsサーバーがまだ実行されていなければ機能しません。
+
+@node Android File System
+@section AndroidでEmacsがアクセスできるファイル
+@cindex /assets directory, android
+
+  EmacsはAndroidシステム上で@file{/assets}という名前の特別なディレクトリーを公開します。このディレクトリーにはGNUやUnixなら通常は@file{/usr/share/emacs}にインストールされるディレクトリー@file{etc}、@file{lisp}、@file{info}が含まれています。Androidシステムでは@command{ls}のLispエミュレーション(@ref{ls
+in
+Lisp}を参照)がデフォルトで有効になっています。システムに付属する@command{ls}のバイナリーはメーカーによって異なり、Emacsが求めるすべての機能は通常はサポートしていないからです。一部のAndroidシステムとともに配布される@command{ls}のコピーの中には、@code{-l}フラグさえ欠落していることが知られています。
+
+@cindex limitations of the /assets directory
+
+  Androidはパッケージの展開時にアプリケーションのパッケージ内容を展開せずに、``asset
+manager''という特別なインターフェイスを用いることをEmacsのようなプログラムに要求するためにこのディレクトリーが存在します。このような実装による結果として以下のような特性が生じます:
+
+@itemize @bullet
+@item
+(@command{ls}のような)サブプロセスを@file{/assets}ディレクトリーから実行できない。@code{current-directory}に@file{/assets}、@file{/content/storage}、あるいはそれらのサブディレクトリーをセットしてサブプロセスの実行を試みても、かわりにホームディレクトリーから実行されることになるだろう。
+
+@item
+@file{/assets}、@file{/content}のディレクトリーの中には@file{.}、@file{..}というディレクトリーがない。
+
+@item
+@file{/assets}ディレクトリー内のファイルは常に読み取り専用であり、オープンされる度に複数回メモリーに読み込まれるかもしれない。
+@end itemize
+
+  @file{/assets}ディレクトリー以外にも、Androidプログラムは通常は以下の4つのディレクトリーにアクセスできます:
+
+@itemize @bullet
+@item
+@dfn{アプリケーションデータ(app
+data)}ディレクトリー。これはEmacsのホームディレクトリーの役目ももち、常に読み取りと書き込みでアクセスできる。
+
+@item
+@dfn{アプリケーションライブラリー(app
+library)}ディレクトリー。これは自動的に@code{exec-path}に追加されて、起動時に@code{exec-directory}が作成される。このディレクトリーにはEmacs自体とともに実行可能なユーティリティーが含められる。
+
+@item
+@dfn{外部ストレージ(external storage)}ディレクトリー。ユーザーがシステムセッティングを通じてEmacsに``Files and
+Media''の権限を付与すればEmacsがアクセスできる。
+
+@item
+Android 5.0以降で@dfn{ドキュメントプロバイダー(document
+providers)}により提供されるディレクトリー。このディレクトリーはUnixの通常のファイルシステムの範囲外にあり、外部プログラムが提供するプログラムが含まれている(@ref{Android
+Document Providers}を参照)。
+@end itemize
+
+  Androidの通常のインストールでは(普通だと読み取り専用である)ルートディレクトリーに@file{content}や@file{assets}という名前のファイルはないはずですが、使用しているAndroidのインストールがカスタマイズされていてそれらの名前で実際のファイルにアクセスしたい場合があるかもしれません。このようなファイルは前述した特別なディレクトリーと競合しますが、@file{/../content}や@file{/../assets}のようにルートディレクトリーの``親''ディレクトリーから相対的な名前を記述することによってアクセスできます。
+
+  外部ストレージディレクトリーは@file{/sdcard}で見つけることができます。アプリケーションデータディレクトリーは通常は@file{/data/data/org.gnu.emacs/files}にシンボリックリンクされているとはいえ、その他のディレクトリーを固定的な位置で見つけることはできません(が以下を参照のこと)。
+
+@cindex app library directory, android
+@cindex where is emacsclient under android
+  Androidの以前のバージョンでは、アプリケーションライブラリーディレクトリーはアプリケーションデータディレクトリーの親ディレクトリーにある@file{lib}という名前のディレクトリーでした。このディレクトリーは現在ではランダムに生成された名前で@file{/data/app}配下に置かれることが多いようです。
+
+  Emacsと同じユーザーIDを共有するアプリケーション内で実行される(@code{exec-directory}変数にアクセスできない)スクリプトの利便性のために、起動時にアプリケーションデータディレクトリーの親ディレクトリー配下の従来の場所に、アプリケーションデータライブラリーをシンボリックリンクさせるために少なからぬ労力が費やされています。
+
+  Emacsを再インストールした結果、アプリケーションライブラリーディレクトリーの位置が変更された場合には、システムが次回にEmacsを起動する際に新たな場所を指すようこのシンボリックリンクを更新します。
+
+@cindex temp~unlinked.NNNN files, Android
+  非常に古いバージョン(2.6.29)のLinuxカーネルを実行するAndroidデバイスでは、assetのファイルから読み込むために一時ファイル用ディレクトリーにEmacsが@file{temp~unlinked}で始まる名前のファイルを作成する必要があります。そのような名前のファイルは上書きされたり削除されるかもしれないので作成しないでください。
+
+@cindex file system limitations, Android 11
+  Android
+11以降のAndroidシステムでは、アプリケーションによる@code{open}や@code{readdir}のようなファイル関連のシステムコールを用いた@file{/sdcard}ディレクトリーへのアクセスが制限されています。
+
+  この``対象範囲別ストレージ(Scoped
+Storage)''と呼ばれる制限によって、おそらくシステムはより安全になります。これは残念なことにEmacsが必要な権限を保有していても、それらのディレクトリーのファイルにアクセスできないことを意味しています。ただありがたいことにOpen
+Handset
+Alliance版のAndroidでは、プログラムごとにこの制限を無効にすることができます。以下がシステムセッティングパネルでこれに相当するオプションです:
+
+@example
+System -> Apps -> Special App Access -> All files access -> Emacs
+@end example
+
+  このセッティングを適切に無効あるいは有効にしてEmacsに``Files and
+Media''の権限を付与すれば、通常通りEmacsは@file{/sdcard}配下のファイルにアクセスできるでしょう。一部のプロプライエタリーなバージョンのAndroidでは、これらのセッティングは用意されていません。
+
+@node Android Document Providers
+@section Androidでの他のプログラムからのファイルアクセス
+@cindex document providers, Android
+@cindex /content/storage directory, Android
+
+  Android 5.0では``document
+provider''という新たな概念のプログラムが導入されました。これらのプログラムはアセットマネージャーとUnixファイルシステムから独立した、プログラム独自のファイルへのアクセスを提供する小さなサービスです。これらのプログラムが提供するファイルやディレクトリーを@file{/content/storage}ディレクトリーに配置することによって、Emacsはそれらにたいするアクセスをサポートしています。
+
+@findex android-request-directory-access
+  これらのディレクトリーのいずれかへのアクセスが付与される前に、まずはEmacsがアクセスする権限を要求しなければなりません。これはコマンド@code{android-request-directory-access}を実行(@ref{M-x}を参照)することにより達成されます。このコマンドによってファイル選択ダイアログを表示されます。
+
+  このダイアログからディレクトリーを選択すると、@file{/content/storage/@var{authority}/@var{id}}という新たなディレクトリーでディレクトリー内のファイルが利用可能になります(@var{authority}はドキュメントプロバイダー名、@var{id}はドキュメントプロバイダーがディレクトリーに割り当てる一意な識別子)。
+
+@findex android-relinquish-directory-access
+  このようなディレクトリーは、不要になればコマンド@code{android-relinquish-directory-access}に名前を与えて削除できます。
+
+  これらのディレクトリーでサブプロセスを作成する際には、@file{/assets}ディレクトリー(@ref{Android File
+System}を参照)に課せられるのと同じ制限が適用されます(Unixファイルシステムには存在しないため)。これらのディレクトリーではEmacsが通常通り読み取りと書き込みが可能であっても、シンボリックリンクやハードリンクを作成することはできません。
+
+  ドキュメントプロバイダーはファイルコンテンツを取得するために高価なネットワーク処理を実行することが許されているので、これらのディレクトリーにあるファイルへのアクセス処理には有意な時間が費やされる可能性があります。
+
+@node Android Environment
+@section AndroidでのEmacsの実行
+
+  ユーザーから見るとAndroidはほとんど単一ユーザー向けのオペレーティングシステムです。ただしアプリケーションやEmacsの視点からは、非常に多数のユーザーにホストするシステムなのです。
+
+  アプリケーションはそれぞれ独自のホームディレクトリー(アプリケーションのアプリケーションデータディレクトリー; @ref{Android File
+System}を参照)をセットされて、独自のユーザーにより実行されます。@footnote{``共有ユーザーID(shared user
+ID)''を指定して、同じ`パッケージ署名キー(`package signing
+key)''を用いて署名、インストールされた他のアプリケーションは除外される。このような場合にはEmacsは同じユーザーで実行されるとともに、前述のアプリケーションそれぞれにたいして同じアクセス権を保有する。}
+
+  アプリケーションはそれぞれ、多くのシステムディレクトリーや他のアプリケーションのアプリケーションデータディレクトリへのアクセスも禁止されています。
+
+  Emacsの配布物には複数のバイナリーも含まれています。実行可能ファイルはライブラリーディレクトリーにパッケージされます。そうしないとEmacsのインストールにおいて、システムがそれらをパッケージ展開しないからです。これは@code{ctags}や@code{emacsclient}をサブプロセスで起動する際に、Lispコードがかわりに@code{libctags.so}や@code{libemacsclient.so}をコマンドライン指定しなければならないことを意味しています。どの名前を使用するかは変数@code{ctags-program-name}、@code{etags-program-name}、@code{hexl-program-name}、@code{emacsclient-program-name}、@code{movemail-program-name}、@code{ebrowse-program-name}、@code{rcs2log-program-name}の値を調べて判断します。@ref{Subprocess
+Creation,,, elisp, the Emacs Lisp Reference Manual}を参照してください。
+
+  Emacsの起動時ファイルを含んだ@file{/assets}ディレクトリーは、@code{zygote}
+(アプリケーションを起動する役目を担うシステムサービス)によって直接作成されたプロセスでなければアクセスできないように設計されています。必要となるLispは@file{/assets}ディレクトリーにあるので、これにしたがうとサブプロセスとしてEmacsを起動するのは不可能です。Emacsと一緒に提供される@command{libandroid-emacs.so}という名前の特別なバイナリーが、Emacsを開始してバッチモードでLispを実行するために最善を尽くします。ただしこはAndroidのソースを読むことによって考案されたアプローチであり、Androidの互換性定義ドキュメントによって認可されていないので効果は様々かもしれません。
+
+@cindex call-process, Android
+@vindex android-use-exec-loader
+  Android
+10以降では表向きはセキュリティー上の懸念という理由により、Emacs自体がアプリケーションデータディレクトリーにある実行可能ファイルを実行することも禁止されました。それらのシステムでは、通常はEmacsが回避策を講じます。ただしこの回避策には実行可能ファイルのロードを実装して、その子プロセスすべてにトレースを適用するような別プロセスを介して、すべてのサブプロセスを実行することが要求されます。これは様々な理由により問題が生じる可能性があるのです。そのような場合には変数@code{android-use-exec-loader}を@code{nil}に変更することで、この回避策を無効にできます。
+
+  この回避策が効力をもつ間は、@code{process-id}関数によって取得されるプロセスIDはその実行可能ローダーのプロセスIDとなります。実行可能ローダーの子プロセスは実行可能ローダーと同じプロセスグループに所属するからです。したがって@code{interrupt-process}やその他の関連する関数は正しく機能しますが、他の目的のために@code{process-id}がリターンしたプロセスIDを用いても正しく機能しないでしょう。
+
+  このプロセスのトレースが実行されるメカニズムから派生する影響の1つとして、内部シェル(@ref{Interactive
+Shell}を参照)の内部のジョブ制御機能がプロセスを停止できなくなり、Emacsがサブプロセスにたいして@code{SIGSTOP}シグナルを生成しても効果はないでしょう。
+
+  さらにAndroid
+12ではEmacs自体がバックグラウンドの間に、CPUを消費するサブプロセスも終了させられます。システムはCPUを過剰に消費するプロセスを5分間隔で判定して、もっともCPU時間を多く消費するプロセスを終了させるのです。
+
+  Android 12.1およびAndroid 13ではこの挙動を無効にするオプションが提供されています。これを行うには``USB
+debugging''(@ref{Android
+Startup}を参照)を有効にして別のシステムからAndroidシステムに接続して以下を実行してください:
+
+@example
+$ adb shell "settings put global settings_enable_monitor_phantom_procs false"
+@end example
+
+@cindex system language settings, Android
+  オペレーティングシステムに適用される``Languages &
+Input(言語と入力)''の設定は、プログラムにたいするCのlocaleセットには影響しませんが、Emacsには起動の間に考慮されます。選択された言語と地域バリアントからlocale名が生成されて、それにもとづいた言語環境(@ref{Language
+Environments}を参照)が選択されます。これが@code{LANG}やその他のlocale関連の環境変数をオーバーライドすることはありません。この方法によってセットされた言語環境にたいするコーディングシステムは、例外なく@code{utf-8-unix}になります。
+
+@cindex C locale settings, Android
+  EmacsがAndroid 5.0以降で開始された際には、環境変数@code{LANG} (@ref{General
+Variables}を参照)は@code{en_US.utf8}にセットされます。これによりAndroidのCライブラリーにリンクされたサブプロセスが出力を適切にプリントできるようになります。それ以前のバージョンのAndroidでは何のlocaleも実装されておらず、そのためこの変数は@code{C}にセットされます。
+
+@cindex running emacs in the background, android
+@cindex emacs killed, android
+@cindex emacs in the background, android
+
+  アプリケーションプロセスはシステムによって使い捨て可能なエンティティとして扱われます。Emacsのすべてのフレームがバックグラウンドに移動されると、システムリソースを節約するために、任意のタイミングでEmacsが終了させられる可能性があります。
+
+  Android
+7.1以前ではメモリー負荷がないかぎりシステムがEmacsをkillしないように、Emacsが自身を``バックグラウンドサービス''に指定します。
+
+  Android
+8.0ではそのようなバックグラウンドサービスを特別に扱う機能が削除されました。とはいえEmacsには回避策があります。システムは永続的に通知を作成するアプリケーションはアクティブな作業を行っているとみなして、そのようなアプリケーションのkillを回避します。したがってそのようなシステムでは、Emacsが実行されているかぎり通知が永続的に表示されます。
+
+  バージョン13より前のAndroidでは、Emacsが通知を表示する権限は不要です。Android
+13以降では、ユーザーがEmacsにそのような権限を与えるまで通知は表示されません。それにも関わらず、単に通知の表示を試みるだけで突然死を避けるには十分なのです。通知が表示されるかどうかがバックグラウンドにおけるEmacsの実行能力を損なうことはないので、通知を無効にしても問題はないでしょう。
+
+  とはいえシステムがEmacsをkillしない保証はありません。Open Handset
+AllianceのAndroidのサンプル実装は正しく振る舞うとはいえ、多くのメーカーのプロプライエタリーなバージョンのAndroidには、バックグラウンドにおけるプログラムの実行に追加の制限が設けられているのです。@url{https://dontkillmyapp.com/}にはそのような問題のあるメーカー、および場合によっては回避策となるようなリストがあります。
+
+@cindex permissions under android
+@cindex external storage, android
+
+  AndroidにはEmacsにアクセスできるシステムサービスを判定する権限システムも定義されています。プログラムは欲する権限を指定しなければなりません。その後に何が起こるかは、使用しているAndroidのバージョン次第です。
+
+@itemize @bullet
+@item
+ある程度最近リリースされたAndroid、たとえばAndroid
+6.0以降では、インストール時にEmacsが取得する権限は、インストールしたAndroidに権限がそれぞれ存在するか否かにも依りますが、以下の権限だけです:
+
+@itemize @minus
+@item
+@code{android.permission.ACCESS_ADSERVICES_AD_ID}
+@item
+@code{android.permission.ACCESS_ADSERVICES_ATTRIBUTION}
+@item
+@code{android.permission.ACCESS_ADSERVICES_CUSTOM_AUDIENCE}
+@item
+@code{android.permission.ACCESS_ADSERVICES_TOPICS}
+@item
+@code{android.permission.ACCESS_LOCATION_EXTRA_COMMANDS}
+@item
+@code{android.permission.ACCESS_NETWORK_STATE}
+@item
+@code{android.permission.ACCESS_NOTIFICATION_POLICY}
+@item
+@code{android.permission.ACCESS_WIFI_STATE}
+@item
+@code{android.permission.AUTHENTICATE_ACCOUNTS}
+@item
+@code{android.permission.BLUETOOTH}
+@item
+@code{android.permission.BLUETOOTH_ADMIN}
+@item
+@code{android.permission.BROADCAST_STICKY}
+@item
+@code{android.permission.CALL_COMPANION_APP}
+@item
+@code{android.permission.CHANGE_NETWORK_STATE}
+@item
+@code{android.permission.CHANGE_WIFI_MULTICAST_STATE}
+@item
+@code{android.permission.CHANGE_WIFI_STATE}
+@item
+@code{android.permission.CREDENTIAL_MANAGER_QUERY_CANDIDATE_CREDENTIALS}
+@item
+@code{android.permission.CREDENTIAL_MANAGER_SET_ALLOWED_PROVIDERS}
+@item
+@code{android.permission.CREDENTIAL_MANAGER_SET_ORIGIN}
+@item
+@code{android.permission.DELIVER_COMPANION_MESSAGES}
+@item
+@code{android.permission.DETECT_SCREEN_CAPTURE}
+@item
+@code{android.permission.DISABLE_KEYGUARD}
+@item
+@code{android.permission.ENFORCE_UPDATE_OWNERSHIP}
+@item
+@code{android.permission.EXPAND_STATUS_BAR}
+@item
+@code{android.permission.FLASHLIGHT}
+@item
+@code{android.permission.FOREGROUND_SERVICE}
+@item
+@code{android.permission.FOREGROUND_SERVICE_CAMERA}
+@item
+@code{android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE}
+@item
+@code{android.permission.FOREGROUND_SERVICE_DATA_SYNC}
+@item
+@code{android.permission.FOREGROUND_SERVICE_FILE_MANAGEMENT}
+@item
+@code{android.permission.FOREGROUND_SERVICE_HEALTH}
+@item
+@code{android.permission.FOREGROUND_SERVICE_LOCATION}
+@item
+@code{android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK}
+@item
+@code{android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION}
+@item
+@code{android.permission.FOREGROUND_SERVICE_MICROPHONE}
+@item
+@code{android.permission.FOREGROUND_SERVICE_PHONE_CALL}
+@item
+@code{android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING}
+@item
+@code{android.permission.FOREGROUND_SERVICE_SPECIAL_USE}
+@item
+@code{android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED}
+@item
+@code{android.permission.GET_PACKAGE_SIZE}
+@item
+@code{android.permission.GET_TASKS}
+@item
+@code{android.permission.HIDE_OVERLAY_WINDOWS}
+@item
+@code{android.permission.HIGH_SAMPLING_RATE_SENSORS}
+@item
+@code{android.permission.INTERNET}
+@item
+@code{android.permission.KILL_BACKGROUND_PROCESSES}
+@item
+@code{android.permission.MANAGE_ACCOUNTS}
+@item
+@code{android.permission.MANAGE_OWN_CALLS}
+@item
+@code{android.permission.MODIFY_AUDIO_SETTINGS}
+@item
+@code{android.permission.NFC}
+@item
+@code{android.permission.NFC_PREFERRED_PAYMENT_INFO}
+@item
+@code{android.permission.NFC_TRANSACTION_EVENT}
+@item
+@code{android.permission.PERSISTENT_ACTIVITY}
+@item
+@code{android.permission.QUERY_ALL_PACKAGES}
+@item
+@code{android.permission.READ_BASIC_PHONE_STATE}
+@item
+@code{android.permission.READ_INSTALL_SESSIONS}
+@item
+@code{android.permission.READ_NEARBY_STREAMING_POLICY}
+@item
+@code{android.permission.READ_PROFILE}
+@item
+@code{android.permission.READ_SOCIAL_STREAM}
+@item
+@code{android.permission.READ_SYNC_SETTINGS}
+@item
+@code{android.permission.READ_SYNC_STATS}
+@item
+@code{android.permission.READ_USER_DICTIONARY}
+@item
+@code{android.permission.RECEIVE_BOOT_COMPLETED}
+@item
+@code{android.permission.REORDER_TASKS}
+@item
+@code{android.permission.REQUEST_COMPANION_PROFILE_GLASSES}
+@item
+@code{android.permission.REQUEST_COMPANION_PROFILE_WATCH}
+@item
+@code{android.permission.REQUEST_COMPANION_RUN_IN_BACKGROUND}
+@item
+@code{android.permission.REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND}
+@item
+@code{android.permission.REQUEST_COMPANION_USE_DATA_IN_BACKGROUND}
+@item
+@code{android.permission.REQUEST_DELETE_PACKAGES}
+@item
+@code{android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS}
+@item
+@code{android.permission.REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE}
+@item
+@code{android.permission.REQUEST_PASSWORD_COMPLEXITY}
+@item
+@code{android.permission.RESTART_PACKAGES}
+@item
+@code{android.permission.RUN_USER_INITIATED_JOBS}
+@item
+@code{android.permission.SET_WALLPAPER}
+@item
+@code{android.permission.SET_WALLPAPER_HINTS}
+@item
+@code{android.permission.SUBSCRIBED_FEEDS_READ}
+@item
+@code{android.permission.SUBSCRIBED_FEEDS_WRITE}
+@item
+@code{android.permission.TRANSMIT_IR}
+@item
+@code{android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION}
+@item
+@code{android.permission.USE_BIOMETRIC}
+@item
+@code{android.permission.USE_CREDENTIALS}
+@item
+@code{android.permission.USE_EXACT_ALARM}
+@item
+@code{android.permission.USE_FINGERPRINT}
+@item
+@code{android.permission.USE_FULL_SCREEN_INTENT}
+@item
+@code{android.permission.VIBRATE}
+@item
+@code{android.permission.WAKE_LOCK}
+@item
+@code{android.permission.WRITE_PROFILE}
+@item
+@code{android.permission.WRITE_SMS}
+@item
+@code{android.permission.WRITE_SOCIAL_STREAM}
+@item
+@code{android.permission.WRITE_SYNC_SETTINGS}
+@item
+@code{android.permission.WRITE_USER_DICTIONARY}
+@end itemize
+
+その他の権限については、ユーザーがシステム設定アプリケーションから付与しなければなりません。これを行う方法はデバイスによって異なるので、詳細はデバイスの製造元に照会してください。
+
+@item
+Android 5.1以前では、Emacsはインストール時に要求した以下の権限を自動的に取得します:
+
+@itemize @minus
+@item
+@code{android.permission.ACCESS_COARSE_LOCATION}
+@item
+@code{android.permission.ACCESS_FINE_LOCATION}
+@item
+@code{android.permission.BODY_SENSORS}
+@item
+@code{android.permission.CALL_PHONE}
+@item
+@code{android.permission.CAMERA}
+@item
+@code{android.permission.CAPTURE_CONSENTLESS_BUGREPORT_ON_USERDEBUG_BUILD}
+@item
+@code{android.permission.GET_ACCOUNTS}
+@item
+@code{android.permission.POST_NOTIFICATIONS}
+@item
+@code{android.permission.PROCESS_OUTGOING_CALLS}
+@item
+@code{android.permission.READ_CALENDAR}
+@item
+@code{android.permission.READ_CALL_LOG}
+@item
+@code{android.permission.READ_CELL_BROADCASTS}
+@item
+@code{android.permission.READ_CONTACTS}
+@item
+@code{android.permission.READ_EXTERNAL_STORAGE}
+@item
+@code{android.permission.READ_PHONE_NUMBERS}
+@item
+@code{android.permission.READ_PHONE_STATE}
+@item
+@code{android.permission.READ_SMS}
+@item
+@code{android.permission.RECEIVE_MMS}
+@item
+@code{android.permission.RECEIVE_SMS}
+@item
+@code{android.permission.RECEIVE_WAP_PUSH}
+@item
+@code{android.permission.RECORD_AUDIO}
+@item
+@code{android.permission.REQUEST_INSTALL_PACKAGES}
+@item
+@code{android.permission.SEND_SMS}
+@item
+@code{android.permission.SMS_FINANCIAL_TRANSACTIONS}
+@item
+@code{android.permission.SYSTEM_ALERT_WINDOW}
+@item
+@code{android.permission.WRITE_CALENDAR}
+@item
+@code{android.permission.WRITE_CALL_LOG}
+@item
+@code{android.permission.WRITE_CONTACTS}
+@item
+@code{android.permission.WRITE_EXTERNAL_STORAGE}
+@item
+@code{android.permission.WRITE_SETTINGS}
+@item
+@code{android.permission.ACCESS_LOCATION_EXTRA_COMMANDS}
+@item
+@code{android.permission.ACCESS_NETWORK_STATE}
+@item
+@code{android.permission.ACCESS_WIFI_STATE}
+@item
+@code{android.permission.BLUETOOTH}
+@item
+@code{android.permission.BLUETOOTH_ADMIN}
+@item
+@code{android.permission.BROADCAST_STICKY}
+@item
+@code{android.permission.CHANGE_NETWORK_STATE}
+@item
+@code{android.permission.CHANGE_WIFI_MULTICAST_STATE}
+@item
+@code{android.permission.CHANGE_WIFI_STATE}
+@item
+@code{android.permission.DISABLE_KEYGUARD}
+@item
+@code{android.permission.EXPAND_STATUS_BAR}
+@item
+@code{android.permission.FLASHLIGHT}
+@item
+@code{android.permission.GET_PACKAGE_SIZE}
+@item
+@code{android.permission.GET_TASKS}
+@item
+@code{android.permission.INTERNET}
+@item
+@code{android.permission.KILL_BACKGROUND_PROCESSES}
+@item
+@code{android.permission.MODIFY_AUDIO_SETTINGS}
+@item
+@code{android.permission.NFC}
+@item
+@code{android.permission.PERSISTENT_ACTIVITY}
+@item
+@code{android.permission.QUERY_ALL_PACKAGES}
+@item
+@code{android.permission.READ_BASIC_PHONE_STATE}
+@item
+@code{android.permission.READ_SYNC_SETTINGS}
+@item
+@code{android.permission.READ_SYNC_STATS}
+@item
+@code{android.permission.READ_USER_DICTIONARY}
+@item
+@code{android.permission.RECEIVE_BOOT_COMPLETED}
+@item
+@code{android.permission.REORDER_TASKS}
+@item
+@code{android.permission.REQUEST_DELETE_PACKAGES}
+@item
+@code{android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS}
+@item
+@code{android.permission.REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE}
+@item
+@code{android.permission.RESTART_PACKAGES}
+@item
+@code{android.permission.SET_WALLPAPER}
+@item
+@code{android.permission.SET_WALLPAPER_HINTS}
+@item
+@code{android.permission.TRANSMIT_IR}
+@item
+@code{android.permission.VIBRATE}
+@item
+@code{android.permission.WAKE_LOCK}
+@item
+@code{android.permission.WRITE_SYNC_SETTINGS}
+@item
+@code{android.permission.WRITE_USER_DICTIONARY}
+@end itemize
+
+これらの権限のほとんどについてはEmacs自体が使うことはありませんが、他のプログラムに有用かもしれないのでEmacsで宣言しています。たとえば連絡先へのアクセス権限はEUDCにとって有用かもしれません。
+@end itemize
+
+@node Android Windowing
+@section Androidのウィンドウシステム
+
+  Androidのウィンドウシステムはすべてのウィンドウが最大化あるいはフルスクリーンとしてアプリケーションに報告され、一般的には一度に1つのウィンドウだけが表示できる特殊なシステムです。より大画面のデバイスではシステムが許容すれば画面に同時に4つまでのウィンドウをタイル表示できますが、エミュレータや``デスクトップ''システム向けのインストール構成では他のウィンドウマネージャーが行うように自由にリサイズ可能なウィンドウを重ねることができます。
+
+  ウィンドウ(システムの命名法にしたがえばアクティビティ)は作成された後に無限に存在する訳ではありません。ユーザーがタスク切り替えからそのウィンドウを選択した際にリストアするために、プログラムはコンテンツをディスクに保存しているという仮定の下に、メモリーを節約のためにシステムが不可視のウィンドウの一時停止を選択するかもしれないからです。さらにEmacsの起動時にオペレーティングシステムによって特別な処理が施されたウィンドウが作成されて、Emacsはそのウィンドウを採用することを期待されるのです。
+
+  EmacsはXウィンドウズのような通常のウィンドウシステム上のフレームと、Lispに公開されているフレームとの間にある挙動の違いを最小限にするという一般的な目的の下にウィンドウ管理に取り組んでいます。この目標にたいする実際の達成度合いは、インストールされているAndroidのバージョンにおけるウィンドウ管理機能の可用性、および非アクティブなウィンドウにたいするオペレーティングシステムのポリシーによって大きく異なります。そのようなポリシーにたいして譲歩せざるを得ないのなら、そのようなフレームが初期フレーム、つまり起動時に作成されたアクティビティが表示した、Emacsが実行されているかぎりはオープンして識別が可能なフレームである場合を除き、表示するアクティビティをもたないフレームの維持よりも、フレームの破棄を選びます。
+
+@cindex frames and windows, Android 5.0
+  Android
+5.0以降ではフレームとフレームが表示中のアクティビティとの間で1対1の関連を保持するウィンドウ管理の正確な実装がサポートされており、タスク切り替えによるアクティビティの削除によって関連するフレームに直接効果を及ぼしたり、その逆も可能です。例外は2つだけです:
+
+@itemize @bullet
+@item
+非アクティブな状態でタスク切り替えに残ったアクティビティへの応答としてシステムがアクティビティを一時停止した後に、非アクティブな状態のままタスク切り替えからアクティビティを削除しても、そのような状況下ではEmacsがアクティビティの削除を通知されないので内部のフレームは削除されません。そのフレームは生きたウィンドウのリスト検査をうながす、次回のウィンドウ管理操作において削除されます。同様にフレームを表示中の非アクティブなアクティビティがフレームと一緒に即座に削除されることはありませんが、ウィンドウリストから選択されたり別の機会にウィンドウリストが検査されたタイミングで削除されます。
+
+@item
+初期フレーム以外のすべてのフレームは、バックグラウンドで非アクティブになると4時間から6時間後に、タスク切り替えが行う過剰でおそらくは不要なタスクの``トリミング''において、システムから削除されるかもしれません。初期フレームはタスク切り替え以外からふたたびオープンできるのでこの処理からは除外されますが、このメカニズムによる削除はタスク切り替えからアクティビティを削除するというユーザーの正当なアクションと区別不可能なので、最後のアクティビティから4時間経過後はこれも初期フレームによって無視されます。
+@end itemize
+
+@cindex frames and windows, Android 4.4
+@cindex frames and windows, Android 2.2
+  Android
+4.4以前ではウィンドウ管理の完全な実装には不十分な、かなり劣ったインターフェイスが提供されています。そのようなシステムでは代用として、アクティビティが一時停止されると初期フレーム以外のすべてのフレームが削除される、同時に可視になれるのは(起動時に作成されたアクティビティを除いて)ただ1つのアクティビティのみ、アタッチされていないフレームは利用可能な最初の空きアクティビティに表示されるという、かなり原始的なメカニズムをEmacsは使用します。
+
+@cindex windowing limitations, android
+@cindex frame parameters, android
+AndroidでEmacsがサポートするGUI機能は、以下のように限定されたサブセットだけです:
+
+@itemize @bullet
+@item
+Androidデバイスではほとんど役に立たないので、スクロールバーはサポートしない。
+
+@item
+フレームパラメーター@code{alpha}、@code{alpha-background}、@code{z-group}、@code{override-redirect}、@code{mouse-color}、@code{title}、@code{wait-for-wm}、@code{sticky}、@code{undecorated}、@code{tool-bar-position}はサポートしない(@ref{Frame
+Parameters,,, elisp, the Emacs Lisp Reference Manual}を参照)。
+
+@item
+Android 4.0以前ではトップレベルのフレームのフレームパラメーター@code{fullscreen}は常に@code{maximized}
+(それより後のAndroidでは@code{fullscreen}も可)。
+@end itemize
+
+@cindex selections, android
+@cindex android clipboard
+  EmacsはAndroid上のXウィンドウシステムでサポートされている選択(selection)に関連する機能すべてを実装していません。たとえばサポートされているのは@code{CLIPBOARD}および@code{PRIMARY}という選択だけであり(@ref{Cut
+and Paste}を参照)、Emacsが選択をセットできるのは平文テキストにたいしてだけです。
+
+  それに加えてAndroidシステム自体がEmacsにアクセス可能な選択データに以下のように特定の制限を設けています:
+
+@itemize @bullet
+@item
+Android
+2.3以前では、クリップボード選択にたいして関数@code{gui-selection-owner-p}は常に@code{nil}をリターンする。
+
+@item
+Android 3.0からAndroid
+9.0では、Emacsが望めばいつでもクリップボードにアクセスでき、@code{gui-selection-owner-p}は常に正しい結果をリターンする。
+
+@item
+Android
+10.0以降では、Emacsのいずれかのフレームが入力フォーカスもつ際のみクリップボードのデータにアクセスでき、クリップボード選択にたいして@code{gui-selection-owner-p}は常に@code{nil}をリターンする。
+@end itemize
+
+  Androidシステム自体にプライマリー選択という概念が存在しないので、かわりにEmacsがエミュレーションを提供しています。これはカットアンドペーストを通じてプライマリー選択の内容を他のアプリケーションに送信する手段が存在しないことを意味しています。
+
+@vindex android-pass-multimedia-buttons-to-system
+@cindex volume/multimedia buttons, Android
+  ボリュームキーは通常はEmacsにより予約済みであり、物理キーボード(@ref{On-Screen
+Keyboards}を参照)なしでEmacsを終了する機能を提供するために使用されています。しかし音量調節に使いたい場合には、変数@code{android-pass-multimedia-buttons-to-system}に非@code{nil}値をセットしてください。この場合にはボリュームキーを用いてEmacsを終了できなくなること、そして音量ボタンを押す間はEmacsから一時的にフォーカスを奪う通知シェードや他のインターフェイスをアクティブにするほうが一般的には容易だということに注意してください。
+
+@cindex dialog boxes, android
+  Android 6.0以降では入力フォーカスがEmacsにない間は、ダイアログボックス(@ref{Dialog
+Boxes}を参照)を表示できません。この点があなたにとって重要なら、他のプログラム上に表示できる権限をEmacsに付与して、この機能を復元できます。ほとんどのシステムでは以下の設定メニューからこれを行うことができます:
+
+@example
+System -> Apps -> Emacs -> More -> Display over other apps
+@end example
+
+@cindex keyboard modifiers, android
+  物理的な修飾キーととキーイベントにより報告されるEmacsの修飾子には直接的な関係があります。1つ例外がありキーボードで@key{Alt}キーが押下されるとEmacsにその箇所で@key{Meta}修飾子が報告されます(逆も成り立つ)。これはほとんどのキーボードには特に@key{Meta}キーがなく、Emacsでは@key{Alt}修飾子がほとんど使用されていないことに由来する不規則性です。
+
+  Androidは@key{Super}修飾子にたいして違う名前を用いることに留意してください。これはAndroidキーボードやキーマップ設定メニューでは@key{SYM}と呼ばれています。
+
+@vindex android-intercept-control-space
+@cindex @kbd{C-SPC} interception, android
+  Androidの入力メソッドにはイベントのフィルタリング処理中に@kbd{C-SPC}を含むキーシーケンスを使用するような現実のアプリケーションを通常はもたないにも関わらず、そのようなキーシーケンスを暗黙理に破棄するというイライラさせられる傾向があります。デフォルトでは入力メソッドによってこれらのキーシーケンスがフィルターされる前に、Emacsがキーシーケンスを横取りします。
+
+  これが望ましくないと判明した場合(たとえば入力メソッドが言語切り替えのショートカットとして@kbd{C-SPC}を扱う場合には、変数@code{android-intercept-control-space}を@code{nil}にセットしてこれを無効にできます。
+
+@vindex android-keyboard-bell-duration
+@cindex keyboard bell, android
+  Androidにインストールされているキーボードベルは、ベルを鳴動させる場面では数ミリ秒間アクティブになる振動要素という形式を採用しています。この振動時間は変数@code{android-keyboard-bell-duration}を@code{10}から@code{1000}の値に変更してカスタマイズできます。
+
+@vindex android-display-planes
+@cindex visual class, Android
+@cindex display color space, Android
+  Androidではディスプレイのカラー関連の特性は自動検知できないので、グレースケールやモノクロディスプレイにおいて、Emacsが天然色の視覚属性と矛盾しない方法でフェイスやイメージを実現するためには、変数@code{android-display-planes}を適切な値に設定する必要があります。グレースケールなら@code{8}、モノクロディスプレイなら@code{1}と設定することにより、すべてのカラーを256グレーまたはモノクロで描画するよう強制できます。この変数はディスプレイ接続の確立時に処理されるので、@code{early-init.el}
+(@ref{Early Init File}を参照)から処理しなければカスタマイズの効果はありません。
+
+  この変数の値はフォントドライバーのアンチエイリアスには影響しませんが、それにも関わらずアンチエイリアスされたテキストの提供をEmacsに期待するモノクロディスプレイでは、ディスプレイドライバーがビットマップデータに処理した後に受信します。
+
+@node Android Fonts
+@section Androidにおけるフォントバックエンドと選択
+@cindex fonts, android
+
+  EmacsはAndroidでは2つのフォントバックエンドをサポートしています。これらにはそれぞれ@code{sfnt-android}、@code{android}という名前がつけられています。
+
+  Emacsは起動時に@file{/system/fonts}、@file{/product/fonts}、およびEmacsのホームディレクトリーにある@file{fonts}というディレクトリー内にあるTrueType形式フォントすべてを列挙します。Emacsは``Droid
+Sans
+Mono''という名前のフォントが常に存在すると仮定して、そのフォントをデフォルトとして使用します。これらのフォントはフォントドライバー@code{sfnt-android}によって表示されます。
+
+  このフォントドライバーには現在のところOpenTypeフォントのサポートがありません。したがってEmacsが利用できるのは与えられたシステムにインストールされているフォントのサブセットだけです。この制限の克服に興味がある場合には、どうか@email{emacs-devel@@gnu.org}に連絡してください。
+
+  フォントドライバー@code{sfnt-android}がフォントｗ見つけられず失敗すると、Emacsはフォントドライバー@code{android}にフォールバックします。これはAndroidプラットフォームが提供するフォントメトリックの制限と不正確さによる、非常に貧弱なフォントドライバーです。この場合にはEmacsはシステムで構成されているタイプフェイス``Monospace''(常にDroid
+Sans Monoであること)を使用します。
+
+@cindex TrueType GX fonts, android
+@cindex distortable fonts, android
+
+  Xシステムの場合と同じように、AndroidにおいてEmacsは変形可能フォント(distortable
+fonts)をサポートします。(``TrueType GXフォント''、``可変フォント''、``multiple
+masterフォント''とも呼ばれる)これらのフォントは単一のフォントファイルを用いて``Bold(太字)''、``Italic(斜体)''等のような異なる複数のスタイルを提供します。
+
+  ユーザーがインストールした変形可能フォントが見つかると、以前に検出されたフォントが提供していたスタイルは使用されなくなります。加えて新たな変形可能フォントが以前にインストールされた変形可能フォントのスーパーセットであるようなスタイルの場合には、以前インストールされた同じファミリー名をもつ変形可能フォントは無視されます。筆記体フォント(conventional
+font)が見つかると、同じスタイルとファミリーをもつ以前の筆記体フォントは削除されます。同じファミリーであるような変形可能フォントが提供していたスタイルは使用されなくなります。
+
+@cindex default font families, Android
+@vindex sfnt-default-family-alist
+
+  Emacsは一般的に@samp{Monospace}、@samp{Monospace Serif}、@samp{Sans
+Serif}、、@samp{DejaVu
+Serif}という名前のファミリーのフォントが存在すると仮定します。Androidはそのような名前のフォントを提供していないのでEmacsがそのようなフォントにたいする要求を、Androidとともに配布されている相当するフォントファミリーセットのいずれかへの要求に変更しています。
+
+  置換するフォントファミリーセット、あるいは置換されるフォントファミリーセットのいずれかを変更するためには、変数@code{sfnt-default-family-alist}を変更してください。これは通常は保証されていないことに留意してください。デフォルト、あるいは@code{variable-pitch}フェイスのカスタマイズは、それらの定義(@ref{Face
+Customization}を参照)の変更によって行うほうが適切です。
+
+@node Android Troubleshooting
+@section Androidにおける起動時の問題にたいするトラブルシューティング
+@cindex troubleshooting, android
+
+@cindex emacs -Q, android
+@cindex emacs --debug-init, android
+  Androidにはコマンドラインが存在しないので、通常はEmacs起動時にコマンドライン引数を指定する手段は存在しません。これはEmacs初期化ファイルにたいしてEmacsの起動を完全に妨げるような間違いを犯した場合に非常に厄介です。通常はシステムが他のプログラムによるEmacsのホームディレクトリーへのアクセス和禁止しているからです。@ref{Initial
+Options}を参照してください。
+
+  しかし特別な設定画面から@code{--quick}あるいは@code{--debug-init}と等価なオプションでえまを起動することができます。Android
+7.0以降ではシステム設定プログラムにあるEmacsの``app
+info''のページからアクセスできます。それより古いシステムではデスクトップにある``Emacs
+options''という別のアイコンから表示できます。
+
+  デバイスにより異なるので、あなたのデバイスの製造元に照会してください。
+
+@cindex dumping, android
+  デバイスでEmacsの特定のコピーを初めて起動する際には、通常はEmacsに付属する事前ロードされたLispファイルのロードにしばらく時間がかかるでしょう。これによりfilesディレクトリーに、そのEmacsのコピー特有の識別子を含んだ``ダンプファイル''(@ref{Initial
+Options}を参照)が作成されます。
+
+  同じEmacsコピーを時間起動する際には、そのダンプファイルに含まれるデータを単にロードするだけなので、起動時間が劇的に短縮されるでしょう。
+
+  予期せぬ状況下でダンプファイルが破損すると、Emacsがクラッシュするかもしれません。これが発生したは上述の設定画面からEmacsのfilesディレクトリーに保存されているダンプファイルを消去できます。
+
+@cindex accessing Emacs directories, Android
+  Android
+4.4以降では破損したインストール済みEmacsを救済するための代替え手段が提供されています。EmacsはEmacsのホームディレクトリーのコンテンツにアクセスできる``ドキュメントプロバイダー''をエクスポートしていまづ。これにより任意のファイルマネージャーからそれらにアクセスできます。
+
+  デバイス付属のファイルマネージャーでこのドキュメントプロバイダーをオープンする方法が見つけられれば、そこから初期化ファイルやダンプファイルのリネーム、削除、あるいは編集が可能になります。
+
+@node Android Software
+@section Androidにおける追加ソフトウェアのインストール
+@cindex installing extra software on Android
+@cindex installing Unix software on Android
+
+  Androidのデフォルトのインストールとともに、例外的に限定されたUnix風のコマンドラインツールが配布されます。この選択を強化するためにUnixコマンドラインユーティリティーの改善されたバージョンの再現から、GNUおよびUnixのフリーソフトウェアの広範なコレクションを提供するパッケージレポジトリに至る幅広いオプションを提供するプロジェクトが複数存在します。
+
+  @uref{http://busybox.net,
+Busybox}はAndroidで実行可能な静的にリンクされた単一のLinuxバイナリーであり、Unixユーティリティーおよび@command{wget}のような特定の著名なGNUプログラムの制限されたレプリカを提供しています。
+
+  @uref{https://termux.dev,
+Termux}はDebianプロジェクトの@command{dpkg}システム、およびコンパイラー、デバッガ、それにC、C++、Java、Python、Common
+Lispのような言語向けのランタイムを含む相当数のUnixシステム向けフリーソフトウェアを含んだ一連のパッケージレポジトリを提供しています。これらのパッケージは通常は専用の端末エミュレーターからインストールされますが、同じアプリケーション署名キー、``shared
+user
+ID(共有ユーザーID)''を同じパッケージ名にセットしてビルドすれば、その端末エミュレーターと同じようにインストールできます。このやり方によってEmacsをビルドする方法についてはEmacsとともに配布されるファイル@file{java/INSTALL}に説明があります。
+
+  @uref{https://github.com/termux/termux-packages,
+termux-packages}Termuxのパッケージレポジトリを生成するためにTermuxがシヨウするパッケージ定義を提供しています。これらをEmacsのホームディレクトリーにインストールするために個別〜いインストールすることもできます。
+
+  上記のプロジェクトに加えて、Linuxカーネルベースのシステム用に静的にリンクされたバイナリーのほとんどはAndroidでも実行できます。

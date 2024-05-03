@@ -1,6 +1,6 @@
 @c -*- mode: texinfo; coding: utf-8 -*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990--1995, 1998--2023 Free Software Foundation, Inc.
+@c Copyright (C) 1990--1995, 1998--2024 Free Software Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Display
 @chapter Emacs Display
@@ -2685,12 +2685,17 @@ Underline in color @var{color}, a string specifying a color.
 @var{color} is either a string, or the symbol @code{foreground-color},
 meaning the foreground color of the face.  Omitting the attribute
 @code{:color} means to use the foreground color of the face.
-@var{style} should be a symbol @code{line} or @code{wave}, meaning to
-use a straight or wavy line.  Omitting the attribute @code{:style}
-means to use a straight line.  @var{position}, if non-@code{nil}, means to
-display the underline at the descent of the text, instead of at the
-baseline level.  If it is a number, then it specifies the amount of
-pixels above the descent to display the underline.
+@var{style} is a symbol which sets the line-style to of the underline.
+It should be one of @code{line}, @code{double-line}, @code{wave},
+@code{dots}, or @code{dashes}.  GUI frames under most window systems
+support all the aforementioned underline styles, while on text terminals
+@code{double-line}, @code{wave} and @code{dots} are contingent on the
+availability of the @code{Smulx} or @code{Su} terminfo capabilities.
+Omitting the attribute @code{:style} means to use a straight line.
+@var{position}, if non-@code{nil}, means to display the underline at the
+descent of the text, instead of at the baseline level.  If it is a
+number, then it specifies the amount of pixels above the descent to
+display the underline.
 @end table
 
 @cindex overlined text
@@ -2726,7 +2731,7 @@ Draw a box with lines of width 1, in color @var{color}.
 You can explicitly specify all aspects of the box with a plist on this
 form.  Any element in this plist can be omitted.
 
-The values @var{vwidth} and @var{hwidth} specifies respectively the
+The values of @var{vwidth} and @var{hwidth} specify respectively the
 width of the vertical and horizontal lines to draw; they default to (1
 . 1).  A negative horizontal or vertical width @minus{}@var{n} means
 to draw a line of width @var{n} that occupies the space of the
@@ -2735,16 +2740,16 @@ width. For simplification the width could be specified with only a
 single number @var{n} instead of a list, such case is equivalent to
 @code{((abs @var{n}) . @var{n})}.
 
-The value @var{style} specifies whether to draw a 3D box.  If it is
+The value of @var{color} specifies the color to draw with.  The default
+is the background color of the face for 3D boxes and
+@code{flat-button}, and the foreground color of the face for other
+boxes.
+
+The value of @var{style} specifies whether to draw a 3D box.  If it is
 @code{released-button}, the box looks like a 3D button that is not
 being pressed.  If it is @code{pressed-button}, the box looks like a
 3D button that is being pressed.  If it is @code{nil},
 @code{flat-button} or omitted, a plain 2D box is used.
-
-The value @var{color} specifies the color to draw with.  The default
-is the background color of the face for 3D boxes and
-@code{flat-button}, and the foreground color of the face for other
-boxes.
 @end table
 
 @item :inverse-video
@@ -5501,6 +5506,10 @@ specification.  The optional @var{face} specifies the face whose
 colors are to be used for the bitmap display.  @xref{Fringe Bitmaps},
 for the details.
 
+It also possible to add context help for fringe bitmaps through the
+@code{show-help-function} mechanism by using @code{left-fringe-help} and
+@code{right-fringe-help} text properties (@pxref{Special Properties}).
+
 @item (space-width @var{factor})
 This display specification affects all the space characters within the
 text that has the specification.  It displays all of these spaces
@@ -5788,8 +5797,11 @@ either an integer, which represents the dimension in pixels, or a pair
 length in @dfn{ems}@footnote{In typography an em is a distance
 equivalent to the height of the type.  For example when using 12 point
 type 1 em is equal to 12 points.  Its use ensures distances and type
-remain proportional.}.  One em is equivalent to the height of the font
-and @var{value} may be an integer or a float.
+remain proportional.}.  One em is equivalent to the size of the font
+and @var{value} may be an integer or a float.  Also, dimension can be
+specified in @code{(@var{value} . ch)} and @code{(@var{value} . cw)}
+forms, where @code{ch} means height of the canonical character and
+@code{cw} means width of the canonical character.
 
   The following is a list of properties that are meaningful for all
 image types (there are also properties which are meaningful only for
@@ -6048,6 +6060,7 @@ event is composed by combining the @var{id} of the hot-spot with the
 mouse event; for instance, @code{[area4 mouse-1]} if the hot-spot's
 @var{id} is @code{area4}.
 
+@findex image-compute-scaling-factor
 Note that the map's coordinates should reflect the displayed image
 after all transforms have been done (rotation, scaling and so on), and
 also note that Emacs (by default) performs auto-scaling of images, so
@@ -6055,6 +6068,30 @@ to make things match up, you should either specify @code{:scale 1.0}
 when creating the image, or use the result of
 @code{image-compute-scaling-factor} to compute the elements of the
 map.
+
+When an image's @code{:scale}, @code{:rotation}, or @code{:flip} is
+changed, @code{:map} will be recomputed based on the value of
+@code{:original-map} and the values of those transformation.
+
+@item :original-map @var{original-map}
+@cindex original image map
+This specifies the untransformed image map which will be used to
+recompute @code{:map} after the image's @code{:scale}, @code{:rotation},
+or @code{:flip} is changed.
+
+If @code{:original-map} is not specified when creating an image with
+@code{create-image}, it will be computed based on the supplied
+@code{:map}, as well as any of @code{:scale}, @code{:rotation}, or
+@code{:flip} which are non-nil.
+
+Conversely, if @code{:original-map} is specified but @code{:map} is not,
+@code{:map} will be computed based on @code{:original-map},
+@code{:scale}, @code{:rotation}, and @code{:flip}.
+
+@defopt image-recompute-map-p
+Set this user option to nil to prevent Emacs from automatically
+recomputing an image @code{:map} based on its @code{:original-map}.
+@end defopt
 @end table
 
 @defun image-mask-p spec &optional frame
@@ -6766,10 +6803,14 @@ from the file's name.
 The remaining arguments, @var{props}, specify additional image
 properties---for example,
 
-@c ':heuristic-mask' is not documented?
 @example
-(create-image "foo.xpm" 'xpm nil :heuristic-mask t)
+(create-image "foo.xpm" 'xpm nil :mask 'heuristic)
 @end example
+
+@noindent
+@xref{Image Descriptors}, for the list of supported properties.  Some
+properties are specific to certain image types, and are described in
+subsections specific to those types.
 
 The function returns @code{nil} if images of this type are not
 supported.  Otherwise it returns an image descriptor.

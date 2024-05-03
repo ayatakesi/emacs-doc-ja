@@ -20,7 +20,6 @@ jobs:
           sudo apt-get install -y libintl-perl
           sudo apt-get install -y coreutils
           sudo apt-get install -y texinfo
-          sudo apt-get install -y texlive-full
       # checkoutするリビジョンは**/original_texis/*.texiは既に更新されているものとする
       - name: Checkout code.
         uses: actions/checkout@v2
@@ -31,22 +30,35 @@ jobs:
           make update
           git config --global user.email "ayanokoji.takesi@gmail.com"
           git config --global user.name "ayatakesi"
-          git add -f emacs/*.pot
-          git add -f emacs/TITLES/ja/LC_MESSAGES/*.pot
-          git add -f lispref/*.pot
-          git add -f lispref/TITLES/ja/LC_MESSAGES/*.pot
-          git commit -m 'Generate/Update pot files by Texinfo files'
-          git push https://${GH_PAT}@github.com/ayatakesi/emacs-doc-ja.git
-      - name: Translate texinfo  files with merged po files
+          git add -f emacs/*.po emacs/*.pot
+          git add -f emacs/TITLES/ja/LC_MESSAGES/*.po emacs/TITLES/ja/LC_MESSAGES/*.pot
+          git add -f lispref/*.po lispref/*.pot
+          git add -f lispref/TITLES/ja/LC_MESSAGES/*.po lispref/TITLES/ja/LC_MESSAGES/*.pot
+          if git commit -m 'Generate/Update pot files by Texinfo files'
+          then
+            git push https://${GH_PAT}@github.com/ayatakesi/emacs-doc-ja.git
+          else
+            echo "Commit failed, ...continue"
+          fi
+      - name: Translate texinfo files with merged po files
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           make emacs
-          git config --global user.email "ayanokoji.takesi@gmail.com"
-          git config --global user.name "ayatakesi"
-          git add -f emacs/*.po  emacs/TITLES/ja/LC_MESSAGES/*.po
           git add -f emacs/japanese_texis/*.texi
+          if git commit -m 'Update emacs translations'
+          then
+            git push https://${GH_PAT}@github.com/ayatakesi/emacs-doc-ja.git
+          else
+            echo "Commit failed, ...continue"
+          fi
           make lispref
-          git add -f lispref/*.po lispref/TITLES/ja/LC_MESSAGES/*.po
           git add -f lispref/japanese_texis/*.texi
-          git commit -m 'Commit merged po and Translate Texinfo files'
-          git push https://${GH_PAT}@github.com/ayatakesi/emacs-doc-ja.git
+          if git commit -m 'Update lispref translations'
+          then
+            git push https://${GH_PAT}@github.com/ayatakesi/emacs-doc-ja.git
+          else
+            echo "Commit failed, ...continue"
+          fi
+
 

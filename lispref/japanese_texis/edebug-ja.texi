@@ -1,0 +1,1215 @@
+@c ===========================================================================
+@c
+@c This file was generated with po4a. Translate the source file.
+@c
+@c ===========================================================================
+
+@comment -*-texinfo-*-
+@c This is part of the GNU Emacs Lisp Reference Manual.
+@c Copyright (C) 1992--1994, 1998--1999, 2001--2024 Free Software
+@c Foundation, Inc.
+@c See the file elisp-ja.texi for copying conditions.
+
+@c This file can also be used by an independent Edebug User
+@c Manual in which case the Edebug node below should be used
+@c with the following links to the Bugs section and to the top level:
+
+@c , Bugs and Todo List, Top, Top
+
+@node Edebug
+@section Edebug
+@cindex Edebug debugging facility
+
+  EdebugはEmacs Lispプログラムにたいするソースレベルデバッガです。これにより以下のことができます:
+
+@itemize @bullet
+@item
+式の前後でストップして評価をステップで実行する。
+
+@item
+条件付きまたは無条件のbreakpointのセット。
+
+@item
+指定された条件がtrueならストップする(グローバルbreakpoint)。
+
+@item
+ストップポイントごとに停止したり、breakpointごとに簡単に停止して低速または高速にトレースを行う。
+
+@item
+Edebug外部であるかのように式の結果を表示して、式を評価する。
+
+@item
+式のリストを自動的に再評価して、Edebugがディスプレイを更新するたびにそれらの結果を表示する。
+
+@item
+関数呼び出しとリターンのトレース情報を出力する。
+
+@item
+エラー発生時にストップする。
+
+@item
+Edebug自身のフレームを除外してbacktraceを表示する。
+
+@item
+マクロとフォームの定義で引数の評価を指定する。
+
+@item
+初歩的なカバレッジテストと頻度数の取得。
+@end itemize
+
+以下の初めの3つのセクションは、Edebugの使用を開始するために十分な説明を行います。
+
+@menu
+* Using Edebug::             Edebug使用のための手引き。
+* Instrumenting::            Edebugでデバッグするために、コードをインストルメント(計装)しなければならないe
+* Modes: Edebug Execution Modes.  多かれ少なかれ、ストップする実行モード。
+* Jumping::                  特定の位置にジャンプするコマンド。
+* Misc: Edebug Misc.         さまざまなコマンド。
+* Breaks::                   プログラムをストップさせるbreakpointのセット。
+* Trapping Errors::          Edebugでのエラーのトラップ。
+* Views: Edebug Views.       Edebugの内側と外側のビュー。
+* Eval: Edebug Eval.         Edebugでの式の評価。
+* Eval List::                Edebugにエンターするたびに値が表示される式。
+* Printing in Edebug::       プリントのカスタマイズ。
+* Trace Buffer::             バッファー内で採れを生成する方法。
+* Coverage Testing::         評価をカバレッジテストする方法。
+* The Outside Context::      Edebugが保存およびリストアするデータ。
+* Edebug and Macros::        マクロ呼び出しをハンドルする方法の指定。
+* Options: Edebug Options.   Edebugをカスタマイズするオプション変数。
+@end menu
+
+@node Using Edebug
+@subsection Edebugの使用
+
+  EdebugでLispプログラムをデバッグするには、最初にデバッグしたいLispコードを@dfn{インストルメント(instrument:
+計装)}しなければなりません。これを行なうもっともシンプルな方法は、関数またはマクロの定義に移動して@kbd{C-u
+C-M-x}(プレフィクス引数を指定した@code{eval-defun})を行います。コードをインストルメントする他の手段については、@ref{Instrumenting}を参照してください。
+
+  一度関数をインストルメントすると、その関数にたいする任意の呼び出しによってEdebugがアクティブになります。Edebugがアクティブになると、どのEdebug実行モードを選択したかに依存して、その関数をステップ実行できるように実行がストップされるか、ディスプレイを更新してデバッグコマンドにたいするチェックの間、実行が継続されます。デフォルトの実行モードstepで、これは実行をストップします。@ref{Edebug
+Execution Modes}を参照してください。
+
+  Edebugでは通常は、デバッグしているLispコードをEmacsバッファーで閲覧します。これを@dfn{ソースコードバッファー(source code
+buffer)}と呼び、バッファーは一時的に読み取り専用になります。
+
+  左フリンジの矢印は、その関数で実行されている行を示します。ポイントは最初はその関数の実行されている行にありますが、ポイントを移動するとこれは真ではなくなります。
+
+  以下は@code{fac}の定義(以下を参照)をインストルメントして@code{(fac
+3)}を実行した場合に通常目にするものです。ポイントは@code{if}の前の開きカッコにあります。
+
+@example
+(defun fac (n)
+=>@point{}(if (< 0 n)
+      (* n (fac (1- n)))
+    1))
+@end example
+
+@cindex stop points
+関数内でEdebugが実行をストップできる位置のことを、@dfn{ストップポイント(stop
+points)}と呼びます。ストップポイントはリストであるような部分式の前後、および変数参照の後でも発生します。以下は関数@code{fac}内のストップポイントをピリオドで示したものです:
+
+@example
+(defun fac (n)
+  .(if .(< 0 n.).
+      .(* n. .(fac .(1- n.).).).
+    1).)
+@end example
+
+Emacs
+Lispモードのコマンドに加えて、ソースコードバッファーではEdebugのスペシャルコマンドが利用できます。たとえばEdebugコマンド@key{SPC}で次のストップポイントまで実行することができます。@code{fac}にエントリーした後に一度@key{SPC}とタイプした場合は、以下のように表示されるでしょう:
+
+@example
+(defun fac (n)
+=>(if @point{}(< 0 n)
+      (* n (fac (1- n)))
+    1))
+@end example
+
+式の後でEdebugが実行をストップしたときは、エコーエリアにその式の値が表示されます。
+
+他にも頻繁に使用されるコマンドとして、ストップポイントにbreakpointをセットする@kbd{b}、breakpointに達するまで実行する@kbd{g}、Edebugをexitしてトップレベルのコマンドループにリターンする@kbd{q}があります。また@kbd{?}とタイプするとすべてのEdebugコマンドがリストされます。
+
+@node Instrumenting
+@subsection Edebugのためのインストルメント
+@cindex instrumenting for Edebug
+
+  LispコードのデバッグにEdebugを使用するためには、最初にそのコードを@dfn{インストルメント(instrument:
+計装)}しなければなりません。コードをインストルメントすると、適切な位置でEdebugを呼び出すために追加コードが挿入されます。
+
+@kindex C-M-x
+@findex eval-defun @r{(Edebug)}
+  関数定義でプレフィクス引数とともにコマンド@kbd{C-M-x}
+(@code{eval-defun})を呼び出すと、それを評価する前にその定義をインストルメントします(ソースコード自体は変更しない)。変数@code{edebug-all-defs}が非@code{nil}ならプレフィクス引数の意味を反転します。この場合は、@kbd{C-M-x}はプレフィクス引数が@emph{なければ}その定義をインストルメントします。@code{edebug-all-defs}のデフォルト値は@code{nil}です。コマンド@kbd{M-x
+edebug-all-defs}は変数@code{edebug-all-defs}の値を切り替えます。
+
+@findex eval-region @r{(Edebug)}
+@findex eval-buffer @r{(Edebug)}
+  @code{edebug-all-defs}が非@code{nil}なら@code{eval-region}、@code{eval-buffer}もそれらが評価する定義をインストルメントします。同様に@code{edebug-all-forms}は、@code{eval-region}が(非定義フォームさえ含む@emph{あらゆる}フォームをインストルメントするべきかを制御します。これはミニバッファー内でのロードや評価には適用されません。コマンド@kbd{M-x
+edebug-all-forms}はこのオプションを切り替えます。
+
+@findex edebug-eval-top-level-form
+@findex edebug-defun
+  他にもコマンド@kbd{M-x
+edebug-eval-top-level-form}が利用でき、これは@code{edebug-all-defs}や@code{edebug-all-forms}の値に関わらずトップレベルのすべてのフォームをインストルメントします。@code{edebug-defun}は@code{edebug-eval-top-level-form}のエイリアスです。
+
+  Edebugがアクティブのの間、コマンド@kbd{I}(@code{edebug-instrument-callee})はポイント後のリストフォームに呼び出される関数およびマクロ定義がまだインストルメントされていなければ、それらをインストルメントします。これはそのファイルのソースの場所をEdebugが知っている場合だけ可能です。この理由によりEdebugロード後は、たとえ評価する定義をインストルメントしない場合でも、@code{eval-region}は評価するすべての定義の位置を記録します。インストルメント済み関数呼び出しにステップインする@kbd{i}コマンドも参照してください(@ref{Jumping}を参照)。
+
+  Edebugはすべての標準スペシャルフォーム、式引数をもつ@code{interactive}フォーム、無名ラムダ式、およびその他の定義フォームのインストルメント方法を知っています。しかしEdebugはユーザー定義マクロが引数にたいして何を行うかを判断できないので、Edebug仕様を使用してその情報を与えなければなりません。詳細は@ref{Edebug
+and Macros}を参照してください。
+
+  Edebugがセッション内で最初にコードをインストルメントしようとするときは、フック@code{edebug-setup-hook}を実行してからそれに@code{nil}をセットします。使おうとしているパッケージに結びつけてEdebug仕様をロードするためにこれを使用できますが、それはEdebugを使用するときだけ機能します。
+
+@cindex edebug, failure to instrument
+@c FIXME?  I can't see that it "leaves point at the erroneous code".
+  Edebugがインストルメント中にシンタックスエラー(syntax error:
+構文エラー)を検知した場合には、以下のように間違ったコードの箇所にポイントを残して@code{invalid-read-syntax}エラーをシグナルします:
+
+@example
+@error{} Invalid read syntax: "Expected lambda expression"
+@end example
+
+  このようにインストルメントに失敗する可能性の1つとして、いくつかのマクロ定義をEmacsが把握していない場合があります。これに対処するためには、インストルメントしようとしている関数を定義しているファイルをロードしてください。
+
+@findex eval-expression @r{(Edebug)}
+  定義からインストルメントを削除するには、単にインストルメントを行わない方法でその定義を再評価するだけです。フォームを絶対にインストルメントせずに評価するには2つの方法があります。それはファイルからの@code{load}による評価と、ミニバッファーからの@code{eval-expression}(@kbd{M-:})による評価です。
+
+@findex edebug-remove-instrumentation
+  定義からインストルメントを削除する別の方法は@code{edebug-remove-instrumentation}コマンドの使用です。これはインストルメントしたすべてからインストルメントを削除することもできます。
+
+  Edebug内で利用可能な他の評価関数については、@ref{Edebug Eval}を参照してください。
+
+@node Edebug Execution Modes
+@subsection Edebugの実行モード
+
+@cindex Edebug execution modes
+Edebugはデバッグするプログラムの実行にたいして、いくつかの実行モードをサポートします。これらの実行モードを@dfn{Edebug実行モード(Edebug
+execution
+modes)}と呼びます。これらをメジャーモードやマイナーモードと混同しないでください。カレントのEdebug実行モードは、プログラムをストップする前にEdebugがどれだけ実行を継続するか
+--- たとえばストップポイントごとにストップ、あるいは次のbreakpointまで継続など ---
+、およびストップする前にEdebugがどれだけ進捗を表示するかを決定します。
+
+Edebug実行モードは、通常はある特定のモードでプログラムを継続させるコマンドをタイプすることによって指定します。以下はそれらのコマンドのテーブルです。@kbd{S}以外のコマンドはプログラムの実行を再開して、少なくともある長さの間だけは実行を継続します。
+
+@table @kbd
+@item S
+@c FIXME Does not work. https://debbugs.gnu.org/9764
+Stop(ストップ): これ以上プログラムを実行しないでEdebugのコマンドを待つ(@code{edebug-stop})。
+
+@item @key{SPC}
+Step(ステップ): 次のストップポイントでストップする(@code{edebug-step-mode})。
+
+@item n
+Next(次へ):
+式の後にある次のストップポイントでストップする(@code{edebug-next-mode})。@ref{Jumping}の@code{edebug-forward-sexp}も参照のこと。
+
+@item t
+Trace(トレース): Edebugのストップポイントごとにpause(通常は1秒)する(@code{edebug-trace-mode})。
+
+@item T
+Rapid
+trace(高速でトレース):ストップポイントごとに表示を更新するが、実際にpauseはしない(@code{edebug-Trace-fast-mode})。
+
+@item g
+Go(進む): 次のbreakpointまで実行する(@code{edebug-go-mode})。@ref{Breakpoints}を参照のこと。
+
+@item c
+Continue(継続): breakpointごとにpauseしてから継続する(@code{edebug-continue-mode})。
+
+@item C
+Rapid continue(高速で継続):
+ポイントを各breakpointへ移動するがpauseしない(@code{edebug-Continue-fast-mode})。
+
+@item G
+Go non-stop(ストップせず進む):
+breakpointを無視する(@code{edebug-Go-nonstop-mode})。まだ@kbd{S}やその他の編集コマンドでプログラムをストップするのは可能。
+@end table
+
+一般的に上記リストの最初のほうにある実行モードは後のほうの実行モードに比べて、プログラムをより低速に実行するか、すぐにストップさせます。
+
+新たなEdebugレベルにエンターしたとき、Edebugは通常は最初に遭遇したインストルメント済みの関数でストップするでしょう。breakpointでのみストップするか、(たとえばカバレッジデータ収集時など)ストップさせないようにするには、@code{edebug-initial-mode}の値をデフォルトの@code{step}から@code{go}か@code{Go-nonstop}、あるいはその他の値に変更してください(@ref{Edebug
+Options}を参照)。@kbd{C-x C-a C-m}
+(@code{edebug-set-initial-mode})でこれを容易に行うことができます:
+
+@deffn Command edebug-set-initial-mode
+@kindex C-x C-a C-m
+@kbd{C-x C-a
+C-m}にバインドされるこのコマンドは@code{edebug-initial-mode}をセットする。これはモードを示すキーの入力を求める。対応するモードをセットする上述8つのキーのいずれかを入力すること。
+@end deffn
+
+たとえば１つのコマンドからインストルメント済みの関数が複数回呼び出されたら、同じEdebugレベルに再エンターするかもしれないことに注意してください。
+
+実行中とトレース中は、任意のEdebugコマンドをタイプすることによって実行をインタラプト(interrupt:
+中断、割り込み)できます。Edebugは次のストップポイントでプログラムをストップしてからタイプされたコマンドを実行します。たとえば実行中に@kbd{t}をタイプすると、次のストップポイントでトレースモードに切り替えます。@kbd{S}を使用すれば他に何も行わずに実行をストップできます。
+
+関数でたまたま読み取り入力が発生した場合には、実行のインタラプトを意図してタイプされた文字は、かわりにその関数により読み取られます。そのプログラムが入力を欲するタイミングに注意を払うことで、そのような意図せぬ結果を避けることができます。
+
+@cindex keyboard macros (Edebug)
+このセクションのコマンドを含むキーボードマクロは、完全には機能しません。プログラムを再開するためにEdebugからexitすると、キーボードマクロの追跡記録は失われます。これに対処するのは簡単ではありません。またEdebug外部でキーボードマクロを定義または実行しても、Edebug内部のコマンドに影響しません。通常これは利点です。@ref{Edebug
+Options}内の@code{edebug-continue-kbd-macro}オプションも参照してください。
+
+@defopt edebug-sit-for-seconds
+このオプションはtraceモードとcontinueモードで実行ステップの間を何秒待つか指定する。デフォルトは1秒。
+@end defopt
+
+@node Jumping
+@subsection ジャンプ
+
+  このセクションで説明するコマンドは、指定された場所に達するまで実行を続けます。@kbd{i}を除くすべてのコマンドは、ストップ場所を確立するために一時的なbreakpointを作成してからgoモードにスイッチします。意図されたストップポイントの前にある他のストップポイントに達した場合にも実行はストップします。breakpointの詳細は、@ref{Breakpoints}を参照してください。
+
+  以下のコマンドでは、非ローカルexitはプログラムのストップを望む一時的なbreakpointをバイパスできるので、期待どおり機能しないかもしれません。
+
+@table @kbd
+@item h
+ポイントがある場所の近くのストップポイントへ実行を進める(@code{edebug-goto-here})。
+
+@item f
+プログラムの式を1つ実行する(@code{edebug-forward-sexp})。
+
+@item o
+sexpを含む終端までプログラムを実行する(@code{edebug-step-out})。
+
+@item i
+ポイントの後のフォームから呼び出された関数かマクロにステップインする(@code{edebug-step-in})。
+@end table
+
+@kbd{h}コマンドは一時的なbreakpointを使用してポイントのカレント位置、またはその後のストップポイントまで処理を進めます。
+
+@kbd{f}コマンドは式を1つ飛び越してプログラムを実行します。より正確には@code{forward-sexp}により到達できる位置に一時的なbreakpointをセットしてからgoモードで実行するので、プログラムはそのbreakpointでストップすることになります。
+
+プレフィクス引数@var{n}とともに使用すると、ポイントから@var{n}個のsexp(s-expression:
+S式)を超えた場所に一時的なbreakpointをセットします。ポイントを含むリストが@var{n}より少ない要素で終わるような場合には、ストップ箇所はポイントが含まれる式の後になります。
+
+@code{forward-sexp}が見つける位置が、プログラムを実際にストップさせたい位置なのかチェックしなければなりません。たとえば@code{cond}内ではこれは正しくないかもしれません。
+
+@kbd{f}コマンドは柔軟性を与えるために、@code{forward-sexp}をストップポイントではなくポイント位置から開始します。@emph{カレントのストップポイント}から1つの式を実行したい場合には、まずそこにポイントを移動するために@kbd{w}(@code{edebug-where})をタイプして、それから@kbd{f}をタイプしてください。
+
+@kbd{o}コマンドは、式の外側で実行を継続します。これはポイントを含む式の最後に一時的なbreakpointを配置します。ポイントを含むsexpが関数定義なら@kbd{o}はその定義内の最後のsexpの直前まで実行を継続します。もし定義内の最後のsexpの直前にポイントがある場合は、その関数からリターンしてからストップします。言い換えるとこのコマンドは最後のsexpの後にポイントがなければ、カレントで実行中の関数からexitしません。
+
+コマンド@kbd{h}、@kbd{f}、@kbd{o}は通常は``Break''を表示して、正に評価した結果を表示する前に@code{edebug-sit-for-seconds}の間、一時停止します。@code{edebug-sit-on-break}を@code{nil}にセットすることによりこの一時停止を回避できます。@ref{Edebug
+Options}を参照してください。
+
+@kbd{i}コマンドは、ポイントの後のリストフォームに呼び出された関数やマクロにステップインします。そのフォームは評価されようとしているものの1つである必要はないことに注意してください。しかしそのフォームが評価されようとしている関数呼び出しなら、引数が何も評価されないうちにこのコマンドを使用しないと、遅すぎることを覚えておいてください。
+
+@kbd{i}コマンドはステップインしようとしている関数やマクロがまだインストルメントされていなければ、それらをインストルメントします。これは便利かもしれませんが、それらを明示的に非インストルメントしなければ、その関数やマクロはインストルメントされたままになることを覚えておいてください。
+
+@node Edebug Misc
+@subsection その他のEdebugコマンド
+
+  ここではその他のEdebugコマンドを説明します。
+
+@table @kbd
+@item ?
+Edebugのヘルプメッセージを表示する(@code{edebug-help})。
+
+@item a
+@itemx C-]
+1レベルを中断して以前のコマンドレベルへ戻る(@code{abort-recursive-edit})。
+
+@item q
+エディターのトップレベルのコマンドループにリターンする(@code{top-level})。これはすべてのレベルのEdebugアクティビティを含むすべての再帰編集レベルをexitする。しかしフォーム@code{unwind-protect}か@code{condition-case}で保護されたインストルメント済みのコードはデバッグを再開するかもしれない。
+
+@item Q
+@kbd{q}と同様だが、保護されたコードでもストップしない(@code{edebug-top-level-nonstop})。
+
+@item r
+エコーエリアにもっとも最近の既知のコマンドを再表示する(@code{edebug-previous-result})。
+
+@item d
+backtraceを表示するが、明確であるようにEdebug自身の関数は除外される(@code{edebug-pop-to-backtrace})。
+
+backtraceとbacktraceに作用するコマンドの説明は@ref{Backtraces}を参照のこと。
+
+@findex edebug-backtrace-show-instrumentation
+@findex edebug-backtrace-hide-instrumentation
+backtrace内でEdebugの関数を確認したければ@kbd{M-x
+edebug-backtrace-show-instrumentation}、それらを再び隠すには@kbd{M-x
+edebug-backtrace-hide-instrumentation}を使用する。
+
+backtraceのフレームの先頭が@samp{>}なら、そのフレームにたいするソースコードの場所をEdebugが知っていることを意味する。カレントフレームのソースコードにジャンプするには@kbd{s}を使用する。
+
+実行を継続したときにbacktraceバッファーは自動的にkillされる。
+@end table
+
+Edebugから再帰的にEdebugをアクティブにするコマンドを呼び出すことができます。Edebugがアクティブなときは常に@kbd{q}によトップレベルの終了、または@kbd{C-]}による再帰編集1レベルの中断ができます。@kbd{d}によってすべての未解決な評価のbacktraceを表示できます。
+
+@node Breaks
+@subsection ブレーク
+
+Edebugのstepモードは、次のストップポイントに達したときに実行をストップします。一度開始されたEdebugの実行をストップするには、他に3つの方法があります。それはbreakpoint、グローバルbreak条件、およびソースbreakpointです。
+
+@menu
+* Breakpoints::              ストップポイントのbreakpoint。
+* Global Break Condition::   イベントによるbreak。
+* Source Breakpoints::       ソースコードに埋め込まれたbreakpoint。
+@end menu
+
+@node Breakpoints
+@subsubsection Edebugのブレークポイント
+
+@cindex breakpoints (Edebug)
+Edebugを使用しているときは、テスト中のプログラム内に@dfn{breakpoint}を指定できます。breakpointとは実行がストップされる場所のことです。@ref{Using
+Edebug}で定義されている任意のストップポイントにbreakpointをセットできます。breakpointのセットと解除で影響を受けるストップポイントは、ソースコードバッファー内でポイント位置、またはポイント位置の後の最初のストップポイントです。以下はEdebugのbreakpoint用のコマンドです:
+
+@table @kbd
+@item b
+ポイント位置、またはポイント位置の後のストップポイントにbreakpointをセットする(@code{edebug-set-breakpoint})。プレフィクス引数を使用すると、それは一時的なbreakpointとなり、プログラムが最初にそこで停止したときに解除される。breakpoint位置には@code{edebug-enabled-breakpoint}または@code{edebug-disabled-breakpoint}フェイスのオーバーレイが配置される。
+
+@item u
+(もしあれば)ポイント位置、またはポイント位置の後のストップポイントにあるbreakpointを解除(unset)する(@code{edebug-unset-breakpoint})。
+
+@item U
+カレントフォーム内のすべてのbreakpointにポイントのセットを解除する(@code{edebug-unset-breakpoints})。
+
+@item D
+ポイント付近のbreakpointの有効と無効を切り替える(@code{edebug-toggle-disable-breakpoint})。このコマンドは主にbreakpointが条件つきであり、そのコンディションの再作成に幾分かの作業を要する場合に有用。
+
+@item x @var{condition} @key{RET}
+@var{condition}を評価して非@code{nil}値になる場合だけプログラムをストップする条件付きbreakpointをセットする(@code{edebug-set-conditional-breakpoint})。プレフィクス引数を指定すると一時的なbreakpointになる。
+
+@item B
+カレント定義内の次のbreakpointにポイントを移動する(@code{edebug-next-breakpoint})。
+@end table
+
+Edebug内では@kbd{b}でbreakpointをセットして、@kbd{u}でそれを解除できます。最初に望ましいストップポイントにポイントを移動してから、そこにbreakpointをセットまたは解除するために@kbd{b}または@kbd{u}をタイプします。breakpointがない場所でbreakpointを解除しても影響はありません。
+
+ある定義の再評価や再インストルメントを行うと、以前のbreakpointはすべて削除されます。
+
+@dfn{条件付きbreakpoint(conditional
+breakpoint)}は、プログラムがそこに達するたびに条件をテストします。条件を評価した結果エラーが発生した場合、エラーは無視されて結果は@code{nil}になります。条件付きbreakpointをセットするには@kbd{x}を使用して、ミニバッファーで条件式を指定します。以前にセットされた条件付きbreakpointがあるストップポイントに条件付きbreakpointをセットすると、以前の条件式がミニバッファーに配置されるのでそれを編集できます。
+
+プレフィクス引数を指定してbreakpointをセットするコマンドを使用することによって、@dfn{一時的}な条件付きbreakpoint、および無条件のbreakpointを作成できます。一時的なbreakpointによりプログラムがストップしたとき、そのbreakpointは自動的に解除されます。
+
+Go-nonstopモードを除き、Edebugは常にbreakpointでストップ、またはpauseします。Go-nonstopモードではbreakpointは完全に無視されます。
+
+breakpointがどこにあるか探すには@kbd{B}コマンドを使用します。このコマンドは同じ関数内からポイント以降にある次のbreakpoint(ポイント以降にbreakpointが存在しなければ最初のbreakpoint)にポイントを移動します。このコマンドは実行を継続せずに、単にバッファー内のポイントを移動します。
+
+@node Global Break Condition
+@subsubsection グローバルなブレーク条件
+
+@cindex stopping on events
+@cindex global break condition
+  @dfn{グローバルbreak条件(global break
+condition)}は指定された条件が満たされたとき、それがどこで発生したかによらず、実行をストップします。Edebugは、すべてのストップポイントでグローバルbreak条件を評価します。これが非@code{nil}値に評価された場合は、あたかもそのストップポイントにbreakpointがあったかのように、実行をストップまたはpauseします(実行モードによる)。条件の評価でエラーを取得した場合は、実行をストップしません。
+
+@findex edebug-set-global-break-condition
+  条件式は@code{edebug-global-break-condition}に格納されます。Edebugがアクティブなときにソースバッファーから@kbd{X}コマンドを使用するか、Edebugがロードされている間は任意のバッファーから任意のタイミングで@kbd{C-x
+X X}(@code{edebug-set-global-break-condition})を使用して新たな式を指定できます。
+
+  グローバルbreak条件は、コード内のどこでイベントが発生したかを見つけるもっともシンプルな方法ですが、コードの実行は遅くなります。そのため使用しないときは条件を@code{nil}にリセットするべきです。
+
+@node Source Breakpoints
+@subsubsection ソースブレークポイント
+
+@findex edebug
+@cindex source breakpoints
+  定義内のすべてのbreakpointは、それをインストルメントするたびに失われます。breakpointが失われないようにしたければソースコード内で単に関数@code{edebug}を呼び出す@dfn{ソースbreakpoint(source
+breakpoint)}を記述できます。もちろんそのような呼び出しを条件付きすることにもできます。たとえば@code{fac}関数内に以下のような行を1行目に挿入して、引数が0になったときストップさせることができます:
+
+@example
+(defun fac (n)
+  (if (= n 0) (edebug))
+  (if (< 0 n)
+      (* n (fac (1- n)))
+    1))
+@end example
+
+  @code{fac}の定義がインストルメントされて呼び出されたとき、@code{edebug}呼び出しはbreakpointとして振る舞います。実行モードに応じてEdebugはそこでストップまたはpauseします。
+
+@c This may not be a good idea anymore.
+  @code{edebug}が呼び出されたときにインストルメント済みのコードが実行されていなければ、この関数は@code{debug}を呼び出します。
+
+@node Trapping Errors
+@subsection エラーのトラップ
+
+  エラーがシグナルされて、それが@code{condition-case}でハンドルされていないとき、Emacsは通常はエラーメッセージを表示します。Edebugがアクティブでインストルメント済みコードの実行中は、ハンドルされていないエラーには通常はEdebugが対応します。オプション@code{edebug-on-error}と@code{edebug-on-quit}でこれをカスタマイズできます。@ref{Edebug
+Options}を参照してください。
+
+  Edebugがエラーに対応するときは、エラー発生箇所の前にある最後のストップポイントを表示します。この場所はインストルメントされていない関数の呼び出しであったり、その関数内で実際にエラーが発生したのかもしれません。バインドされていない変数に関するエラーの場合は、最後の既知のストップポイントは、その不正な変数参照から遠く離れた場所にあるかもしれません。そのような場合には完全なbacktraceを表示したいと思うでしょう(@ref{Edebug
+Misc}を参照)。
+
+@c Edebug should be changed for the following: -- dan
+  Edebugがアクティブの間に@code{debug-on-error}か@code{debug-on-quit}を変更すると、それらの変更はEdebugが非アクティブになったとき失われます。さらにEdebugの再帰編集の間、これらの変数はEdebugの外部でもっていた値にバインドされます。
+
+@node Edebug Views
+@subsection Edebugのビュー
+
+  これらのEdebugコマンドは、Edebugにエントリーする前のバッファーの外観とウィンドウの状態を調べるコマンドです。外部のウィンドウ構成はウィンドウのコレクションとその内容であり、それらは実際にはEdebugの外部にあります。
+
+@table @kbd
+@item P
+@itemx v
+外部のウィンドウ構成ビューに切り替える(@code{edebug-view-outside})。Edebugにリターンするには@kbd{C-x X
+w}をタイプする。
+
+@item p
+一時的に外部のカレントバッファーを表示して、ポイントもその外部の位置になる(@code{edebug-bounce-point})。Edebugにリターンする前に1秒
+pauseする。プレフィクス引数@var{n}を指定すると、かわりに@var{n}秒 pauseする。
+
+@item w
+ソースコードバッファー内のカレントストップポイントにポイントを戻す(@code{edebug-where})。
+
+このコマンドを同じバッファーを表示する異なるウィンドウで使用すると、そのウィンドウは将来カレント定義を表示するために代用される。
+
+@item W
+@c Its function is not simply to forget the saved configuration -- dan
+Edebugが外部のウィンドウ構成の保存とリストアを行うかどうかを切り替える(@code{edebug-toggle-save-windows})。
+
+プレフィクス引数を指定すると、@kbd{W}は選択されたウィンドウの保存とリストアだけを切り替える。ソースコードバッファーを表示していないウィンドウを指定するには、グローバルキーマップから@kbd{C-x
+X W}を使用しなければならない。
+@end table
+
+  @kbd{v}、または単に@kbd{p}でカレントバッファーにポイントを反跳させれば、たとえ通常は表示されないウィンドウでも外部のウィンドウ構成を調べることができます。
+
+  ポイントを移動した後にストップポイントに戻りたいときがあるかもしれません。これはソースコードバッファーから@kbd{w}で行うことができます。どのバッファーにいても@kbd{C-x
+X w}を使用すれば、ソースコードバッファー内のストップポイントに戻ることができます。
+
+  保存を@emph{オフ}にするために@kbd{W}を使用するたびに、Edebugは外部のウィンドウ構成を忘れます。そのためたとえ保存を@emph{オン}に戻しても、(プログラムを実行することによって)次にEdebugをexitしたとき、カレントウィンドウ構成は変更されないまま残ります。しかし十分な数のウィンドウをオープンしていない場合には、@file{*edebug*}と@file{*edebug-trace*}の再表示があなたが見たいバッファーと競合するかもしれません。
+
+@node Edebug Eval
+@subsection 評価
+
+  Edebug内では、まるでEdebugが実行されていないかのように式を評価できます。式の評価とプリントに際して、Edebugは不可視になるよう試みます。副作用をもつ式の評価は、Edebugが明示的に保存とリストアを行うデータへの変更を除いて期待したとおり機能するでしょう。このプロセスの詳細は、@ref{The
+Outside Context}を参照してください。
+
+@table @kbd
+@item e @var{exp} @key{RET}
+Edebugのコンテキスト外で式@var{exp}を評価する(@code{edebug-eval-expression})。つまり、Edebugはその式への干渉を最小限にしようと努める。評価した結果はエコーエリア、プレフィックス引数を与えられた場合には新たにバッファーをポップアップしてそこに結果を見栄えよくプリントする。
+
+このコマンドはデフォルトでは評価の間はデバッガを抑制する。これにより評価される式内のエラーが新たなエラーとして既存のエラーの最上位に追加されることはなくなる。ユーザーオプション@code{debug-allow-recursive-debug}を非@code{nil}にセットすれば、これをオーバーライドできる。
+
+@item M-: @var{exp} @key{RET}
+Edebug自身のコンテキスト内で式@var{exp}を評価する(@code{eval-expression})。
+
+@item C-x C-e
+ポイントの前の式をEdebugのコンテキスト外で評価する(@code{edebug-eval-last-sexp})。プレフィックス引数が0(@kbd{C-u
+0 C-x C-e})なら、(文字列やリストのような)長いアイテムを短縮しない。それ以外のプレフィックスなら別のバッファーに値を見栄えよくプリントする。
+@end table
+
+@cindex lexical binding (Edebug)
+@c FIXME?  What about lexical-binding = t?
+  Edebugは@file{cl.el}内の構文(@code{lexical-let}、@code{macrolet}、@code{symbol-macrolet})によって作成された、レキシカル(lexical)にバインドされたシンボルへの参照を含む式の評価をサポートします。
+
+@node Eval List
+@subsection 評価 List Buffer
+
+  式をインタラクティブに評価するために、@file{*edebug*}と呼ばれる@dfn{評価リストバッファー(evaluation list
+buffer)}を使用できます。Edebugがディスプレイを更新するたびに自動的に評価される、式の@dfn{評価リスト(evaluation
+list)}もセットアップできます。
+
+@table @kbd
+@item E
+評価リストバッファー@file{*edebug*}に切り替える(@code{edebug-visit-eval-list})。
+@end table
+
+  @file{*edebug*}バッファーでは、以下の特別なコマンドと同様にLisp Interactionモード(@ref{Lisp
+Interaction,,, emacs, The GNU Emacs Manual}を参照)のコマンドも使用できます。
+
+@table @kbd
+@item C-j
+ポイントの前の式をコンテキスト外で評価して、その値をバッファーに挿入する(@code{edebug-eval-print-last-sexp})。プレフィクス引数が0(@kbd{C-u
+0 C-j})なら、(文字列やリストのような)長いアイテムを短縮しない。
+
+@item C-x C-e
+Edebugのコンテキスト外でポイントの前の式を評価する(@code{edebug-eval-last-sexp})。
+
+@item C-c C-u
+バッファー内のコンテンツから新たに評価リストを構築する(@code{edebug-update-eval-list})。
+
+@item C-c C-d
+ポイントのある評価リストグループを削除する(@code{edebug-delete-eval-item})。
+
+@item C-c C-w
+ソースコードバッファーに切り替えてカレントストップポイントに戻る(@code{edebug-where})。
+@end table
+
+  評価リストウィンドウ内では、@file{*scratch*}にいるときと同様に@kbd{C-j}や@kbd{C-x
+C-e}で式を評価できますが、それらはEdebugのコンテキスト外で評価されます。
+
+  インタラクティブに入力した式(と結果)は、実行を継続すると失われます。しかし実行がストップされるたびに評価されるように、式から構成される@dfn{評価リスト}をセットアップできます。
+
+@cindex evaluation list group
+  これを行なうには、評価リストバッファー内で1つ以上の@dfn{評価リストグループ(evaluation list
+group)}を記述します。評価リストグループは1つ以上のLisp式から構成されます。グループはコメント行で区切られます。
+
+  コマンド@kbd{C-c
+C-u}(@code{edebug-update-eval-list})はバッファーをスキャンして、各グループの最初の式を使用して評価リストを再構築します(これはグループの2つ目の式は以前に計算、表示されている値だという発想からである)。
+
+  Edebugにエントリーするたびに、評価リストの各式(および式の後に式のカレント値)をバッファーに挿入して再表示します。これはコメント行も挿入するので、各式はそのグループの一員となります。したがってバッファーのテキストを変更せずに@kbd{C-c
+C-u}とタイプすると、評価リストは実際には変更されません。
+
+  評価リストからの評価の間にエラーが発生すると、それが式の結果であるかのようにエラーメッセージが文字列で表示されます。したがってカレントで無効な変数を使用する式によって、デバッグが中断されることはありません。
+
+  以下はいくつかの式を評価リストウィンドウに追加したとき、どのように見えるかの例です:
+
+@smallexample
+(current-buffer)
+#<buffer *scratch*>
+;---------------------------------------------------------------
+(selected-window)
+#<window 16 on *scratch*>
+;---------------------------------------------------------------
+(point)
+196
+;---------------------------------------------------------------
+bad-var
+"Symbol's value as variable is void: bad-var"
+;---------------------------------------------------------------
+(recursion-depth)
+0
+;---------------------------------------------------------------
+this-command
+eval-last-sexp
+;---------------------------------------------------------------
+@end smallexample
+
+グループを削除するにはグループ内にポイントを移動して@kbd{C-c C-d}をタイプするか、単にグループのテキストを削除して@kbd{C-c
+C-u}で評価リストを更新します。評価リストに新たな式を追加するには、適切な箇所にその式を挿入して新たなコメント行を挿入してから@kbd{C-c
+C-u}をタイプします。コメント行にダッシュを挿入する必要はありません --- 内容は関係ないのです。
+
+@file{*edebug*}を選択した後に@kbd{C-c
+C-w}でソースコードバッファーにリターンできます。@file{*edebug*}は実行を継続したときにkillされて、次回必要となったときに再作成されます。
+
+@node Printing in Edebug
+@subsection Edebugでのプリント
+
+@cindex printing (Edebug)
+@cindex printing circular structures
+  プログラム内の式が循環リスト構造(circular list
+structure)を含む値を生成する場合は、Edebugがそれをプリントしようとしたときエラーとなるかもしれません。
+
+  循環構造への対処の1つとして、@code{print-length}と@code{print-level}にプリントの切り詰めをセットする方法があります。Edebugは変数@code{edebug-print-length}と@code{edebug-print-level}の値(非@code{nil}値なら)を、これらの変数にバインドします。@ref{Output
+Variables}を参照してください。
+
+@defopt edebug-print-length
+非@code{nil}なら結果をプリントするときEdebugは@code{print-length}をこの値にバインドする。デフォルト値は@code{50}。
+@end defopt
+
+@defopt edebug-print-level
+非@code{nil}なら結果をプリントするときEdebugは@code{print-level}をこの値にバインドする。デフォルト値は@code{50}。
+@end defopt
+
+  @code{print-circle}を非@code{nil}値にバインドして、循環構造や要素を共有する構造にたいして、より参考になる情報をプリントするよういにすることもできます。
+
+  以下は循環構造を作成するコードの例です:
+
+@example
+(setq a (list 'x 'y))
+(setcar a a)
+@end example
+
+@noindent
+@code{print-circle}が非@code{nil}なら、プリント関数(@code{prin1}等)は@code{a}を@samp{#1=(#1#
+y)}のようにプリントします。@samp{#1=}という表記はその後の構造をラベル@samp{1}とラベル付けして、@samp{#1#}表記はその前にラベル付けされた構造を参照しています。この表記はリストとベクターの任意の共有要素に使用されます。
+
+@defopt edebug-print-circle
+非@code{nil}なら結果をプリントするときEdebugは@code{print-circle}をこの値にバインドする。デフォルト値は@code{t}。
+@end defopt
+
+  プリントをどのようにカスタマイズできるかに関する詳細は@ref{Output Functions}を参照してください。
+
+@node Trace Buffer
+@subsection トレースバッファー
+@cindex trace buffer
+
+  Edebugは実行トレースを@file{*edebug-trace*}という名前のバッファーに格納して記録できます。実行トレースとは関数呼び出しとリターンのログのことで関数名と引数、および値を確認できます。トレースレコードを有効にするには、@code{edebug-trace}を非@code{nil}値にセットしてください。
+
+  トレースバッファーの作成は実行モードのトレースの使用(@ref{Edebug Execution Modes}を参照)と同じではありません。
+
+  トレースレコードが有効なときは、関数へのエントリーとexitのたびにトレースバッファーに行が追加されます。関数エントリーレコードは@samp{::::@{}、および関数名と引数の値によって構成されます。関数のexitレコードは@samp{::::@}}、および関数名と関数の結果によって構成されます。
+
+  @samp{:}の数は関数エントリーの再帰レベルを表します。トレースバッファーでは関数呼び出しの開始と終了の検索に@samp{@{}と@samp{@}}を使用できます。
+
+@findex edebug-print-trace-before
+@findex edebug-print-trace-after
+  関数@code{edebug-print-trace-before}と@code{edebug-print-trace-after}を再定義することによって、関数エントリーと関数exitのトレースレコードをカスタマイズできます。
+
+@defmac edebug-tracing string body@dots{}
+このマクロは@var{body}フォームの実行活動にたいして追加のトレース情報をリクエストする。引数@var{string}はトレースバッファーに配置する@samp{@{}と@samp{@}}の後のテキストを指定する。すべての引数は評価されて、@code{edebug-tracing}は@var{body}内の最後のフォームの値をリターンする。
+@end defmac
+
+@defun edebug-trace format-string &rest format-args
+この関数はトレースバッファーにテキストを挿入する。テキストは@code{(apply 'format @var{format-string}
+@var{format-args})}によって計算される。エントリー間の区切りとして改行も付け加える。
+@end defun
+
+  @code{edebug-tracing}と@code{edebug-trace}は、たとえEdebugが非アクティブでも、呼び出されたときは常にトレースバッファーに行を挿入します。トレースバッファーへのテキストの追加により、挿入された最後の行が見えるようにウィンドウもスクロールします。
+
+@node Coverage Testing
+@subsection カバレッジテスト
+
+@cindex coverage testing (Edebug)
+@cindex frequency counts
+@cindex performance analysis (Edebug)
+  Edebugは基本的なカバレッジテスト(coverage test)と実行頻度(execution frequency)の表示を提供します。
+
+  カバレッジテストは、すべての式の結果と以前の結果を比較することによって機能します。プログラム内の各フォームがカレントEmacsセッション内でカバレッジテストを開始して以降に、2つの異なる値をリターンしたら、それらのフォームはカバーされたと判断されます。したがってプログラムにカバレッジテストを行なうには、そのプログラムをさまざまなコンディション下で実行して、プログラムが正しく振る舞うかに注目します。異なるコンディション下で十分にテストして、すべてのフォームが異なる2つの値をリターンしたとき、Edebugはそのことを告げるでしょう。
+
+  カバレッジテストにより実行速度が低下するので、@code{edebug-test-coverage}が非@code{nil}のときだけカバレッジテストが行なわれます。頻度計数(frequency
+count)はたとえ実行モードがGo-nonstopでも、カバレッジテストが有効か無効かに関わらずすべての式にたいして行われます。
+
+@kindex C-x X =
+@findex edebug-temp-display-freq-count
+  定義にたいするカバレッジ情報と頻度数の両方を表示するには@kbd{C-x X =}
+(@code{edebug-display-freq-count})を使用します。単に@kbd{=}
+(@code{edebug-temp-display-freq-count})とすると、他のキーをタイプするまでの間だけ一時的に同様の情報を表示します。
+
+@deffn Command edebug-display-freq-count
+このコマンドはカレント定義の各行の頻度数を表示する。
+
+このコマンドはコードの各行の下にコメント行として頻度数を挿入する。1回の@code{undo}コマンドですべての挿入をアンドゥできる。頻度数は式の前の@samp{(}か式の後の@samp{)}、または変数の最後の文字の下に表示される。表示をシンプルにするために同一行にたいして式の以前頻度数と頻度数が同じ場合は表示しない。
+
+ある式にたいする頻度数の後に文字@samp{=}がある場合は、その式が評価されるたびに同じ値を毎回リターンしていることを表す。言い換えるとカバレッジテストの目的からは、その式はまだカバーされていないということである。
+
+ある定義にたいして頻度数とカバレッジデータを明確にするには、単に@code{eval-defun}で再インストルメントすればよい。
+@end deffn
+
+たとえばソースのbreakpointで@code{(fac
+5)}を評価した後に@code{edebug-test-coverage}を@code{t}にセットすると、breakpointに達したときの頻度データは以下のようになります:
+
+@example
+(defun fac (n)
+  (if (= n 0) (edebug))
+;#6           1      = =5
+  (if (< 0 n)
+;#5         =
+      (* n (fac (1- n)))
+;#    5               0
+    1))
+;#   0
+@end example
+
+コメント行は@code{fac}が6回呼び出されたことを表しています。最初の@code{if}命令は毎回同じ結果を5回リターンしています。同じ結果という意味では2つ目の@code{if}の条件にも当てはまります。@code{fac}の再帰呼び出しは結局リターンしません。
+
+
+@node The Outside Context
+@subsection コンテキスト外部
+
+Edebugはデバッグ中のプログラムにたいして透過的であろうと努めますが完全には達成されません。Edebugは@kbd{e}や評価リストバッファーで式を評価するときにも、一時的に外部のコンテキストをリストアして透明化を試みます。このセクションではEdebugがリストアするコンテキストと、Edebugが完全に透過的になるのに失敗する理由を正確に説明します。
+
+@menu
+* Checking Whether to Stop::  何を行うかをEdebugが決定するタイミング。
+* Edebug Display Update::    Edebugがディスプレイを更新するタイミング。
+* Edebug Recursive Edit::    Edebugが実行をストップするタイミング。
+@end menu
+
+@node Checking Whether to Stop
+@subsubsection 停止するかどうかのチェック
+
+Edebugにエンターするときは常に特定のデータの保存とリストアを行なう必要があり、それはトレース情報を作成するか、あるいはプログラムを停止するかを決定する前に行なう必要があります。
+
+@itemize @bullet
+@item
+@vindex edebug-max-depth
+@code{max-lisp-eval-depth}
+(@ref{Eval}を参照)はEdebugがスタックに与える影響の低減効果を高める。しかしそれでもEdebug使用時にスタック空間を使い切ってしまうことがあり得る。非常に大きいクォートされたリストを含むコードをインストルメントすることによってEdebugが再帰深さの制限に達してしまうようなら、@code{edebug-max-depth}の値を大きくすることもできる。
+
+@item
+キーボードマクロの実行状態の保存とリストアが行われる。Edebugがアクティブの間、@code{edebug-continue-kbd-macro}が@code{nil}なら@code{executing-kbd-macro}が@code{nil}にバインドされる。
+@end itemize
+
+
+@node Edebug Display Update
+@subsubsection Edebugの表示の更新
+
+@c This paragraph is not filled, because LaLiberte's conversion script
+@c needs an xref to be on just one line.
+(たとえばtraceモードなどで)Edebugが何かを表示する必要があるときは、Edebugの外部からカレントウィンドウ構成(@ref{Window
+Configurations}を参照)を保存します。Edebugをexitするときに、以前のウィンドウ構成がリストアされます。
+
+Emacsはpause時だけ再表示を行います。通常は実行を継続すると、そのプログラムはbreakpointかステップ実行後にEdebugに再エンターして、その間にpauseや入力の読み取りはありません。そのような場合、Emacsが外部の構成を再表示する機会は決してありません。結果としてユーザーが目にするウィンドウ構成は、前回Edebugが中断なしでアクティブだったときのウィンドウ構成と同じになります。
+
+何かを表示するためにEdebugにエントリーすることにより、(たとえこれらのうちのいくつかは、エラーやquitがシグナルされたときは故意にリストアしないデータだとしても)以下のデータも保存とリストアが行われます。
+
+@itemize @bullet
+@item
+@cindex current buffer point and mark (Edebug)
+カレントバッファー、およびカレントバッファー内のポイントとマークの位置が保存およびリストアされる。
+
+@item
+@cindex window configuration (Edebug)
+@code{edebug-save-windows}が非@code{nil}なら、外部のウィンドウ構成の保存とリストアが行われる(@ref{Edebug
+Options}を参照)。@code{edebug-save-windows}の値がリストの場合には、保存とリストアはリストされたウィンドウにたいしてのみ行われる。
+
+エラーやquitではウィンドウ構成はリストアされないが、@code{save-excursion}がアクティブなら、たとえエラーやquitのときでも外部の選択されたウィンドウが@emph{再選択される}。
+
+ただしソースコードバッファーのウィンドウの開始位置と水平スクロールはリストアされないので、表示はEdebug内で整合性が保たれたままとなる。
+
+@cindex buffer point changed by Edebug
+@cindex edebug overwrites buffer point position
+外部のウィンドウ構成の保存やリストアによってデバッグ中のLispプログラムが作用するバッファーのポイントが変更されてしまうときがある(特にプログラムがポイントを移動する場合)。もしこれが発生してデバッグに干渉するようなら、@code{edebug-save-windows}に@code{nil}をセットすることをお勧めする(@ref{Edebug
+Options}を参照)。
+
+@item
+@code{edebug-save-displayed-buffer-points}が非@code{nil}なら、表示されているそれぞれのバッファー内のポイント値は保存およびリストアされる。
+
+@item
+変数@code{overlay-arrow-position}と@code{overlay-arrow-string}は保存とリストアが行われるので、同じバッファー内の他の場所の再帰編集から安全にEdebugを呼び出せる。
+
+@item
+@code{cursor-in-echo-area}は@code{nil}にローカルにバインドされるのでカーソルはそのウィンドウ内に現れる。
+@end itemize
+
+@node Edebug Recursive Edit
+@subsubsection Edebugの再帰編集
+
+Edebugにエンターしてユーザーのコマンドが実際に読み取られるとき、Edebugは以下の追加データを保存(および後でリストア)します:
+
+@itemize @bullet
+@item
+カレントマッチデータ。@ref{Match Data}を参照のこと。
+
+@item
+変数@code{last-command}、@code{this-command}、@code{last-command-event}、@code{last-input-event}、@code{last-event-frame}、@code{last-nonmenu-event}、@code{track-mouse}。Edebug内のコマンドはEdebug外部のこれらの変数に影響をあたえない。
+
+Edebug内でのコマンド実行は@code{this-command-keys}によりリターンされるキーシーケンスを変更でき、Lispからそのキーシーケンスをリセットする方法はない。
+
+Edebugは@code{unread-command-events}の値の保存とリストアができない。この変数が重要な値をもつときにEdebugにエンターすると、デバッグ中のプログラムの実行に干渉する可能性がある。
+
+@item
+Edebug内で実行された複雑なコマンドは変数@code{command-history}に追加される。これは稀に実行に影響を与える。
+
+@item
+Edebug内では再帰の深さがEdebug外部の再帰の深さより1つ深くなる。これは自動的に更新される評価リストウィンドウでは異なる。
+
+@item
+@code{standard-output}と@code{standard-input}は、@code{recursive-edit}によって@code{nil}にバインドされるがEdebugは評価の間それらを一時的にリストアする。
+
+@item
+キーボードマクロ定義の状態は保存およびリストアされる。Edebugがアクティブの間、@code{defining-kbd-macro}は@code{edebug-continue-kbd-macro}にバインドされる。
+@end itemize
+
+@node Edebug and Macros
+@subsection Edebugとマクロ
+
+Edebugが正しくマクロを呼び出す式をインストルメントするには、いくつかの特定な配慮が必要になります。このサブセクションでは、その詳細を説明します。
+
+@menu
+* Instrumenting Macro Calls::  基本的な問題点。
+* Specification List::       式の複雑なパターンを指定する方法。
+* Backtracking::             マッチに失敗したときEdebugが行なうこと。
+* Specification Examples::   Edebug仕様を理解するために。
+@end menu
+
+@node Instrumenting Macro Calls
+@subsubsection マクロ呼び出しのインストルメント
+
+  EdebugがLispマクロを呼び出す式をインストルメントするときは、正しくインストルメントを行なうために、そのマクロに関して追加の情報が必要になります。これはマクロ呼び出しのどの部分式(subexpression)が評価されるフォームなのか推測する方法がないからです(評価はマクロのbodyで明示的に発生するかもしれないし、展開結果が評価されるとき、または任意のタイミングで行われるかもしれない)。
+
+  したがってEdebugが処理するかもしれないすべてのマクロにたいして、そのマクロの呼び出しフォーマットを説明するためのEdebug仕様(Edebug
+specification)を定義しなければなりません。これを行なうにはマクロ定義に@code{debug}宣言を追加します。以下はマクロ例@code{for}(@ref{Argument
+Evaluation}を参照)にたいする簡単な仕様の例です。
+
+@smallexample
+(defmacro for (var from init to final do &rest body)
+  "Execute a simple \"for\" loop.
+For example, (for i from 1 to 10 do (print i))."
+  (declare (debug (symbolp "from" form "to" form "do" &rest form)))
+  ...)
+@end smallexample
+
+  このEdebug仕様はマクロ呼び出しのどの部分が評価されるフォームなのかを示しています。単純なマクロにたいするEdebug仕様は、そのマクロ定義の正式な引数リストに酷似している場合がありますが、Edebug仕様はマクロ引数に比べてより汎的です。@code{declare}フォームの詳細は@ref{Defining
+Macros}を参照してください。
+
+@c See, e.g., https://debbugs.gnu.org/10577
+@c FIXME  Maybe there should be an Edebug option to get it to
+@c automatically load the entire source file containing the function
+@c being instrumented.  That would avoid this.
+  コードをインストルメントするときEdebugに仕様が確実に解るように留意してください。別ファイルで定義されたマクロを使用する関数をインストルメントする場合には、関数を含むファイル内の@code{require}フォームを評価するか、あるいはマクロを含むファイルを明示的にロードする必要があるかもしれません。マクロの定義が@code{eval-when-compile}でラップされていれば、それを評価する必要があるでしょう。
+
+  @code{def-edebug-spec}によりマクロ定義から個々のマクロにたいしてEdebug仕様を定義することもできます。Lispで記述されたマクロ定義にたいしては@code{debug}宣言を追加するほうが好ましく便利でもありますが、@code{def-edebug-spec}ではCで実装されたスペシャルフォームにたいしてEdebug仕様を定義することが可能になります。
+
+@defmac def-edebug-spec macro specification
+マクロ@var{macro}呼び出しのどの式が評価される式かを指定する。@var{specification}はEdebug仕様である。どちらの引数も評価されない。
+
+引数@var{macro}には単なるマクロ名ではない、任意の実シンボルを指定できる。
+@end defmac
+
+以下は@var{specification}に指定できるシンボルと、引数を処理する方法のテーブルです。
+
+@table @asis
+@item @code{t}
+すべての引数は評価のためにインストルメントされる。@code{(body)}の省略形。
+
+@item シンボル
+そのシンボルはかわりに使用されるEdebug仕様をもたなければならない。このインダイレクションは他の種類の仕様が見つかるまで繰り返される。これによって他のマクロの仕様を継承できる。
+
+@item リスト
+リストの要素はフォーム呼び出しの引数の型を記述する。仕様リストに指定できる要素については以降のセクションを参照のこと。
+@end table
+
+マクロがEdebug仕様をもたなければ、@code{debug}宣言および@code{def-edebug-spec}呼び出しのどちらを介しても、変数@code{edebug-eval-macro-args}が効果を発揮します。
+
+@defopt edebug-eval-macro-args
+これはEdebugが明示的なEdebug仕様をもたないマクロ引数を扱う方法を制御する。@code{nil}(デフォルト)なら引数は評価のためにインストルメントされない。それ以外ならすべての引数がインストルメントされる。
+@end defopt
+
+@node Specification List
+@subsubsection 仕様リスト
+
+@cindex Edebug specification list
+あるマクロ呼び出しにおいて、いくつかの引数は評価されても、それ以外の引数は評価されないような場合には、Edebug仕様のために@dfn{仕様リスト(specification
+list)}が必要となります。仕様リスト内のいくつかの要素は1つ以上の引数にマッチしますが、それ以外の要素は以降に続くすべての引数の処理を変更します。後者は@dfn{仕様キーワード(specification
+keywords)}と呼ばれ、(@code{&optional}のように)@samp{&}で始まるシンボルです。
+
+仕様リストはそれ自身がリストであるような引数にマッチする部分リスト(sublist)、あるいはグループ化に使用されるベクターを含むかもしれません。したがって部分式とグループは仕様リストをレベル階層に細分化します。仕様キーワードは部分式やグループを含むものの残りに適用されます。
+
+仕様リストに選択肢や繰り返しが含まれる場合は、実際のマクロの呼び出しのマッチでバックトラックが要求されるかもしれません。詳細は@ref{Backtracking}を参照してください。
+
+Edebug仕様は釣り合いのとれたカッコで括られた部分式へのマッチ、フォームの再帰処理、インダイレクト仕様を通じた再帰等の、正規表現によるマッチングとコンテキストに依存しない文法構成を提供します。
+
+以下は仕様リストに使用できる要素と、その意味についてのテーブルです(使用例は@ref{Specification Examples}を参照):
+
+@table @code
+@item sexp
+@c an "expression" is not necessarily intended for evaluation.
+評価されない単一のLispオブジェクト。インストルメントされない。マクロ展開時にマクロが引数を評価する場合には、@code{form}ではなく@code{sexp}を使うこと。
+
+@item form
+評価される単一の式。インストルメントされる。評価前にマクロが式のを@code{lambda}でラップしていれば、かわりに@code{def-form}を使用すること(以下の@code{def-form}を参照)。
+
+@item place
+汎変数(generalized variable)。@ref{Generalized Variables}を参照のこと。
+
+@item body
+@code{&rest
+form}の短縮形(以下の@code{&rest}を参照)。評価前にマクロが式のを@code{lambda}でラップしていれば、かわりに@code{def-form}を使用すること(以下の@code{def-form}を参照)。
+
+@item lambda-expr
+クォートされないラムダ式。
+
+@item &optional
+@c @kindex &optional @r{(Edebug)}
+仕様リスト内の後続の要素はオプション。マッチしない要素が出現するとEdebugはこのレベルのマッチングを停止する。
+
+後続が非オプションの要素であるような数個の要素をオプションにするだけなら、@code{[&optional
+@var{specs}@dots{}]}を使用する。複数の要素すべてのマッチや非マッチを指定するには、@code{&optional
+[@var{specs}@dots{}]}を使用する。@code{defun}の例を参照のこと。
+
+@item &rest
+@c @kindex &rest @r{(Edebug)}
+仕様リスト内の後続のすべての要素は0回以上繰り返される。しかし最後の繰り返しでは、仕様リスト内のすべての要素にたいするマッチングの前に式が終了しても問題はない。
+
+数個の要素を繰り返すには@code{[&rest
+@var{specs}@dots{}]}を使用する。各繰り返しにおいてすべてマッチしなければならない複数要素を指定するには、@code{&rest
+[@var{specs}@dots{}]}を使用する。
+
+@item &or
+@c @kindex &or @r{(Edebug)}
+仕様リスト内の後続の各要素は選択肢である。選択肢の1つがマッチしなければならず、マッチしなければ@code{&or}仕様は失敗する。
+
+@code{&or}に続く各リスト要素は単一の選択肢である。複数のリスト要素を単一の選択肢にグループ化するには、それらを@code{[@dots{}]}で括る。
+
+@item &not
+@c @kindex &not @r{(Edebug)}
+後続の各要素は@code{&or}が使用されたときのように選択肢にマッチするが、要素がマッチしたら失敗となる。マッチする要素がなければ何もマッチされないが@code{&not}仕様は成功となる。
+
+@c FIXME &key?
+
+@item &define
+@c @kindex &define @r{(Edebug)}
+フォームを定義する仕様であることを示す。フォームを定義するEdebugの定義は、後刻(フォーム定義の実行後に)保存および実行される1つ以上のコードを含んだフォーム。
+
+フォーム定義自体はインストルメントされない(つまりEdebugはフォーム定義の前後でストップしない)が、フォーム内部は通常はインストルメントされるであろう。@code{&define}キーワードはリスト仕様の最初の要素であること。
+
+@item nil
+カレント引数レベルでマッチさせる引数が存在しなければ成功し、それ以外は失敗する。部分リスト仕様とバッククォートの例を参照のこと。
+
+@item gate
+@cindex preventing backtracking
+引数はマッチされないがgateを通じたバックトラックは、このレベルの仕様の残りをマッチングする間は無効にされる。これは主に特定の構文エラーメッセージを一般化するために使用される。詳細は@ref{Backtracking}、および@code{let}の例も参照のこと。
+
+@item &error
+@code{&error}の後にはedebug仕様のエラーメッセージ(文字列)が続くこと。これはインストルメントをabortして、メッセージをミニバッファーに表示する。
+
+@item &interpose
+残りのコードのパースを関数に制御させる。これは@code{&interpose @var{spec} @var{fun}
+@var{args...}}のような形式をとり、Edebugがコードにたいして最初に@var{spec}をマッチして、それから@code{spec}にマッチしたコードとともに@var{fun}、パース関数@var{pf}、最後に@var{args...}を呼び出すことを意味する。パース関数は、残りのコードのパースに使用するための仕様リストを単一の引数として期待する。これは正確に1回呼び出されて、@var{fun}がリターンすることを期待されるインストルメント済みコードをリターンすること。たとえば@code{(&interpose
+symbolp
+pcase--match-pat-args)}は最初の要素がシンボルであるようなsexpにマッチしてから、@code{pcase--match-pat-args}は@code{pcase--match-pat-args}に照らしてheadとなるシンボルに対応するspecを照合、その後にそれらを引数として受け取る@var{pf}に渡す。
+
+@item @var{other-symbol}
+@cindex indirect specifications
+仕様リスト内のその他の要素は、述語(predicate)かインダイレクト仕様(indirect specification)である。
+
+シンボルがEdebug仕様をもつなら、@dfn{インダイレクト仕様(indirect
+specification)}はシンボル位置に使用されるリスト仕様か、引数を処理するための関数のいずれかである。この仕様は@code{def-edebug-spec}で定義できる。
+
+@defun def-edebug-elem-spec element specification
+シンボル@var{element}の箇所で使用する@var{specification}を定義する。@var{specification}はリストでなければ鳴らす。
+@end defun
+
+それ以外ならシンボルは述語(predicate)である。述語は引数とともに呼び出されて@code{nil}をリターンしたら、その仕様は失敗して引数はインストルメントされない。
+
+適切な述語としては@code{symbolp}、@code{integerp}、@code{stringp}、@code{vectorp}、@code{atom}が含まれる。
+
+@item [@var{elements}@dots{}]
+@cindex [@dots{}] (Edebug)
+要素のベクターは要素を単一の@dfn{グループ仕様(group
+specification)}にグループ化する。このグループ仕様はベクター自体には何も行わない。
+
+@item "@var{string}"
+引数は@var{string}という名前のシンボルである。この仕様は@var{symbol}の名前が@var{string}であるようなクォートされたシンボル@code{'@var{symbol}}と等価だが、文字列形式のほうが好ましい。
+
+@item (vector @var{elements}@dots{})
+引数は要素が仕様内の@var{elements}にマッチするようなベクターである。バッククォートの例を参照のこと。
+
+@item (@var{elements}@dots{})
+他のリストは@dfn{部分リスト仕様(sublist
+specification)}であり、引数は要素が仕様の@var{elements}にマッチするリストでなければならない。
+
+@cindex dotted lists (Edebug)
+部分リスト仕様はドットリスト(dotted
+list)かもしれず、その場合対応するリスト引数はドットリストである。かわりにドットリスト仕様の最後の@sc{cdr}が、(グループ化やインダイレクト仕様による)他の部分リスト仕様かもしれない(たとえば要素が非ドットリストにマッチする@code{(spec
+. [(more
+specs@dots{})])}))。これはバッククォートの例のような再帰仕様に有用。このような再帰を終了させるには上述の@code{nil}仕様も参照のこと。
+
+@code{(specs .  nil)}のように記述された部分リスト仕様は@code{(specs)}、@code{(specs .
+(sublist-elements@dots{}))}は@code{(specs
+sublist-elements@dots{})}と等価であることに注意。
+@end table
+
+@c Need to document extensions with &symbol and :symbol
+
+以下は@code{&define}の後だけに出現する追加仕様のリストです。@code{defun}の例を参照してください。
+
+@table @code
+@item &name
+コードからカレントで定義しているフォーム名を抽出する。これは@code{&name [@var{prestring}] @var{spec}
+[@var{poststring}] @var{fun}
+@var{args...}}という形式をとり、Edebugがコードにたいして@var{spec}をマッチしてから結合したカレント名、@var{args...}、@var{prestring}、@code{spec}にマッチしたコード、@var{poststring}とともに@var{fun}を呼び出すことを意味する。@var{fun}が未指定なら、、デフォルトは引数を(前の名前と新しい名前の間に@code{@@}を置いて)結合する関数。
+
+@item name
+引数(シンボル)は定義フォームの名前。@code{[&name symbolp]}の省略形。
+
+定義フォームは名前フィールドをもつ必要はなく、複数の名前フィールドをもつかもしれない。
+
+@item arg
+引数(シンボル)は定義フォームの引数の名前である。しかしlambda-listキーワード(@samp{&}で始まるシンボル)は許されない。
+
+@item lambda-list
+@cindex lambda-list (Edebug)
+これはラムダリスト(ラムダ式の引数リスト)にマッチする。
+
+@item def-body
+引数は定義内のコードのbodyである。これは上述の@code{body}と似ているが、定義のbodyはその定義に関連する情報を照会する別のEdebug呼び出しでインストルメントされていなければならない。定義内のより高位レベルのフォームリストには@code{def-body}を使用する。
+
+@item def-form
+引数は定義内のもっとも高位レベルの単一フォームである。これは@code{def-body}と似ているが、フォームリストではなく単一フォームのマッチに使用される。特別なケースとして@code{def-form}はフォームが実行されるときトレース情報を出力しないことも意味する。@code{interactive}の例を参照のこと。
+@end table
+
+@node Backtracking
+@subsubsection 仕様でのバックトレース
+
+@cindex backtracking
+@cindex syntax error (Edebug)
+あるポイント位置で仕様がマッチに失敗しても、構文エラーがシグナルされるとは限りません。そのかわり@dfn{バックトラッッキング(backtracking)}が開始されます。バックトラックはすべての選択肢をマッチングするまで行なわれます。最終的に引数リストのすべての要素は仕様内の要素のいずれかとマッチしなければならず、仕様内の必須要素は引数のいずれかとマッチしなければなりません。
+
+構文エラーが検出されてもその時点では報告されず、より高位レベルの選択肢のマッチングが終わった後、実際のエラー箇所から離れたポイント位置でエラーが報告されるかもしれません。しかしエラー発生時にバックトラックが無効ならエラーは即座に報告されるでしょう。ある状況ではバックトラックも自動的に再有効化されることに注意してください。@code{&optional}、@code{&rest}、@code{&or}により新たな選択肢が設定されたとき、または部分リスト、グループ、インダイレクト仕様が開始されたときはバックトラックが自動的に有効になります。バックトラックを有効、または無効にした場合の影響は、現在処理中のレベルの残り要素と低位レベルに限定されます。
+
+何らかのフォーム仕様(すなわち@code{form}、@code{body}、@code{def-form}、@code{def-body})をマッチングする間、バックトラックは無効になっています。これらの仕様は任意のフォームにマッチするので、何らかのエラーが発生するとしたらそれは高位レベルではなく、そのフォーム自体の内部でなければなりません。
+
+バックトラックはクォートされたシンボル、文字列仕様、または@code{&define}キーワードとのマッチに成功した後にも無効になります。なぜなら通常これは構文が認識されたことを示すからです。しかし同じシンボルで始まる一連の選択肢構文がある場合には、たとえば@code{["foo"
+&or [first case] [second case]
+...]}のように、通常は選択肢の外部にそのシンボルをファクタリングすることによりこの制約に対処できます。
+
+ほとんどのニーズは、バックトラックを自動的に無効にする、これら2つの方法で満足させることができますが、@code{gate}仕様を使用して明示的にバックトラックを無効にするほうが便利なときもあります。これは高位に適用可能な選択肢が存在しないことが分かっている場合に有用です。@code{let}仕様の例を参照してください。
+
+@node Specification Examples
+@subsubsection 仕様の例
+
+以下で提供する例から学ぶことにより、Edebug仕様の理解が容易になるでしょう。
+
+与えられたデータりすとにテストを実行する架空ｎマクロ@code{my-test-generator}を考えてみましょう。@code{edebug-eval-macro-args}
+(@ref{Instrumenting Macro
+Calls}を参照)によって制御されるようにEdebugのデフォルトの振る舞いでは引数をコードとしてインストルメントしませんが、引数がデータであることをドキュメントするのは役に立つかもしれません。
+
+@example
+(def-edebug-spec my-test-generator (&rest sexp))
+@end example
+
+スペシャルフォーム@code{let}は、バインディングとbodyのシーケンスをもちます。各バインディングはそシンボル、またはシンボルとオプションの部分リストです。以下の仕様では部分リストを見つけたらバックトラックを抑止するために、部分リスト内の@code{gate}があることに注目してください。
+
+@ignore
+@c FIXME?  The actual definition in edebug.el looks like this (and always
+@c has AFAICS).  In fact, nothing in edebug.el uses gate.  So maybe
+@c this is just an example for illustration?
+(def-edebug-spec let
+  ((&rest
+    &or (symbolp &optional form) symbolp)
+   body))
+@end ignore
+@example
+(def-edebug-spec let
+  ((&rest
+    &or symbolp (gate symbolp &optional form))
+   body))
+@end example
+
+Edebugは@code{defun}および関連する引数リスト、@code{interactive}仕様にたいして以下の仕様を使用します。式の引数はその関数bodyの外部で実際に評価されるので、interactiveフォームは特別に処理する必要があります。(@code{defmacro}にたいする仕様は@code{defun}にたいする仕様と酷似するが@code{declare}命令文が許される)
+
+@smallexample
+(def-edebug-spec defun
+  (&define name lambda-list
+           [&optional stringp]   ; @r{ドキュメント文字列が与えられた場合はマッチする。}
+           [&optional ("interactive" interactive)]
+           def-body))
+
+(def-edebug-elem-spec 'lambda-list
+  '(([&rest arg]
+     [&optional ["&optional" arg &rest arg]]
+     &optional ["&rest" arg]
+     )))
+
+(def-edebug-elem-spec 'interactive
+  '(&optional &or stringp def-form))    ; @r{@code{def-form}に注目}
+@end smallexample
+
+以下のバッククォートにたいする仕様はドットリストにマッチさせる方法と、@code{nil}を使用して再帰を終了させる方法を説明するための例です。またベクターのコンポーネントをマッチさせる方法も示しています(Edebugにより定義される実際の仕様は少し異なり、失敗するかもしれない非常に深い再帰を引き起こすためドットリストについてはサポートしない)。
+
+@smallexample
+(def-edebug-spec \` (backquote-form))   ; @r{単なる明確化用エイリアス}
+
+(def-edebug-elem-spec 'backquote-form
+  '(&or ([&or "," ",@@"] &or ("quote" backquote-form) form)
+        (backquote-form . [&or nil backquote-form])
+        (vector &rest backquote-form)
+        sexp))
+@end smallexample
+
+
+@node Edebug Options
+@subsection Edebugのオプション
+
+@c Previously defopt'd:
+@c edebug-sit-for-seconds, edebug-print-length, edebug-print-level
+@c edebug-print-circle, edebug-eval-macro-args
+  以下のオプションはEdebugの動作に影響を与えます:
+
+@defopt edebug-setup-hook
+Edebugが使用される前に呼び出される関数。この関数は毎回新たな値をセットする。Edebugはこれらの関数を一度呼び出したら、その後に@code{edebug-setup-hook}を@code{nil}にリセットする。使用するパッケージに関係するEdebug仕様をロードするために使用でｄきるがそれはEdebugを使用するときだけである。@ref{Instrumenting}を参照のこと。
+@end defopt
+
+@defopt edebug-all-defs
+これが非@code{nil}の場合に@code{defun}や@code{defmacro}のような定義フォームの普通に評価すると、Edebug用にインストルメントされる。これは@code{eval-defun}、@code{eval-region}、@code{eval-buffer}に適用される。
+
+このオプションの切り替えにはコマンド@kbd{M-x edebug-all-defs}を使用する。@ref{Instrumenting}を参照のこと。
+@end defopt
+
+@defopt edebug-all-forms
+これが非@code{nil}の場合には@code{eval-defun}、@code{eval-region}、@code{eval-buffer}はたとえフォームが何も定義していなくても、すべてのフォームをインストルメントする。これはロードとミニバッファー内の評価には適用されない。
+
+このオプションの切り替えにはコマンド@kbd{M-x edebug-all-forms}を使用する。@ref{Instrumenting}を参照のこと。
+@end defopt
+
+@defopt edebug-eval-macro-args
+これが非@code{nil}なら、すべてのマクロ引数が生成されるコード内にインストルメントされる。@code{debug}宣言はこのオプションをオーバーライドする。ある引数を評価して他の引数は評価しないマクロにたいする例外を指定するためには、@code{debug}宣言を指定するためはEdebugフォーム仕様を使用すること。
+@end defopt
+
+@defopt edebug-save-windows
+このオプションが非@code{nil}なら、Edebugはウィンドウ構成の保存とリストアを行う。これには幾分時間を要するので、あなたのプログラムがウィンドウ構成に何が起こったかを気にしないようなら、この変数には@code{nil}をセットしたほうがよい。このオプションがデフォルト値のままだとウィンドウ構成の保存やリストアの結果として、デバッグ中のプログラムに含まれるバッファーのポイント位置がEdebugに上書きされてしまう場合も@code{nil}にセットすることをお勧めする。これはあなたのプログラムがこのようなバッファーの1つ以上でポイントを移動した場合に起こり得る。他にも後述の@code{edebug-save-displayed-buffer-points}のカスタマイズを試してみるという手もある。
+
+@code{edebug-save-windows}の値がリストなら、リストされたウィンドウだけが保存およびリストアされる。
+
+Edebug内ではこの変数をインタラクティブに変更するために@kbd{W}コマンドを使用できる。@ref{Edebug Display
+Update}を参照のこと。
+@end defopt
+
+@defopt edebug-save-displayed-buffer-points
+これが非@code{nil}ならEdebugは表示されているすべてのバッファー内のポイントを保存およびリストアする。
+
+選択されていないウィンドウ内に表示されているバッファーのポイントを変更するコードをデバッグしている場合は、他のバッファーのポイントを保存およびリストアする必要がある。その後にEdebugまたはユーザーがそのウィンドウを選択した場合は、そのバッファー内のポイントはそのウィンドウのポイント値に移動される。
+
+すべてのバッファー内のポイントの保存とリストアは、それぞれのウィンドウを2回選択する必要があり高価な処理なので、必要なときだけ有効にする。@ref{Edebug
+Display Update}を参照のこと。
+@end defopt
+
+@defopt edebug-initial-mode
+この変数が非@code{nil}なら、Edebugが最初にアクティブになったときのEdebugの最初の実行モードを指定する。指定できる値は@code{step}、@code{next}、@code{go}、@code{Go-nonstop}、@code{trace}、@code{Trace-fast}、@code{continue}、@code{Continue-fast}。
+
+デフォルト値は@code{step}。この変数は@kbd{C-x C-a C-m}でインタラクティブにセットできる。@ref{Edebug
+Execution Modes}を参照のこと。
+@end defopt
+
+@defopt edebug-trace
+これが非@code{nil}なら各関数のエントリーとexitをトレースする。トレース出力は関数のエントリーとexitを行ごとに、再帰レベルにしたがって@file{*edebug-trace*}という名前のバッファーに表示される。
+
+@ref{Trace Buffer}の@code{edebug-tracing}も参照されたい。
+@end defopt
+
+@defopt edebug-test-coverage
+非@code{nil}ならEdebugはデバッグされるすべての式のカバレッジをテストする。@ref{Coverage Testing}を参照のこと。
+@end defopt
+
+@defopt edebug-continue-kbd-macro
+非@code{nil}ならEdebug外部で実行されている任意のキーボードマクロの定義または実行を継続する。これはデバッグされないので慎重に使用すること。@ref{Edebug
+Execution Modes}を参照されたい。
+@end defopt
+
+@defopt edebug-print-length
+非@code{nil}なら、それはEdebugでの結果プリントにおける@code{print-length}のデフォルト値。@ref{Output
+Variables}を参照のこと。
+@end defopt
+
+@defopt edebug-print-level
+非@code{nil}なら、それはEdebugでの結果プリントにおける@code{print-level}のデフォルト値。@ref{Output
+Variables}を参照のこと。
+@end defopt
+
+@defopt edebug-print-circle
+非@code{nil}なら、それはEdebugでの結果プリントにおける@code{print-circle}のデフォルト値。@ref{Output
+Variables}を参照のこと。
+@end defopt
+
+@defopt edebug-unwrap-results
+非@code{nil}ならEdebugは式の結果を表示するときに、その式自体のインストルメント結果の削除を試みる。マクロをデバッグするときは、式の結果自体がインストルメントされた式になるということに関連するオプションである。実際的な例ではないが、サンプル例の関数@code{fac}がインストルメントされたとき、そのフォームのマクロを考えてみるとよい。
+
+@c FIXME find a less silly example.
+@smallexample
+(defmacro test () "Edebug example."
+  (if (symbol-function 'fac)
+      @dots{}))
+@end smallexample
+
+@code{test}マクロをインストルメントしてステップ実行すると、デフォルトでは@code{symbol-function}呼び出しは多数の@code{edebug-after}フォームと@code{edebug-before}フォームをもつことになり、それにより実際の結果の確認が難しくなり得る。@code{edebug-unwrap-results}が非@code{nil}ならEdebugは結果からこれらのフォームの削除を試みる。
+@end defopt
+
+@defopt edebug-on-error
+@code{debug-on-error}が以前@code{nil}だったら、Edebugは@code{debug-on-error}をこの値にバインドする。@ref{Trapping
+Errors}を参照のこと。
+@end defopt
+
+@defopt edebug-on-quit
+@code{debug-on-quit}の以前の値が@code{nil}なら、Edebugは@code{debug-on-quit}にこの値をバインドする。@ref{Trapping
+Errors}を参照のこと。
+@end defopt
+
+@c Not necessarily a deeper command level.
+@c A new command is not precisely true, but that is close enough -- dan
+  Edebugがアクティブな間に@code{edebug-on-error}か@code{edebug-on-quit}の値を変更したら、@emph{次回}に新たなコマンドを通じてEdebugが呼び出されるまでこれらの値は使用されない。
+
+@defopt edebug-global-break-condition
+非@code{nil}なら、値はすべてのステップポイントでテストされる式である。式の結果が@code{nil}ならbreakする。エラーは無視される。@ref{Global
+Break Condition}を参照のこと。
+@end defopt
+
+@defopt edebug-sit-for-seconds
+実行モードがtraceかcontinueでbreakpointに達した際に一時停止する秒数。@ref{Edebug Execution
+Modes}を参照のこと。
+@end defopt
+
+@defopt edebug-sit-on-break
+breakpointに達したときに@code{edebug-sit-for-seconds}の間、一時停止するかどうか。@code{nil}で一時停止の抑止、非@code{nil}なら一時停止を許可。
+@end defopt
+
+@defopt edebug-behavior-alist
+デフォルトでは、このalistにはキーが@code{edebug}で3つの関数@code{edebug-enter}、@code{edebug-before}、@code{edebug-after}からなるリストという1つのエントリーが含まれる。これらの関数はインストルメントされるコードに挿入される関数のデフォルト実装である。Edebugの全般的な挙動を変更するためには、このデフォルトエントリーを変更する。
+
+Edebugの挙動はこのalistにエントリーにユーザーが選択したキーと3つの関数を追加することにより、定義ごとにもとづいて変更もできる。それからインストルメントされた定義のシンボルプロパティ@code{edebug-behavior}に新たなエントリーのキーをセットすれば、Edebugはその定義にたいして自身の関数を呼び出す箇所で新たな関数を呼び出す。
+@end defopt
+
+@defopt edebug-new-definition-function
+定義やクロージャのbodyをラップした後にEdebugが実行する関数。Edebugが自身のデータを初期化後に、この関数は定義に関連付けられたシンボル(Edebugが定義または生成した実際のシンボルかもしれない)を単一の引数として呼び出される。この関数はEdebugによりインストルメントされる各定義のシンボルプロパティ@code{edebug-behavior}をセットするために使用されるかもしれない。
+@end defopt
+
+@defopt edebug-after-instrumentation-function
+使用前にEdebugのインストルメントの検査や修正を行うには、インストルメントするトップレベルのフォームを単一の引数として受け取り、その後にEdebugがインストルメントの最終結果として使用することになる同一フォームあるいは置換フォームをリターンする関数をこの変数にセットする。
+@end defopt
