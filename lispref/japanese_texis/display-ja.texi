@@ -109,8 +109,12 @@
 
   Emacsはテキスト行がウィンドウ右端を超過する際には、その行を@dfn{継続(continue)}させる(次のスクリーン行へwrap、すなわち折り返す)か、あるいはその行を@dfn{切り詰め(truncate)}て表示(その行をスクリーン行の1行に制限)することができます。長いテキスト行を表示するために使用される追加のスクリーン行は@dfn{継続(continuation)}行と呼ばれます。継続はフィルとは異なります。継続はバッファーのコンテンツ内ではなくスクリーン上でのみ発生して、単語境界ではなく正確に右マージンで行をブレークします。@ref{Filling}を参照してください。
 
-   グラフィカルなディスプレイでは切り詰めと継続はウィンドウフリンジ内の小さな矢印イメージで示されます(@ref{Fringes}を参照)。テキスト端末では切り詰めはそのウィンドウの最右列の@samp{$}、折り返しは最右列の@samp{\}で示されます(ディスプレイテーブルでこれを行うための代替え文字を指定できる。@ref{Display
-Tables}を参照)。
+   On a graphical display, tiny arrow images in the window fringes indicate
+truncated and continued lines (@pxref{Fringes}).  On a text terminal, and on
+a graphical display when @code{fringe-mode} was turned off, a @samp{$} in
+the rightmost column of the window indicates truncation; a @samp{\} on the
+rightmost column indicates a line that wraps.  (The display table can
+specify alternate characters to use for this; @pxref{Display Tables}).
 
    テキストの折り返しと切り詰めは互いに反する操作なので、Emacsは折り返しを要求されたら行の切り詰めをオフに、あるいはその逆も行います。
 
@@ -1706,6 +1710,11 @@ Names}を参照のこと。白黒ディスプレイでは特定のグレー色�
 @var{style}の値は3D枠線を描画するか否かを指定する。@code{released-button}なら押下された3Dボタンのような外観、@code{pressed-button}なら押下されていない3Dボタンのような外観、@code{nil}、@code{flat-button}、または省略なら2D枠線が使用される。
 @end table
 
+If you use the @code{:box} face attribute on strings displayed instead of
+buffer text via the @code{display} text property, special considerations
+might apply if the surrounding buffer text also has the @code{:box} face
+attribute.  @xref{Replacing Specs}.
+
 @item :inverse-video
 文字が反転表示されて表示されるべきか否か。値は@code{t} (反転表示する)か@code{nil} (反転表示しない)のいずれか。
 
@@ -2496,6 +2505,13 @@ Gothic}であるようなフォントを使用するようにデフォルトフ�
 (set-fontset-font t 'japanese-jisx0208
                   (font-spec :family "Kochi Gothic"))
 @end smallexample
+
+Note that this function should generally be called from the user's init
+files, and more generally before any of @var{characters} were displayed in
+the current Emacs session.  That's because for some scripts, Emacs caches
+the way they are displayed, and the cached information includes the font
+used for them -- once these characters are displayed once, the cached font
+will continue to be used regardless of changes in the fontsets.
 @end defun
 
 @defun char-displayable-p char
@@ -3304,6 +3320,33 @@ Display Specs}を参照)。以下の関数を考えてみてください:
 
 @noindent
 この関数はバッファー内の最初の10文字それぞれにたいして文字列@code{"A"}であるような@code{display}プロパティを与えますが、これらはすべて同じ文字列オブジェクトを取得しません。最初の2文字は同じ文字列オブジェクトなので1つの@samp{A}に置換されます。2つの別々の@code{put-text-property}呼び出しでそのディスプレイプロパティが割り当てられたという事実は無関係です。同様に次の2文字は2つ目の文字列(@code{concat}により新たに作成された文字列オブジェクト)を取得するので1つの@samp{A}で置換されて、...となります。したがって10文字は5つのAで表示されます。
+
+@cindex box face attribute, and @code{display} properties
+Note: Using @code{:box} face attribute (@pxref{Face Attributes}) on a
+replacing @code{display} string that is adjacent to normal text with the
+same @code{:box} style can lead to display artifacts when moving the cursor
+across the text with this face attribute.  These can be avoided by applying
+the @code{:box} attribute directly to the text being replaced, rather than
+(or in addition to) the @code{display} string itself.  Here's an example:
+
+@smallexample
+@group
+;; Causes display artifacts when moving the cursor across text
+(progn
+  (put-text-property 1 2 'display (propertize "  [" 'face '(:box t)))
+  (put-text-property 2 3 'face '(:box t))
+  (put-text-property 3 4 'display (propertize "]  " 'face '(:box t))))
+@end group
+
+@group
+;; No display artifacts due to `:box'
+(progn
+  (add-text-properties 1 2 '(face (:box t) display "  ["))
+  (put-text-property 2 3 'face '(:box t))
+  (add-text-properties 3 4 '(face (:box t) display "]  ")))
+@end group
+@end smallexample
+
 
 @node Specified Space
 @subsection スペースの指定
