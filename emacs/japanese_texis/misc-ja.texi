@@ -426,7 +426,13 @@ g} (@code{doc-view-goto-page})とタイプしてください。
 @vindex doc-view-imenu-enabled
 @vindex doc-view-imenu-flatten
 @vindex doc-view-imenu-format
-  DocViewは@code{imenu}機能(@ref{Imenu}を参照)を通じてアクセスできるように、@command{mutool}プログラムが利用可能な場合にはそれを使ってoutlineメニュー用のエントリーを生成します。システムに@command{mutool}が存在する場合であってもこの機能を無効にしたい場合には、変数@code{doc-view-imenu-enabled}を@code{nil}値にカスタマイズしてください。@code{doc-view-imenu-format}や@code{doc-view-flatten}といった変数を使えば、@code{imenu}がアイテムをどのようにフォーマット、表示するかを更にカスタマイズすることができます。
+  When the @command{mutool} program is available, DocView will use it to
+generate entries for an outline menu, making it accessible via the
+@code{imenu} facility (@pxref{Imenu}).  To disable this functionality even
+when @command{mutool} can be found on your system, customize the variable
+@code{doc-view-imenu-enabled} to the @code{nil} value.  You can further
+customize how @code{imenu} items are formatted and displayed using the
+variables @code{doc-view-imenu-format} and @code{doc-view-imenu-flatten}.
 
 @node DocView Searching
 @subsection DocViewの検索
@@ -910,10 +916,17 @@ C-x}とタイプします。これは次のコマンド ---
   これらのコマンドは、以前のシェルコマンドのテキストを、シェルバッファー自身からではなく、特別なヒストリーリストから取得します。したがってシェルバッファーを編集したり、広い範囲をkillしても、これらのコマンドがアクセスするヒストリーに影響はありません。
 
 @vindex comint-input-ring-file-name
-  シェルの中には、コマンドヒストリーをファイルに保存して、以前のシェルセッションからコマンドを参照できるようにするものがあります。Emacsは選択されたシェルにたいして、コマンドヒストリーを初期化するために、コマンドヒストリーファイルを読み込みます。ヒストリーファイル名は、bashでは@file{~/.bash_history}、kshでは@file{~/.sh_history}、他のシェルでは@file{~/.history}です。
-
-@vindex tramp-histfile-override
-  リモートホストでシェルを実行した場合には、このセッティングは変数@code{tramp-histfile-override}に上書きされるかもしれません。この変数は@code{nil}にセットすることを推奨します。
+@vindex shell-history-file-name
+@cindex @env{HISTFILE} environment variable
+  Some shells store their command histories in files so that you can refer to
+commands from previous shell sessions.  Emacs reads the command history file
+for your chosen shell, to initialize its own command history.  The history
+file name is the string specified in @code{shell-history-file-name}.  If
+that user option is @code{t}, the command history is not read.  If the value
+is @code{nil}, the command history is read from the file specified in
+environment variable @env{HISTFILE}, or from @file{~/.bash_history} for
+bash, @file{~/.sh_history} for ksh, @file{~/.zsh_history"} for zsh, or
+@file{~/.history} for other shells.
 
 @node Shell History Copying
 @subsubsection Shellヒストリーのコピー
@@ -1416,6 +1429,7 @@ Options}を参照)して、そのデーモンにより開始されたサーバ�
 @item -t
 @itemx --tty
 @itemx -nw
+@itemx --no-window-system
 既存のEmacsフレームを使うかわりに、カレントテキスト端末に新たなクライアントフレームを作成します。これはテキスト端末のフレームを作成する点を除き、上記で説明した@samp{-c}と同じように振る舞います(@ref{Text
 Terminals}を参照してください)。
 
@@ -1451,6 +1465,14 @@ remote$ export EMACSCLIENT_TRAMP=/ssh:remote:
 remote$ export EDITOR=emacsclient
 remote$ $EDITOR /tmp/foo.txt #Should open in local emacs.
 @end example
+
+@item -V
+@itemx --version
+Print version information and exit.
+
+@item -H
+@itemx --help
+Print usage information message and exit.
 
 @end table
 
@@ -1840,8 +1862,13 @@ desktop-read}を使用して以前に保存したデスクトップをリスト�
 File}を参照)でそれらのパラメーターに何をセットしていても無視されます。これは、リストアされたフレームにたいするフォントやフェイスのようなフレームパラメーターは、前のEmacsセッションを終了したときに保存されたdesktopファイルから取得され、initファイルでのそれらのパラメーターにたいするセッティングは無視されることを意味します。これを無効にするには、リストアしたくないフレームパラメーターを除外するように、@code{frameset-filter-alist}の値をカスタマイズしてください。その後はinitファイルで行ったカスタマイズに応じてパラメーターがセットされる筈です。
 
 @vindex desktop-files-not-to-save
-@vindex remote-file-name-access-timeout
-  リモートファイルをvisitしているバッファーに関する情報は、デフォルトでは保存されません。変数@code{desktop-files-not-to-save}の変更により、これを変更することができます。この場合には@code{remote-file-name-access-timeout}のカスタマイズも検討したほうがよいかもしれません。これはリモートファイルのバッファーのリストアが停止されるまでの秒数です。これによりEmacsがブロックするのを防ぐことができます。
+@vindex remote-file-name-access-timeout@r{, and desktop restoring}
+  Information about buffers visiting remote files is not saved by default.
+Customize the variable @code{desktop-files-not-to-save} to change this.  In
+this case, you might also consider customizing
+@code{remote-file-name-access-timeout}, which is the number of seconds after
+which buffer restoration of a remote file is stopped.  This prevents Emacs
+from being blocked when restoring sessions that visited remote files.
 
 @vindex desktop-restore-eager
   デフォルトでは、デスクトップのすべてのバッファーは1度に復元されます。しかし、デスクトップにたくさんのバッファーがあるときは遅くなるかもしれません。変数@code{desktop-restore-eager}で、即座に復元するバッファーの最大数を指定できます。残りのバッファーはEmacsのアイドル時に、ゆっくり(lazily)と復元されます。

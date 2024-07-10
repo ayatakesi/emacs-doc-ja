@@ -88,11 +88,16 @@ Modes}を参照してください)があります。プログラミング言語�
 @cindex Dockerfile mode
 @cindex CMake mode
 @cindex TOML mode
-  EmacsにはLisp、Scheme、SchemeベースのDSSSL
-expression言語、Ada、ASM、AWK、C、C++、C#、Fortran、Icon、IDL(CORBA)、IDLWAVE、Java、Javascript、M4、Makefile、Metafont(フォント作成のための@TeX{}の仲間)、Modula2、Object
-Pascal、Objective-C、Octave、Pascal、Perl、Pike、PostScript、Prolog、Python、Ruby、Simula、SQL、Tcl、TypeScript、Verilog、VHDLなどのプログラミング言語のためのモードがあります。Perlのための代替モードはCPerlモードと呼ばれます。一般的なGNUおよびUnixシェルのスクリプティング言語、MS-DOS/MS-Windowsの@samp{BAT}ファイル、JSON、DNS
-master、CSS(Cascading Style
-Sheets)、Docker、CMakeなどのファイル、それに一連のさまざまな設定ファイルのためのモードも利用可能です。
+  Emacs has programming language modes for Lisp, Scheme, the Scheme-based
+DSSSL expression language, Ada, ASM, AWK, C, C++, C#, Elixir, Fortran, Icon,
+IDL (CORBA), HEEx, IDLWAVE, Java, Javascript, Lua, M4, Makefiles, Metafont
+(@TeX{}'s companion for font creation), Modula2, Object Pascal, Objective-C,
+Octave, Pascal, Perl, PHP, Pike, PostScript, Prolog, Python, Ruby, Simula,
+SQL, Tcl, TypeScript, Verilog, and VHDL@.  The recommended mode for Perl is
+called CPerl mode.  Modes are also available for the scripting languages of
+the common GNU and Unix shells, and MS-DOS/MS-Windows @samp{BAT} files,
+JSON, DNS master files, CSS (Cascading Style Sheets), Dockerfiles, CMake
+files, and various sorts of configuration files.
 
   理想的には、Emacsは編集したいと望むすべてのプログラミング言語のためのメジャーモードをもつべきです。しかし、もしあなたのお気に入りの言語のためのモードがない場合、それはEmacsとともに配布されないパッケージで実装されているかもしれません(@ref{Packages}を参照してください)。または、あたたが貢献することもできます。
 
@@ -245,11 +250,41 @@ const foo = [1] == '1'
 @cindex index of buffer definitions
 @cindex buffer definitions index
 
-  Imenu機能は、ファイル内の主要な定義を、名前で検索する方法を提供します。これはチャプター、セクションなどを扱う、テキストフォーマッターのためのメジャーモードでも有用です(複数ファイルを扱う、より強力な機能については、@ref{Xref}を参照してください)。
+  The Imenu facility offers a way to find the major definitions in a file by
+name.  It is useful both in programming-language major modes, where the
+definitions are variables, functions, etc., and in text formatter major
+modes, where it treats each chapter, section, etc., as a definition.
+(@xref{Xref}, for a more powerful feature that handles multiple files
+together.)
 
 @findex imenu
-  @kbd{M-g i}
-(@code{imenu})とタイプすると、これはミニバッファーを使用して定義の名前を読み取りポイントをその定義に移動します。名前の指定に補完を使用できます。このコマンドは常に有効な名前の全体のリストを表示します。
+@vindex imenu-flatten
+  If you type @kbd{M-g i} (@code{imenu}), it reads the name of a definition
+using the minibuffer, then moves point to that definition.  You can use
+completion to specify the name; the command displays the list of matching
+valid names in the completions buffer.  If the index is hierarchical, then
+by default the completion candidates are also shown hierarchically, as a
+nested list: first you need to choose a section, then a subsection, etc.,
+and finally the name of the definition.  However, if you set
+@code{imenu-flatten} to a non-@code{nil} value, then instead of the nested
+menu you can select a completion candidate from a flattened list of
+definitions.  How the sections and subsections are shown in the flattened
+list of completion candidates depends on the value of @code{imenu-flatten},
+which can be one of the following:
+
+@table @code
+@vindex imenu-level-separator
+@item prefix
+This shows each candidate prefixed by names of its section, subsection,
+subsubsection, etc., with each level separated from the next by the string
+that is the value of @code{imenu-level-separator}, by default @samp{:}.
+
+@item annotation
+This shows the section names as annotations, following each definition name.
+
+@item group
+This shows the completion candidates grouped by their sections.
+@end table
 
 @findex imenu-add-menubar-index
   かわりに、コマンド@code{imenu}をマウスクリックにバインドできます。そうすると定義名を選択するために、マウスメニューが表示されます。@code{imenu-add-menubar-index}を呼び出して、バッファーのインデックスをメニューバーに追加することもできます。特定のメジャーモードのすべてのバッファーにたいして、このメニューバーアイテムを有効にしたい場合、モードフックに@code{imenu-add-menubar-index}を追加して、これを行うことができます。しかし、それを行うことにより、そのモードでファイルをvisitするたびに、Emacsがそのバッファーのすべての定義を検索する間、待つ必要があります。
@@ -263,6 +298,10 @@ const foo = [1] == '1'
 
 @vindex imenu-sort-function
   変数@code{imenu-sort-function}をセットして、メニューがソートされる方法をカスタマイズすることができます。デフォルトでは、名前はバッファーで出現する順にソートされています。アルファベット順にソートしたいときは、値にシンボル@code{imenu--sort-by-name}を使用します。Lispコードを記述することにより、独自の比較関数を定義することもできます。
+
+  You can also customize how Imenu completions are sorted by changing the
+variable @code{completion-category-overrides} and setting its
+@code{display-sort-function} for the category @code{imenu}.
 
   カレントバッファーのプロジェクト(@ref{Projects}を参照)とメジャーモードにたいしてEglotがアクティブであれば、Eglotはバッファーのインデックスを生成するための独自機能を提供します。これはカレントバッファーを管理している言語サーバー(language-server)によるプログラムのソース解析にもとづいた機能です。@ref{Eglot
 Features,,, eglot, Eglot: The Emacs LSP Client}を参照してください。

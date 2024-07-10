@@ -500,6 +500,13 @@ Concepts}を参照されたい)は、バックアップを作るのと似たと�
   一部のファイルストレージサービス(FSS)は@dfn{ファイルバージョニング(file
 versioning)}をサポートしています。これらのFSSではファイルにたいする以前の履歴を記録して、以前のバージョンにリバートすることができます。Emacsでこの種のサービスによってホストされたファイルを編集する際にこれらの操作を可能にしたい場合には、@code{backup-by-copying}を非@code{nil}値にカスタマイズしてください。
 
+@vindex file-precious-flag
+  Copying the old file for backup is also useful when editing precious files,
+because it makes sure the old file keeps its name if something fails between
+the backup and the saving of your edits.  Alternatively, you can customize
+@code{file-precious-flag} to a non-@code{nil} value, which implies backups
+by copying and also protects against I/O errors while saving your edits.
+
 @node Customize Save
 @subsection ファイル保存のカスタマイズ
 
@@ -993,101 +1000,106 @@ Mode}を参照)。したがって、対応するソースの位置をvisitする
   それに加えてDiffモードは、移動、操作、patchの一部を適用するために、以下のコマンドを提供します:
 
 @table @kbd
-@item M-n
 @findex diff-hunk-next
+@item M-n
 次のhunk-startに移動します(@code{diff-hunk-next})。プレフィクス引数を指定した場合は、次の@var{n}番目のhunkに前方へ移動します。
 
 @vindex diff-refine
 デフォルトではDiffモードはEmacsが表示する際により良い粒度で変更をハイライトできるようにhunkを@dfn{リファイン(refine:
 洗練する)}します。@code{diff-refine}にシンボル@code{navigation}をセットすると、Diffはこのコマンドや@code{diff-hunk-prev}で移動したhunkだけをリファインします。
 
-@item M-p
 @findex diff-hunk-prev
+@item M-p
 前のhunkが開始される位置に移動します(@code{diff-hunk-prev})。プレフィクス引数を指定した場合には、前の@var{n}番目のhunkに後方へ移動します。@code{diff-refine}にシンボル@code{navigation}をセットしていれば、このコマンドは@kbd{M-n}と同様に移動先のhunkをリファインします。
 
-@item M-@}
 @findex diff-file-next
+@item M-@}
 複数ファイルへのpatchで、次のファイルが開始される位置に移動します(@code{diff-file-next})。プレフィクス引数を指定した場合は、次の@var{n}番目のファイルの先頭へ、前方に移動します。
 
-@item M-@{
 @findex diff-file-prev
+@item M-@{
 複数ファイルへのpatchで、前のファイルが開始される位置に移動します(@code{diff-file-prev})。プレフィクス引数を指定した場合は、前の@var{n}番目のファイルの先頭へ、後方に移動します。
 
-@item M-k
 @findex diff-hunk-kill
+@item M-k
 ポイントがある位置のhunkをkillします(@code{diff-hunk-kill})。
 
-@item M-K
 @findex diff-file-kill
+@item M-K
 複数ファイルへのpatchで、現在のファイル部分をkillします(@code{diff-file-kill})。
 
-@item C-c C-a
 @findex diff-apply-hunk
 @cindex patches, applying
+@item C-c C-a
 そのhunkを、ターゲットファイルに適用します(@code{diff-apply-hunk})。@kbd{C-u}によるプレフィクス引数を与えた場合は、このhunkをリバート(``新しい''バージョンを``古い''バージョンに変更するリバースhunkを適用する)します。@code{diff-jump-to-old-file}が非@code{nil}なら、かわりにそのhunkを``古い''バージョンに適用します。
 
-@item C-c C-b
+@findex diff-apply-buffer
+@item C-c @key{RET} a
+Apply all the hunks in the buffer (@code{diff-apply-buffer}).  If the diffs
+were applied successfully, save the changed buffers.
+
 @findex diff-refine-hunk
+@item C-c C-b
 ポイント位置のhunkの変更を、よりよい粒度でハイライトします(@code{diff-refine-hunk})。これにより変更された各行について実際に変更された箇所を確実に見ることができます。
 
 @vindex diff-refine
 デフォルトではDiffモードはEmacsがhunkを表示する際にhunkをリファインするので、@code{diff-refine}を非デフォルト値にカスタマイズしている場合にはこのコマンドが有用だと思うかもしれません。
 
-@item C-c C-c
 @findex diff-goto-source
 @vindex diff-jump-to-old-file
+@item C-c C-c
 そのhunkに対応するソースファイルの該当行にジャンプします(@code{diff-goto-source})。デフォルトではファイルヘッダーの最初に示される、``新しい''バージョンのファイルにジャンプします。プレフィクス引数を与えた場合には、かわりに``古い''バージョンにジャンプします。@code{diff-jump-to-old-file}が非@code{nil}なら、このコマンドはデフォルトで``古い''バージョンにジャンプして、プレフィクス引数の意味も逆になります。プレフィクス引数が8より大(たとえば@kbd{C-u
 C-u C-c
 C-c}とタイプした場合)なら、このコマンドは次回呼び出しにたいして@code{diff-jump-to-old-file}のセットも行います。ソースファイルがバージョンコントロール(@ref{Version
 Control}を参照)の配下にある場合には、デフォルトでは作業ファイルにジャンプします。プレフィクス引数を与えると、ポイントが古い行にあれば``旧''リビジョン(@ref{Old
 Revisions}を参照)、それ以外なら``新''リビジョンにジャンプします。
 
-@item C-c C-e
 @findex diff-ediff-patch
+@item C-c C-e
 このパッチでEdiffセッションを開始します。@ref{Top, Ediff, Ediff, ediff, The Ediff
 Manual}を参照してください。
 
-@item C-c C-n
 @findex diff-restrict-view
+@item C-c C-n
 表示を現在のhunkに制限します(@code{diff-restrict-view})。@ref{Narrowing}を参照してください。プレフィクス引数を指定すると、複数ファイルへのpatchで、表示を現在のファイルに制限します。制限を解除するには、@kbd{C-x
 n w} (@code{widen})を使います。
 
-@item C-c C-r
 @findex diff-reverse-direction
+@item C-c C-r
 バッファー全体にたいする比較方向を逆転します(@code{diff-reverse-direction})。プレフィクス引数を与えた場合は、カレントリージョンの内部でのみ方向を逆転します(@ref{Mark}を参照)。方向の逆転とは、hunkとファイル冒頭のヘッダーを、``新しい''バージョンから``古い''バージョンにするパッチを生成するように変更することを意味します。
 
-@item C-c C-s
 @findex diff-split-hunk
+@item C-c C-s
 ポイント位置でhunkを2つの別個のhunkに分割します(@code{diff-split-hunk})。これはhunkヘッダーの挿入ち、カレントhunkのヘッダーの変更を行います。これは手動でpatchを編集するために有用で、@command{diff}プログラムに@option{-u}または@option{--unified}オプションを指定して生成された、@dfn{unified
 diff
 format(統一diffフォーマット)}だけで機能します。@command{diff}に@option{-c}または@option{--context}オプションを指定して生成された、@dfn{context
 diff format(コンテキストdiffフォーマット)}のhunkを分割するには、最初に@kbd{C-c C-u}で、バッファーをunified
 diff formatに変換する必要があります。
 
-@item C-c C-d
 @findex diff-unified->context
+@item C-c C-d
 バッファー全体を、@dfn{context diff
 format}に変換します(@code{diff-unified->context})。プレフィクス引数を指定すると、リージョンのhunkだけを変換します。
 
-@item C-c C-u
 @findex diff-context->unified
+@item C-c C-u
 バッファー全体をunified diff
 formatに変換します(@code{diff-context->unified})。プレフィクス引数を指定すると、unified
 formatからcontext formatに変換します。マークがアクティブのときは、リージョンのhunkだけを変換します。
 
-@item C-c C-l
 @findex diff-refresh-hunk
+@item C-c C-l
 カレントhunkを再生成します(@code{diff-refresh-hunk})。
 
-@item C-c C-w
 @vindex diff-ignore-whitespace-switches
 @findex diff-ignore-whitespace-hunk
+@item C-c C-w
 空白の変更を無視してカレントhunkを再生成します。非@code{nil}のプレフィクス引数を指定すると、すべてのhunkを再生成します(@code{diff-ignore-whitespace-hunk})。これは@code{diff-ignore-whitespace-switches}
 (デフォルトは空白のみの変更を無視する@samp{-b})を指定して@code{diff-command}を呼び出します。
 
-@item C-x 4 A
 @findex diff-add-change-log-entries-other-window
 @findex add-change-log-entry-other-window@r{, in Diff mode}
+@item C-x 4 A
 それぞれのhunkについて、@kbd{C-x 4 a}が行うようにChangeLog(@ref{Change
 Log}を参照してください)のエントリーを生成します(@code{diff-add-change-log-entries-other-window})。これは、あとで実際に変更の説明を記入できるように、変更ログの雛形を作ります。Diffモードでの@kbd{C-x
 4
