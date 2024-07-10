@@ -12,99 +12,109 @@
 @c This node must have no pointers.
 
 @node Antinews
-@appendix Emacs 28のアンチニュース
+@appendix Emacs 29 Antinews
 @c Update the elisp-ja.texi Antinews menu entry with the above version number.
 
-時代に逆らって生きるユーザーのために、以下はEmacsバージョン28.2へのダウングレードに関する情報です。@w{Emacs
-@value{EMACSVER}}機能の不在による結果としての偉大なる単純さをぜひ堪能してください。
+For those users who live backwards in time, here is information about
+downgrading to Emacs version 29.4.  We hope you will enjoy the greater
+simplicity that results from the absence of many @w{Emacs @value{EMACSVER}}
+features.
 
 @itemize @bullet
 @item
-オーバーレイの実装が、バッファーのある位置周辺を中央にもつ一対の線形リストによるストレージという、シンプルかつ実績のある実装に戻されました。派手なインターバル木(interval
-tree:
-区間木)はもう必要ありません。オーバーレイを使用するLispプログラムは、以前のように興味をもつバッファー位置周辺の中央にオーバーレイを配置する必要があります。更に表示関連の機能も再表示が非常に低速になることを避けるために、以前のように1つのバッファーで大量のオーバーレイを使用しないよう留意する必要があります。
+Mouse wheel events once again follow the platform and window-system
+conventions: sometimes they are @code{wheel-up/down} and sometimes
+@code{mouse-4/5/6/7}.  Lisp programs which use these should once again be
+aware of the conventions in effect and behave accordingly.
 
 @item
-@code{substitute-command-keys}を呼び出さないことによって、いくつかの関数がクォート文字やキーシーケンスの煩わしい変換を行わなくなりました。目を引く例として@code{format-prompt}、およびそれを呼び出す多くの関数すべてが挙げられます。これによってこれらの関数が生成する文字列の予測がより容易になり、Lispプログラマーであるあなたにとってはユーザーに表示するテキスト内にどの句読点文字を表示させるかが制御しやすくなりました。同様の理由によって@code{substitute-quotes}関数が削除されました。
+The command @code{describe-function} no longer distracts you by showing
+unnecessary details like the type of the function's object.  Emacs hackers
+always know whether a function is a primitive, a native-compiled Lisp
+function, or any other kind.  Stating the obvious simply wastes the precious
+screen estate; as you move into the past, and the typical dimensions of the
+screen become smaller, that waste is less and less justified.  So we made
+the waste smaller.
 
 @item
-由緒ある@code{buffer-modified-p}関数は紛らわしい値ではなく、以前のように確実に@code{nil}か@code{t}だけをリターンするようになりました。
+The support for styled underline in face attribute was dropped.  The simple
+underline should be enough; anything else is just code bloat and creeping
+featurism.  Colorful underlines on TTY frames are no longer supported for
+the same reason.
 
 @item
-@samp{medium}ウェイトのフォントにたいするサポートが廃止されました。これでEmacsは@samp{medium}ウェイトと@samp{regular}ウェイトのフォントを同一とみなすようになります。@samp{regular}ウェイトはサポートするが@samp{medium}ウェイトはサポートしないフォント(またはその逆)について心配する必要がなくなったので、フォントのセットアップがシンプルになったと信じています。どちらのウェイトでも構わないですよ!
+IELM stopped recording its input history.  You will no longer be annoyed by
+inputs from your past sessions; each session starts with a clean slate.
+What can be simpler and easier to remember?
 
 @item
-重要ではない機能に関連するEmacsのコード量削減のために、関数@code{compiled-function-p}を削除しました。Lispプログラムには関数オブジェクトに関するbuilt-in、byte-compiled、natively-compiledといったタイプを明示的にテストすることが期待されています。同様の理由により@code{pos-bol}、@code{pos-eol}、@code{file-attribute-file-identifier}といった多くの関数が削除されました。このような派手な関数が失われたことを悲しむ人がいるなど、わたしたちは期待していません。
+You can no longer disable JavaScript in xwidget Webkit sessions.  Since
+xwidgets are going away in one of the previous Emacs versions, we decided to
+make this one step in that direction and get rid of this complication.
 
 @item
-@code{x-show-tip}によって用いられるタイムアウトは、Lispプログラムから指定するのではなく関数内にハードコードされます(訳注:
-x-show-tipは内部的な使用を意図した関数でありユーザー用の関数はtooltip-show; Emacs
-29.1からツールチップ表示タイムアウトがハードコードされた値ではなくx-show-tooltip-timeoutでカスタマイズ可能になった)。これによってコードがシンプルかつ保守しやすくなりますし、ツールチップのポップアップが非表示になるまでのタイムアウトを制御したい人など存在しない筈です。
+The @code{minibuffer-regexp-mode} was removed.  Regular expressions are just
+strings, so no fancy mode should be needed for editing them.
 
 @item
-マクロ@code{setopt}が削除されました。かわりに@code{customize-variable}を使うか、Lispから@code{:set}関数を呼び出してください。
+We removed the Compat package.  Forward compatibility for ELPA packages
+becomes less and less important as you move back through time, and soon
+enough ELPA will disappear entirely.  We decided it was prudent to start
+preparing for that now.
 
 @item
-@code{lisp-directory}変数の値は、似たような@code{installation-directory}や@code{source-directory}の等の他の変数から(それらの変数が関係する場合には)容易に推測できるので削除しました。
+We are back to interpreting @code{\x} without any following hex digits as
+character code zero (@acronym{NUL}), as it always was in Emacs.  The savings
+in typing due to this alone are enough to justify this simplification.
 
 @item
-コードの単純化と複雑度低減のために、関数@code{get-display-property}と@code{add-display-text-property}を削除しました。かわりに汎用性のある@code{get-text-property}と@code{put-text-property}を使ってください。
+To keep Emacs clean and elegant, we've removed the ability to show tooltips
+for fringe bitmaps.  What important information cam be shown on the fringes,
+and why would it require tooltips to explain its purpose? We decided it
+isn't justified to keep this in past versions of Emacs.
 
 @item
-Xにおけるピンチ(pinch)入力イベント、および現代的なドラッグアンドドロップ関数が削除されました。これらの機能の重要性は時を遡るにつれて減少して、やがては消滅するでしょう。なのでEmacsに残しておく理由はありません。
+Fancy sorting-related facilities, like the @code{value<} function and
+keyword arguments for @code{sort}, were deleted as too complex.  The basic
+@code{sort} function should all that's needed in the years to go.
 
 @item
-Emacsを清潔かつ優雅に保つために、あるテキストが``疑わしい''かどうかをチェックする機能とともに@file{textsec.el}ライブラリーを削除しました。わたしたちはユーザーがテキストを一見するかカーソルを動かすだけで悪意をもって変更されたテキストを見破るほどに洗練されていると考えています。誰かが意図的にEmacsユーザーを騙そうというアイデア自体が馬鹿げています。わたしたちのエレガントなテキスト処理と表示能力を複雑化する価値はありません。
+Features related to the inheritance graph of major modes were deemed
+unnecessary and thus were dropped.  This includes
+@code{provided-mode-derived-p}, @code{derived-mode-add-parents}, and
+others.  We decided that untangling the mode inheritance relationships by
+hand facilitates more clear code and makes the intent evident.
 
 @item
-@code{keymap-set}、@code{keymap-global-set}、@code{keymap-local-set}、@code{keymap-substitute}、@code{keymap-lookup}、その他の関数が削除されました。伝統的な@code{define-key}、@code{global-set-key}、@code{local-set-key}、@code{substitute-key-definition}、@code{key-binding}で十分すぎます。これらの関数が受け付けるキー構文の些細な一貫性の欠如こそ、Emacs
-Lispプログラミングにおける終わりなき愉悦の源だからです。何故にEmacsプログラミングをつまらない場にするのでしょうか?
-@code{kbd}の寛大な性質をよりEmacs
-Lisp精神に則って考慮した結果、同様の理由によって@code{key-valid-p}を削除しました。
+We removed unnecessary functionality for handling touch screen events, as
+touch screens gradually disappear from view as you move back in time.
+There's no need to keep obsolete these new inventions in the past.
 
 @item
-他のアプリケーションからプレーンテキスト以外の何かをyankする機能は時を遡るにつれて不要になっていくので、クリップボード経由でにHTMLやイメージのようなメディア貼り付けにたいするサポートは削除しました。@i{本当に}これらをEmacsバッファーにyankする必要がある場合には、ディスク上のファイルを通じて行うことができます。
+Various new functions and variables for moving and transposing sexps and for
+moving by program statements were dropped as unnecessary.  The original
+commands that move by balanced expressions are more than enough.
 
 @item
-わたしたちはLispプログラムは表示レイアウトの計算に適さないとみなして、それを簡単に行うための関数@code{string-pixel-width}と@code{string-glyph-split}は削除しました。表示はCで記述されたディスプレイエンジンのためのものであり、そこに留まるべきなのです!
+We deleted some fancy @code{declare} forms for functions, such as
+@code{ftype}.  Emacs Lisp is not a string-typed language, which makes these
+declarations anathema.  The types @code{closure} and
+@code{interpreted-function} are gone for the same reason: no need to
+distinguish types of Lisp functions.
 
 @item
-Emacsの過去のリリースにおけるXwidget機能の全体の段階的削除に向けた取り組みの一環として@code{xwidget-perform-lispy-event}、@code{xwidget-webkit-load-html}、@code{xwidget-webkit-back-forward-list}といった新しいさまざまなXwidget関数が削除されました。
+The byte compiler stopped issuing warnings about practices some purists
+consider questionable.  This includes warnings about missing
+@code{lexical-binding} cookies, empty bodies of special forms and macros,
+comparison with literals, @code{condition-case} without handlers, mutation
+of constants, and some others.  As time moves into the past, the typical
+Emacs hacker knows best what's correct code and what isn't, and thus these
+warnings become useless annoyances.  Good riddance!
 
 @item
-@code{make-process}呼び出しにおいて@code{:stderr}プロパティをセットすることによって、そのプロセス接続にはすべての標準ストリームにptyではなく、以前のようにpipeの使用が強制されるようになりました。この複雑なインターフェイスが大幅に単純化がされたのです。
-
-@item
-Lisp関数の数が制御できる限界を超えないように保つために@code{string-equal-ignore-case}を削除しました。かわりに@code{compare-strings}を使ってください。
-
-バイトコンパイラーを複雑にするいくつかの機能を削除しました。
-
-@itemize @minus
-@item
-ドキュメント文字列におけるクォート間違いに関する警告。そのような間違いは、目を皿のようにして@file{*Help*}バッファーに表示された結果を調べることを期待しています。
-
-@item
-@code{choice}リストにおけるダブルクォートされたシンボルのような、不正な形式の@code{defcustom}について警告。
-@end itemize
-
-@item
-マクロ@code{with-buffer-unmodified-if-unchanged}を削除しました。そのような場合においてバッファーを未変更のままにする必要があるLispプログラムは、変更の前後でテキストを比較することは常に可能なのですから。
-
-@item
-Emacs
-Lisp開発者の教育において、毎回新たにプログラミングする楽しみが重要なポイントだとわたしたちは考えており、したがって関数@code{string-edit}と@code{read-string-from-buffer}を削除しました。
-
-@item
-読み取りできないLispオブジェクトをプリントしたい人などいないでしょうから関数@code{readablep}、およびそれに関連する変数@code{print-unreadable-function}は削除しました。
-
-@item
-不必要に複雑なので、マルチセッション変数保存用の機能は削除しました。それにともない@code{multisession-value}、@code{define-multisession-variable}、@code{list-multisession-values}はなくなりました。
-
-@item
-テキストプロパティ@code{cursor-face}にたいするサポートを削除しました。この機能のサポートは残されたフェイスだけで十分だと考えます。
-
-@item
-関数@code{tooltip-show}から、ツールチップのフェイスおよびトップフレームのカラーに奇抜な制御を許すためのオプション変数@code{text-face}と@code{text-face}のサポートを削除しました。わたしたちはユーザーの混乱を避けるために、ツールチップはすべて同じ外観であるべきだと判断しました。
+The @code{obarray} type is gone.  Obarrays are back to their original
+representation as vectors.  Each removed Lisp data type makes Emacs simpler
+and easier to use, so this is a welcome deletion.
 
 @item
 簡略化にたいする継続要求の一環として、その他の多くの関数と変数が排除されました。他にはEmacs

@@ -107,7 +107,11 @@ History,, minibuffer-default-add-function}を参照のこと。
 引数@var{history}は入力の保存やミニバッファー内で使用されるヒストリーコマンドが使用するヒストリーリスト変数を指定する。デフォルトは@code{minibuffer-history}。@var{history}がシンボル@code{t}なら、ヒストリーを記録しない。同様にオプションでヒストリーリスト内の開始位置を指定できる。@ref{Minibuffer
 History}を参照のこと。
 
-変数@code{minibuffer-allow-text-properties}が非@code{nil}なら、リターンされる文字列にはミニバッファーでのすべてのテキストプロパティが含まれる。それ以外なら、値がリターンされるときすべてのテキストプロパティが取り除かれる(この変数はデフォルトでは@code{nil})。
+If the variable @code{minibuffer-allow-text-properties} is non-@code{nil},
+either let-bound or buffer-local in the minibuffer, then the string that is
+returned includes whatever text properties were present in the minibuffer.
+Otherwise all the text properties are stripped when the value is returned.
+(By default this variable is @code{nil}.)
 
 @vindex minibuffer-prompt-properties
 @code{minibuffer-prompt-properties}内のテキストプロパティはプロンプトに適用される。このプロパティリストはデフォルトではプロンプトに使用するフェイスを定義する。このフェイスが与えられるとフェイスリストの最後に適用されて表示前にマージされる。
@@ -218,20 +222,31 @@ c}コマンドを使うことができる。ユーザーがこのコマンドを
 @end defopt
 
 @defvar minibuffer-allow-text-properties
-この変数が@code{nil}
-(デフォルト)なら、@code{read-from-minibuffer}と@code{read-string}はミニバッファー入力をリターンする前にすべてのテキストプロパティを取り除く。しかし@code{read-no-blanks-input}(以下参照)、同様に補完つきでミニバッファー入力を行う@code{read-minibuffer}とそれに関連する関数(@ref{Object
-from Minibuffer,, Reading Lisp Objects With the
-Minibuffer}を参照)は、この変数の値に関わらず、無条件で@code{face}プロパティを破棄する。
+If this variable is @code{nil}, the default, then
+@code{read-from-minibuffer} and all functions that do minibuffer input strip
+all text properties from the minibuffer input before returning it.
 
-この変数が非@code{nil}なら、補完テーブル由来の文字列(ただし補完された文字列部分のみ)のほとんどのテキストプロパティは保持される。
+However, @code{read-minibuffer} and related functions (@pxref{Object from
+Minibuffer,, Reading Lisp Objects With the Minibuffer}), remove the text
+properties unconditionally, regardless of the value of this variable.
+
+If this variable is non-@code{nil}, either let-bound or buffer-local in the
+minibuffer, then @code{read-from-minibuffer}, @code{read-string}, and all
+related functions preserve text properties.  But functions that do
+minibuffer input with completion remove the @code{face} property while
+preserving other text properties.
 
 @lisp
-(let ((minibuffer-allow-text-properties t))
-  (completing-read "String: " (list (propertize "foobar" 'data 'zot))))
-=> #("foobar" 3 6 (data zot))
+(minibuffer-with-setup-hook
+    (lambda ()
+      (setq-local minibuffer-allow-text-properties t))
+  (completing-read
+   "String: " (list (propertize "foobar" 'face 'baz 'data 'zot))))
+=> #("foobar" 0 6 (data zot))
 @end lisp
 
-この例ではユーザーが@samp{foo}とタイプしてから@kbd{TAB}キーを押下しており、最後の3文字のテキストプロパティだけが保持される。
+In this example, the user typed @samp{foo} and then hit the @kbd{TAB} key,
+and all text properties are preserved except the @code{face} property.
 @end defvar
 
 @vindex minibuffer-mode-map
@@ -282,17 +297,6 @@ minibuffer-local-map}これはミニバッファーからの読み取りにた�
 この関数はミニバッファーから文字列を読み取るが、入力の一部として空白文字を認めず、そのかわりに空白文字は入力を終端させる。引数@var{prompt}、@var{initial}、@var{inherit-input-method}は@code{read-from-minibuffer}で使用するときと同様。
 
 これは関数@code{read-from-minibuffer}の簡略化されたインターフェイスであり、キーマップ@code{minibuffer-local-ns-map}の値を@var{keymap}引数として@code{read-from-minibuffer}関数に渡す。キーマップ@code{minibuffer-local-ns-map}は@kbd{C-q}をリバインドしないので、クォートすることによって文字列内にスペースを挿入することが@emph{可能}である。
-
-@code{minibuffer-allow-text-properties}の値に関わらず、この関数はテキストプロパティを破棄する。
-
-@smallexample
-@group
-(read-no-blanks-input @var{prompt} @var{initial})
-@equiv{}
-(let (minibuffer-allow-text-properties)
-  (read-from-minibuffer @var{prompt} @var{initial} minibuffer-local-ns-map))
-@end group
-@end smallexample
 @end defun
 
 @c Slightly unfortunate name, suggesting it might be related to the

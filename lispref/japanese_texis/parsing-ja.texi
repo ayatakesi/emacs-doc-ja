@@ -10,6 +10,7 @@
 @c See the file elisp-ja.texi for copying conditions.
 @node Parsing Program Source
 @chapter プログラムソースの解析
+@cindex parsing program source
 
 @cindex syntax tree, from parsing program source
 Emacsではプログラムソースのテキストのパース(parse: 解析)や@dfn{構文ツリーまたは構文木(syntax
@@ -399,17 +400,6 @@ Functions}を参照)。
 この関数は@var{parser}のnotifier関数のリストをリターンする。
 @end defun
 
-Lispプログラムが最後の再パースに変更された範囲にたいして、同期的な取得が必要な場合があるかもしれません。@code{treesit-parser-changed-ranges}はこの目的のために存在する関数です。この関数はnotifier関数に渡された範囲をリターンします。
-
-@defun treesit-parser-changed-ranges parser &optional quiet
-この関数は最後の再パース以降に変更された範囲をリターンする。リターン値は@w{@code{(@var{start}
-. @var{end})}}という形式のコンスセルのリスト。ここで@var{start}と@var{end}は範囲の開始と終了の位置にたいするマーク。
-
-この関数を呼び出すのはほとんど常に再パースの直後であること。再パースされていない新たなバッファー編集が存在すると、オプション引数@var{quiet}が非nilの場合を除き、Emacsは@code{treesit-unparsed-edits}エラーをシグナルする。
-
-この関数を連続して複数回呼び出してもリターン値は変わらない。常に最後の再パースによって影響を受けた範囲をリターンする。
-@end defun
-
 @node Retrieving Nodes
 @section ノードの取得
 @cindex retrieve node, tree-sitter
@@ -560,7 +550,8 @@ named node, named node}を参照)。
 この関数は@var{node}のサブツリー(@var{node}自体を含む)を横断(traverse)して、@var{predicate}が非@code{nil}をリターンするようなノードを探す。@var{predicate}はノードそれぞれのタイプにたいしてマッチさせるregexp、あるいはノードを受け取りそのノードがマッチしたら非@code{nil}をリターンするような述語関数。@var{predicate}はthingシンボルかthing定義でもよい(@ref{User-defined
 Things}を参照)。未定義のthingを使用してもエラーは起こらず、この関数は単に@code{nil}をリターンする。
 
-この関数は@var{predicate}にマッチした最初のノード、マッチしたノードがなければ@code{nil}をリターンする。
+This function returns the first node that matches, or @code{nil} if none
+matches @var{predicate}.
 
 この関数が検索するのはデフォルトでは名前つきノードだけだが、@var{all}が非@code{nil}ならすべてのノードを横断して検索を行う。@var{backward}が非@code{nil}の場合には後方に横断して検索する(ツリーを下降して横断していく際に最後の子を最初に調べる)。@var{depth}が非@code{nil}なら、それはツリーを横断して下降できるレベル数を制限する数値でなければならない。@var{depth}が@code{nil}の場合のデフォルトは1000。
 @end defun
@@ -684,7 +675,12 @@ b   1   2         b   |   |      b   c   d
 @end defun
 
 @defun treesit-parent-until node predicate &optional include-node
-この関数は@var{node}の親を順繰りに探して、@var{predicate}を満足する親をリターンする。@var{predicate}には引数としてノードを受け取り@code{t}か@code{nil}をリターンする関数、ノードのタイプ名にマッチするregexp、あるいは@var{treesit-thing-settings}に記述されているその他有効な述語のいずれかを指定できる。@var{predicates}を満足する親か存在しなければ、この関数は@code{nil}をリターンする。
+This function repeatedly finds the parents of @var{node}, and returns the
+parent that satisfies @var{predicate}.  @var{predicate} can be either a
+function that takes a node as argument and returns @code{t} or @code{nil},
+or a regexp matching node type names, or other valid predicates described in
+@code{treesit-thing-settings}.  If no parent satisfies @var{predicates},
+this function returns @code{nil}.
 
 この関数は通常だと@var{node}自体ではなく@var{node}の親だけを調べる。しかし、@var{include-node}が非@code{nil}の場合には、@var{node}が@var{predicate}を満足すれば@var{node}をリターンする。
 @end defun
@@ -1159,7 +1155,7 @@ S式の他にも、Emacsでは使用するtree-sitterのネイティブクエリ
 
 Emacsの``things''機能はtree-sitterのパターンマッチング機能とは独立した機能であり、パワーは比較的劣るもののパースツリーのナビゲーションと横断にはより適しています。
 
-thingsは@var{treesit-thing-settings}で定義することができます。
+You can define things with @code{treesit-thing-settings}.
 
 @defvar treesit-thing-settings
 これは言語それぞれにたいするthing定義のalistである。各エントリーのキーは言語シンボル、値は@w{@code{(@var{thing}
@@ -1176,7 +1172,7 @@ thingsは@var{treesit-thing-settings}で定義することができます。
 最後に@var{pred}はこのリスト内で定義された他の@var{pred}を参照できる。たとえば@w{@code{(or sexp
 sentence)}}はこのあist内の他のルールとして定義された@code{sexp}か@code{sentence}いずれかのthingであることを定義している。
 
-以下はC/C++にたいする@var{treesit-thing-settings}の例:
+Here's an example @code{treesit-thing-settings} for C and C++:
 
 @example
 @group
@@ -1194,7 +1190,8 @@ sentence)}}はこのあist内の他のルールとして定義された@code{sex
 @end example
 
 @noindent
-これは教示目的のために修正された例であって、C/C@t{++}のモードが実際にthingを定義する方法とは異なることに注意。
+Note that this example is modified for didactic purposes, and isn't exactly
+how C and C@t{++} modes define things.
 @end defvar
 
 このセクションの残りの部分では、thing定義の恩恵を受ける関数をいくつか紹介します。以下の関数の他にもthing機能を利用する、たとえば@code{treesit-search-forward}や@code{treesit-induce-sparse-tree}等のツリー横断関数のような他の関数も別の場所で紹介されています。@ref{Retrieving
@@ -1215,7 +1212,8 @@ Nodes}を参照してください。
 
 正の@var{arg}は@var{thing}のその個数のインスタンス分前方への移動、負の@var{arg}は後方への移動を意味する。この関数は@var{side}が@code{beg}なら@var{thing}の先頭で停止、@code{end}なら@var{thing}の終端で停止する。
 
-@code{treesit-thing-prev}の場合のように@var{thing}は@var{treesit-thing-settings}で定義されたthingシンボル、あるいはthing定義を指定できる。
+Like in @code{treesit-thing-prev}, @var{thing} can be a thing symbol defined
+in @code{treesit-thing-settings}, or a thing definition.
 
 @var{tactic}はこの関数がthing間を移動する方法を決定する。@code{nested}、@code{top-level}、@code{restricted}、@code{nil}のいずれか。@code{nested}と@code{nil}は通常のネストされたナビゲーションを意味する。まず兄弟を横断しての移動を試み、カレントレベルに兄弟がなければ親に移動してその兄弟を横断、のように移動する。@code{top-level}はネストされたthingを無視してトップレベルのthingだけを横断した移動、@code{restricted}は@var{position}を囲い込むようなthingがあればその中に制限された移動を意味する。このtactic(戦術)はカレントネストレベルに留まって上位に移動したくないようなコマンドにたいして有用。
 @end defun
@@ -1227,7 +1225,8 @@ Nodes}を参照してください。
 
 @var{strict}が非@code{nil}なら、この関数は厳格な比較を使用する。すなわち開始位置は@var{position}より厳密に前、終端位置は@var{position}より厳密に後でなければならない。
 
-@var{thing}は@var{treesit-thing-settings}で定義されたthingシンボル、またはthing定義のいずれか。
+@var{thing} can be either a thing symbol defined in
+@code{treesit-thing-settings}, or a thing definition.
 @end defun
 
 @findex treesit-beginning-of-thing
@@ -1235,8 +1234,12 @@ Nodes}を参照してください。
 @findex treesit-thing-at-point
 便利なラッパー関数もあります。@code{treesit-beginning-of-thing}はthing先頭にポイントを移動、@code{treesit-end-of-thing}はthing終端にポイントを移動、@code{treesit-thing-at-point}はポイント位置にあるthingをリターンします。
 
-@code{treesit-beginning-of-defun}、@code{treesit-end-of-defun}、@code{treesit-defun-at-point}のように@code{defun}定義への使用に特化したdefunコマンドもあります。さらにこれらの関数は移動の戦術として@var{treesit-defun-tactic}を使用します。これらの詳細については別のセクションで説明します(@ref{Tree-sitter
-Major Modes}を参照)。
+There are also defun commands that specifically use the @code{defun}
+definition (as a fallback of @code{treesit-defun-type-regexp}), like
+@code{treesit-beginning-of-defun}, @code{treesit-end-of-defun}, and
+@code{treesit-defun-at-point}.  In addition, these functions use
+@code{treesit-defun-tactic} as the navigation tactic.  They are described in
+more detail in other sections (@pxref{Tree-sitter Major Modes}).
 
 @node Multiple Languages
 @section 複数言語のパース
@@ -1248,7 +1251,32 @@ JavaScriptが挙げられます。このような場合には、別の言語に�
 narrowing,
 narrowing}を参照)とともに機能しますが、推奨される方法はバッファーテキストのリージョン(範囲)にそれを操作するパーサーを指定する方法です。このセクションではパーサーにたいして範囲のセットや取得を行う関数について説明します。
 
-Lispプログラムがバッファーでパーサーを使う前には、@code{treesit-update-ranges}の呼び出しによってパーサーそれぞれにたいする範囲が正しいか確認して、その位置にあるテキストにたいして任を負うパーサーを解決する必要があります。この2つの関数自身は作業を行わず、実際に作業を行うにはメジャーモードが@code{treesit-language-at-point-function}および@code{treesit-language-at-point-function}をセットする必要があります。これらの関数および変数については、このセクションの終わり近くで詳細に説明しましょう。
+@cindex primary parser
+Generally when there are multiple languages at play, there is a ``primary'',
+or ``host'' language.  The parser for this language---the @dfn{primary
+parser}, parses the entire buffer.  Parsers for other languages are
+``embedded'' or ``guest'' parsers, which only work on part of the buffer.
+The parse tree of the primary parser is usually used to determine the ranges
+in which the embedded parsers operate.
+
+@vindex treesit-primary-parser
+Major modes should set @code{treesit-primary-parser} to the primary parser
+before calling @code{treesit-major-mode-setup}, so that Emacs can configure
+the primary parser correctly for font-lock and other features.
+
+Lisp programs should call @code{treesit-update-ranges} to make sure the
+ranges for each parser are correct before using parsers in a buffer, and
+call @code{treesit-language-at} to figure out the language responsible for
+the text at some position.  These two functions don't work by themselves;
+they need major modes to set @code{treesit-range-settings} and
+@code{treesit-language-at-point-function}, which do the actual work.  These
+functions and variables are explained in more detail towards the end of the
+section.
+
+In short, multi-language major modes should set
+@code{treesit-primary-parser}, @code{treesit-range-settings}, and
+@code{treesit-language-at-point-function} before calling
+@code{treesit-major-mode-setup}.
 
 @heading 範囲の取得とセット
 
@@ -1382,11 +1410,29 @@ Lispプログラムはまず@acronym{HTML}パーサーでパースを行い、�
        :host 'html
        '((script_element (raw_text) @@capture))
 @end group
-
 @group
        :embed 'css
        :host 'html
        '((style_element (raw_text) @@capture))))
+@end group
+
+@group
+;; Major modes with multiple languages should always set
+;; `treesit-language-at-point-function' (which see).
+(setq treesit-language-at-point-function
+      (lambda (pos)
+        (let* ((node (treesit-node-at pos 'html))
+               (parent (treesit-node-parent node)))
+          (cond
+           ((and node parent
+                 (equal (treesit-node-type node) "raw_text")
+                 (equal (treesit-node-type parent) "script_element"))
+            'javascript)
+           ((and node parent
+                 (equal (treesit-node-type node) "raw_text")
+                 (equal (treesit-node-type parent) "style_element"))
+            'css)
+           (t 'html)))))
 @end group
 @end example
 
@@ -1502,8 +1548,9 @@ Grammar}を参照)が利用できるかどうかをチェックする。
 Lock}を参照)が非@code{nil}ならフォント表示(fontification)をセットアップ。
 
 @item
-@code{treesit-simple-indent-rules} (@ref{Parser-based
-Indentation}を参照)が非@code{nil}ならインデントをセットアップ。
+If either @code{treesit-simple-indent-rules} or
+@code{treesit-indent-function} (@pxref{Parser-based Indentation}) is
+non-@code{nil}, it sets up indentation.
 
 @item
 @code{treesit-defun-type-regexp}が非@code{nil}なら、@code{beginning-of-defun}と@code{end-of-defun}にたいしてナビゲーション関数をセットアップ。

@@ -1358,10 +1358,17 @@ Emacsの一部機能に影響を与えるようなバッファーローカル変
 @section モードラインのフォーマット
 @cindex mode line
 
-  Emacsの各ウィンドウ(ミニバッファーウィンドウを除く)には、通常は最下部にモードラインがあってそのウィンドウ内に表示されたバッファーに関するステータス情報がモードラインに表示されます。モードラインにはバッファー名、関連するファイル、再帰編集の深さ、およびメジャーモードやマイナーモードなどのようなそのバッファーに関する情報が含まれています。ウィンドウは@dfn{ヘッダーライン(header
-line)}をもつこともでき、これはモードラインによく似ていますがウィンドウの最上部に表示されます。
+  Each Emacs window (aside from minibuffer windows) typically has a mode line
+at the bottom, which displays status information about the buffer displayed
+in the window.  The mode line contains information about the buffer, such as
+its name, associated file, depth of recursive editing, and major and minor
+modes.  A window can also have a @dfn{header line} and a @dfn{tab line},
+which are much like the mode line but they appear at the top of the window.
 
-  このセクションではモードラインおよびヘッダーラインのコンテンツの制御の仕方について説明します。このチャプターにモードラインを含めた理由は、モードラインに表示される情報の多くが有効化されたメジャーモードとマイナーモードに関連があるからです。
+  This section describes how to control the contents of the mode line, header
+line, and tab line.  We include it in this chapter because much of the
+information displayed in the mode line relates to the enabled major and
+minor modes.
 
 @menu
 * Base: Mode Line Basics.    モードライン制御の基本概念。
@@ -1371,16 +1378,23 @@ line)}をもつこともでき、これはモードラインによく似てい�
 * %-Constructs::             モードラインへの情報の配置。
 * Properties in Mode::       モードライン内でのテキストプロパティの使用。
 * Header Lines::             モードラインに類似した最上部のライン。
+* Tab Lines::                A line that is above the header line.
 * Emulating Mode Line::      モードラインのようにテキストをフォーマットする。
 @end menu
 
 @node Mode Line Basics
 @subsection モードラインの基礎
 
-  各モードラインのコンテンツはバッファーローカル変数@code{mode-line-format}により指定されます(@ref{Mode Line
-Top}を参照)。この変数は@dfn{モードライン構文(mode line
-construct)}を保持します。これはバッファーのモードラインに何を表示するかを制御するテンプレートです。@code{header-line-format}の値は同じ方法によりバッファーのヘッダーラインを指定します。同一のバッファーにたいするすべてのウィンドウは、@code{mode-line-format}や@code{header-line-format}のパラメーター(@ref{Window
-Parameters}を参照)がそのウィンドウに指定されていなければ、同じ@code{mode-line-format}と@code{header-line-format}を使用します。
+  The contents of each mode line are specified by the buffer-local variable
+@code{mode-line-format} (@pxref{Mode Line Top}).  This variable holds a
+@dfn{mode line construct}: a template that controls what is displayed on the
+buffer's mode line.  The value of @code{header-line-format} and
+@code{tab-line-format} specifies the buffer's header line and tab line in
+the same way.  All windows for the same buffer use the same
+@code{mode-line-format}, @code{header-line-format}, and
+@code{tab-line-format} unless a @code{mode-line-format},
+@code{header-line-format}, or @code{tab-line-format} parameter has been
+specified for that window (@pxref{Window Parameters}).
 
   効率的な理由によりEmacsは各ウィンドウのモードラインとヘッダーラインを連続で再評価しません。たとえばウィンドウ構成(window
 configuration)の変更やバッファーの切り替え、バッファーのナローイング(narrowing)やワイドニング(widening)、スクロールやバッファーの変更等、それを呼び出す状況が出現したときにEmacsは再評価を行います。@code{mode-line-format}や@code{header-line-format}(@ref{Mode
@@ -1416,9 +1430,12 @@ Variables}を参照)により参照されるすべての変数、またはテキ
 @subsection モードラインのデータ構造
 @cindex mode line construct
 
-  モードラインのコンテンツは@dfn{モードライン構文(mode line
-construct)}と呼ばれるデータ構造によって制御されます。モードライン構文はリストやシンボル、数字を保持するバッファーローカル変数により構成されます。それぞれのデータ型は以下で説明するようにモードラインの外見にたいして特別な意味をもちます。フレームタイトル(@ref{Frame
-Titles}を参照)とヘッダーライン(@ref{Header Lines}を参照)にも同じデータ構造が使用されます。
+  The mode line contents are controlled by a data structure called a @dfn{mode
+line construct}, made up of lists, strings, symbols, and numbers kept in
+buffer-local variables.  Each data type has a specific meaning for the mode
+line appearance, as described below.  The same data structure is used for
+constructing frame titles (@pxref{Frame Titles}), header lines
+(@pxref{Header Lines}), and tab lines (@pxref{Tab Lines}).
 
   固定文字列のようなシンプルなモードライン構文の場合もありますが、通常はモードライン構文のテキストを構築するために固定文字列と変数の値を組み合わせる方法を指定します。これらの変数の多くはその変数自体がその値によりモードライン構文を定義する変数です。
 
@@ -1839,6 +1856,31 @@ Font}を参照)のリターン値にこの変数の値を乗じて表示され�
 @end defun
 
   高さが1行しかないウィンドウがヘッダーラインを表示することは決してありません。また高さが2行しかないウィンドウは、同時にモードラインとヘッダーラインを表示できません。そのようなウィンドウがモードラインをもつ場合にはヘッダーラインは表示されません。
+
+@node Tab Lines
+@subsection Window Tab Lines
+@cindex tab line (of a window)
+@cindex window tab line
+
+  A window can have a @dfn{tab line} at the top.  If both the tab line and
+header line are visible, the tab line appears above the header line.  The
+tab line feature is controlled like the mode line feature, except that it's
+controlled by @code{tab-line-format}.  Unlike the mode line, the tab line is
+only expected to be used to display a list of tabs (@pxref{Tab Line,,,
+emacs, The GNU Emacs Manual}) or the window tool bar (@pxref{Window Tool
+Bar,,, emacs, The GNU Emacs Manual}):
+
+@defvar tab-line-format
+This variable, local in every buffer, specifies how to display the tab line,
+for windows displaying the buffer.  The format of the value is the same as
+for @code{mode-line-format} (@pxref{Mode Line Data}).  It is normally
+@code{nil}, so that ordinary buffers have no tab line.
+@end defvar
+
+@defun window-tab-line-height &optional window
+This function returns the height in pixels of @var{window}'s tab line.
+@var{window} must be a live window, and defaults to the selected window.
+@end defun
 
 @node Emulating Mode Line
 @subsection モードラインのフォーマットのエミュレート
@@ -3433,7 +3475,12 @@ tree-sitterライブラリー(@ref{Parsing Program
 Source}を参照)とともにEmacsをビルドした場合には、Emacsによるプログラムソースのパースと構文ツリー(syntax
 tree)の生成が可能になります。プログラムソースのインデントコマンドにたいするガイド役としてこの構文ツリーを使用することができます。柔軟性を最大限発揮できるように構文ツリーに問い合わせを行うインデント用のカスタマイズ関数を記述して、それぞれの言語に応じたインデントを行うことも可能ですが、これには多くの作業が伴います。より使いやすいのは、この後に説明するシンプルなインデント用エンジンでしょう。そうすればメジャーモードに要求されるのはいくつかのインデントルールの記述だけとなり、残りはこのエンジンが面倒を見てくれます。
 
-パーサーベースのインデントエンジンを有効にするには@code{treesit-simple-indent-rules}をセットして@code{treesit-major-mode-setup}を呼び出すか、@code{indent-line-function}の値を@code{treesit-indent}にセットしてください(どちらを選んでも同じ)。
+To enable the parser-based indentation engine, set either
+@code{treesit-simple-indent-rules} or @code{treesit-indent-function}, then
+call @code{treesit-major-mode-setup}.  (All that
+@code{treesit-major-mode-setup} does is set the value of
+@code{indent-line-function} to @code{treesit-indent}, and
+@code{indent-region-function} to @code{treesit-indent-region}.)
 
 @defvar treesit-indent-function
 この変数は@code{treesit-indent}によって呼び出される実際の関数が格納される。デフォルトの値は@code{treesit-simple-indent}。将来より複雑なエンジンが追加されるかもしれない。
