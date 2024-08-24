@@ -177,7 +177,10 @@ Document Providers}を参照)。
   Emacsを再インストールした結果、アプリケーションライブラリーディレクトリーの位置が変更された場合には、システムが次回にEmacsを起動する際に新たな場所を指すようこのシンボリックリンクを更新します。
 
 @cindex temp~unlinked.NNNN files, Android
-  非常に古いバージョン(2.6.29)のLinuxカーネルを実行するAndroidデバイスでは、assetのファイルから読み込むために一時ファイル用ディレクトリーにEmacsが@file{temp~unlinked}で始まる名前のファイルを作成する必要があります。そのような名前のファイルは上書きされたり削除されるかもしれないので作成しないでください。
+  On Android devices running very old (2.6.29) versions of the Linux kernel,
+Emacs needs to create files named starting with @file{temp~unlinked} in the
+temporary file directory in order to read from asset files.  Do not create
+files with such names yourself, or they may be overwritten or removed.
 
 @cindex file system limitations, Android 11
   Android
@@ -231,8 +234,50 @@ key)''を用いて署名、インストールされた他のアプリケーシ�
   Emacsの配布物には複数のバイナリーも含まれています。実行可能ファイルはライブラリーディレクトリーにパッケージされます。そうしないとEmacsのインストールにおいて、システムがそれらをパッケージ展開しないからです。これは@code{ctags}や@code{emacsclient}をサブプロセスで起動する際に、Lispコードがかわりに@code{libctags.so}や@code{libemacsclient.so}をコマンドライン指定しなければならないことを意味しています。どの名前を使用するかは変数@code{ctags-program-name}、@code{etags-program-name}、@code{hexl-program-name}、@code{emacsclient-program-name}、@code{movemail-program-name}、@code{ebrowse-program-name}、@code{rcs2log-program-name}の値を調べて判断します。@ref{Subprocess
 Creation,,, elisp, the Emacs Lisp Reference Manual}を参照してください。
 
-  Emacsの起動時ファイルを含んだ@file{/assets}ディレクトリーは、@code{zygote}
-(アプリケーションを起動する役目を担うシステムサービス)によって直接作成されたプロセスでなければアクセスできないように設計されています。必要となるLispは@file{/assets}ディレクトリーにあるので、これにしたがうとサブプロセスとしてEmacsを起動するのは不可能です。Emacsと一緒に提供される@command{libandroid-emacs.so}という名前の特別なバイナリーが、Emacsを開始してバッチモードでLispを実行するために最善を尽くします。ただしこはAndroidのソースを読むことによって考案されたアプローチであり、Androidの互換性定義ドキュメントによって認可されていないので効果は様々かもしれません。
+  The @file{/assets} directory containing Emacs start-up files is meant to be
+inaccessible to processes not directly created by @code{zygote}, the system
+service responsible for starting applications.  Since required Lisp is found
+in the @file{/assets} directory, it would thus follow that it is not
+possible for Emacs to start itself as a subprocess.  A special binary named
+@command{libandroid-emacs.so} is provided with Emacs, which is installed
+into the library directory, and which tries its best to start Emacs for the
+purpose of running Lisp in batch mode.  The approach it takes was devised by
+reference to Android source code, and is not sanctioned by the Android
+compatibility definition documents, so your mileage may vary.
+
+@cindex EMACS_CLASS_PATH environment variable, Android
+  Even when the location of the @command{libandroid-emacs.so} command is known
+in advance, special preparation is required to run Emacs from elsewhere than
+a subprocess of an existing Emacs session, as it must be made to understand
+the location of resources and shared libraries in or extracted from the
+installed application package.  The OS command @command{pm path
+org.gnu.emacs} will print the location of the application package, though
+the said command must be invoked in a peculiar manner to satisfy system
+restrictions on communication between pseudoterminal devices created by user
+applications and system services such as the package manager, which is to
+say, with the standard IO streams redirected to a real file or a pipe.  This
+value, once established, must be specified in the environment variables
+@code{EMACS_CLASS_PATH}, so that this sample shell script may be installed
+as @code{emacs} in any location that is accessible:
+
+@example
+#!/system/bin/sh
+
+package_name=`pm path org.gnu.emacs 2>/dev/null </dev/null \
+               | sed 's/^package://'`
+emacs=
+EMACS_CLASS_PATH=$package_name
+
+for libdir in `dirname $package_name`/lib/*; do
+  ld_path=$@{ld_path:+$@{ld_path@}:@}$libdir
+  test -x "$libdir"/libandroid-emacs.so \
+    && emacs="$libdir"/libandroid-emacs.so
+done
+
+export EMACS_CLASS_PATH
+test -x "$emacs" || exit 1
+exec $emacs "$@@"
+@end example
 
 @cindex call-process, Android
 @vindex android-use-exec-loader
