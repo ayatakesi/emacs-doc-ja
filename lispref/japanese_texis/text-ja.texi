@@ -2464,17 +2464,33 @@ Height}を参照のこと。
 Height}を参照のこと。
 
 @item wrap-prefix
-テキストが@code{wrap-prefix}プロパティをもつなら、それが定義するプレフィクスはテキストラッピング(text wrapping:
-テキスト折り返し)に由来するすべての継続行の先頭に表示時に追加されるだろう(行が切り詰められた場合にはwrap-prefixが使用されることはない)。これは文字列、イメージ(@ref{Other
-Display Specs}を参照)、あるいはディスプレイプロパティ@code{:width}や@code{:align-to}
-(@ref{Specified Space}を参照)により指定された空白文字範囲かもしれない。
+If a region of text has a @code{wrap-prefix} property, the prefix it defines
+will be added at display time to the beginning of every continuation line
+due to text wrapping (so if lines are truncated, the wrap-prefix is never
+used).  The property value may be a string or an image (@pxref{Other Display
+Specs}), or a stretch of whitespace such as specified by the @code{:width}
+or @code{:align-to} display properties (@pxref{Specified Space}).  Note that
+to have its effect, the @code{wrap-prefix} property must be set on the
+entire region of text, starting from the first character of the first line
+of that text and up to the last character of the last line; otherwise,
+breaking the text into lines in a different way might fail to display the
+prefix, because the display engine checks for this property only immediately
+after continuing a line.
 
 wrap-prefixはバッファーローカル変数@code{wrap-prefix}を使用して、バッファー全体にも指定され得る(が@code{wrap-prefix}テキストプロパティは@code{wrap-prefix}変数の値より優先される)。@ref{Truncation}を参照のこと。
 
 @item line-prefix
-テキストが@code{line-prefix}プロパティをもつなら、それが定義するプレフィクスは表示時にすべての非継続行の先頭に追加されるだろう。これは文字列、イメージ(@ref{Other
-Display Specs}を参照)、あるいはディスプレイプロパティ@code{:width}や@code{:align-to}
-(@ref{Specified Space}を参照)により指定された空白文字範囲かもしれない。
+If a region of text has a @code{line-prefix} property, the prefix it defines
+will be added at display time to the beginning of every non-continuation
+line.  The property value may be a string or an image (@pxref{Other Display
+Specs}), or a stretch of whitespace such as specified by the @code{:width}
+or @code{:align-to} display properties (@pxref{Specified Space}).  Note that
+to have its effect, the @code{line-prefix} property must be set on the
+entire region of text, starting from the first character of the first line
+of that text and up to the last character of the last line; otherwise,
+breaking the text into lines in a different way might fail to display the
+prefix, because the display engine checks for this property only when
+starting a new line.
 
 line-prefixはバッファーローカル変数@code{line-prefix}を使用して、バッファー全体にも指定され得る(が@code{line-prefix}テキストプロパティは@code{line-prefix}変数の値より優先される)。@ref{Truncation}を参照のこと。
 
@@ -3142,17 +3158,21 @@ form)}をリターンする。リターンされる文字列の長さは@var{alg
 
 @itemize
 @item
-@code{md5}: 32文字(@var{binary}が非@code{nil}なら32バイト)
+For @code{md5}: 32 characters (16 bytes if @var{binary} is non-@code{nil}).
 @item
-@code{sha1}: 40文字(@var{binary}が非@code{nil}なら40バイト)
+For @code{sha1}: 40 characters (20 bytes if @var{binary} is non-@code{nil}).
 @item
-@code{sha224}: 56文字(@var{binary}が非@code{nil}なら56バイト)
+For @code{sha224}: 56 characters (28 bytes if @var{binary} is
+non-@code{nil}).
 @item
-@code{sha256}: 64文字(@var{binary}が非@code{nil}なら64バイト)
+For @code{sha256}: 64 characters (32 bytes if @var{binary} is
+non-@code{nil}).
 @item
-@code{sha384}: 96文字(@var{binary}が非@code{nil}なら96バイト)"
+For @code{sha384}: 96 characters (48 bytes if @var{binary} is
+non-@code{nil}).
 @item
-@code{sha512}: 128文字(@var{binary}が非@code{nil}なら128バイト)"
+For @code{sha512}: 128 characters (64 bytes if @var{binary} is
+non-@code{nil}).
 @end itemize
 
 この関数は@var{object}のテキストの内部表現(@ref{Text
@@ -3185,7 +3205,8 @@ Coding,,, emacs, GNU Emacs Manual}を参照)。
 (secure-hash 'sha1 object start end binary)
 @end lisp
 
-これは@var{binary}が@code{nil}なら40文字の文字列、それ以外の場合には40バイトのユニバイト文字列をリターンする。
+It returns a 40-character string if @var{binary} is @code{nil}, or a 20-byte
+unibyte string otherwise.
 @end defun
 
 @node Suspicious Text
@@ -3874,8 +3895,16 @@ JSONRPC connections}を参照のこと。
 このAPIには必須部分とオプション部分がある。
 
 @findex jsonrpc-connection-send
-JSONRPC接続(通知やリクエスト)を開始したりエンドポイントのリクエストへのリプライをユーザーに許すには、その新たなトランスポート実装がジェネリック関数@code{jsonrpc-connection-send}を新たなサブクラス用に特化して実装しなければならない(@ref{Generic
-Functions}を参照)。このジェネリック関数は@code{jsonrpc-request}や@code{jsonrpc-notify}のようなプリミティブから自動的に呼び出される。この特化によって引数リストに記述されたメッセージが、基礎となる通信メカニズム(``wire''とも呼ばれる)を介して送信されて、新たなトランスポートがエンドポイントとの対話に使用することを保証する必要がある。この``wire''はネットワークソケット、シリアルインターフェイス、あるいはHTTP接続などかもしれない。
+To allow its users to initiate JSONRPC contacts (notifications or requests)
+or reply to endpoint requests, the new transport implementation must equip
+the @code{jsonrpc-connection-send} generic function with a specialization
+for the new subclass (@pxref{Generic Functions}).  This generic function is
+called automatically by primitives such as @code{jsonrpc-request} and
+@code{jsonrpc-notify}.  The specialization should ensure that the message
+described in the argument list is sent through whatever underlying
+communication mechanism (a.k.a.@: ``wire'') is used by the new transport to
+talk to endpoints.  This ``wire'' may be a network socket, a serial
+interface, an HTTP connection, etc.
 
 @findex jsonrpc-connection-receive
 同様に3種類のリモートコンタクト(リクエスト、通知、ローカルリクエストへの応答)を処理するために、トランスポート実装は``wire''上のJSONRPC(あるいは準JSONRPC)の作成に用いられるかもしれないJSONRPCメッセージに気づいたら、Elispから関数@code{jsonrpc-connection-receive}が呼び出されるように計らわなければならない。

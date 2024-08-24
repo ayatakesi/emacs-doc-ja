@@ -322,8 +322,12 @@ Arguments, split-string-and-unquote}を参照のこと。
 \t\n\r]+}。
 @end defun
 
-@defun string-fill string length
-@var{length}より長い行が無くなるように@var{string}のワードラップを試みる。フィルは空白文字境界でのみ行われる。@var{length}より長い個別の単語は短くならない。
+@defun string-fill string width
+Attempt to Word-wrap @var{string} so that it displays with lines no wider
+than @var{width}.  Filling is done on whitespace boundaries only.  If there
+are individual words that are longer than @var{width}, these will not be
+shortened, and therefore @var{string} might be shown with lines wider than
+@var{width} in that case.
 @end defun
 
 @defun string-limit string length &optional end coding-system
@@ -374,7 +378,9 @@ characters.  It may also change @var{string}'s length.
 @section 文字および文字列の比較
 @cindex string equality
 @cindex text comparison
+@cindex string comparison
 
+@cindex compare characters
 @defun char-equal character1 character2
 この関数は引数が同じ文字を表すなら@code{t}、それ以外は@code{nil}をリターンする。@code{case-fold-search}が非@code{nil}なら、この関数はcaseの違いを無視する。
 
@@ -387,29 +393,37 @@ characters.  It may also change @var{string}'s length.
 @end example
 @end defun
 
-@defun string= string1 string2
+@cindex compare strings
+@defun string-equal string1 string2
 この関数は、2つの文字列の文字が正確にマッチすれば@code{t}をリターンする。引数にはシンボルも指定でき、この場合はそのシンボル名が使用される。@code{case-fold-search}とは無関係にcaseは常に意味をもつ。
 
-この関数は、@code{equal}で2つの文字列を比較するのと等価である(@ref{Equality
-Predicates}を参照)。特に、2つの文字列のテキストプロパティは無視される。テキストプロパティだけが異なる文字列を区別する必要があるなら@code{equal-including-properties}を使用すること。しかし@code{equal}とは異なり、いずれかの引数が文字列でもシンボルでもなければ、@code{string=}はエラーをシグナルする。
+This function is equivalent to @code{equal} for comparing two strings
+(@pxref{Equality Predicates}).  In particular, the text properties of the
+two strings are ignored; use @code{equal-including-properties} if you need
+to distinguish between strings that differ only in their text properties.
+However, unlike @code{equal}, if either argument is not a string or symbol,
+@code{string-equal} signals an error.
 
 @example
-(string= "abc" "abc")
+(string-equal "abc" "abc")
      @result{} t
-(string= "abc" "ABC")
+(string-equal "abc" "ABC")
      @result{} nil
-(string= "ab" "ABC")
+(string-equal "ab" "ABC")
      @result{} nil
 @end example
 
-ユニバイト文字列とマルチバイト文字列が@code{string=}において等しくなるのは、すべての文字が0から127の範囲(@acronym{ASCII})にある同じ文字シーケンスを含む場合だけである。@ref{Text
-Representations}を参照のこと。
+A unibyte and a multibyte string are equal in the sense of
+@code{string-equal} if and only if they contain the same sequence of
+character codes all being in the range 0--127 (@acronym{ASCII}).  @xref{Text
+Representations}.
 @end defun
 
-@defun string-equal string1 string2
-@code{string-equal}は@code{string=}の別名である。
+@defun string= string1 string2
+@code{string=} is another name for @code{string-equal}.
 @end defun
 
+@cindex case-insensitive string comparison
 @defun string-equal-ignore-case string1 string2
 @code{string-equal-ignore-case}は@code{case-fold-search}が@code{t}の際の@code{char-equal}のように、case(大文字小文字)の違いを無視して文字列を比較する。
 @end defun
@@ -446,9 +460,8 @@ MS-WindowsシステムでUnicode互換の照合をエミュレートする場合
 @end defun
 
 @cindex lexical comparison of strings
-@anchor{definition of string<}
-@defun string< string1 string2
-@c (findex string< causes problems for permuted index!!)
+@anchor{definition of string-lessp}
+@defun string-lessp string1 string2
 この関数は2つの文字列を1文字ずつ比較する。この関数は同時に2つの文字列をスキャンして、対応する文字同士がマッチしない最初のペアを探す。2つの文字列内で小さいほうの文字が@var{string1}の文字なら@var{string1}が小さいことになり、この関数は@code{t}をリターンする。小さいほうの文字が@var{string2}の文字なら@var{string1}が大きいことになり、この関数は@code{nil}をリターンする。2つの文字列が完全にマッチしたら値は@code{nil}になる。
 
 文字のペアーは文字コードで比較される。@acronym{ASCII}文字セットでは英小文字は英大文字より高い数値をもつことに留意されたい。数字と区切り文字の多くは英大文字より低い数値をもつ。@acronym{ASCII}文字は任意の非@acronym{ASCII}文字より小さくなる。ユニバイトの非@acronym{ASCII}文字は、任意のマルチバイト非@acronym{ASCII}文字より常に小さくなります(@ref{Text
@@ -456,11 +469,11 @@ Representations}を参照)。
 
 @example
 @group
-(string< "abc" "abd")
+(string-lessp "abc" "abd")
      @result{} t
-(string< "abd" "abc")
+(string-lessp "abd" "abc")
      @result{} nil
-(string< "123" "abc")
+(string-lessp "123" "abc")
      @result{} t
 @end group
 @end example
@@ -469,15 +482,15 @@ Representations}を参照)。
 
 @example
 @group
-(string< "" "abc")
+(string-lessp "" "abc")
      @result{} t
-(string< "ab" "abc")
+(string-lessp "ab" "abc")
      @result{} t
-(string< "abc" "")
+(string-lessp "abc" "")
      @result{} nil
-(string< "abc" "ab")
+(string-lessp "abc" "ab")
      @result{} nil
-(string< "" "")
+(string-lessp "" "")
      @result{} nil
 @end group
 @end example
@@ -485,8 +498,8 @@ Representations}を参照)。
 引数としてシンボルを指定することもでき、この場合はシンボルのプリント名が比較される。
 @end defun
 
-@defun string-lessp string1 string2
-@code{string-lessp}は@code{string<}の別名である。
+@defun string< string1 string2
+@code{string<} is another name for @code{string-lessp}.
 @end defun
 
 @defun string-greaterp string1 string2
@@ -494,7 +507,12 @@ Representations}を参照)。
 @var{string2} @var{string1})}を呼び出すのと等価である。
 @end defun
 
+@defun string> string1 string2
+@code{string>} is another name for @code{string-greaterp}.
+@end defun
+
 @cindex locale-dependent string comparison
+@cindex string collation
 @defun string-collate-lessp string1 string2 &optional locale ignore-case
 この関数は指定された@var{locale}
 (デフォルトはカレントのシステムlocale)の照合順において、@var{string1}が@var{string2}より小さければ@code{t}をリターンする。照合順は@var{string1}と@var{string2}に含まれる文字の辞書順だけではなく、それらの文字間の関係に関するルールによっても判断される。これは通常はEmacs実行中の@var{locale}環境、およびEmacsとリンクされた標準Cライブラリーによって決定される。
@@ -529,14 +547,18 @@ MS-WindowsシステムでUnicode互換の照合をエミュレートする場合
 locale環境をサポートしないシステムでは、この関数は@code{string-lessp}と同様に振る舞う。
 @end defun
 
+@cindex version comparison
+@cindex comparing version strings
 @defun string-version-lessp string1 string2
 この関数は文字列を辞書順で比較するが、数字のシーケンスを10進数で構成されているかのように扱い、その数値を比較する。つまりたとえ辞書順で@samp{12}が@samp{2}より``小''だとしても、この述語に応じて@samp{foo12.png}より@samp{foo2.png}が``小''になる。
 @end defun
 
+@cindex string starts with prefix
 @defun string-prefix-p string1 string2 &optional ignore-case
 この関数は@var{string1}が@var{string2}のプレフィクス(たとえば@var{string2}が@var{string1}で始まる)なら、非@code{nil}をリターンする。オプションの引数@var{ignore-case}が非@code{nil}なら、比較においてcaseの違いは無視される。
 @end defun
 
+@cindex string ends with suffix
 @defun string-suffix-p suffix string &optional ignore-case
 この関数は@var{suffix}が@var{string}のサフィックス(たとえば@var{string}が@var{suffix}で終わる)なら、非@code{nil}をリターンする。オプションの引数@var{ignore-case}が非@code{nil}なら、比較においてcaseの違いは無視される。
 @end defun
@@ -630,9 +652,6 @@ Representations}を参照)。
 (string-to-number "1e5")
      @result{} 100000.0
 @end example
-
-@findex string-to-int
-@code{string-to-int}はこの関数にたいする半ば廃れたエイリアスである。
 @end defun
 
 @defun char-to-string character
@@ -1033,10 +1052,11 @@ table。@ref{Case Tables}を参照されたい)で指定することにより、
 先頭が大文字で残りは小文字)する。この関数は@var{string-or-char}が文字列なら@var{string-or-char}の各単語をキャピタライズした新たなコピーをリターンする。これは各単語の最初の文字が大文字に変換され、残りは小文字に変換されることを意味する。
 
 @vindex case-symbols-as-words
-単語の定義はカレント構文テーブル(current syntax table)の単語構成構文クラス(word constituent syntax
-class)に割り当てられた、連続する文字の任意シーケンスである(@ref{Syntax Class
-Table}を参照)。@code{case-symbols-as-words}が非nilの場合には、シンボル構成構文クラス(symbol
-constituent syntax class)に割り当てられた文字は単語構成文字ともみなされる。
+The definition of a word is any sequence of consecutive characters that are
+assigned to the word constituent syntax class in the current syntax table
+(@pxref{Syntax Class Table}); if @code{case-symbols-as-words} is
+non-@code{nil}, characters assigned to the symbol constituent syntax class
+are also considered as word constituent.
 
 @var{string-or-char}が文字ならこの関数は@code{upcase}と同じことを行なう。
 
