@@ -549,8 +549,8 @@ terminal)}と呼びます。制御端末がグラフィカルな端末ならサ�
 この関数はそのEmacsセッションの制御端末上でのみ機能する。他のTTYデバイスの制御を放棄するには@code{suspend-tty}を使用する(下記参照)。そのEmacsセッションが複数の端末を使用する場合にはEmacsのサスペンド前に他のすべての端末からフレームを削除しなければならず、さもないとこの関数はエラーをシグナルする。@ref{Multiple
 Terminals}を参照のこと。
 
-@c FIXME?  It seems to me that shell does echo STRING.
-@var{string}が非@code{nil}なら、その各文字はEmacsの上位shellに端末入力として送信される。@var{string}内の文字は上位shellによりエコーされずに結果だけが表示される。
+If @var{string} is non-@code{nil}, its characters are sent to Emacs's
+superior shell, to be read as terminal input.
 
 サスペンドする前に@code{suspend-emacs}はノーマルフック@code{suspend-hook}を実行する。ユーザーがEmacs再開後に@code{suspend-emacs}はノーマルフック@code{suspend-resume-hook}を実行する。@ref{Hooks}を参照のこと。
 
@@ -582,7 +582,8 @@ Really suspend? @kbd{y}
 
 @group
 ---------- Parent Shell ----------
-bash$ /home/username
+bash$ pwd
+/home/username
 bash$ fg
 @end group
 
@@ -592,8 +593,13 @@ Resumed!
 @end group
 @end smallexample
 
-@c FIXME?  AFAICS, it is echoed.
-Emacsサスペンド後に@samp{pwd}がエコーされないことに注意。エコーはされないがshellにより読み取られて実行されている。
+Note that on some operating systems, sending @var{string} to the Emacs
+parent shell might require special privileges, in which case it might
+silently fail to send @var{string} to the shell for execution.  On other
+systems this is not supported, and Emacs will signal an error if you try.
+Also, @var{string} might not be echoed, even if it is executed by the
+shell.  So we don't recommend relying on this feature in portable Lisp
+programs.
 @end deffn
 
 @defvar suspend-hook
