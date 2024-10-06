@@ -9,288 +9,433 @@
 @c Foundation, Inc.
 @c See file emacs-ja.texi for copying conditions.
 @node Mark
-@chapter マークとリージョン
+@chapter The Mark and the Region
 @cindex mark
 @cindex setting a mark
 @cindex region
 
-  Emacsは他の多くのアプリケーションと同じようにバッファーのテキストの任意の部分を選択して、そのような@dfn{選択されたテキスト(selected
-text)}を操作するコマンドを呼び出します。この選択されたテキストのことを、Emacsでは@dfn{(region)}と呼んでいます。リージョンにたいする処理の仕方は、他のプログラムが選択されたテキストを処理する方法と非常に似ていますが重要な違いも存在します。
+  Emacs, like many other applications, lets you select some arbitrary part of
+the buffer text and invoke commands that operate on such @dfn{selected
+text}.  In Emacs, we call the selected text @dfn{the region}; its handling
+is very similar to that of selected text in other programs, but there are
+also important differences.
 
 @cindex active region
 @cindex activating the mark
-  リージョンとはバッファーの@dfn{マーク(mark)}と現時点の@dfn{ポイント(point)}の間にある部分のことです。(たとえば@kbd{C-SPC}コマンドで)どこかにマークをセットして、その後にリージョンの終端としたい場所までポイントを移動することによってリージョンを定義できます(マウスウォッシュリージョンの定義に使うことも可)。
+  The region is the portion of the buffer between @dfn{the mark} and the
+current @dfn{point}.  You define a region by setting the mark somewhere
+(with, for instance, the @kbd{C-SPC} command), and then moving point to
+where you want the region to end.  (Or you can use the mouse to define a
+region.)
 
-  ポイントとマークのどちらが前にあったとしても、リージョンは常にポイントとマークの間にあります。ポイントが動くたびにリージョンは変化します。
+  The region always extends between point and the mark, no matter which of
+them comes earlier in the text; each time you move point, the region
+changes.
 
-  テキストのある位置にマークをセットすると、マークが@dfn{アクティブ(active)}になります。マークがアクティブのときは、そのリージョンもアクティブになります。Emacsはアクティブなリージョンの中にあるテキストを、フェイス@code{region}でハイライト表示します(@ref{Face
-Customization}を参照してください)。
+  Setting the mark at a position in the text @dfn{activates} it.  When the
+mark is active, we say also that the region is active; Emacs indicates its
+extent by highlighting the text within it, using the @code{region} face
+(@pxref{Face Customization}).
 
 @cindex deactivating the mark
-  バッファーのテキストを変更するコマンドを含む、特定の非移動系コマンド(non-motion
-commands)の後で、Emacsは自動的にマークを@dfn{非アクティブ(deactivates)}にし、これによりハイライトも解除されます。@kbd{C-g}をタイプすれば、いつでも明示的に非アクティブにすることができます(@ref{Quitting}を参照してください)。
+  After certain non-motion commands, including any command that changes the
+text in the buffer, Emacs automatically @dfn{deactivates} the mark; this
+turns off the highlighting.  You can also explicitly deactivate the mark at
+any time, by typing @kbd{C-g} (@pxref{Quitting}).
 
-  操作をアクティブなリージョンのテキストに制限するコマンドが多数あります。たとえば(マッチしたテキストを置換する)@kbd{M-%}コマンドは、通常ならバッファーのアクセス可能な部分全体にたいして機能しますが、リージョンをアクティブにしたときにはそのリージョンだけにたいして機能するのです。
+  Many commands limit the text on which they operate to the active region.
+For instance, the @kbd{M-%} command (which replaces matching text) normally
+works on the entire accessible portion of the buffer, but if you have an
+active region, it'll work only on that region instead.
 
-  たとえアクティブでなくても、マークは役に立ちます。たとえばマークリングを使えば、前のマーク位置に戻ることができます。更に非アクティブなリージョンであっても効果があるコマンドもいくつかあります(たとえば@dfn{upcase-region})。@kbd{C-x
-C-x}のようなコマンドを使えば、そのリージョンを再びアクティブにすることもできます。
+  The mark is useful even if it is not active.  For example, you can move to
+previous mark locations using the mark ring.  @xref{Mark Ring}.
+Additionally, some commands will have an effect even on an inactive region
+(for example @dfn{upcase-region}).  You can also reactivate the region with
+commands like @kbd{C-x C-x}.
 
-  インタラクティブなセッションではデフォルトである上記動作は、Transient
-Markモード(暫定マークモード)という名で知られています。Transient
-Markモードを無効にすると、Emacsは通常ではリージョンをハイライトしなくなります。@ref{Disabled Transient
-Mark}を参照してください。
+  The above behavior, which is the default in interactive sessions, is known
+as Transient Mark mode.  Disabling Transient Mark mode switches Emacs to an
+alternative behavior, in which the region is usually not highlighted.
+@xref{Disabled Transient Mark}.
 
 @vindex highlight-nonselected-windows
-  あるバッファーでマークをセットしても、他のバッファーのマークは影響を受けません。アクティブなマークがあるバッファーに戻ったとき、マークは以前と同じ場所にあります。複数のウィンドウで同じバッファーを表示しているとき、これらのウィンドウはそれぞれのポイント位置をもっているので、リージョンも異なります。しかしこれらのウィンドウでは、マークの位置は共通です。@ref{Windows}を参照してください。通常、選択されたウィンドウのリージョンだけがハイライトされます。しかし変数@code{highlight-nonselected-windows}が非@code{nil}の場合、各ウィンドウのリージョンがハイライトされます。
+  Setting the mark in one buffer has no effect on the marks in other buffers.
+When you return to a buffer with an active mark, the mark is at the same
+place as before.  When multiple windows show the same buffer, they can have
+different values of point, and thus different regions, but they all share
+one common mark position.  @xref{Windows}.  Ordinarily, only the selected
+window highlights its region; however, if the variable
+@code{highlight-nonselected-windows} is non-@code{nil}, each window
+highlights its own region.
 
-  rectangular region(矩形リージョン)という、違う種類のリージョンもあります。@ref{Rectangles}を参照してください。
+  There is another kind of region: the rectangular region.  @xref{Rectangles}.
 
 @menu
-* Setting Mark::             マークをセットするコマンド。
-* Marking Objects::          テキスト単位の周辺にリージョンをセットするコマンド。
-* Using Region::             リージョンの内容を操作する方法の要約。
-* Mark Ring::                後で戻れるように保存された以前のマーク位置。
-* Global Mark Ring::         さまざまなバッファーの以前のマーク位置。
-* Shift Selection::          シフトを押してカーソル移動キーを使う。
-* Disabled Transient Mark::  デフォルトでリージョンをハイライトせずにおく。
+* Setting Mark::             Commands to set the mark.
+* Marking Objects::          Commands to put region around textual units.
+* Using Region::             Summary of ways to operate on contents of the 
+                               region.
+* Mark Ring::                Previous mark positions saved so you can go 
+                               back there.
+* Global Mark Ring::         Previous mark positions in various buffers.
+* Shift Selection::          Using shifted cursor motion keys.
+* Disabled Transient Mark::  Leaving regions unhighlighted by default.
 @end menu
 
 @node Setting Mark
-@section マークのセット
+@section Setting the Mark
 
-  マークをセットするためのコマンドがいくつかあります:
+  Here are some commands for setting the mark:
 
 @table @kbd
 @item C-@key{SPC}
-ポイント位置にマークをセットしてアクティブにします(@code{set-mark-command})。
+Set the mark at point, and activate it (@code{set-mark-command}).
 @item C-@@
-同じです。
+The same.
 @item C-x C-x
-ポイント位置にマークをセットしてアクティブにしてから、以前のマークがあった位置にポイントを移動します(@code{exchange-point-and-mark})。
+Set the mark at point, and activate it; then move point where the mark used
+to be (@code{exchange-point-and-mark}).
 @item Drag-mouse-1
-ドラッグしたテキストの周りにポイントとマークをセットします。
+Set point and the mark around the text you drag across.
 @item mouse-3
-ポイント位置にマークをセットしてから、クリックした場所にポイントを移動します(@code{mouse-save-then-kill})。
-@item @r{シフトを押したカーソル移動キー}
-マークが非アクティブなら、ポイント位置にマークをセットしてポイントを移動します。@ref{Shift Selection}を参照してください。
+Set the mark at point, then move point to where you click
+(@code{mouse-save-then-kill}).
+@item @r{Shifted cursor motion keys}
+Set the mark at point if the mark is inactive, then move point.  @xref{Shift
+Selection}.
 @end table
 
 @kindex C-SPC
 @kindex C-@@
 @findex set-mark-command
-  マークをセットするもっとも一般的な方法は、@kbd{C-@key{SPC}}
-(@code{set-mark-command})です@footnote{@acronym{ASCII}には、文字@kbd{C-@key{SPC}}はありません。テキスト端末で@kbd{C-@key{SPC}}をタイプすると、通常は文字@kbd{C-@@}が与えられます。このキーも@code{set-mark-command}にバインドされているので、もし異なる挙動を示すテキスト端末の場合は、@kbd{C-@key{SPC}}のかわりに@kbd{C-@@}を使うことを考えるのがよいかもしれません。}。これはポイントがある位置にマークをセットしてから、アクティブにします。その後、マークをそこに残したままポイントを移動できます。
+  The most common way to set the mark is with @kbd{C-@key{SPC}}
+(@code{set-mark-command})@footnote{There is no @kbd{C-@key{SPC}} character
+in @acronym{ASCII}; usually, typing @kbd{C-@key{SPC}} on a text terminal
+gives the character @kbd{C-@@}.  This key is also bound to
+@code{set-mark-command}, so unless you are unlucky enough to have a text
+terminal that behaves differently, you might as well think of @kbd{C-@@} as
+@kbd{C-@key{SPC}}.}.  This sets the mark where point is, and activates it.
+You can then move point away, leaving the mark behind.
 
-  たとえばバッファーの一部を大文字に変換したいとします。これを行うには対象のテキストの一方の端に移動して、@kbd{C-@key{SPC}}をタイプし、対象のテキストがハイライトされるまでポイントを移動します。そして@kbd{C-x
-C-u} (@code{upcase-region})をタイプすると、リージョンのテキストが大文字に変換されて、マークが非アクティブになります。
+  For example, suppose you wish to convert part of the buffer to upper case.
+To accomplish this, go to one end of the desired text, type
+@kbd{C-@key{SPC}}, and move point until the desired portion of text is
+highlighted.  Now type @kbd{C-x C-u} (@code{upcase-region}).  This converts
+the text in the region to upper case, and then deactivates the mark.
 
-  マークがアクティブなときに非アクティブにしたいときは、@kbd{C-g}をタイプします(@ref{Quitting}を参照してください)。リージョンにたいして操作を行うほとんどのコマンドは、上記の例の@kbd{C-x
-C-u}のように、自動的にマークを非アクティブにします。
+  Whenever the mark is active, you can deactivate it by typing @kbd{C-g}
+(@pxref{Quitting}).  Most commands that operate on the region also
+automatically deactivate the mark, like @kbd{C-x C-u} in the above example.
 
-  リージョンにたいしての操作は行わず、バッファーの位置を覚えておくためにマークをセット(@kbd{C-@key{SPC}
-C-@key{SPC}}とタイプ)して、後でそこに戻る(@kbd{C-u
-C-@key{SPC}}とタイプ)こともできます。詳細については、@ref{Mark Ring}を参照してください。
+  Instead of setting the mark in order to operate on a region, you can also
+use it to remember a position in the buffer (by typing @kbd{C-@key{SPC}
+C-@key{SPC}}), and later jump back there (by typing @kbd{C-u C-@key{SPC}}).
+@xref{Mark Ring}, for details.
 
 @kindex C-x C-x
 @findex exchange-point-and-mark
-  コマンド@kbd{C-x C-x}
-(@code{exchange-point-and-mark})は、ポイントとマークの位置を交換します。ポイントの位置に問題はないが、リージョンのもう一方の端にポイントを移動したいとき@kbd{C-x
-C-x}は便利です。2回目の@kbd{C-x
-C-x}で、マークを新しいポイント位置にマークをセットしてから、ポイントを元の位置に戻すことができます。このコマンドはマークが非アクティブのとき、最初にマークをアクティブにします。これはマークが最後にどこにセットされたかを明確にするために、リージョンをハイライトするためです。しかしプレフィクス引数とともに呼び出せば、マークは非アクティブのままでリージョンもハイライトされません。これを使えば@kbd{C-u
-C-@key{SPC}}と同様の方法で、マークの位置にジャンプできます。
+  The command @kbd{C-x C-x} (@code{exchange-point-and-mark}) exchanges the
+positions of point and the mark.  @kbd{C-x C-x} is useful when you are
+satisfied with the position of point but want to move the other end of the
+region (where the mark is).  Using @kbd{C-x C-x} a second time, if
+necessary, puts the mark at the new position with point back at its original
+position.  Normally, if the mark is inactive, this command first reactivates
+the mark wherever it was last set, to ensure that the region is left
+highlighted.  However, if you call it with a prefix argument, it leaves the
+mark inactive and the region unhighlighted; you can use this to jump to the
+mark in a manner similar to @kbd{C-u C-@key{SPC}}.
 
-  マウスでマークをセットすることもできます。マウスの左ボタン(@kbd{down-mouse-1})をクリックしてから、テキスト範囲をドラッグすると、最初にマウスボタンを押した位置にマークがセットされ、マウスボタンを話した位置にポイントが置かれます。かわりにマウスの右ボタン(@kbd{mouse-3})をクリックすれば、ポイントのある位置にマークがセットされ、クリックした位置にポイントが移動します。これらのマウスコマンドに関する詳細な説明は、@ref{Mouse
-Commands}を参照してください。
+  You can also set the mark with the mouse.  If you press the left mouse
+button (@kbd{down-mouse-1}) and drag the mouse across a range of text, this
+sets the mark where you first pressed the mouse button and puts point where
+you release it.  Alternatively, clicking the right mouse button
+(@kbd{mouse-3}) sets the mark at point and then moves point to where you
+clicked.  @xref{Mouse Commands}, for a more detailed description of these
+mouse commands.
 
-  最後にシフトキーを押しながらカーソルを移動するコマンド(@kbd{S-@key{RIGHT}}、@kbd{S-C-f}、@kbd{S-C-n}など)でマークをセットできます。これは@dfn{シフト選択(shift-selection)}と呼ばれ、以前にシフト選択やマウスコマンドでセットされたアクティブなマークがないときに限り、ポイントを移動する前の位置にマークをセットします。マウスコマンドやシフト選択によるマークのセットは、通常のマークとは少し異なります。続けてシフトを押さないカーソル移動コマンドを実行するにより、マークは自動的に非アクティブになります。詳細は、@ref{Shift
-Selection}を参照してください。
+  Finally, you can set the mark by holding down the shift key while typing
+certain cursor motion commands (such as @kbd{S-@key{RIGHT}}, @kbd{S-C-f},
+@kbd{S-C-n}, etc.).  This is called @dfn{shift-selection}.  It sets the mark
+at point before moving point, but only if there is no active mark set via a
+previous shift-selection or mouse commands.  The mark set by mouse commands
+and by shift-selection behaves slightly differently from the usual mark: any
+subsequent unshifted cursor motion command deactivates it automatically.
+For details, see @ref{Shift Selection}.
 
-  @kbd{C-y}
-(@code{yank})のようなテキストを挿入するコマンドの多くは、挿入されたテキストの先頭に、非アクティブなマークをセットします。これにより簡単にその位置に戻ることができます(@ref{Mark
-Ring}を参照してください)。コマンドがこれを行っていることは、エコーエリアに@samp{Mark set}が表示されることで見分けることができます。
+  Many commands that insert text, such as @kbd{C-y} (@code{yank}), set the
+mark at the other end of the inserted text, without activating it.  This
+lets you easily return to that position (@pxref{Mark Ring}).  You can tell
+that a command does this when it shows @samp{Mark set} in the echo area.
 
 @cindex primary selection, when active region changes
-  Xではアクティブなリージョンが変化するたびに、Emacsはリージョンのテキストを@dfn{プライマリー選択(primary
-selection)}に保存します。これにより@kbd{mouse-2}をクリックして、他のXアプリケーションへテキストを挿入することができるようになります。@ref{Primary
-Selection}を参照してください。
+  Under X, every time the active region changes, Emacs saves the text in the
+region to the @dfn{primary selection}.  This lets you insert that text into
+other X applications with @kbd{mouse-2} clicks.  @xref{Primary Selection}.
 
 @node Marking Objects
-@section テキストオブジェクトをマークするコマンド
+@section Commands to Mark Textual Objects
 
 @cindex marking sections of text
-  単語(word)、リスト(list)、パラグラフ(paragraph:
-段落)、ページ(page)などのテキストオブジェクトの周辺に、ポイントを配置してマークするコマンドがあります:
+  Here are commands for placing point and the mark around a textual object
+such as a word, list, paragraph or page:
 
 @table @kbd
 @item M-@@
-次の単語の末尾にマークをセットします(@code{mark-word})。ポイントは移動しません。
+Set mark at the end of the next word (@code{mark-word}).  This does not move
+point.
 @item C-M-@@
-次の対応のとれた式の後にマークをセットします(@code{mark-sexp})。ポイントは移動しません。
+Set mark after end of following balanced expression (@code{mark-sexp}).
+This does not move point.
 @item M-h
-ポイントを現在のパラグラフの先頭に移動して、パラグラフの最後にマークをセットします(@code{mark-paragraph})。
+Move point to the beginning of the current paragraph, and set mark at the
+end (@code{mark-paragraph}).
 @item C-M-h
-ポイントを現在のdefunの先頭に移動して、defunの最後にマークをセットします(@code{mark-defun})。
+Move point to the beginning of the current defun, and set mark at the end
+(@code{mark-defun}).
 @item C-x C-p
-ポイントを現在のページの先頭に移動して、ページの最後にマークをセットします(@code{mark-page})。
+Move point to the beginning of the current page, and set mark at the end
+(@code{mark-page}).
 @item C-x h
-ポイントを現在のバッファーの先頭に移動して、バッファーの最後にマークをセットします(@code{mark-whole-buffer})。
+Move point to the beginning of the buffer, and set mark at the end
+(@code{mark-whole-buffer}).
 @end table
 
 @kindex M-@@
 @findex mark-word
-  @kbd{M-@@}
-(@code{mark-word})は、次の単語の最後にマークをセットします(単語についての情報は、@ref{Words}を参照してください)。繰り返し呼び出されると、マークを1度に1単語進めてリージョンを拡張します。例外として、マークがアクティブでポイントの前にある場合、@kbd{M-@@}はマークを現在の位置から1単語後方に移動します。
+  @kbd{M-@@} (@code{mark-word}) sets the mark at the end of the next word
+(@pxref{Words}, for information about words).  Repeated invocations of this
+command extend the region by advancing the mark one word at a time.  As an
+exception, if the mark is active and located before point, @kbd{M-@@} moves
+the mark backwards from its current position one word at a time.
 
-  このコマンドに数引数@var{n}を指定することにより、@var{n}単語進めてマークするよう指定できます。負の引数@minus{}@var{n}は、@var{n}単語後方にマークを移動します。
+  This command also accepts a numeric argument @var{n}, which tells it to
+advance the mark by @var{n} words.  A negative argument @minus{}@var{n}
+moves the mark back by @var{n} words.
 
 @kindex C-M-@@
 @findex mark-sexp
-  同様に@kbd{C-M-@@}
-(@code{mark-sexp})は、対応のとれた式の最後にマークをセットします(@ref{Expressions}を参照してください)。繰り返し呼び出すことにより、後続の式にリージョンを拡張します。正または負の数引数を指定するとその数に応じて前方または後方にマークを移動します。
+  Similarly, @kbd{C-M-@@} (@code{mark-sexp}) puts the mark at the end of the
+next balanced expression (@pxref{Expressions}).  Repeated invocations extend
+the region to subsequent expressions, while positive or negative numeric
+arguments move the mark forward or backward by the specified number of
+expressions.
 
-   上記のリストの他のコマンドは、ポイントとマークの両方をセットするので、バッファー内のオブジェクトを区切るコマンドです。@kbd{M-h}
-(@code{mark-paragraph})はパラグラフ(@ref{Paragraphs}を参照してください)、@kbd{C-M-h}
-(@code{mark-defun})はトップレベルの関数定義(@ref{Moving by Defuns}を参照してください)、@kbd{C-x
-C-p}
-(@code{mark-page})はページ(@ref{Pages}を参照してください)をマークします。繰り返して呼び出すと、同種の連続するオブジェクトへと、リージョンを拡張します。数引数も同様で、マークを移動したいオブジェクトの数を指定します。
+   The other commands in the above list set both point and mark, so as to
+delimit an object in the buffer.  @kbd{M-h} (@code{mark-paragraph})  marks
+paragraphs (@pxref{Paragraphs}), @kbd{C-M-h} (@code{mark-defun})  marks
+top-level definitions (@pxref{Moving by Defuns}), and @kbd{C-x C-p}
+(@code{mark-page}) marks pages (@pxref{Pages}).  Repeated invocations again
+play the same role, extending the region to consecutive objects; similarly,
+numeric arguments specify how many objects to move the mark by.
 
 @kindex C-x h
 @findex mark-whole-buffer
 @cindex select all
-  @kbd{C-x h}
-(@code{mark-whole-buffer})はポイントをバッファーの先頭、マークを最後にセットすることによりバッファー全体をリージョンとします。
+  @kbd{C-x h} (@code{mark-whole-buffer}) sets up the entire buffer as the
+region, by putting point at the beginning and the mark at the end.
 
 @node Using Region
-@section リージョンを操作する
+@section Operating on the Region
 
 @cindex operations on a marked region
-  一度リージョンを設定すると、それを処理するいくつかの方法があります:
+  Once you have a region, here are some of the ways you can operate on it:
 
 @itemize @bullet
 @item
-@kbd{C-w} (@ref{Killing}を参照)でkillします。
+Kill it with @kbd{C-w} (@pxref{Killing}).
 @item
-@kbd{M-w} でkillリングにコピーします(@ref{Yanking}を参照してください)。
+Copy it to the kill ring with @kbd{M-w} (@pxref{Yanking}).
 @item
-@kbd{C-x C-l}または@kbd{C-x C-u}で、大文字小文字を変換します(@ref{Case}を参照してください)。
+Convert case with @kbd{C-x C-l} or @kbd{C-x C-u} (@pxref{Case}).
 @item
-@kbd{C-u C-/}で変更をアンドゥ(undo)します(@ref{Undo}を参照してください)。
+Undo changes within it using @kbd{C-u C-/} (@pxref{Undo}).
 @item
-@kbd{M-%}でリージョンの中のテキストを置換します(@ref{Query Replace}を参照してください)。
+Replace text within it using @kbd{M-%} (@pxref{Query Replace}).
 @item
-@kbd{C-x @key{TAB}}または@kbd{C-M-\}でインデントします(@ref{Indentation}を参照してください)。
+Indent it with @kbd{C-x @key{TAB}} or @kbd{C-M-\} (@pxref{Indentation}).
 @item
-@kbd{M-x fill-region}でテキストとしてフィルします(@ref{Filling}を参照してください)。
+Fill it as text with @kbd{M-x fill-region} (@pxref{Filling}).
 @item
-@kbd{M-$}で単語のスペルをチェックします(@ref{Spelling}を参照してください)。
+Check the spelling of words within it with @kbd{M-$} (@pxref{Spelling}).
 @item
-@kbd{M-x eval-region}でLispコードとして評価します(@ref{Lisp Eval}を参照してください)。
+Evaluate it as Lisp code with @kbd{M-x eval-region} (@pxref{Lisp Eval}).
 @item
-@kbd{C-x r s}でレジスターに保存します(@ref{Registers}を参照してください)。
+Save it in a register with @kbd{C-x r s} (@pxref{Registers}).
 @item
-バッファーまたはファイルに保存します(@ref{Accumulating Text}を参照してください)。
+Save it in a buffer or a file (@pxref{Accumulating Text}).
 @end itemize
 
-  マークが非アクティブのときにはデフォルトの動作をするが、マークがアクティブのときはリージョンを処理するコマンドがいくつかあります。たとえば@kbd{M-$}
-(@code{ispell-word})は、通常はポイントのある単語のスペルをチェックしますが、マークがアクティブのときはリージョンの中のテキストをチェックします(@ref{Spelling}を参照してください)。通常そのようなコマンドはリージョンが空のとき(たとえばマークとポイントが同じ位置のとき)は、デフォルトの動作をします。空のリージョンにたいして処理を行いたいときは、変数@code{use-empty-active-region}を@code{t}に変更してください。
+  Some commands have a default behavior when the mark is inactive, but operate
+on the region if the mark is active.  For example, @kbd{M-$}
+(@code{ispell-word}) normally checks the spelling of the word at point, but
+it checks the text in the region if the mark is active (@pxref{Spelling}).
+Normally, such commands use their default behavior if the region is empty
+(i.e., if mark and point are at the same position).  If you want them to
+operate on the empty region, change the variable
+@code{use-empty-active-region} to @code{t}.
 
 @vindex delete-active-region
-  @ref{Erasing}で説明したように、@key{DEL} (@code{backward-delete-char})と@key{Delete}
-(@code{delete-forward-char})もこの方法で動作します。マークがアクティブのときはリージョンのテキストを削除します(例外として数引数@var{n}に1以外が指定されたとき、これらのコマンドはマークがアクティブか関係なく、@var{n}文字を削除します)。変数@code{delete-active-region}を@code{nil}に変更すると、これらのコマンドはマークがアクティブのとき異なる動作をしなくなります。これを@code{kill}に変更するとリージョンを削除するかわりに、@dfn{kill}するようになります(@ref{Killing}を参照してください)。
+  As described in @ref{Erasing}, the @key{DEL} (@code{backward-delete-char})
+and @key{Delete} (@code{delete-forward-char}) commands also act this way.
+If the mark is active, they delete the text in the region.  (As an
+exception, if you supply a numeric argument @var{n}, where @var{n} is not
+one, these commands delete @var{n} characters regardless of whether the mark
+is active).  If you change the variable @code{delete-active-region} to
+@code{nil}, then these commands don't act differently when the mark is
+active.  If you change the value to @code{kill}, these commands @dfn{kill}
+the region instead of deleting it (@pxref{Killing}).
 
 @vindex mark-even-if-inactive
-  その他のコマンドにはデフォルトの動作はなく、常にリージョンを処理します。通常このようなコマンドには、@kbd{C-w}
-(@code{kill-region})や@kbd{C-x C-u}
-(@code{upcase-region})のように、名前に@code{region}がついています。マークが非アクティブのときは@dfn{非アクティブなリージョン}、すなわちポイントと最後にマークをセットした位置の間にあるテキストにたいして処理を行います(@ref{Mark
-Ring}を参照してください)。この動作を無効にするには、変数@code{mark-even-if-inactive}を@code{nil}に変更してください。そうするとこれらのコマンドはマークが非アクティブのときエラーをシグナルします。
+  Other commands always operate on the region, and have no default behavior.
+Such commands usually have the word @code{region} in their names, like
+@kbd{C-w} (@code{kill-region}) and @kbd{C-x C-u} (@code{upcase-region}).  If
+the mark is inactive, they operate on the @dfn{inactive region}---that is,
+on the text between point and the position at which the mark was last set
+(@pxref{Mark Ring}).  To disable this behavior, change the variable
+@code{mark-even-if-inactive} to @code{nil}.  Then these commands will
+instead signal an error if the mark is inactive.
 
 @cindex Delete Selection mode
 @cindex mode, Delete Selection
 @findex delete-selection-mode
 @vindex delete-selection-temporary-region
-  デフォルトでは、たとえマークがアクティブであっても通常のテキスト挿入のように、たとえば@kbd{a}をタイプすれば文字@kbd{a}が挿入されて、その後にマークが非アクティブになります。Delete
-Selectionというマイナーモードでは、この挙動を変更できます。このモードが有効な場合には、マークがアクティブなときにテキストを挿入すると、まずリージョン内のテキストが最初に削除されるのです。ただしこの挙動は@code{delete-selection-temporary-region}オプションをカスタマイズして調整できます。このオプションのデフォルト値は@code{nil}ですが@code{t}にセットすることもできます。その場合にはマウス(@ref{Setting
-Mark}を参照)、シフト選択(@ref{Shift Selection}を参照)、あるいはTransient Markモード無効時の@kbd{C-u
-C-x
-C-x}によってセットされた一時的にアクティブなリージョンだけは置き換えられるようになります。@code{delete-selection-temporary-region}に@code{selection}をセットすることによって、挙動を更に調整できます。この場合には@kbd{C-u
-C-x
-C-x}によってセットされたリージョンは置き換えられずに、マウスのドラッグやシフト選択によってアクティブになったリージョンだけが置き換えられるのです。Delete
-Selectionのオンとオフを切り替えるには@kbd{M-x delete-selection-mode}をタイプしてください。
+  By default, text insertion occurs normally even if the mark is active---for
+example, typing @kbd{a} inserts the character @samp{a}, then deactivates the
+mark.  Delete Selection mode, a minor mode, modifies this behavior: if you
+enable that mode, then inserting text while the mark is active causes the
+text in the region to be deleted first.  However, you can tune this behavior
+by customizing the @code{delete-selection-temporary-region} option.  Its
+default value is @code{nil}, but you can set it to @code{t}, in which case
+only temporarily-active regions will be replaced: those which are set by
+dragging the mouse (@pxref{Setting Mark}) or by shift-selection
+(@pxref{Shift Selection}), as well as by @kbd{C-u C-x C-x} when Transient
+Mark Mode is disabled.  You can further tune the behavior by setting
+@code{delete-selection-temporary-region} to @code{selection}: then temporary
+regions by @kbd{C-u C-x C-x} won't be replaced, only the ones activated by
+dragging the mouse or shift-selection.  To toggle Delete Selection mode on
+or off, type @kbd{M-x delete-selection-mode}.
 
 @node Mark Ring
-@section マークリング
+@section The Mark Ring
 
 @cindex mark ring
-  各バッファーは、@dfn{マークリング(mark
-ring)}の中に、以前のマークの位置を記録しています。マークをセットするコマンドは、古いマークをこのリングにpushします。マークリングの1つの使い方として、後で戻りたい場所を記録させる使い方があります。
+  Each buffer remembers previous locations of the mark, in the @dfn{mark
+ring}.  Commands that set the mark also push the old mark onto this ring.
+One of the uses of the mark ring is to remember spots that you may want to
+go back to.
 
 @table @kbd
 @item C-@key{SPC} C-@key{SPC}
-マークをアクティブにせずにマークをセットしてから、マークリングにpushします。
+Set the mark, pushing it onto the mark ring, without activating it.
 @item C-u C-@key{SPC}
-マークがあった場所にポイントを移動し、マークリングから1つ前のマークを復元します。
+Move point to where the mark was, and restore the mark from the ring of
+former marks.
 @end table
 
 @kindex C-SPC C-SPC
-  コマンド@kbd{C-@key{SPC}
-C-@key{SPC}}は、後で戻ってきたい位置をマークするときに便利です。これは現在の位置をマークを(Emacsがリージョンをハイライト表示してしまう)アクティブにすることなく、マークリングにpushします。実際にこれは@kbd{C-@key{SPC}}
-(@code{set-mark-command})を連続して2回呼び出しています。最初の@kbd{C-@key{SPC}}はマークをセットし、2回目の@kbd{C-@key{SPC}}はそれを非アクティブにしています(Transient
-Markモードがオフの場合、@kbd{C-@key{SPC} C-@key{SPC}}は一時的にTransient
-Markモードを有効にします。@ref{Disabled Transient Mark}を参照してください)。
+  The command @kbd{C-@key{SPC} C-@key{SPC}} is handy when you want to use the
+mark to remember a position to which you may wish to return.  It pushes the
+current point onto the mark ring, without activating the mark (which would
+cause Emacs to highlight the region).  This is actually two consecutive
+invocations of @kbd{C-@key{SPC}} (@code{set-mark-command}); the first
+@kbd{C-@key{SPC}} sets the mark, and the second @kbd{C-@key{SPC}}
+deactivates it.  (When Transient Mark mode is off, @kbd{C-@key{SPC}
+C-@key{SPC}} instead activates Transient Mark mode temporarily;
+@pxref{Disabled Transient Mark}.)
 
 @kindex C-u C-SPC
-  マークした位置に戻るには、@kbd{C-u
-C-@key{SPC}}のようにプレフィクス引数を指定して、@code{set-mark-command}を使います。これはマークがあった場所にポイントを移動して、もしマークがアクティブのときは非アクティブにします。@kbd{C-u
-C-@key{SPC}}を連続して呼び出すと、マークリングに保存された前の位置へジャンプしていきます。この方法で移動した位置の情報は失われません。それらはリングの最後に移動します。
+  To return to a marked position, use @code{set-mark-command} with a prefix
+argument: @kbd{C-u C-@key{SPC}}.  This moves point to where the mark was,
+and deactivates the mark if it was active.  Each subsequent @kbd{C-u
+C-@key{SPC}} jumps to a prior position stored in the mark ring.  The
+positions you move through in this way are not lost; they go to the end of
+the ring.
 
 @vindex set-mark-command-repeat-pop
-  @code{set-mark-command-repeat-pop}を非@code{nil}にセットすると、@kbd{C-u
-C-@key{SPC}}の後に続けて、@kbd{C-u
-C-@key{SPC}}ではなく、@kbd{C-@key{SPC}}でマークリングを巡回できます。デフォルトでは@code{set-mark-command-repeat-pop}は@code{nil}です。
+  If you set @code{set-mark-command-repeat-pop} to non-@code{nil}, then
+immediately after you type @kbd{C-u C-@key{SPC}}, you can type
+@kbd{C-@key{SPC}} instead of @kbd{C-u C-@key{SPC}} to cycle through the mark
+ring.  By default, @code{set-mark-command-repeat-pop} is @code{nil}.
 
-  各バッファーは自身のマークリングを持ちます。すべての編集コマンドは現在のバッファーのマークリングを使います。特に@kbd{C-u
-C-@key{SPC}}は常に同じバッファーに留まります。
+  Each buffer has its own mark ring.  All editing commands use the current
+buffer's mark ring.  In particular, @kbd{C-u C-@key{SPC}} always stays in
+the same buffer.
 
 @vindex mark-ring-max
-  変数@code{mark-ring-max}は、マークリングに保持する最大のエントリー数を指定します。デフォルトは16エントリーです。もしエントリー数が最大の場合、他のエントリーをpushするとリストの一番古いものが捨てられます。@kbd{C-u
-C-@key{SPC}}を繰り返すと、リングの現在位置を巡回します。
+  The variable @code{mark-ring-max} specifies the maximum number of entries to
+keep in the mark ring.  This defaults to 16 entries.  If that many entries
+exist and another one is pushed, the earliest one in the list is discarded.
+Repeating @kbd{C-u C-@key{SPC}} cycles through the positions currently in
+the ring.
 
-  もし何度も同じ場所に戻りたいときは、マークリングでは不十分でしょう。そのような場合は後で使うために、その位置をレジスターに記録できます(@ref{Position
-Registers}を参照してください)。
+  If you want to move back to the same place over and over, the mark ring may
+not be convenient enough.  If so, you can record the position in a register
+for later retrieval (@pxref{Position Registers,, Saving Positions in
+Registers}).
 
 @node Global Mark Ring
-@section グローバルマークリング
+@section The Global Mark Ring
 @cindex global mark ring
 
 @vindex global-mark-ring-max
-  各バッファーに属する普通のマークリングに加えて、Emacsには@dfn{グローバルマークリング(global mark
-ring)}が1つあります。以前マークをセットしてからバッファーを切り替えた場合、マークをセットすると、マークはカレントバッファーのマークリングに加えて、グローバルマークリングにも記録されます。その結果、グローバルマークリングには訪れていたバッファーの系列が記録され、各バッファーではマークを設定した箇所が記録されます。グローバルマークリングの長さは、@code{global-mark-ring-max}で制御され、デフォルトは16です。
+  In addition to the ordinary mark ring that belongs to each buffer, Emacs has
+a single @dfn{global mark ring}.  Each time you set a mark, this is recorded
+in the global mark ring in addition to the current buffer's own mark ring,
+if you have switched buffers since the previous mark setting.  Hence, the
+global mark ring records a sequence of buffers that you have been in, and,
+for each buffer, a place where you set the mark.  The length of the global
+mark ring is controlled by @code{global-mark-ring-max}, and is 16 by
+default.
 
 @kindex C-x C-SPC
 @findex pop-global-mark
-  コマンド@kbd{C-x C-@key{SPC}}
-(@code{pop-global-mark})は、グローバルリングの最新のバッファー位置にジャンプします。これもリングを巡回するので、連続して@kbd{C-x
-C-@key{SPC}}を使うことにより、古いバッファーのマーク位置に移動します。
+  The command @kbd{C-x C-@key{SPC}} (@code{pop-global-mark}) jumps to the
+buffer and position of the latest entry in the global ring.  It also rotates
+the ring, so that successive uses of @kbd{C-x C-@key{SPC}} take you to
+earlier buffers and mark positions.
 
 @node Shift Selection
-@section シフト選択
+@section Shift Selection
 @cindex shift-selection
 
-  シフトキーを押しながらカーソル移動コマンドをタイプすると、ポイントを移動する前の位置にマークをセットするので、リージョンが元のポイント位置から新しいポイント位置に拡張されます。この機能は@dfn{シフト選択(shift-selection)}と呼ばれます。これは他のエディターでテキストを選択する方法と似ています。
+  If you hold down the shift key while typing a cursor motion command, this
+sets the mark before moving point, so that the region extends from the
+original position of point to its new position.  This feature is referred to
+as @dfn{shift-selection}.  It is similar to the way text is selected in
+other editors.
 
-  シフト選択によるマークのセットは、これまでの説明とは少し異なる振る舞いをします。最初に、マークを非アクティブにする通常の方法(バッファーのテキストを変更したり@kbd{C-g}をタイプするなど)に加え、@emph{シフトキーを押さない(unshifted)}カーソル移動コマンドでも、マークが非アクティブになります。次に、連続する@emph{シフトキーを押した(shifted)}カーソル移動コマンドでは、マークの更新はされません。つまりシフトキーを押しながらカーソル移動コマンドを繰り返すと、リージョンは継続的に変更されます。
+  The mark set via shift-selection behaves a little differently from what we
+have described above.  Firstly, in addition to the usual ways of
+deactivating the mark (such as changing the buffer text or typing
+@kbd{C-g}), the mark is deactivated by any @emph{unshifted} cursor motion
+command.  Secondly, any subsequent @emph{shifted} cursor motion command
+avoids setting the mark anew.  Therefore, a series of shifted cursor motion
+commands will continuously adjust the region.
 
-  シフト選択は、シフトキーを押したカーソル移動キーが、別のコマンドにバインドされていない場合のみ動作します(@ref{Customization}を参照してください)。たとえば@kbd{S-C-f}を他のコマンドにバインドしていると、@kbd{S-C-f}はシフト選択バージョンの@kbd{C-f}
-(@code{forward-char})ではなく、バインドされたコマンドを実行します。
+  Shift-selection only works if the shifted cursor motion key is not already
+bound to a separate command (@pxref{Customization}).  For example, if you
+bind @kbd{S-C-f} to another command, typing @kbd{S-C-f} runs that command
+instead of performing a shift-selected version of @kbd{C-f}
+(@code{forward-char}).
 
-  マウスコマンドによるマークのセットも、シフト選択によるマークのセットと同様です(@ref{Setting
-Mark}を参照してください)。たとえばマウスをドラッグしてリージョンを指定すると、シフトキーを押したカーソル移動コマンドを使って、そのリージョンの拡張を続けることができます。どちらのケースも、シフトキーを押さないカーソル移動コマンドで、マークが非アクティブになります。
+  A mark set via mouse commands behaves the same as a mark set via
+shift-selection (@pxref{Setting Mark}).  For example, if you specify a
+region by dragging the mouse, you can continue to extend the region using
+shifted cursor motion commands.  In either case, any unshifted cursor motion
+command deactivates the mark.
 
 @vindex shift-select-mode
-  シフト選択をオフにするには、@code{shift-select-mode}を@code{nil}にセットします。これを行ってもマウスコマンドを通じたマークのセットは無効になりません。@code{shift-select-mode}に値@code{permanent}をセットするとシフト変換されていないカーソル移動キーによるマークの非アクティブ化が行われなくなり、たとえば前のコマンドでセットされたリージョンはシフト選択で拡張でき、シフト選択でセットされたリージョンはシフトキーを押していないカーソルキーで拡張されることになります。
+  To turn off shift-selection, set @code{shift-select-mode} to @code{nil}.
+Doing so does not disable setting the mark via mouse commands.  If you set
+@code{shift-select-mode} to the value @code{permanent}, cursor motion keys
+that were not shift-translated will not deactivate the mark, so, for
+example, the region set by prior commands can be extended by
+shift-selection, and unshifted cursor motion keys will extend the region set
+by shift-selection.
 
 @node Disabled Transient Mark
-@section Transient Markモードを無効にする
+@section Disabling Transient Mark Mode
 @cindex mode, Transient Mark
 @cindex Transient Mark mode
 @cindex highlighting region
@@ -298,46 +443,57 @@ Mark}を参照してください)。たとえばマウスをドラッグして�
 @cindex Zmacs mode
 @findex transient-mark-mode
 
-  マークとリージョンのデフォルト動作では、マークをアクティブにセットすると、リージョンがハイライトされます。これはTransient
-Markモードと呼ばれます。これはインタラクティブなセッションではデフォルトで有効になっているマイナーモードです。@kbd{M-x
-transient-mark-mode}、または@samp{Options}メニューの@samp{Highlight Active
-Region}で切り替えることができます。オフにすることによりEmacsの操作モードは変更されます。
+  The default behavior of the mark and region, in which setting the mark
+activates it and highlights the region, is called Transient Mark mode.  This
+is a minor mode that is enabled by default in interactive sessions.  It can
+be toggled with @kbd{M-x transient-mark-mode}, or with the @samp{Highlight
+Active Region} menu item in the @samp{Options} menu.  Turning it off
+switches Emacs to an alternative mode of operation:
 
 @itemize @bullet
 @item
-@kbd{C-@key{SPC}}や@kbd{C-x
-C-x}のようなコマンドでマークをセットしても、リージョンはハイライトされません。そのためマークがどこにあるか見分けることができないので、覚えている必要があります。
+Setting the mark, with commands like @kbd{C-@key{SPC}} or @kbd{C-x C-x},
+does not highlight the region.  Therefore, you can't tell by looking where
+the mark is located; you have to remember.
 
-マークをセットしたらどこにセットしたか忘れる前にすぐ使うというのが、この問題にたいする通常の解決策です。ポイントとマークの位置を交換する@kbd{C-x
-C-x}で、マークがどこかチェックすることもできます。
+The usual solution to this problem is to set the mark and then use it soon,
+before you forget where it is.  You can also check where the mark is by
+using @kbd{C-x C-x}, which exchanges the positions of the point and the mark
+(@pxref{Setting Mark}).
 
 @item
-通常マークがアクティブのときリージョンにたいして処理を行ういくつかのコマンドは、そのような振る舞いをしなくなります。たとえば普通@kbd{M-%}
-(@code{query-replace})は、マークがアクティブのときはリージョンにたいして置換を行います。Transient
-Markがオフだと、常にポイントからバッファーの最後までを処理します。このような方法で動作するコマンドは、コマンド自身のドキュメントにより識別できます。
+Some commands, which ordinarily act on the region when the mark is active,
+no longer do so.  For example, normally @kbd{M-%} (@code{query-replace})
+performs replacements within the region, if the mark is active.  When
+Transient Mark mode is off, it always operates from point to the end of the
+buffer.  Commands that act this way are identified in their own
+documentation.
 @end itemize
 
 @cindex enabling Transient Mark mode temporarily
-  Transient Markモードがオフのときは、@kbd{C-@key{SPC} C-@key{SPC}}または@kbd{C-u C-x
-C-x}を使って一時的にアクティブにすることができます。
+  While Transient Mark mode is off, you can activate it temporarily using
+@kbd{C-@key{SPC} C-@key{SPC}} or @kbd{C-u C-x C-x}.
 
 @table @kbd
 @item C-@key{SPC} C-@key{SPC}
 @kindex C-SPC C-SPC@r{, enabling Transient Mark mode temporarily}
-ポイント位置にマークをセット(普通の@kbd{C-@key{SPC}}と同様)して、マークが非アクティブになるまでの間、1度だけTransient
-Markモードを有効にします(実際にはこれは独立したコマンドではなく@kbd{C-@key{SPC}}コマンドを2回行っています)。
+Set the mark at point (like plain @kbd{C-@key{SPC}}) and enable Transient
+Mark mode just once, until the mark is deactivated.  (This is not really a
+separate command; you are using the @kbd{C-@key{SPC}} command twice.)
 
 @item C-u C-x C-x
 @kindex C-u C-x C-x
-ポイントとマークを交換してからマークをアクティブにして、次にマークが非アクティブになるまでの間、Transient
-Markモードを一時的に有効にします(これはプレフィクス引数を指定した@kbd{C-x C-x}
-(@code{exchange-point-and-mark})コマンドです)。
+Exchange point and mark, activate the mark and enable Transient Mark mode
+temporarily, until the mark is next deactivated.  (This is the @kbd{C-x C-x}
+command, @code{exchange-point-and-mark}, with a prefix argument.)
 @end table
 
-  これらのコマンドはマークをセットまたはアクティブにして、マークが非アクティブになるまでの間Transient
-Markモードを有効にします。これらを使う1つの理由は、いくつかのコマンドはTransient
-Markモードがオフのとき、リージョンにたいしてではなくバッファー全体を処理するからです。Transient
-Markモードを一時的に有効にできれば、これらのコマンドをリージョンにたいして処理させることができます。
+  These commands set or activate the mark, and enable Transient Mark mode only
+until the mark is deactivated.  One reason you may want to use them is that
+some commands operate on the entire buffer instead of the region when
+Transient Mark mode is off.  Enabling Transient Mark mode momentarily gives
+you a way to use these commands on the region.
 
-  リージョンをマウス(@ref{Setting Mark}を参照してください)、またはシフト選択(@ref{Shift
-Selection}を参照してください)で指定したときも、一時的にTransient Markモードが有効になり、リージョンがハイライトされます。
+  When you specify a region with the mouse (@pxref{Setting Mark}), or with
+shift-selection (@pxref{Shift Selection}), this likewise activates Transient
+Mark mode temporarily and highlights the region.

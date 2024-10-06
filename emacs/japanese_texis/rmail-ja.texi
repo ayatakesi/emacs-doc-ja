@@ -9,103 +9,125 @@
 @c Foundation, Inc.
 @c See file emacs-ja.texi for copying conditions.
 @node Rmail
-@chapter Rmailでメールを読む
+@chapter Reading Mail with Rmail
 @cindex Rmail
 @cindex reading mail
 @findex rmail
 @findex rmail-mode
 @vindex rmail-mode-hook
 
-  Rmailは、メールを閲覧したり処理するための、Emacsのサブシステムです。Rmailは、Rmailファイルを呼ばれるファイルに、メールメッセージを保存します。Rmailファイルの中のメッセージの閲覧は、Rmailモードという特別なメジャーモードで行なわれます。このモードはメールを管理するために実行するコマンドのために、多くの文字を再定義します。
+  Rmail is an Emacs subsystem for reading and disposing of mail that you
+receive.  Rmail stores mail messages in files called Rmail files.  Reading
+the messages in an Rmail file is done in a special major mode, Rmail mode,
+which redefines most letters to run commands for managing mail.
 
-  Emacsには、より複雑かつ柔軟なGnusと呼ばれるメールを読むためのサブシステムが同梱されています。Gnusは巨大なパッケージなので、独自のマニュアル@ref{Top,,,
-gnus, The Gnus Newsreader}で説明されているので、それを参照してください。
+  Emacs also comes with a much more sophisticated and flexible subsystem for
+reading mail, called Gnus.  Gnus is a very large package, and is therefore
+described in its own manual, see @ref{Top,,, gnus, The Gnus Newsreader}.
 
 @menu
-* Basic: Rmail Basics.       Rmailの基本的な概念と簡単な使い方。
-* Scroll: Rmail Scrolling.   メッセージをスクロールする。
-* Motion: Rmail Motion.      他のメッセージへの移動。
-* Deletion: Rmail Deletion.  メッセージの削除と完全な削除。
-* Inbox: Rmail Inbox.        メールがRmailファイルに取り込まれる方法。
-* Files: Rmail Files.        複数のRmailファイルの使用。
-* Output: Rmail Output.      ファイルの外へメッセージをコピーする。
-* Labels: Rmail Labels.      メッセージにラベルをつけて分類する。
-* Attrs: Rmail Attributes.   属性と呼ばれる標準的なラベル。
-* Reply: Rmail Reply.        閲覧しているメッセージにたいして返信する。
-* Summary: Rmail Summary.    多くのメッセージの簡単な情報の要約。
-* Sort: Rmail Sorting.       Rmailでのメッセージのソート。
-* Display: Rmail Display.    Rmailがメッセージを表示する方法とカスタマイズ。
-* Coding: Rmail Coding.      Rmailがデコードされた文字セットを扱う方法。
-* Editing: Rmail Editing.    Rmailでのメッセージのテキストとヘッダーの編集。
-* Digest: Rmail Digest.      メッセージのダイジェストからメッセージを抽出する。
-* Rot13: Rmail Rot13.        rot13コードでエンコードされたメッセージの閲覧。
-* Movemail::                 新たなメールのフェッチに関する詳細。
-* Remote Mailboxes::         リモートmailboxからのメールの取得について。
-* Other Mailbox Formats::    さまざまなフォーマットのローカルmailboxからのメールの取得。
+* Basic: Rmail Basics.       Basic concepts of Rmail, and simple use.
+* Scroll: Rmail Scrolling.   Scrolling through a message.
+* Motion: Rmail Motion.      Moving to another message.
+* Deletion: Rmail Deletion.  Deleting and expunging messages.
+* Inbox: Rmail Inbox.        How mail gets into the Rmail file.
+* Files: Rmail Files.        Using multiple Rmail files.
+* Output: Rmail Output.      Copying messages out to files.
+* Labels: Rmail Labels.      Classifying messages by labeling them.
+* Attrs: Rmail Attributes.   Certain standard labels, called attributes.
+* Reply: Rmail Reply.        Sending replies to messages you are viewing.
+* Summary: Rmail Summary.    Summaries show brief info on many messages.
+* Sort: Rmail Sorting.       Sorting messages in Rmail.
+* Display: Rmail Display.    How Rmail displays a message; customization.
+* Coding: Rmail Coding.      How Rmail handles decoding character sets.
+* Editing: Rmail Editing.    Editing message text and headers in Rmail.
+* Digest: Rmail Digest.      Extracting the messages from a digest message.
+* Rot13: Rmail Rot13.        Reading messages encoded in the rot13 code.
+* Movemail::                 More details of fetching new mail.
+* Remote Mailboxes::         Retrieving mail from remote mailboxes.
+* Other Mailbox Formats::    Retrieving mail from local mailboxes in various 
+                               formats.
 @end menu
 
 @node Rmail Basics
-@section Rmailの基本的な概念
+@section Basic Concepts of Rmail
 
 @cindex primary Rmail file
 @vindex rmail-file-name
-  もっとも簡単な方法でRmailを使用するには、メールが保存される@file{~/RMAIL}というRmailファイルを使用します。これは@dfn{プライマリーRmailファイル(primary
-Rmail file)}と呼ばれます。コマンド@kbd{M-x
-rmail}はプライマリーRmailファイルを読み込み、inbox(受信箱)から新しいメールをマージして、未読の最初のメッセージを表示して、それを閲覧出きるようにします。変数@code{rmail-file-name}はプライマリーRmailファイルの名前を指定します。
+  Using Rmail in the simplest fashion, you have one Rmail file @file{~/RMAIL}
+in which all of your mail is saved.  It is called your @dfn{primary Rmail
+file}.  The command @kbd{M-x rmail} reads your primary Rmail file, merges
+new mail in from your inboxes, displays the first message you haven't read
+yet, and lets you begin reading.  The variable @code{rmail-file-name}
+specifies the name of the primary Rmail file.
 
 @cindex current message (Rmail)
-  Rmailは、Rmailファイルのメッセージを、1度に1つだけ表示します。表示されているメッセージは、@dfn{カレントメッセージ(current
-message:
-現在のメッセージ)}と呼ばれます。Rmailモードの特別なコマンドは、カレントメッセージの削除、他のファイルへのコピー、返信、他のメッセージへの移動を行なうことができます。複数のRmailファイル(@ref{Files}を参照)を作成して、それらの間でメッセージの移動をするのに、Rmailを使用することができます(@ref{Rmail
-Output}を参照)。
+  Rmail displays only one message in the Rmail file at a time.  The message
+that is shown is called the @dfn{current message}.  Rmail mode's special
+commands can do such things as delete the current message, copy it into
+another file, send a reply, or move to another message.  You can also create
+multiple Rmail files (@pxref{Files}) and use Rmail to move messages between
+them (@pxref{Rmail Output}).
 
 @cindex message number (Rmail)
-  Rmailファイルでは通常、メッセージは受信した順になっています。それらをソートする他の方法を指定できます(@ref{Rmail
-Sorting}を参照してください)。メッセージは連続する整数で識別され、それは@dfn{メッセージナンバー(message
-numbers)}と呼ばれます。カレントメッセージのナンバーはRmailのモードラインに表示され、その後にはファイル内のメッセージの総数が続きます。@kbd{j}でメッセージナンバーを指定して、そのメッセージに移動できます(@ref{Rmail
-Motion}を参照してください)。
+  Within the Rmail file, messages are normally arranged sequentially in order
+of receipt; you can specify other ways to sort them (@pxref{Rmail
+Sorting}).  Messages are identified by consecutive integers which are their
+@dfn{message numbers}.  The number of the current message is displayed in
+Rmail's mode line, followed by the total number of messages in the file.
+You can move to a message by specifying its message number with the @kbd{j}
+key (@pxref{Rmail Motion}).
 
 @kindex s @r{(Rmail)}
 @findex rmail-expunge-and-save
-  通常のEmacsの慣例にしたがい、Rmailでの変更は、そのファイルを保存したときだけ永続化されます。@kbd{s}
-(@code{rmail-expunge-and-save})で、ファイルを保存することができます、これは最初に削除されたメッセージをファイルから完全に削除します(@ref{Rmail
-Deletion}を参照してください)。完全な削除を行なわずにファイルを保存するには、@kbd{C-x
-C-s}を使用します。Rmailは、inboxファイルから新しいメールをマージした後に、自動的にRmailファイルを保存します。
+  Following the usual conventions of Emacs, changes in an Rmail file become
+permanent only when you save the file.  You can save it with @kbd{s}
+(@code{rmail-expunge-and-save}), which also expunges deleted messages from
+the file first (@pxref{Rmail Deletion}).  To save the file without
+expunging, use @kbd{C-x C-s}.  Rmail automatically saves the Rmail file
+after merging new mail from an inbox file (@pxref{Rmail Inbox}).
 
 @kindex q @r{(Rmail)}
 @findex rmail-quit
 @kindex b @r{(Rmail)}
 @findex rmail-bury
-  Rmailをexitするには、@kbd{q}
-(@code{rmail-quit})を使用します。これはRmailにたいして完全な削除と保存を行い、Rmailバッファーと、(表示されていれば)サマリーバッファーを隠します(@ref{Rmail
-Summary}を参照してください)。しかし正式にexitする必要はありません。Rmailから他のバッファーを編集するために切り替えて、2度とRmailに戻らなければ、それはexitしたことになります。(他の変更したファイルと同様に)最終的にRmailファイルを確実に保存することだけが重要です。これを行なうには@kbd{C-x
-s}が適しています(@ref{Save Commands}を参照してください)。Rmailコマンドの@kbd{b}
-@code{rmail-bury}は、Rmailファイルにたいする完全な削除と保存を行なわずに、Rmailバッファーとサマリーを隠します。
+  You can exit Rmail with @kbd{q} (@code{rmail-quit}); this expunges and saves
+the Rmail file, then buries the Rmail buffer as well as its summary buffer,
+if present (@pxref{Rmail Summary}).  But there is no need to exit formally.
+If you switch from Rmail to editing in other buffers, and never switch back,
+you have exited.  Just make sure to save the Rmail file eventually (like any
+other file you have changed).  @kbd{C-x s} is a suitable way to do this
+(@pxref{Save Commands}).  The Rmail command @kbd{b}, @code{rmail-bury},
+buries the Rmail buffer and its summary without expunging and saving the
+Rmail file.
 
 @node Rmail Scrolling
-@section メッセージのスクロール
+@section Scrolling Within a Message
 
-  Rmailが画面に収まらないメッセージを表示しているときは、残りを読むためにスクロールしなければなりません。通常のスクロールコマンド@kbd{C-v}、@kbd{M-v}、@kbd{M-<}
-(@ref{Scrolling}を参照)などでこれを行なうことができますが、Rmailでのスクロールは頻繁に行なわれるので、簡単に行なえるようにする価値があります。
+  When Rmail displays a message that does not fit on the screen, you must
+scroll through it to read the rest.  You could do this with the usual
+scrolling commands: @kbd{C-v}, @kbd{M-v} and @kbd{M-<} (@pxref{Scrolling}),
+but in Rmail scrolling is so frequent that it deserves to be easier.
 
 @table @kbd
 @item @key{SPC}
-前方にスクロールします(@code{scroll-up-command})。
+Scroll forward (@code{scroll-up-command}).
 @item @key{DEL}
 @itemx S-@key{SPC}
-後方にスクロールします(@code{scroll-down-command})。
+Scroll backward (@code{scroll-down-command}).
 @item .
-メッセージの最初にスクロールします(@code{rmail-beginning-of-message})。
+Scroll to start of message (@code{rmail-beginning-of-message}).
 @item /
-メッセージの最後にスクロールします(@code{rmail-end-of-message})。
+Scroll to end of message (@code{rmail-end-of-message}).
 @end table
 
 @kindex SPC @r{(Rmail)}
 @kindex DEL @r{(Rmail)}
 @kindex S-SPC @r{(Rmail)}
-  メッセージを読むときにもっとも一般的に行なうのは、画面単位でメッセージをスクロールすることなので、Rmailは@key{SPC}と@key{DEL}(または@kbd{S-@key{SPC}})で、@kbd{C-v}
-(@code{scroll-up-command})と@kbd{M-v}
-(@code{scroll-down-command})と同じことを行なうようにしています。
+  Since the most common thing to do while reading a message is to scroll
+through it by screenfuls, Rmail makes @key{SPC} and @key{DEL} (or
+@kbd{S-@key{SPC}}) do the same as @kbd{C-v} (@code{scroll-up-command})  and
+@kbd{M-v} (@code{scroll-down-command}) respectively.
 
 @kindex . @r{(Rmail)}
 @kindex / @r{(Rmail)}
@@ -113,40 +135,57 @@ s}が適しています(@ref{Save Commands}を参照してください)。Rmail�
 @findex rmail-end-of-message
 @c The comment about buffer boundaries is still true in mbox Rmail, if
 @c less likely to be relevant.
-  コマンド@kbd{.}
-(@code{rmail-beginning-of-message})は、選択されたメッセージの最初に、後方へスクロールします。これは@kbd{M-<}とまったく同じではありません。このコマンドはマークをセットしません。他にも、カレントメッセージのバッファー境界を変更していた場合(たとえば編集により。@ref{Rmail
-Editing}を参照されたい)は、それをリセットします。同様に、コマンド@kbd{/}
-(@code{rmail-end-of-message})は、選択されたメッセージの最後に、前方へスクロールします。
+  The command @kbd{.} (@code{rmail-beginning-of-message}) scrolls back to the
+beginning of the selected message.  This is not quite the same as @kbd{M-<}:
+for one thing, it does not set the mark; for another, it resets the buffer
+boundaries of the current message if you have changed them (e.g., by
+editing, @pxref{Rmail Editing}).  Similarly, the command @kbd{/}
+(@code{rmail-end-of-message}) scrolls forward to the end of the selected
+message.
 
 @node Rmail Motion
-@section メッセージ間の移動
+@section Moving Among Messages
 
-  メッセージにたいして行なうもっとも基本的なことは、それを読むことです。Rmailでこれを行なうために、そのメッセージをカレントにします。通常の方法はファイルを、受信したメッセージ順に移動していく方法です(その最初のメッセージは@samp{unseen}(未読)の属性をもちます。@ref{Rmail
-Attributes}を参照してください)。他の新しいメッセージを読むには、前方に移動します。古いメッセージを再読するには後方に移動します。
+  The most basic thing to do with a message is to read it.  The way to do this
+in Rmail is to make the message current.  The usual practice is to move
+sequentially through the file, since this is the order of receipt of
+messages.  When you enter Rmail, you are positioned at the first message
+that you have not yet made current (that is, the first one that has the
+@samp{unseen} attribute; @pxref{Rmail Attributes}).  Move forward to see the
+other new messages; move backward to re-examine old messages.
 
 @table @kbd
 @item n
-間にある削除されたメッセージをスキップして、次の削除されていないメッセージに移動します(@code{rmail-next-undeleted-message})。
+Move to the next nondeleted message, skipping any intervening deleted
+messages (@code{rmail-next-undeleted-message}).
 @item p
-前の削除されていないメッセージに移動します(@code{rmail-previous-undeleted-message})。
+Move to the previous nondeleted message
+(@code{rmail-previous-undeleted-message}).
 @item M-n
-削除されたメッセージも含めて、次のメッセージに移動します(@code{rmail-next-message})。
+Move to the next message, including deleted messages
+(@code{rmail-next-message}).
 @item M-p
-削除されたメッセージも含めて、前のメッセージに移動します(@code{rmail-previous-message})。
+Move to the previous message, including deleted messages
+(@code{rmail-previous-message}).
 @item C-c C-n
-カレントメッセージと同じsubjectの、次のメッセージに移動します(@code{rmail-next-same-subject})。
+Move to the next message with the same subject as the current one
+(@code{rmail-next-same-subject}).
 @item C-c C-p
-カレントメッセージと同じsubjectの、前のメッセージに移動します(@code{rmail-previous-same-subject})。
+Move to the previous message with the same subject as the current one
+(@code{rmail-previous-same-subject}).
 @item j
-最初のメッセージに移動します。引数@var{n}を指定すると、@var{n}番目のメッセージに移動します(@code{rmail-show-message})。
+Move to the first message.  With argument @var{n}, move to message number
+@var{n} (@code{rmail-show-message}).
 @item >
-最後のメッセージに移動します(@code{rmail-last-message})。
+Move to the last message (@code{rmail-last-message}).
 @item <
-最初のメッセージに移動します(@code{rmail-first-message})。
+Move to the first message (@code{rmail-first-message}).
 @item M-s @var{regexp} @key{RET}
-@var{regexp}へのマッチを含む、次のメッセージに移動します(@code{rmail-search})。
+Move to the next message containing a match for @var{regexp}
+(@code{rmail-search}).
 @item - M-s @var{regexp} @key{RET}
-@var{regexp}へのマッチを含む、前のメッセージに移動します(これは負の引数による@kbd{M-s}である)。
+Move to the previous message containing a match for @var{regexp}.  (This is
+@kbd{M-s} with a negative argument.)
 @end table
 
 @kindex n @r{(Rmail)}
@@ -157,31 +196,49 @@ Attributes}を参照してください)。他の新しいメッセージを読�
 @findex rmail-previous-undeleted-message
 @findex rmail-next-message
 @findex rmail-previous-message
-  @kbd{n}と@kbd{p}は、Rmailでメッセージを移動する通常の方法です。これらは、(通常そうしたいように)削除されたメッセージをスキップして、メッセージを順番に移動していきます。これらのコマンドの定義には、@code{rmail-next-undeleted-message}および@code{rmail-previous-undeleted-message}という名前がつけられています。削除されたメッセージをスキップしたくない場合
---- たとえばメッセージの削除を取り消すために ---
-は、変種の@kbd{M-n}と@kbd{M-p}(@code{rmail-next-message}と@code{rmail-previous-message})を使います。これらのコマンドへの数引数は、繰り返し回数を指定します。
+  @kbd{n} and @kbd{p} are the usual way of moving among messages in Rmail.
+They move through the messages sequentially, but skip over deleted messages,
+which is usually what you want to do.  Their command definitions are named
+@code{rmail-next-undeleted-message} and
+@code{rmail-previous-undeleted-message}.  If you do not want to skip deleted
+messages---for example, if you want to move to a message to undelete
+it---use the variants @kbd{M-n} and @kbd{M-p} (@code{rmail-next-message} and
+@code{rmail-previous-message}).  A numeric argument to any of these commands
+serves as a repeat count.
 
-  Rmailでは数引数の指定は、単に数字をタイプして行なうことができます。最初に@kbd{C-u}をタイプする必要はありません。単に@kbd{-}とタイプして、負の引数を指定することもできます。
+  In Rmail, you can specify a numeric argument by typing just the digits.  You
+don't need to type @kbd{C-u} first.  You can also specify a negative
+argument by typing just @kbd{-}.
 
 @kindex M-s @r{(Rmail)}
 @findex rmail-search
 @cindex searching in Rmail
-  @kbd{M-s}
-(@code{rmail-search})は、Rmail版の検索コマンドです。通常のインクリメンタル検索@kbd{C-s}は機能しますが、これはカレントメッセージだけを検索します。@kbd{M-s}の目的は、他のメッセージにたいする検索です。これは非インクリメンタルに正規表現(@ref{Regexps}を参照してください)を読み取り、後続のメッセージの先頭から検索を開始して、見つかったらそのメッセージを選択します。@var{regexp}が空の場合、@kbd{M-s}は前回使用したregexpを再使用します。
+  The @kbd{M-s} (@code{rmail-search}) command is Rmail's version of search.
+The usual incremental search command @kbd{C-s} works in Rmail, but it
+searches only within the current message.  The purpose of @kbd{M-s} is to
+search for another message.  It reads a regular expression (@pxref{Regexps})
+nonincrementally, then searches starting at the beginning of the following
+message for a match.  It then selects that message.  If @var{regexp} is
+empty, @kbd{M-s} reuses the regexp used the previous time.
 
-  ファイルの中の他のメッセージにたいして後方に検索するには、@kbd{M-s}に負の引数を与えます。Rmailでは@kbd{-
-M-s}でこれを行なうことができます。これは前のメッセージの最後から検索を開始します。
+  To search backward in the file for another message, give @kbd{M-s} a
+negative argument.  In Rmail you can do this with @kbd{- M-s}.  This begins
+searching from the end of the previous message.
 
-  ラベルにもとづく検索も可能です。@ref{Rmail Labels}を参照してください。
+  It is also possible to search for a message based on labels.  @xref{Rmail
+Labels}.
 
 @kindex C-c C-n @r{(Rmail)}
 @kindex C-c C-p @r{(Rmail)}
 @findex rmail-next-same-subject
 @findex rmail-previous-same-subject
-  @kbd{C-c C-n}
-(@code{rmail-next-same-subject})コマンドは、カレントメッセージと同じsubjectをもつ、次のメッセージに移動します。プレフィクス引数は繰り返し回数として使用されます。負の引数を指定すると、@kbd{C-c
-C-p}
-(@code{rmail-previous-same-subject})のように、後方に移動します。subjectを比較するとき、subjectへの返信に通常付加されるようなプレフィクスは無視します。これらのコマンドは、同じsubjectに関するすべてのメッセージ、いわゆるthreadを読むときに有用です。
+  The @kbd{C-c C-n} (@code{rmail-next-same-subject}) command moves to the next
+message with the same subject as the current one.  A prefix argument serves
+as a repeat count.  With a negative argument, this command moves backward,
+acting like @kbd{C-c C-p} (@code{rmail-previous-same-subject}).  When
+comparing subjects, these commands ignore the prefixes typically added to
+the subjects of replies.  These commands are useful for reading all of the
+messages pertaining to the same subject, a.k.a.@: @dfn{thread}.
 
 @kindex j @r{(Rmail)}
 @kindex > @r{(Rmail)}
@@ -189,133 +246,221 @@ C-p}
 @findex rmail-show-message
 @findex rmail-last-message
 @findex rmail-first-message
-  メッセージの絶対番号を指定してメッセージに移動するには、メッセージ番号を引数として、@kbd{j}
-(@code{rmail-show-message})を使用します。引数を与えない場合、@kbd{j}は最初のメッセージに移動します。@kbd{<}
-(@code{rmail-first-message})も最初のメッセージを選択します。@kbd{>}
-(@code{rmail-last-message})は最後のメッセージを選択します。
+  To move to a message specified by absolute message number, use @kbd{j}
+(@code{rmail-show-message}) with the message number as argument.  With no
+argument, @kbd{j} selects the first message.  @kbd{<}
+(@code{rmail-first-message}) also selects the first message.  @kbd{>}
+(@code{rmail-last-message}) selects the last message.
 
 @node Rmail Deletion
-@section メッセージの削除
+@section Deleting Messages
 
 @cindex deletion (Rmail)
-  メッセージを残す必要がなくなったとき、それを@dfn{削除(delete)}できます。これはそのメッセージを無視するフラグをつけ、いくつかのRmailコマンドは、そのメッセージが存在しないかのように振る舞います。しかし、そのメッセージはまだRmailファイルの中にあり、メッセージ番号ももっています。
+  When you no longer need to keep a message, you can @dfn{delete} it.  This
+flags it as ignorable, and some Rmail commands pretend it is no longer
+present; but it still has its place in the Rmail file, and still has its
+message number.
 
 @cindex expunging (Rmail)
 @c The following is neither true (there is also unforward, sorting,
 @c etc), nor especially interesting.
 @c Expunging is the only action that changes the message number of any
 @c message, except for undigestifying (@pxref{Rmail Digest}).
-  Rmailファイルにたいして@dfn{完全な削除(expunging)}を行なうことにより、削除されたメッセージを実際に消去します。残ったメッセージには新たに連番が振られます。
+  @dfn{Expunging} the Rmail file actually removes the deleted messages.  The
+remaining messages are renumbered consecutively.
 
 @table @kbd
 @item d
-カレントメッセージを削除して、次の削除されていないメッセージに移動します(@code{rmail-delete-forward})。
+Delete the current message, and move to the next nondeleted message
+(@code{rmail-delete-forward}).
 @item C-d
-カレントメッセージを削除して、前の削除されていないメッセージに移動します(@code{rmail-delete-backward})。
+Delete the current message, and move to the previous nondeleted message
+(@code{rmail-delete-backward}).
 @item u
-カレントメッセージの削除を取り消すか、前の削除されたメッセージに後方へ移動して、そのメッセージの削除を取り消します(@code{rmail-undelete-previous-message})。
+Undelete the current message, or move back to the previous deleted message
+and undelete it (@code{rmail-undelete-previous-message}).
 @item x
-Rmailファイルにたいして完全な削除を行ないます(@code{rmail-expunge})。
+Expunge the Rmail file (@code{rmail-expunge}).
 @end table
 
 @kindex d @r{(Rmail)}
 @kindex C-d @r{(Rmail)}
 @findex rmail-delete-forward
 @findex rmail-delete-backward
-  Rmailには、メッセージを削除するためのコマンドが2つあります。両方ともカレントメッセージを削除して、他のメッセージを選択します。@kbd{d}
-(@code{rmail-delete-forward})は、すでに削除されたメッセージをスキップして次のメッセージに移動し、@kbd{C-d}
-(@code{rmail-delete-backward})は、前の削除されていないメッセージに移動します。指定方向に、移動先となる削除されていないメッセージが存在しない場合は、単にそのメッセージを削除するだけで、カレントメッセージはそのメッセージのままです。数引数は繰り返し回数を指定します。これにより1つのコマンドで複数のメッセージを削除できます。負の引数は@kbd{d}と@kbd{C-d}の意味を逆転します。
+  There are two Rmail commands for deleting messages.  Both delete the current
+message and select another.  @kbd{d} (@code{rmail-delete-forward}) moves to
+the following message, skipping messages already deleted, while @kbd{C-d}
+(@code{rmail-delete-backward})  moves to the previous nondeleted message.
+If there is no nondeleted message to move to in the specified direction, the
+message that was just deleted remains current.  A numeric prefix argument
+serves as a repeat count, to allow deletion of several messages in a single
+command.  A negative argument reverses the meaning of @kbd{d} and @kbd{C-d}.
 
 @c mention other hooks, e.g., show message hook?
 @vindex rmail-delete-message-hook
-  Rmailがメッセージを削除するときは、フック@code{rmail-delete-message-hook}が実行されます。フック関数が呼び出されるとき、そのメッセージは削除とマークされますが、そのメッセージがRmailバッファーのカレントメッセージのままです。
+  Whenever Rmail deletes a message, it runs the hook
+@code{rmail-delete-message-hook}.  When the hook functions are invoked, the
+message has been marked deleted, but it is still the current message in the
+Rmail buffer.
 
 @cindex undeletion (Rmail)
 @kindex x @r{(Rmail)}
 @findex rmail-expunge
 @kindex u @r{(Rmail)}
 @findex rmail-undelete-previous-message
-  すべての削除されたメッセージを最終的にRmailファイルから消すには、@kbd{x}
-(@code{rmail-expunge})とタイプします。これを行なうまでは、削除されたメッセージの@dfn{削除を取り消す(undelete)}ことができます。削除の取り消しコマンド@kbd{u}
-(@code{rmail-undelete-previous-message})は、ほとんどのケースにおいて@kbd{d}コマンドの効果を取り消すようにデザインされています。カレントメッセージが削除されている場合は、カレントメッセージの削除を取り消します。そうでない場合は、削除されたメッセージが見つかるまで後方に移動して、そのメッセージの削除を取り消します。数引数は繰り返し回数を指定します。これにより1つのコマンドで複数のメッセージ削除を取り消すことができます。。
+  To make all the deleted messages finally vanish from the Rmail file, type
+@kbd{x} (@code{rmail-expunge}).  Until you do this, you can still
+@dfn{undelete} the deleted messages.  The undeletion command, @kbd{u}
+(@code{rmail-undelete-previous-message}), is designed to cancel the effect
+of a @kbd{d} command in most cases.  It undeletes the current message if the
+current message is deleted.  Otherwise it moves backward to previous
+messages until a deleted message is found, and undeletes that message.  A
+numeric prefix argument serves as a repeat count, to allow undeletion of
+several messages in a single command.
 
-  通常、@kbd{d}を@kbd{u}で取り消すことができます。なぜなら@kbd{u}は後方に移動して、@kbd{d}で削除されたメッセージの削除を取り消すからです。しかしこれは、削除するメッセージの前にすでに削除されたメッセージがある場合、@kbd{d}はこれらのメッセージをスキップするのでうまく機能しません。その後で@kbd{u}コマンドを実行すると、スキップされた最後のメッセージの削除を取り消すからです。この問題を避ける明解な方法はありません。しかし@kbd{u}コマンドを繰り返すことにより、削除を取り消したいメッセージに戻ることができます。@kbd{M-p}コマンドで特定の削除されたメッセージを選択してから、@kbd{u}をタイプして削除を取り消すこともできます。
+  You can usually undo a @kbd{d} with a @kbd{u} because the @kbd{u} moves back
+to and undeletes the message that the @kbd{d} deleted.  But this does not
+work when the @kbd{d} skips a few already-deleted messages that follow the
+message being deleted; then the @kbd{u} command undeletes the last of the
+messages that were skipped.  There is no clean way to avoid this problem.
+However, by repeating the @kbd{u} command, you can eventually get back to
+the message that you intend to undelete.  You can also select a particular
+deleted message with the @kbd{M-p} command, then type @kbd{u} to undelete
+it.
 
-  削除されたメッセージは@samp{deleted}の属性をもち、結果として、カレントメッセージが削除されている場合はモードラインに@samp{deleted}が表示されます。実際のところ、メッセージの削除と削除の取り消しは、この属性の追加または削除に過ぎません。@ref{Rmail
-Attributes}を参照してください。
+  A deleted message has the @samp{deleted} attribute, and as a result
+@samp{deleted} appears in the mode line when the current message is
+deleted.  In fact, deleting or undeleting a message is nothing more than
+adding or removing this attribute.  @xref{Rmail Attributes}.
 
 @node Rmail Inbox
-@section Rmailファイルとinbox
+@section Rmail Files and Inboxes
 @cindex inbox file
 
-  ローカルでメールを受信したとき、オペレーティングシステムは受信メールを、私たちが@dfn{inbox}と呼ぶファイルに配します。Rmailを開始したとき、@command{movemail}と呼ばれるCプログラムを実行して、inboxから新しいメッセージを、RmailセッションのRmailファイルにコピーします。このRmailファイルには、以前のRmailセッションの他のメッセージも含まれています。Rmailで実際に読むメールは、このファイルの中にあります。この操作は@dfn{新しいメールの取得(getting
-new mail)}と呼ばれます。@kbd{g}とタイプすることにより、いつでも新しいメールを取得できます。
+  When you receive mail locally, the operating system places incoming mail for
+you in a file that we call your @dfn{inbox}.  When you start up Rmail, it
+runs a C program called @command{movemail} to copy the new messages from
+your inbox into your primary Rmail file, which also contains other messages
+saved from previous Rmail sessions.  It is in this file that you actually
+read the mail with Rmail.  This operation is called @dfn{getting new mail}.
+You can get new mail at any time in Rmail by typing @kbd{g}.
 
 @vindex rmail-primary-inbox-list
 @cindex @env{MAIL} environment variable
-  変数@code{rmail-primary-inbox-list}は、プライマリーRmailファイルにたいするinboxファイルのリストを含みます。この変数を明示的にセットしない場合、Rmailは環境変数@env{MAIL}を使用するか、最後の手段として@code{rmail-spool-directory}にもとづく、デフォルトのinboxを使用します。デフォルトのinboxはオペレーティングシステムに依存し、それは@file{/var/mail/@var{username}}、@file{/var/spool/mail/@var{username}}、@file{/usr/spool/mail/@var{username}}などです。
+  The variable @code{rmail-primary-inbox-list} contains a list of the files
+that are inboxes for your primary Rmail file.  If you don't set this
+variable explicitly, Rmail uses the @env{MAIL} environment variable, or, as
+a last resort, a default inbox based on @code{rmail-spool-directory}.  The
+default inbox file depends on your operating system; often it is
+@file{/var/mail/@var{username}}, @file{/var/spool/mail/@var{username}}, or
+@file{/usr/spool/mail/@var{username}}.
 
-  コマンド@code{set-rmail-inbox-list}で、カレントセッションでの任意のRmailファイルにたいするinboxファイルを指定できます。@ref{Rmail
-Files}を参照してください。
+  You can specify the inbox file(s) for any Rmail file for the current session
+with the command @code{set-rmail-inbox-list}; see @ref{Rmail Files}.
 
-  inboxとは別にRmailファイルをもつべき理由が2つあります。
+  There are two reasons for having separate Rmail files and inboxes.
 
 @enumerate
 @item
-inboxファイルのフォーマットは、オペレーティングシステムと、それを使用する他のメールソフトによりさまざまです。Rmailの一部だけがそれらの候補を理解していればよく、それらすべてをRmail自身のフォーマットに変換する方法だけを理解すればよいからです。
+The inbox file format varies between operating systems and according to the
+other mail software in use.  Only one part of Rmail needs to know about the
+alternatives, and it need only understand how to convert all of them to
+Rmail's own format.
 
 @item
-メールを紛失せずにinboxにアクセスするのは厄介です。なぜならそれはメール配信とインターロック(連動)する必要があるからです。さらにオペレーティングシステムごとに、異なるインターロック技術が使用されています。inboxから別のRmailファイルに1度メールを移動する方法により、Rmailの残りのすべてがインターロックの必要性を無視できます。なぜならRmailはRmailファイルだけを操作すればよいからです。
+It is very cumbersome to access an inbox file without danger of losing mail,
+because it is necessary to interlock with mail delivery.  Moreover,
+different operating systems use different interlocking techniques.  The
+strategy of moving mail out of the inbox once and for all into a separate
+Rmail file avoids the need for interlocking in all the rest of Rmail, since
+only Rmail operates on the Rmail file.
 @end enumerate
 
 @cindex mbox files
 @vindex rmail-mbox-format
-  Rmailは、Rmailファイルの内部フォーマットとして、UnixおよびGNUシステムに取り入れられた、標準的な@samp{mbox}フォーマットを使用します(実際のところ、mboxフォーマットとは若干の違いがあります。その違いは重要ではありませんが、変数@code{rmail-mbox-format}をセットすることにより、あなたのシステムが使用するフォーマットをRmailに指定できます。詳細は、変数のドキュメントを参照してください)。
+  Rmail uses the standard @samp{mbox} format, introduced by Unix and GNU
+systems for inbox files, as its internal format of Rmail files.  (In fact,
+there are a few slightly different mbox formats.  The differences are not
+very important, but you can set the variable @code{rmail-mbox-format} to
+tell Rmail which form your system uses.  See that variable's documentation
+for more details.)
 
 @vindex rmail-preserve-inbox
-  新しいメールを受信したとき、Rmailは最初にその新しいメールをinboxファイルからRmailファイルにコピーします。それからRmailファイルを保存して、その後でinboxファイルからそれをクリアーします。この方法では、システムのクラッシュにより、inboxとRmailファイルの間でメールの重複は発生するかもしれませんが、メールを失うことはあり得ません。@code{rmail-preserve-inbox}が非@code{nil}の場合、Rmailは新しいメールを受信したときにinboxファイルをクリアーしません。旅行の際など、携帯用のコンピューターでPOPを通じてメールをチェックするときは、この変数をセットすれば、メールはサーバーに残るので、後であなたがメインに使用するワークステーションのデスクトップに保存することができます。
+  When getting new mail, Rmail first copies the new mail from the inbox file
+to the Rmail file; then it saves the Rmail file; then it clears out the
+inbox file.  This way, a system crash may cause duplication of mail between
+the inbox and the Rmail file, but cannot lose mail.  If
+@code{rmail-preserve-inbox} is non-@code{nil}, then Rmail does not clear out
+the inbox file when it gets new mail.  You may wish to set this, for
+example, on a portable computer you use to check your mail via POP while
+traveling, so that your mail will remain on the server and you can save it
+later on your main desktop workstation.
 
-  Rmailがinboxファイルから間接的に新しいメールをコピーするケースがあります。最初に@command{movemail}プログラムを実行してinboxから、Rmailファイルと同じディレクトリーにある、@file{.newmail-@var{inboxname}}と呼ばれる中間ファイルにメールを移動します。その後、Rmailは、そのファイルから新しいメールをマージして、Rmailファイルを保存し、中間ファイルの削除はその後にだけ行なわれます。悪いタイミングでクラッシュが発生した場合、中間ファイルは残っているので、Rmailは次にinboxファイルから新しいメールを取得するとき、それを再使用します。
+  In some cases, Rmail copies the new mail from the inbox file indirectly.
+First it runs the @command{movemail} program to move the mail from the inbox
+to an intermediate file called @file{.newmail-@var{inboxname}}, in the same
+directory as the Rmail file.  Then Rmail merges the new mail from that file,
+saves the Rmail file, and only then deletes the intermediate file.  If there
+is a crash at the wrong time, this file continues to exist, and Rmail will
+use it again the next time it gets new mail from that inbox.
 
-  Rmailが@file{.newmail-@var{inboxname}}の中のデータをmbox形式に変換できない場合、ファイルを@file{RMAILOSE.@var{n}}(@var{n}はファイル名を一意にするために選ばれます)にリネームするので、Rmailはそのデータで再度問題を起こすことはなくなります。メッセージの何がRmailを混乱させたか調べて、それを削除すべきです(大抵は8進コード037のcontrol-underscoreがメッセージに含まれている場合です)。その後、修正されたファイルから@kbd{1
-g}を使って新しいメールを取得できます。
+  If Rmail is unable to convert the data in @file{.newmail-@var{inboxname}}
+into mbox format, it renames the file to @file{RMAILOSE.@var{n}} (@var{n} is
+an integer chosen to make the name unique) so that Rmail will not have
+trouble with the data again.  You should look at the file, find whatever
+message confuses Rmail (probably one that includes the control-underscore
+character, octal code 037), and delete it.  Then you can use @kbd{1 g} to
+get new mail from the corrected file.
 
 @node Rmail Files
-@section 複数のRmailファイル
+@section Multiple Rmail Files
 
-  Rmailはデフォルトで、あなたの@dfn{プライマリーRmailファイル(primary Rmail
-file)}を操作します。これは@file{~/RMAIL}というファイルで、inboxファイルからメールを受け取ります。しかし他のRmailファイルを所有して。Rmailでそれを編集することができます。これらのファイルは、それら自身のinboxからメールを受け取ったり、明示的なRmailコマンドでメッセージを移動することができます(@ref{Rmail
-Output}を参照してください)。
+  Rmail operates by default on your @dfn{primary Rmail file}, which is named
+@file{~/RMAIL} and receives your incoming mail from your system inbox file.
+But you can also have other Rmail files and edit them with Rmail.  These
+files can receive mail through their own inboxes, or you can move messages
+into them with explicit Rmail commands (@pxref{Rmail Output}).
 
 @table @kbd
 @item i @var{file} @key{RET}
-@var{file}をEmacsに読み込んで、それにたいしてRmailを実行します(@code{rmail-input})。
+Read @var{file} into Emacs and run Rmail on it (@code{rmail-input}).
 @ignore
 @item M-x set-rmail-inbox-list @key{RET} @var{files} @key{RET}
 Specify inbox file names for current Rmail file to get mail from.
 @end ignore
 @item g
-カレントRmailファイルのinboxから、新しいメールをマージします(@code{rmail-get-new-mail})。
+Merge new mail from current Rmail file's inboxes
+(@code{rmail-get-new-mail}).
 @item C-u g @var{file} @key{RET}
-inboxファイル@var{file}から新しいメールをマージします。
+Merge new mail from inbox file @var{file}.
 @end table
 
 @kindex i @r{(Rmail)}
 @findex rmail-input
-  プライマリーRmailファイル以外のファイルでRmailを実行するために、Rmailで@kbd{i}
-(@code{rmail-input})コマンドを使用できます。これは、そのファイルをRmailモードでvisitします。Rmailの外からでも@kbd{M-x
-rmail-input}を使用することができますが、同じことを行なう@kbd{C-u M-x rmail}の方が簡単にタイプできます。
+  To run Rmail on a file other than your primary Rmail file, you can use the
+@kbd{i} (@code{rmail-input}) command in Rmail.  This visits the file in
+Rmail mode.  You can use @kbd{M-x rmail-input} even when not in Rmail, but
+it is easier to type @kbd{C-u M-x rmail}, which does the same thing.
 
-  通常@kbd{i}で読み込むファイルは、有効なmboxファイルであるべきです。そうでない場合、Rmailはそのファイルのテキストをmbox形式に変換しようと試み、そのバッファーで変換されたテキストをvisitします。バッファーを保存すると、そのファイルが変換されます。
+  The file you read with @kbd{i} should normally be a valid mbox file.  If it
+is not, Rmail tries to convert its text to mbox format, and visits the
+converted text in the buffer.  If you save the buffer, that converts the
+file.
 
-  存在しないファイル名を指定した場合、@kbd{i}は新しいRmailファイルを作成するために、新しいバッファーを初期化します。
+  If you specify a file name that doesn't exist, @kbd{i} initializes a new
+buffer for creating a new Rmail file.
 
 @vindex rmail-secondary-file-directory
 @vindex rmail-secondary-file-regexp
 @c FIXME matches only checked when Rmail file first visited?
-  メニューからRmailファイルを選択することもできます。メニューClassifyの、アイテムInput Rmail
-Fileを選択して、Rmailファイルを選択します。変数@code{rmail-secondary-file-directory}および@code{rmail-secondary-file-regexp}は、メニューがどのファイルを表示するかを指定します。最初の変数はファイルを探すディレクトリーを指定し、2番目の変数はそのディレクトリーのどのファイル(正規表現にマッチするファイルすべて)を表示するかを指定します。マッチするファイルがない場合、このメニューアイテムは選択できません。これらの変数は、出力するファイルの選択にも適用されます(@ref{Rmail
-Output}を参照してください)。
+  You can also select an Rmail file from a menu.  In the Classify menu, choose
+the Input Rmail File item; then choose the Rmail file you want.  The
+variables @code{rmail-secondary-file-directory} and
+@code{rmail-secondary-file-regexp} specify which files to offer in the menu:
+the first variable says which directory to find them in; the second says
+which files in that directory to offer (all those that match the regular
+expression).  If no files match, you cannot select this menu item.  These
+variables also apply to choosing a file for output (@pxref{Rmail Output}).
 
 @c This is commented out because we want to advertise rmail-inbox-list
 @c instead.
@@ -330,235 +475,364 @@ the  Rmail file remembers it permanently until you specify a different list.
 @end ignore
 
 @vindex rmail-inbox-list
-  使用するinboxファイルは変数@code{rmail-inbox-list}により指定され、これはRmailモードではバッファーローカルな変数です。特別な例外として、プライマリーRmailファイルにinboxを指定していない場合、これは環境変数@env{MAIL}、またはシステム標準のinboxを使用します。
+  The inbox files to use are specified by the variable
+@code{rmail-inbox-list}, which is buffer-local in Rmail mode.  As a special
+exception, if you have specified no inbox files for your primary Rmail file,
+it uses the @env{MAIL} environment variable, or your standard system inbox.
 
 @kindex g @r{(Rmail)}
 @findex rmail-get-new-mail
-  @kbd{g}
-(@code{rmail-get-new-mail})コマンドは、inboxのメールを、カレントRmailファイルにマージします。Rmailファイルにinboxがない場合、@kbd{g}は何もしません。コマンド@kbd{M-x
-rmail}も、新しいメールをプライマリーRmailファイルにマージします。
+  The @kbd{g} command (@code{rmail-get-new-mail}) merges mail into the current
+Rmail file from its inboxes.  If the Rmail file has no inboxes, @kbd{g} does
+nothing.  The command @kbd{M-x rmail} also merges new mail into your primary
+Rmail file.
 
 @cindex merge mail from file (Rmail)
-  通常のinboxではないファイルからメールをマージするには、@kbd{C-u
-g}のように@kbd{g}キーに数引数を与えます。するとファイル名を読み取り、そのファイルからメールをマージします。引数を使用して@kbd{g}を使用しても、inboxファイルの削除・変更はされません。したがって、これはあるファイルのメッセージを、他のファイルにマージする一般的な方法です。
+  To merge mail from a file that is not the usual inbox, give the @kbd{g} key
+a numeric argument, as in @kbd{C-u g}.  Then it reads a file name and merges
+mail from that file.  The inbox file is not deleted or changed in any way
+when @kbd{g} with an argument is used.  This is, therefore, a general way of
+merging one file of messages into another.
 
 @node Rmail Output
-@section 外部ファイルへのメッセージのコピー
+@section Copying Messages Out to Files
 
-  以下はRmailファイルから他のファイルにメッセージをコピーするコマンドです。
+  These commands copy messages from an Rmail file into another file.
 
 @table @kbd
 @item o @var{file} @key{RET}
-カレントメッセージの完全なコピーを、ファイル@var{file}に追加します(@code{rmail-output})。
+Append a full copy of the current message to the file @var{file}
+(@code{rmail-output}).
 
 @item C-o @var{file} @key{RET}
-カレントメッセージの表示にしたがい、ファイル@var{file}に追加します(@code{rmail-output-as-seen})。
+Append a copy of the current message, as displayed, to the file @var{file}
+(@code{rmail-output-as-seen}).
 
 @item w @var{file} @key{RET}
-メッセージの本文だけをファイル@var{file}に出力します。デフォルトのファイル名は、そのメッセージの@samp{Subject}ヘッダーからとられます。
+Output just the message body to the file @var{file}, taking the default file
+name from the message @samp{Subject} header.
 @end table
 
 @kindex o @r{(Rmail)}
 @findex rmail-output
 @kindex C-o @r{(Rmail)}
 @findex rmail-output-as-seen
-  コマンド@kbd{o}と@kbd{C-o}はカレントメッセージを指定したファイルの後尾に追加することによりコピーします。正のプレフィクス引数は繰り返し回数として振る舞います。カレントメッセージから開始して削除済みメッセージを無視しつつ後続のメッセージをその個数分コピーします。
+  The commands @kbd{o} and @kbd{C-o} copy the current message into a specified
+file, adding it at the end.  A positive prefix argument serves as a repeat
+count: that many consecutive messages will be copied to the specified file,
+starting with the current one and ignoring deleted messages.
 
 @c FIXME remove BABYL mention in some future version?
-2つのコマンドの主な違いは、どれだけコピーするかです。@kbd{C-o}が現在表示されているヘッダーだけをコピーするのにたいし、@kbd{o}はヘッダーがすべて表示されていなくても、メッセージヘッダーを完全にコピーします。@ref{Rmail
-Display}を参照してください。加えて、ファイルがBabylフォーマットのとき、@kbd{o}はメッセージをBabylフォーマットに変換しますが、@kbd{C-o}はBabylファイルを出力できません。
+The two commands differ mainly in how much to copy: @kbd{o} copies the full
+message headers, even if they are not all visible, while @kbd{C-o} copies
+exactly the headers currently displayed and no more.  @xref{Rmail Display}.
+In addition, @kbd{o} converts the message to Babyl format (used by Rmail in
+Emacs version 22 and before) if the file is in Babyl format; @kbd{C-o}
+cannot output to Babyl files at all.
 
-  Emacsバッファーで出力ファイルをvisitしていた場合、出力コマンドはメッセージをそのバッファーに追加します。最終的にそのバッファーをファイルに保存するかは、あなた次第です。
+  If the output file is currently visited in an Emacs buffer, the output
+commands append the message to that buffer.  It is up to you to save the
+buffer eventually in its file.
 
 @kindex w @r{(Rmail)}
 @findex rmail-output-body-to-file
-  本文にファイル内容がそのまま記載されているようなメッセージを受信することがあるかもしれません。そのような場合、@kbd{w}
-(@code{rmail-output-body-to-file})コマンドで、本文を(メッセージヘッダーを除いて)ファイルに保存できます。そのようなメッセージは@samp{Subject}フィールドにファイル名を意図した内容を含んでいる場合があるので、@kbd{w}コマンドは(ファイル名に可搬的に使用できないいくつかの文字を置換した後)デフォルトの出力ファイル名に@samp{Subject}フィールドを使用します。しかし、ファイル名はミニバッファーを使って読み取られるので、異なる名前を指定できます。
+  Sometimes you may receive a message whose body holds the contents of a
+file.  You can save the body to a file (excluding the message header)  with
+the @kbd{w} command (@code{rmail-output-body-to-file}).  Often these
+messages contain the intended file name in the @samp{Subject} field, so the
+@kbd{w} command uses the @samp{Subject} field as the default for the output
+file name (after replacing some characters that cannot be portably used in
+file names).  However, the file name is read using the minibuffer, so you
+can specify a different name if you wish.
 
-  メニューからRmailファイルを選択して、メッセージを出力することもできます。メニューClassifyの、メニューアイテムOutput Rmail
-Fileを選択して、出力したいRmailファイルを選択します。これは@kbd{o}コマンドのように、カレントメッセージをそのファイルに出力します。変数@code{rmail-secondary-file-directory}および@code{rmail-secondary-file-regexp}は、メニューがどのファイルを表示するかを指定します。最初の変数はファイルを探すディレクトリーを指定し、2番目の変数はそのディレクトリーのどのファイル(正規表現にマッチするファイルすべて)を表示するかを指定します。マッチするファイルがない場合、このメニューアイテムは選択できません。
+  You can also output a message to an Rmail file chosen with a menu.  In the
+Classify menu, choose the Output Rmail File menu item; then choose the Rmail
+file you want.  This outputs the current message to that file, like the
+@kbd{o} command.  The variables @code{rmail-secondary-file-directory} and
+@code{rmail-secondary-file-regexp} specify which files to offer in the menu:
+the first variable says which directory to find them in; the second says
+which files in that directory to offer (all those that match the regular
+expression).  If no files match, you cannot select this menu item.
 
-  @kbd{o}または@kbd{C-o}でメッセージをコピーすることにより、メッセージのオリジナルコピーには属性@samp{filed}が与えられるので、そのメッセージがカレントのときは、モードラインに@samp{filed}が表示されます。
+  Copying a message with @kbd{o} or @kbd{C-o} gives the original copy of the
+message the @samp{filed} attribute, so that @samp{filed} appears in the mode
+line when such a message is current.
 
 @vindex rmail-delete-after-output
-  各メールメッセージにたいして1つのコピーを保持したい場合は、変数@code{rmail-delete-after-output}に@code{t}をセットします。その場合、コマンド@kbd{o}、@kbd{C-o}および@kbd{w}は、コピー後にオリジナルのメッセージを削除します(望むなら後で削除を取り消すことができる。@ref{Rmail
-Deletion}を参照されたい)。
+  If you like to keep just a single copy of every mail message, set the
+variable @code{rmail-delete-after-output} to @code{t}; then the @kbd{o},
+@kbd{C-o} and @kbd{w} commands delete the original message after copying
+it.  (You can undelete it afterward if you wish, see @ref{Rmail Deletion}.)
 
 @vindex rmail-output-reset-deleted-flag
-  デフォルトでは@kbd{o}は出力したメッセージの削除ステータスを元メッセージのままに留めます。したがって出力される前に削除済みのメッセージは出力ファイル中に削除済みとして現われます。変数@code{rmail-output-reset-deleted-flag}を非@code{nil}値にセットすることによりこれを回避できます。メッセージのコピーは削除ステータスがリセットされるので出力ファイル中には未削除として現れます。さらにこの変数が非@code{nil}で@kbd{o}に正の引数を指定すると、後続メッセージから出力メッセージを探す際に削除済みメッセージを無視しなくなります。
+  By default, @kbd{o} will leave the deleted status of a message it outputs as
+it was on the original message; thus, a message deleted before it was output
+will appear as deleted in the output file.  Setting the variable
+@code{rmail-output-reset-deleted-flag} to a non-@code{nil} value
+countermands that: the copy of the message will have its deleted status
+reset, so the message will appear as undeleted in the output file.  In
+addition, when this variable is non-@code{nil}, specifying a positive
+argument to @kbd{o} will not ignore deleted messages when looking for
+consecutive messages to output.
 
 @vindex rmail-output-file-alist
-  変数@code{rmail-output-file-alist}は、カレントメッセージの内容にもとづいて、理にかなったデフォルトの出力ファイルを指定できます。値は以下の形式をもつ要素のリストです:
+  The variable @code{rmail-output-file-alist} lets you specify intelligent
+defaults for the output file, based on the contents of the current message.
+The value should be a list whose elements have this form:
 
 @example
 (@var{regexp} . @var{name-exp})
 @end example
 
 @noindent
-カレントメッセージに@var{regexp}にたいするマッチが存在する場合、デフォルトの出力ファイルは@var{name-exp}になります。複数の要素がそのメッセージにマッチする場合、最初にマッチした要素がデフォルトのファイル名を決定します。式@var{name-exp}は使用するファイル名を与える文字列定数、またはより一般的に、ファイル名を文字列として取得する任意のLisp式を指定できます。@code{rmail-output-file-alist}は、@kbd{o}と@kbd{C-o}の両方に適用されます。
+If there's a match for @var{regexp} in the current message, then the default
+file name for output is @var{name-exp}.  If multiple elements match the
+message, the first matching element decides the default file name.  The
+subexpression @var{name-exp} may be a string constant giving the file name
+to use, or more generally it may be any Lisp expression that yields a file
+name as a string.  @code{rmail-output-file-alist} applies to both @kbd{o}
+and @kbd{C-o}.
 
 @vindex rmail-automatic-folder-directives
-Rmailは、(@code{rmail-file-name}で指定される)プライマリーRmailファイルから、(変数@code{rmail-automatic-folder-directives}の値にもとづいて)他のファイルにメッセージを自動的に保存できます。この変数は、どのメッセージをどこに保存するかを指定する要素(@samp{directives})のリストです。各directiveは出力ファイルからなるリストで、ヘッダー名と正規表現の組が1つ以上後に続きます。メッセージのヘッダーが指定された正規表現にマッチする場合、そのメッセージは与えられたファイルに保存されます。directiveが複数のヘッダーエントリーをもつ場合、それらすべてがマッチしなければなりません。Rmailはファイル@code{rmail-file-name}からメッセージを表示するときdirectiveをチェックして、(もしあれば)最初のマッチに適用します。出力ファイルが@code{nil}の場合、そのメッセージは削除され、保存されません。たとえば特定のアドレスや、特定のsubjectのメッセージを保存するのに、この機能を使用することができます。
+Rmail can automatically save messages from your primary Rmail file (the one
+that @code{rmail-file-name} specifies) to other files, based on the value of
+the variable @code{rmail-automatic-folder-directives}.  This variable is a
+list of elements (@samp{directives}) that say which messages to save where.
+Each directive is a list consisting of an output file, followed by one or
+more pairs of a header name and a regular expression.  If a message has a
+header matching the specified regular expression, that message is saved to
+the given file.  If the directive has more than one header entry, all must
+match.  Rmail checks directives when it shows a message from the file
+@code{rmail-file-name}, and applies the first that matches (if any).  If the
+output file is @code{nil}, the message is deleted, not saved.  For example,
+you can use this feature to save messages from a particular address, or with
+a particular subject, to a dedicated file.
 
 @node Rmail Labels
-@section ラベル
+@section Labels
 @cindex label (Rmail)
 @cindex attribute (Rmail)
 
-  各メッセージは、分類(classification)のために割り当てられる、さまざまな@dfn{ラベル(labels)}をもつことができます。各ラベルは名前をもち、名前が異なると違うラベルになります。任意のラベルは、特定のメッセージにたいして、付いているか付いていないかのどちらかです。標準的な意味をもつラベル名がいくつかあり、それが適切なときは、Rmailにより自動的にメッセージに付与されます。これらの特別なラベルは、@dfn{属性(attribute)}と呼ばれます
+  Each message can have various @dfn{labels} assigned to it as a means of
+classification.  Each label has a name; different names are different
+labels.  Any given label is either present or absent on a particular
+message.  A few label names have standard meanings and are given to messages
+automatically by Rmail when appropriate; these special labels are called
+@dfn{attributes}.
 @ifnottex
-(@ref{Rmail Attributes}を参照してください)。
+(@xref{Rmail Attributes}.)
 @end ifnottex
-それ以外のすべてのラベルは、ユーザーにより付与されます。
+All other labels are assigned only by users.
 
 @table @kbd
 @item a @var{label} @key{RET}
-カレントメッセージに、ラベル@var{label}を割り当てます(@code{rmail-add-label})。
+Assign the label @var{label} to the current message
+(@code{rmail-add-label}).
 @item k @var{label} @key{RET}
-カレントメッセージから、ラベル@var{label}を外します(@code{rmail-kill-label})。
+Remove the label @var{label} from the current message
+(@code{rmail-kill-label}).
 @item C-M-n @var{labels} @key{RET}
-複数のラベル@var{labels}のどれか1つをもつ、次のメッセージに移動します(@code{rmail-next-labeled-message})。
+Move to the next message that has one of the labels @var{labels}
+(@code{rmail-next-labeled-message}).
 @item C-M-p @var{labels} @key{RET}
-複数のラベル@var{labels}のどれか1つをもつ、前のメッセージに移動します(@code{rmail-previous-labeled-message})。
+Move to the previous message that has one of the labels @var{labels}
+(@code{rmail-previous-labeled-message}).
 @item l @var{labels} @key{RET}
 @itemx C-M-l @var{labels} @key{RET}
-複数のラベル@var{labels}のどれかを含む、すべてのメッセージのサマリーを作成します(@code{rmail-summary-by-labels})。
+Make a summary of all messages containing any of the labels @var{labels}
+(@code{rmail-summary-by-labels}).
 @end table
 
 @kindex a @r{(Rmail)}
 @kindex k @r{(Rmail)}
 @findex rmail-add-label
 @findex rmail-kill-label
-  コマンド@kbd{a} (@code{rmail-add-label})および@kbd{k}
-(@code{rmail-kill-label})で、カレントメッセージにたいして任意のラベルを割り当てたり、外すことができます。引数@var{label}が空の場合、もっとも最近割り当てられた(または外された)ラベルを割り当てる(または外す)ことを意味します。
+  The @kbd{a} (@code{rmail-add-label}) and @kbd{k} (@code{rmail-kill-label})
+commands allow you to assign or remove any label on the current message.  If
+the @var{label} argument is empty, it means to assign or remove the label
+most recently assigned or removed.
 
-  メッセージを分類するためにラベルを割り当てた後、ラベルを使用する3つの方法 --- 移動、サマリー、ソート --- があります。
+  Once you have given messages labels to classify them as you wish, there are
+three ways to use the labels: in moving, in summaries, and in sorting.
 
 @kindex C-M-n @r{(Rmail)}
 @kindex C-M-p @r{(Rmail)}
 @findex rmail-next-labeled-message
 @findex rmail-previous-labeled-message
-  @kbd{C-M-n @var{labels} @key{RET}}
-(@code{rmail-next-labeled-message})は、複数のラベル@var{labels}のうちどれか1つをもつ、次のメッセージに移動します。引数@var{labels}には、カンマで区切られた1つ以上のラベル名を指定します。@kbd{C-M-p}
-(@code{rmail-previous-labeled-message})も同様ですが、前のメッセージに後方へ移動します。どちらのコマンドも、数引数は繰り返し回数を指定します。
+  @kbd{C-M-n @var{labels} @key{RET}} (@code{rmail-next-labeled-message}) moves
+to the next message that has one of the labels @var{labels}.  The argument
+@var{labels} specifies one or more label names, separated by commas.
+@kbd{C-M-p} (@code{rmail-previous-labeled-message}) is similar, but moves
+backwards to previous messages.  A numeric argument to either command serves
+as a repeat count.
 
-  コマンド@kbd{C-M-l @var{labels} @key{RET}}
-(@code{rmail-summary-by-labels})は、指定された複数のラベルのうち、少なくとも1つをもつメッセージだけを含むサマリーを表示します。引数@var{labels}はカンマで区切られた1つ以上のラベル名です。サマリーについての詳細は、@ref{Rmail
-Summary}を参照してください。
+  The command @kbd{C-M-l @var{labels} @key{RET}}
+(@code{rmail-summary-by-labels}) displays a summary containing only the
+messages that have at least one of a specified set of labels.  The argument
+@var{labels} is one or more label names, separated by commas.  @xref{Rmail
+Summary}, for information on summaries.
 
-  @kbd{C-M-n}、@kbd{C-M-p}、@kbd{C-M-l}にたいして引数@var{labels}が空の場合は、それらのコマンドにたいして、もっとも最近に指定された@var{labels}を使うことを意味します。
+  If the @var{labels} argument to @kbd{C-M-n}, @kbd{C-M-p} or @kbd{C-M-l} is
+empty, it means to use the last set of labels specified for any of these
+commands.
 
-  ラベルでメッセージをソートする情報については、@ref{Rmail Sorting}を参照してください。
+  @xref{Rmail Sorting}, for information on sorting messages with labels.
 
 @node Rmail Attributes
-@section Rmailの属性
+@section Rmail Attributes
 
-  @samp{deleted}や@samp{filed}のようないくつかのラベルはビルトインの意味をもち、Rmailは適切なときに、それらをメッセージに割り当てます。これらのラベルは@dfn{属性(attributes)}と呼ばれます。以下はRmailの属性のリストです:
+  Some labels such as @samp{deleted} and @samp{filed} have built-in meanings,
+and Rmail assigns them to messages automatically at appropriate times; these
+labels are called @dfn{attributes}.  Here is a list of Rmail attributes:
 
 @table @samp
 @item unseen
-そのメッセージが1度もカレントになっていないことを意味します。inboxからメッセージが到着したとき割り当てられ、そのメッセージがカレントになったときに外されます。Rmailを開始したとき、この属性をもつメッセージを最初に表示します。
+Means the message has never been current.  Assigned to messages when they
+come from an inbox file, and removed when a message is made current.  When
+you start Rmail, it initially shows the first message that has this
+attribute.
 @item deleted
-メッセージが削除されたことを意味します。削除コマンドにより割り当てられ、削除を取り消すコマンドで外されます(@ref{Rmail
-Deletion}を参照してください)。
+Means the message is deleted.  Assigned by deletion commands and removed by
+undeletion commands (@pxref{Rmail Deletion}).
 @item filed
-そのメッセージが他のファイルにコピーされたことを意味します。ファイル出力コマンド@kbd{o}および@kbd{C-o}により割り当てられます(@ref{Rmail
-Output}を参照してください)。
+Means the message has been copied to some other file.  Assigned by the
+@kbd{o} and @kbd{C-o} file output commands (@pxref{Rmail Output}).
 @item answered
-メッセージへの返信をメールしたことを意味します。@kbd{r}
-(@code{rmail-reply})コマンドにより割り当てられます。@ref{Rmail Reply}を参照してください。
+Means you have mailed an answer to the message.  Assigned by the @kbd{r}
+command (@code{rmail-reply}).  @xref{Rmail Reply}.
 @item forwarded
-メッセージを転送したことを意味します。@kbd{f} (@code{rmail-forward})コマンドにより割り当てられます。@ref{Rmail
-Reply}を参照してください。
+Means you have forwarded the message.  Assigned by the @kbd{f} command
+(@code{rmail-forward}).  @xref{Rmail Reply}.
 @item edited
-メッセージのテキストをRmailで編集したことを意味します。@ref{Rmail Editing}を参照してください。
+Means you have edited the text of the message within Rmail.  @xref{Rmail
+Editing}.
 @item resent
-メッセージを再送したことを意味します。コマンド@kbd{M-x rmail-resend}により割り当てられます。@ref{Rmail
-Reply}を参照してください。
+Means you have resent the message.  Assigned by the command @kbd{M-x
+rmail-resend}.  @xref{Rmail Reply}.
 @item retried
-送信に失敗したメッセージを再試行したことを意味します。コマンド@kbd{M-x
-rmail-retry-failure}により割り当てられます。@ref{Rmail Reply}を参照してください。
+Means you have retried a failed outgoing message.  Assigned by the command
+@kbd{M-x rmail-retry-failure}.  @xref{Rmail Reply}.
 @end table
 
-  これ以外のすべてのラベルは、ユーザーだけが割り当てたり外すことができ、それらのラベルは標準的な意味をもちません。
+  All other labels are assigned or removed only by users, and have no standard
+meaning.
 
 @node Rmail Reply
-@section 返信の送信
+@section Sending Replies
 
-  Rmailには、送信メールを送るための複数のコマンドがあります。Messageモードの使い方(Rmailでも動作する特別な機能を含む)に関する情報は、@ref{Sending
-Mail}を参照してください。このセクションでは、送信メッセージ作成に使用する、mailバッファーに入るエンターするためのRmailの特別なコマンドを説明します。メールを送信するための通常のキー
---- @kbd{C-x m}、@kbd{C-x 4 m}、@kbd{C-x 5 m} ---
-は、Rmailモードでも通常どおり機能することに注意してください。
+  Rmail has several commands to send outgoing mail.  @xref{Sending Mail}, for
+information on using Message mode, including certain features meant to work
+with Rmail.  What this section documents are the special commands of Rmail
+for entering the mail buffer used to compose the outgoing message.  Note
+that the usual keys for sending mail---@kbd{C-x m}, @kbd{C-x 4 m}, and
+@kbd{C-x 5 m}---also work normally in Rmail mode.
 
 @table @kbd
 @item m
-メッセージを送信します(@code{rmail-mail})。
+Send a message (@code{rmail-mail}).
 @item c
-すでに編集を開始した送信メッセージの編集を続けます(@code{rmail-continue})。
+Continue editing the already started outgoing message
+(@code{rmail-continue}).
 @item r
-カレントRmailメッセージにたいする返信を送信します(@code{rmail-reply})。
+Send a reply to the current Rmail message (@code{rmail-reply}).
 @item f
-カレントメッセージを他のユーザーに転送します(@code{rmail-forward})。
+Forward the current message to other users (@code{rmail-forward}).
 @item C-u f
-カレントメッセージを他のユーザーに再送します(@code{rmail-resend})。
+Resend the current message to other users (@code{rmail-resend}).
 @item M-m
-送信に失敗して戻ってきたメッセージにたいして、2回目の送信を試みます(@code{rmail-retry-failure})。
+Try sending a bounced message a second time (@code{rmail-retry-failure}).
 @end table
 
 @kindex r @r{(Rmail)}
 @findex rmail-reply
 @cindex reply to a message
-  Rmailにいるときにメッセージを送信する理由でもっとも一般的なのは、読んでいるメールに返信するときでしょう。これを行なうには、@kbd{r}
-(@code{rmail-reply})とタイプします。これは@kbd{C-x 4
-m}のように、別ウィンドウにメール作成バッファーを表示しますが、ヘッダーフィールド@samp{Subject}、@samp{To}、@samp{CC}、@samp{In-reply-To}、@samp{References}は、返信するメッセージにもとづいて、事前に初期化されています。@samp{To}フィールドには、返信するメッセージを送信した人のアドレスがセットされ、@samp{CC}にはそのメッセージを受け取った、他のすべての人のアドレスがセットされます。
+  The most common reason to send a message while in Rmail is to reply to the
+message you are reading.  To do this, type @kbd{r} (@code{rmail-reply}).
+This displays a mail composition buffer in another window, much like
+@kbd{C-x 4 m}, but preinitializes the @samp{Subject}, @samp{To}, @samp{CC},
+@samp{In-Reply-To} and @samp{References} header fields based on the message
+you are replying to.  The @samp{To} field starts out as the address of the
+person who sent the message you received, and the @samp{CC} field starts out
+with all the other recipients of that message.
 
 @vindex mail-dont-reply-to-names
-  変数@code{mail-dont-reply-to-names}を使用して、自動的に返信に含まれる受信者から、特定の受信者を除外することができます。この変数の値には正規表現を指定します。正規表現にマッチする受信者は、@samp{CC}フィールドから除外されます。その受信者を除外することにより@samp{To}フィールドが空になる場合を除き、@samp{To}フィールドからも除外されます。この変数が@code{nil}の場合、最初に返信を作成するときに、あなた自身のアドレスにマッチするデフォルト値に初期化されます。
+  You can exclude certain recipients from being included automatically in
+replies, using the variable @code{mail-dont-reply-to-names}.  Its value
+should be a regular expression; any recipients that match are excluded from
+the @samp{CC} field.  They are also excluded from the @samp{To} field,
+unless this would leave the field empty.  If this variable is @code{nil},
+then the first time you compose a reply it is initialized to a default value
+that matches your own address.
 
-  元メッセージの送信者だけにリプライするには、@kbd{C-u r}または@kbd{1
-r}のように、数引数とともに返信コマンドをエンターします。特定の返信にたいして@samp{CC}フィールドを完全に省略するには、返信コマンドに数引数を指定します。これは、元のメッセージを送信した人だけに返信することを意味します。
+  To reply only to the sender of the original message, enter the reply command
+with a numeric argument: @kbd{C-u r} or @kbd{1 r}.  This omits the @samp{CC}
+field completely for a particular reply.
 
-  1度メール作成バッファーが初期化されると、後は通常どおりメールの編集と送信を行なうことができます(@ref{Sending
-Mail}を参照してください)。事前にセットされたヘッダーフィールドが適切でない場合は、それを編集することができます。@kbd{C-c
-C-y}のようなコマンドを使うこともできます。これは返信するメッセージをyankします(@ref{Mail
-Commands}を参照してください)。Rmailバッファーに切り替えて、異なるメッセージを選択してから、また戻って新しいカレントメッセージにyankすることもできます。
+  Once the mail composition buffer has been initialized, editing and sending
+the mail goes as usual (@pxref{Sending Mail}).  You can edit the presupplied
+header fields if they are not what you want.  You can also use commands such
+as @kbd{C-c C-y}, which yanks in the message that you are replying to
+(@pxref{Mail Commands}).  You can also switch to the Rmail buffer, select a
+different message there, switch back, and yank the new current message.
 
 @kindex M-m @r{(Rmail)}
 @findex rmail-retry-failure
 @cindex retrying a failed message
 @vindex rmail-retry-ignored-headers
-  メッセージが送信先に届かないこともあります。そのような場合メーラーは通常、@dfn{失敗メッセージ(failure
-message)}をあなたに返信します。Rmailコマンドの@kbd{M-m}
-(@code{rmail-retry-failure})は、同じメッセージの2回目の送信を準備をします。これは前と同じテキストとヘッダーフィールドで、メール作成バッファーをセットアップします。そこですぐに@kbd{C-c
-C-c}をタイプすると、初回とまったく同じメッセージを再送します。テキストやヘッダーを編集してから送信することもできます。変数@code{rmail-retry-ignored-headers}は、失敗したメッセージを再試行するとき除外するヘッダーを制御し、フォーマットは@code{rmail-ignored-headers}
-(@ref{Rmail Display}を参照してください)と同じです。
+  Sometimes a message does not reach its destination.  Mailers usually send
+the failed message back to you, enclosed in a @dfn{failure message}.  The
+Rmail command @kbd{M-m} (@code{rmail-retry-failure})  prepares to send the
+same message a second time: it sets up a mail composition buffer with the
+same text and header fields as before.  If you type @kbd{C-c C-c} right
+away, you send the message again exactly the same as the first time.
+Alternatively, you can edit the text or headers and then send it.  The
+variable @code{rmail-retry-ignored-headers}, in the same format as
+@code{rmail-ignored-headers} (@pxref{Rmail Display}), controls which headers
+are stripped from the failed message when retrying it.
 
 @kindex f @r{(Rmail)}
 @findex rmail-forward
 @cindex forwarding a message
-  Rmailからメールを送信する他のよくある理由に、カレントメッセージを他のユーザーに@dfn{転送(forward)}することです。@kbd{f}
-(@code{rmail-forward})は、メール作成バッファーのテキストとsubjectを、カレントメッセージで事前に初期化することにより、これを簡単に行なえるようにします。subjectは@code{[@var{from}:
-@var{subject}]}という形式で初期化されます。@var{from}と@var{subject}には、元のメッセージの送信者とsubjectが入ります。あなたが行なう必要があるのは、送信先を記述して、それを送信することだけです。メッセージを転送するとき、受信者が受け取るメッセージのfromはあなたになり、メールの内容は元のメッセージと同じになります。
+  Another frequent reason to send mail in Rmail is to @dfn{forward} the
+current message to other users.  @kbd{f} (@code{rmail-forward}) makes this
+easy by preinitializing the mail composition buffer with the current message
+as the text, and a subject of the form @code{[@var{from}: @var{subject}]},
+where @var{from} and @var{subject} are the sender and subject of the
+original message.  All you have to do is fill in the recipients and send.
+When you forward a message, recipients get a message which is from you, and
+which has the original message in its contents.
 
 @vindex rmail-enable-mime-composing
 @findex unforward-rmail-message
-  Rmailは転送メッセージにたいして2つのフォーマットを提供します。デフォルトはMIMEフォーマットを使用します(@ref{Rmail
-Display}を参照してください)。これは元のメッセージを別の部分に含めます。変数@code{rmail-enable-mime-composing}を@code{nil}にセットすることにより、もっと簡単なフォーマットを使うこともできます。この場合、Rmailは元のメッセージを2つの区切り行で囲むだけです。これは各行の行頭に@w{@samp{-
-}}を挿入することにより、各行の変更も行ないます。このフォーマットによる転送メッセージを受信した場合、それに普通のテキスト以外の何か ---
-たとえばプログラムのソースコード ---
-が含まれている場合、この変更を取り消せたら便利だと思うかもしれません。これを行なうには、転送されたメッセージを選択して、@kbd{M-x
-unforward-rmail-message}とタイプします。このコマンドは、挿入された文字列@w{@samp{-
-}}を削除して、転送されたメッセージのオリジナルを抽出し、カレントメッセージの直後に、別のメッセージとしてRmailファイルに挿入します。
+  Rmail offers two formats for forwarded messages.  The default is to use the
+MIME format (@pxref{Rmail Display}).  This includes the original message as
+a separate part.  You can use a simpler format if you prefer, by setting the
+variable @code{rmail-enable-mime-composing} to @code{nil}.  In this case,
+Rmail just includes the original message enclosed between two delimiter
+lines.  It also modifies every line that starts with a dash, by inserting
+@w{@samp{- }} at the start of the line.  When you receive a forwarded
+message in this format, if it contains something besides ordinary text---for
+example, program source code---you might find it useful to undo that
+transformation.  You can do this by selecting the forwarded message and
+typing @kbd{M-x unforward-rmail-message}.  This command extracts the
+original forwarded message, deleting the inserted @w{@samp{- }} strings, and
+inserts it into the Rmail file as a separate message immediately following
+the current one.
 
 @findex rmail-resend
-  @dfn{再送(Resending)}は、転送と似た別の方法です。違いは、再送により送信されるメッセージは、あなたが受け取ったときのように、元の送信者がfromになり、追加のヘッダーフィールド(@samp{Resent-From}と@samp{Resent-To})により、それがあなたを通じて送られたことを示すことです。Rmailでメッセージを再送するには、@kbd{C-u
-f}を使用します(@kbd{f}は@code{rmail-forward}を実行し、数引数を指定すると@code{rmail-resend}を呼び出します)。
+  @dfn{Resending} is an alternative similar to forwarding; the difference is
+that resending sends a message that is from the original sender, just as it
+reached you---with a few added header fields (@samp{Resent-From} and
+@samp{Resent-To}) to indicate that it came via you.  To resend a message in
+Rmail, use @kbd{C-u f}.  (@kbd{f} runs @code{rmail-forward}, which invokes
+@code{rmail-resend} if you provide a numeric argument.)
 
 @kindex m @r{(Rmail)}
 @findex rmail-mail
-  @kbd{m}
-(@code{rmail-mail})を使用することにより、返信ではない送信用のメールの編集を開始します。これはヘッダーフィールドを空のままにします。@kbd{C-x
-4 m}との違いは、@kbd{r}のように@kbd{C-c C-y}でRmailにアクセスできることです。
+  Use the @kbd{m} (@code{rmail-mail}) command to start editing an outgoing
+message that is not a reply.  It leaves the header fields empty.  Its only
+difference from @kbd{C-x 4 m} is that it makes the Rmail buffer accessible
+for @kbd{C-c C-y}, just as @kbd{r} does.
 @ignore
 @c Not a good idea, because it does not include Reply-To etc.
 Thus, @kbd{m} can be used to reply to or forward a message; it can do
@@ -567,136 +841,223 @@ anything @kbd{r} or @kbd{f} can do.
 
 @kindex c @r{(Rmail)}
 @findex rmail-continue
-  @kbd{c}
-(@code{rmail-continue})コマンドは、既に編集を開始した送信用メッセージの編集を終えるために、または送信したメッセージを変更するために、メール作成バッファーでの編集を再開します。
+  The @kbd{c} (@code{rmail-continue}) command resumes editing the mail
+composition buffer, to finish editing an outgoing message you were already
+composing, or to alter a message you have sent.
 
 @vindex rmail-mail-new-frame
-  変数@code{rmail-mail-new-frame}を非@code{nil}にセットした場合、メッセージの送信を開始するすべてのコマンドは、それを編集するために新しいフレームを作成します。このフレームは、そのメッセージを送信すると削除されます(ただしそれがカレントディスプレイで唯一の可視なフレームか、テキストモードフレームの場合を除く)。メッセージを送信した際にそのフレームを削除できなければ、Emacsは後続のメッセージの作成用にそのフレームの再利用を試みます。
+  If you set the variable @code{rmail-mail-new-frame} to a non-@code{nil}
+value, then all the Rmail commands to start sending a message create a new
+frame to edit it in.  This frame is deleted when you send the message (but
+not if it is the only visible frame on the current display, or if it's a
+text-mode frame).  If this frame cannot be deleted when you send the
+message, Emacs will try to reuse it for composing subsequent messages.
 @ignore
 @c FIXME does not work with Message -> Kill Message
 , or when you use the @samp{Cancel} item in the @samp{Mail} menu.
 @end ignore
 
-  メッセージを送信するすべてのRmailコマンドは、選択されたメール作成方法を使用します(@ref{Mail Methods}を参照してください)。
+  All the Rmail commands to send a message use the mail-composition method
+that you have chosen (@pxref{Mail Methods}).
 
 @node Rmail Summary
-@section サマリー
+@section Summaries
 @cindex summary (Rmail)
 
-  @dfn{サマリー(summary)}は、Rmailファイルのメールを概観するために、メッセージごとに1つの行を含むバッファーです。各行にはメッセージ番号、日付、送信者、行数、ラベル、subjectが表示されます。サマリーバッファーでポイントを移動することにより、そのサマリー行のメッセージを選択することができます。ほとんどのRmailコマンドはサマリーバッファーでも有効です。それらのコマンドを使うと、サマリーのカレント行に記述されているメッセージに適用されます。
+  A @dfn{summary} is a buffer containing one line per message to give you an
+overview of the mail in an Rmail file.  Each line shows the message number
+and date, the sender, the line count, the labels, and the subject.  Moving
+point in the summary buffer selects messages as you move to their summary
+lines.  Almost all Rmail commands are valid in the summary buffer also; when
+used there, they apply to the message described by the current line of the
+summary.
 
-  サマリーバッファーは、1つのRmailファイルだけに適用されます。複数のRmailファイルを編集している場合、それぞれが自身のサマリーバッファーをもつことができます。サマリーバッファーの名前は、Rmailバッファーの名前に@samp{-summary}を追加して作成されます。通常は1度に1つだけのサマリーバッファーが表示されます。
+  A summary buffer applies to a single Rmail file only; if you are editing
+multiple Rmail files, each one can have its own summary buffer.  The summary
+buffer name is made by appending @samp{-summary} to the Rmail buffer's
+name.  Normally only one summary buffer is displayed at a time.
 
 @menu
-* Rmail Make Summary::       さまざまな種類のサマリーの作成。
-* Rmail Summary Edit::       サマリーからのメッセージの操作。
+* Rmail Make Summary::       Making various sorts of summaries.
+* Rmail Summary Edit::       Manipulating messages from the summary.
 @end menu
 
 @node Rmail Make Summary
-@subsection サマリーの作成
+@subsection Making Summaries
 
-  以下は、カレントRmailバッファーでサマリーを作成するコマンドです。Rmailバッファーが1度サマリーされると、Rmailバッファーでの変更(メッセージの削除や完全な削除、新しいメールの受信など)により、サマリーも自動的に更新されます。
+  Here are the commands to create a summary for the current Rmail buffer.
+Once the Rmail buffer has a summary, changes in the Rmail buffer (such as
+deleting or expunging messages, and getting new mail)  automatically update
+the summary.
 
 @table @kbd
 @item h
 @itemx C-M-h
-すべてのメッセージをサマリーします(@code{rmail-summary})。
+Summarize all messages (@code{rmail-summary}).
 @item l @var{labels} @key{RET}
 @itemx C-M-l @var{labels} @key{RET}
-1つ以上の指定したラベルをもつメッセージをサマリーします(@code{rmail-summary-by-labels})。
+Summarize messages that have one or more of the specified labels
+(@code{rmail-summary-by-labels}).
 @item C-M-r @var{rcpts} @key{RET}
-指定した受信者にマッチするメッセージをサマリーします(@code{rmail-summary-by-recipients})。
+Summarize messages that match the specified recipients
+(@code{rmail-summary-by-recipients}).
 @item C-M-t @var{topic} @key{RET}
-指定した正規表現@var{topic}にマッチするsubjectをもつメッセージをサマリーします(@code{rmail-summary-by-topic})。
+Summarize messages that have a match for the specified regexp @var{topic} in
+their subjects (@code{rmail-summary-by-topic}).
 @item C-M-s @var{regexp} @key{RET}
-指定した正規表現@var{regexp}にマッチするヘッダーをもつメッセージをサマリーします(@code{rmail-summary-by-regexp})。
+Summarize messages whose headers match the specified regular expression
+@var{regexp} (@code{rmail-summary-by-regexp}).
 @item C-M-f @var{senders} @key{RET}
-指定した送信者にマッチするメッセージをサマリーします(@code{rmail-summary-by-senders})。
+Summarize messages that match the specified senders.
+(@code{rmail-summary-by-senders}).
 @end table
 
 @kindex h @r{(Rmail)}
 @findex rmail-summary
-  コマンド@kbd{h}または@kbd{C-M-h}
-(@code{rmail-summary})は、カレントRmailバッファーにたいする、すべてのメッセージのサマリーを、サマリーバッファーに表示します。その後、別のウィンドウにサマリーバッファーを表示して、それを選択します。
+  The @kbd{h} or @kbd{C-M-h} (@code{rmail-summary}) command fills the summary
+buffer for the current Rmail buffer with a summary of all the messages in
+the buffer.  It then displays and selects the summary buffer in another
+window.
 
 @kindex l @r{(Rmail)}
 @kindex C-M-l @r{(Rmail)}
 @findex rmail-summary-by-labels
-  @kbd{C-M-l @var{labels} @key{RET}}
-(@code{rmail-summary-by-labels})は、1つ以上のラベル@var{labels}をもつメッセージの、部分的なサマリーを作成します。@var{labels}には、カンマで区切られたラベル名を指定します。
+  @kbd{C-M-l @var{labels} @key{RET}} (@code{rmail-summary-by-labels}) makes a
+partial summary mentioning only the messages that have one or more of the
+labels @var{labels}.  @var{labels} should contain label names separated by
+commas.
 
 @kindex C-M-r @r{(Rmail)}
 @findex rmail-summary-by-recipients
-  @kbd{C-M-r @var{rcpts} @key{RET}}
-(@code{rmail-summary-by-recipients})は、正規表現@var{rcpts}にマッチする、1つ以上の受信者をもつメッセージのサマリーを作成します。これはヘッダー@samp{To}、@samp{From}、@samp{CC}にたいしてマッチを行ないます(プレフィクス引数を与えた場合は@samp{CC}ヘッダーを除外する)。
+  @kbd{C-M-r @var{rcpts} @key{RET}} (@code{rmail-summary-by-recipients})
+makes a partial summary mentioning only the messages that have one or more
+recipients matching the regular expression @var{rcpts}.  This is matched
+against the @samp{To}, @samp{From}, and @samp{CC} headers (supply a prefix
+argument to exclude the @samp{CC} header).
 
 @kindex C-M-t @r{(Rmail)}
 @findex rmail-summary-by-topic
-  @kbd{C-M-t @var{topic} @key{RET}}
-(@code{rmail-summary-by-topic})は、正規表現@var{topic}にマッチするsubjectをもつメッセージの、部分的なサマリーを作成します。プレフィクス引数を指定した場合、subjectだけでなく、メッセージ全体にたいしてマッチを行ないます。
+  @kbd{C-M-t @var{topic} @key{RET}} (@code{rmail-summary-by-topic})  makes a
+partial summary mentioning only the messages whose subjects have a match for
+the regular expression @var{topic}.  With a prefix argument, the match is
+against the whole message, not just the subject.
 
 @kindex C-M-s @r{(Rmail)}
 @findex rmail-summary-by-regexp
-  @kbd{C-M-s @var{regexp} @key{RET}}
-(@code{rmail-summary-by-regexp})は、正規表現@var{regexp}にマッチするヘッダー(日付とsubject行を含む)をもつメッセージの、部分的なサマリーを作成します。
+  @kbd{C-M-s @var{regexp} @key{RET}} (@code{rmail-summary-by-regexp})  makes a
+partial summary that mentions only the messages whose headers (including the
+date and the subject lines) match the regular expression @var{regexp}.
 
 @kindex C-M-f @r{(Rmail)}
 @findex rmail-summary-by-senders
-  @kbd{C-M-f @var{senders} @key{RET}}
-(@code{rmail-summary-by-senders})は、正規表現@var{senders}にマッチする@samp{From}フィールドをもつメッセージの、部分的なサマリーを作成します。
+  @kbd{C-M-f @var{senders} @key{RET}} (@code{rmail-summary-by-senders})  makes
+a partial summary that mentions only the messages whose @samp{From} fields
+match the regular expression @var{senders}.
 
-  1つのRmailバッファーにたいして、1つのサマリーしか存在しないことに注意してください。他の種類のサマリーを作成すると、以前のサマリーは破棄されます。
+  Note that there is only one summary buffer for any Rmail buffer; making any
+kind of summary discards any previous summary.
 
 @vindex rmail-summary-window-size
 @vindex rmail-summary-line-count-flag
-  変数@code{rmail-summary-window-size}は、サマリーウィンドウに何行使用するかを指定します。変数@code{rmail-summary-line-count-flag}は、メッセージのサマリー行に、メッセージの総行数を含めるかを制御します。このオプションに@code{nil}をセットすると、サマリーの生成が速くなるかもしれません。
+  The variable @code{rmail-summary-window-size} says how many lines to use for
+the summary window.  The variable @code{rmail-summary-line-count-flag}
+controls whether the summary line for a message should include the line
+count of the message.  Setting this option to @code{nil} might speed up the
+generation of summaries.
 
 @node Rmail Summary Edit
-@subsection サマリーでの編集
+@subsection Editing in Summaries
 
-  Rmailバッファーで行なえることのほとんどは、Rmailサマリーバッファーでも使用できます。実際、1度サマリーバッファーを作成すれば、Rmailバッファーに戻る必要はありません。
+  You can use the Rmail summary buffer to do almost anything you can do in the
+Rmail buffer itself.  In fact, once you have a summary buffer, there's no
+need to switch back to the Rmail buffer.
 
-  サマリーバッファーで異なる行にポイントを移動するだけで、サマリーバッファーからメッセージを選択して、Rmailバッファーに表示することができます。ポイントを移動するEmacsコマンドが何であるかは問題になりません。コマンドの最後でポイントのある行のメッセージが、Rmailバッファーに表示されます。
+  You can select and display various messages in the Rmail buffer, from the
+summary buffer, just by moving point in the summary buffer to different
+lines.  It doesn't matter what Emacs command you use to move point;
+whichever line point is on at the end of the command, that message is
+selected in the Rmail buffer.
 
 @vindex rmail-summary-scroll-between-messages
-  ほとんどのRmailコマンドは、Rmailバッファーと同様に機能します。したがって、サマリーバッファーでは、@kbd{d}がカレントメッセージの削除、@kbd{u}は削除の取り消し、@kbd{x}で完全に削除します(しかし、サマリーバッファーでは関連する方向に削除されていないメッセージが存在しない場合、削除コマンドはカレントメッセージに留まるのではなく、最初または最後のメッセージに移動します)。@kbd{o}と@kbd{C-o}は、カレントメッセージをファイルに出力します。他にも、@kbd{r}はそれにたいする返信を開始する、などです。サマリーバッファーで@key{SPC}と@key{DEL}を使用することにより、カレントメッセージをスクロールできます。しかし、サマリーバッファーで@key{SPC}または@key{DEL}により、メッセージの終端または先頭を超えてスクロールすると、削除されていない次または前のメッセージに移動します。@code{rmail-summary-scroll-between-messages}オプションを@code{nil}にカスタマイズすれば、次または前のメッセージへのスクロールが無効になります。
+  Almost all Rmail commands work in the summary buffer as well as in the Rmail
+buffer.  Thus, @kbd{d} in the summary buffer deletes the current message,
+@kbd{u} undeletes, and @kbd{x} expunges.  (However, in the summary buffer,
+if there are no more undeleted messages in the relevant direction, the
+delete commands go to the first or last message, rather than staying on the
+current message.)  @kbd{o} and @kbd{C-o} output the current message to a
+FILE; @kbd{r} starts a reply to it; etc.  You can scroll the current message
+while remaining in the summary buffer using @key{SPC} and @key{DEL}.
+However, in the summary buffer scrolling past the end or the beginning of a
+message with @key{SPC} or @key{DEL} goes, respectively, to the next or
+previous undeleted message.  Customize the
+@code{rmail-summary-scroll-between-messages} option to @code{nil} to disable
+scrolling to next/previous messages.
 
 @findex rmail-summary-undelete-many
-@kbd{M-u}
-(@code{rmail-summary-undelete-many})は、サマリーで削除されたすべてのメッセージの削除を取り消します。プレフィクス引数を指定した場合、以前に削除された、指定した数のメッセージの削除を取り消すことを意味します。
+@kbd{M-u} (@code{rmail-summary-undelete-many}) undeletes all deleted
+messages in the summary.  A prefix argument means to undelete that many of
+the previous deleted messages.
 
-  メッセージ間を移動するRmailコマンドはサマリーバッファーでも機能しますが、動作が少し異なります。これらのコマンドはサマリーに含まれる一連のメッセージ間を移動します。これらのコマンドは、常にRmailバッファーがスクリーンに表示されるようにします(カーソル移動コマンドはRmailバッファーの内容を更新しますが、これらのコマンドはウィンドウにすでにそれが表示されているのでなければ、表示しません)。以下はそれらのコマンドのリストです:
+  The Rmail commands to move between messages also work in the summary buffer,
+but with a twist: they move through the set of messages included in the
+summary.  They also ensure the Rmail buffer appears on the screen (unlike
+cursor motion commands, which update the contents of the Rmail buffer but
+don't display it in a window unless it already appears).  Here is a list of
+these commands:
 
 @table @kbd
 @item n
-``deleted''の行をスキップして次の行に移動し、その行のメッセージを選択します(@code{rmail-summary-next-msg})。
+Move to next line, skipping lines saying ``deleted'', and select its message
+(@code{rmail-summary-next-msg}).
 @item p
-``deleted''の行をスキップして前の行に移動し、その行のメッセージを選択します(@code{rmail-summary-previous-msg})。
+Move to previous line, skipping lines saying ``deleted'', and select its
+message (@code{rmail-summary-previous-msg}).
 @item M-n
-次の行に移動して、その行のメッセージを選択します(@code{rmail-summary-next-all})。
+Move to next line and select its message (@code{rmail-summary-next-all}).
 @item M-p
-前の行に移動して、その行のメッセージを選択します(@code{rmail-summary-previous-all})。
+Move to previous line and select its message
+(@code{rmail-summary-previous-all}).
 @item >
-最後の行に移動して、その行のメッセージを選択します(@code{rmail-summary-last-message})。
+Move to the last line, and select its message
+(@code{rmail-summary-last-message}).
 @item <
-最初の行に移動して、その行のメッセージを選択します(@code{rmail-summary-first-message})。
+Move to the first line, and select its message
+(@code{rmail-summary-first-message}).
 @item j
 @itemx @key{RET}
-(Rmailバッファーがスクリーンに確実に表示されるようにして)カレント行のメッセージを選択します(@code{rmail-summary-goto-msg})。引数@var{n}を指定した場合、メッセージ番号@var{n}のメッセージを選択し、サマリーバッファーのそのメッセージの行に移動します。そのメッセージがサマリーバッファーにリストされていない場合は、エラーをシグナルします。
+Select the message on the current line (ensuring that the Rmail buffer
+appears on the screen; @code{rmail-summary-goto-msg}).  With argument
+@var{n}, select message number @var{n} and move to its line in the summary
+buffer; this signals an error if the message is not listed in the summary
+buffer.
 @item M-s @var{pattern} @key{RET}
-メッセージから@var{pattern}を検索します。検索はカレントメッセージから開始されます。マッチが見つかったらそのメッセージを選択して、サマリーバッファーのそのメッセージの行にポイントを移動します(@code{rmail-summary-search})。プレフィクス引数は繰り返し回数として機能します。負の引数は後方に検索を行なうことを意味します(@code{rmail-summary-search-backward}と等価です)。
+Search through messages for @var{pattern} starting with the current message;
+select the message found, and move point in the summary buffer to that
+message's line (@code{rmail-summary-search}).  A prefix argument acts as a
+repeat count; a negative argument means search backward (equivalent to
+@code{rmail-summary-search-backward}.)
 @item C-M-n @var{labels} @key{RET}
-指定した1つ以上のラベルのうち、少なくとも1つをもつ次のメッセージに移動します(@code{rmail-summary-next-labeled-message})。@var{labels}はカンマで区切られたラベルのリストです。プレフィクス引数は繰り返し回数として機能します。
+Move to the next message with at least one of the specified labels
+(@code{rmail-summary-next-labeled-message}).  @var{labels} is a
+comma-separated list of labels.  A prefix argument acts as a repeat count.
 @item C-M-p @var{labels} @key{RET}
-指定した1つ以上のラベルのうち、少なくとも1つをもつ前のメッセージに移動します(@code{rmail-summary-previous-labeled-message})。
+Move to the previous message with at least one of the specified labels
+(@code{rmail-summary-previous-labeled-message}).
 @item C-c C-n @key{RET}
-カレントメッセージと同じsubjectをもつ、次のメッセージに移動します(@code{rmail-summary-next-same-subject})。プレフィクス引数は繰り返し回数として機能します。
+Move to the next message with the same subject as the current message
+(@code{rmail-summary-next-same-subject}).  A prefix argument acts as a
+repeat count.
 @item C-c C-p @key{RET}
-カレントメッセージと同じsubjectをもつ、前のメッセージに移動します(@code{rmail-summary-previous-same-subject})。
+Move to the previous message with the same subject as the current message
+(@code{rmail-summary-previous-same-subject}).
 @end table
 
 @vindex rmail-redisplay-summary
-  削除、削除の取り消し、新しいメールの取得はもちろん、異なるメッセージの選択でも、それらの操作をRmailバッファーで行なったとき、サマリーバッファーは更新されます。変数@code{rmail-redisplay-summary}が非@code{nil}の場合、これらの操作はサマリーバッファーをスクリーンに表示します。
+  Deletion, undeletion, and getting new mail, and even selection of a
+different message all update the summary buffer when you do them in the
+Rmail buffer.  If the variable @code{rmail-redisplay-summary} is
+non-@code{nil}, these actions also bring the summary buffer back onto the
+screen.
 
 @kindex Q @r{(Rmail summary)}
 @findex rmail-summary-wipe
@@ -704,13 +1065,15 @@ anything @kbd{r} or @kbd{f} can do.
 @findex rmail-summary-quit
 @kindex b @r{(Rmail summary)}
 @findex rmail-summary-bury
-  サマリーの使用を終了するときは、@kbd{Q}
-(@code{rmail-summary-wipe})とタイプして、サマリーバッファーのウィンドウを削除します。サマリーからRmailを終了することもできます。@kbd{q}
-(@code{rmail-summary-quit})はサマリーウィンドウを削除して、Rmailファイルを保存してからRmailを終了してから、他のバッファーに切り替えます。かわりに@kbd{b}
-(@code{rmail-summary-bury})とタイプすると、単にRmailとRmailサマリーバッファーを隠し(bury)ます。
+  When you are finished using the summary, type @kbd{Q}
+(@code{rmail-summary-wipe}) to delete the summary buffer's window.  You can
+also exit Rmail while in the summary: @kbd{q} (@code{rmail-summary-quit})
+deletes the summary window, then exits from Rmail by saving the Rmail file
+and switching to another buffer.  Alternatively, @kbd{b}
+(@code{rmail-summary-bury}) simply buries the Rmail summary and buffer.
 
 @node Rmail Sorting
-@section Rmailファイルのソート
+@section Sorting the Rmail File
 @cindex sorting Rmail file
 @cindex Rmail file sorting
 
@@ -718,115 +1081,171 @@ anything @kbd{r} or @kbd{f} can do.
 @findex rmail-sort-by-date
 @item C-c C-s C-d
 @itemx M-x rmail-sort-by-date
-カレントRmailバッファーのメッセージを、日付順にソートします。
+Sort messages of current Rmail buffer by date.
 
 @findex rmail-sort-by-subject
 @item C-c C-s C-s
 @itemx M-x rmail-sort-by-subject
-カレントRmailバッファーのメッセージを、subject順にソートします。
+Sort messages of current Rmail buffer by subject.
 
 @findex rmail-sort-by-author
 @item C-c C-s C-a
 @itemx M-x rmail-sort-by-author
-カレントRmailバッファーのメッセージを、送信者順にソートします。
+Sort messages of current Rmail buffer by author's name.
 
 @findex rmail-sort-by-recipient
 @item C-c C-s C-r
 @itemx M-x rmail-sort-by-recipient
-カレントRmailバッファーのメッセージを、受信者の名前順にソートします。
+Sort messages of current Rmail buffer by recipient's name.
 
 @findex rmail-sort-by-correspondent
 @item C-c C-s C-c
 @itemx M-x rmail-sort-by-correspondent
-カレントRmailバッファーのメッセージを、他の受信者名順にソートします。
+Sort messages of current Rmail buffer by the name of the other
+correspondent.
 
 @findex rmail-sort-by-lines
 @item C-c C-s C-l
 @itemx M-x rmail-sort-by-lines
-カレントRmailバッファーのメッセージを、行数順にソートします。
+Sort messages of current Rmail buffer by number of lines.
 
 @findex rmail-sort-by-labels
 @item C-c C-s C-k @key{RET} @var{labels} @key{RET}
 @itemx M-x rmail-sort-by-labels @key{RET} @var{labels} @key{RET}
-カレントRmailバッファーのメッセージを、ラベル順にソートします。引数@var{labels}は、カンマで区切られたラベルのリストです。ラベルの順序は、メッセージの順序を指定します。最初のラベルをもつメッセージが最初に、2番目のラベルをもつメッセージが次に、というようになります。ラベルをもたないメッセージは最後になります。
+Sort messages of current Rmail buffer by labels.  The argument @var{labels}
+should be a comma-separated list of labels.  The order of these labels
+specifies the order of messages; messages with the first label come first,
+messages with the second label come second, and so on.  Messages that have
+none of these labels come last.
 @end table
 
-  Rmailのソートコマンドは@emph{安定ソート(stable
-sort)}を行ないます。2つのメッセージのどちらを先にするか特に理由がない場合、メッセージの順序は変更されません。これを使用して複数のソート条件を使用できます。たとえば、@code{rmail-sort-by-date}の後に@code{rmail-sort-by-author}を使用すれば、メッセージは作者ごとに日付順にソートされます。
+  The Rmail sort commands perform a @emph{stable sort}: if there is no reason
+to prefer either one of two messages, their order remains unchanged.  You
+can use this to sort by more than one criterion.  For example, if you use
+@code{rmail-sort-by-date} and then @code{rmail-sort-by-author}, messages
+from the same author appear in order by date.
 
-  プレフィクス引数を指定した場合、これらのコマンドは逆順で比較をします。これはメッセージが新しいものから古いものへ、大きいものから小さいものへ、アルファベットの逆順でソートされることを意味します。
+  With a prefix argument, all these commands reverse the order of comparison.
+This means they sort messages from newest to oldest, from biggest to
+smallest, or in reverse alphabetical order.
 
-  同じキーをサマリーバッファーで使うと、似た関数が実行されます。たとえば@kbd{C-c C-s
-C-l}は、@code{rmail-summary-sort-by-lines}を実行します。これらのコマンドは、たとえサマリーがメッセージの一部しか表示していなくても、Rmailバッファー全体をソートします。
+  The same keys in the summary buffer run similar functions; for example,
+@kbd{C-c C-s C-l} runs @code{rmail-summary-sort-by-lines}.  These commands
+always sort the whole Rmail buffer, even if the summary is only showing a
+subset of messages.
 
-  ソートのアンドゥはできないことに注意してください。そのため、ソートをする前にRmailバッファーを保存したいと思うかもしれません。
+  Note that you cannot undo a sort, so you may wish to save the Rmail buffer
+before sorting it.
 
 @node Rmail Display
-@section メッセージの表示
+@section Display of Messages
 
-  このセクションではRmailが、メールヘッダー、@acronym{MIME}のセクションと添付、URL、暗号化されたメッセージを表示する方法を説明します。
+  This section describes how Rmail displays mail headers, @acronym{MIME}
+sections and attachments, URLs, and encrypted messages.
 
 @table @kbd
 @item t
-ヘッダーの完全表示を切り替えます(@code{rmail-toggle-header})。
+Toggle display of complete header (@code{rmail-toggle-header}).
 @end table
 
 @kindex t @r{(Rmail)}
 @findex rmail-toggle-header
-  各メッセージを最初に表示する前に、Rmailは余分な物を減らすために、重要でないヘッダーを隠して、メッセージのヘッダーを再フォーマットします。@kbd{t}
-(@code{rmail-toggle-header})コマンドは、これを切り替えます。つまり再フォーマットされたヘッダーフィールドと、完全な元のヘッダーの間で、表示を切り替えます。正の引数を指定した場合、このコマンドは再フォーマットされたヘッダーを表示します。0または負の引数を指定した場合、完全なヘッダーを表示します。メッセージを再選択することにより、必要な場合は再フォーマットします。
+  Before displaying each message for the first time, Rmail reformats its
+header, hiding uninteresting header fields to reduce clutter.  The @kbd{t}
+(@code{rmail-toggle-header}) command toggles this, switching between showing
+the reformatted header fields and showing the complete, original header.
+With a positive prefix argument, the command shows the reformatted header;
+with a zero or negative prefix argument, it shows the full header.
+Selecting the message again also reformats it if necessary.
 
 @vindex rmail-ignored-headers
 @vindex rmail-displayed-headers
 @vindex rmail-nonignored-headers
-  変数@code{rmail-ignored-headers}は、隠すべきヘッダーフィールドを指定する正規表現を保持します。これにマッチするヘッダー行は隠されます。変数@code{rmail-nonignored-headers}は、これをオーバーライドします。この変数の正規表現にマッチするヘッダーフィールドは、たとえそれが@code{rmail-ignored-headers}にマッチしても、表示されます。変数@code{rmail-displayed-headers}は、これら2つの変数のかわりに使用されます。非@code{nil}の場合、その値には表示するヘッダーを指定する正規表現を指定します(デフォルトは@code{nil}です)。
+  The variable @code{rmail-ignored-headers} holds a regular expression
+specifying the header fields to hide; any matching header line will be
+hidden.  The variable @code{rmail-nonignored-headers} overrides this: any
+header field matching that regular expression is shown even if it matches
+@code{rmail-ignored-headers} too.  The variable
+@code{rmail-displayed-headers} is an alternative to these two variables; if
+non-@code{nil}, this should be a regular expression specifying which headers
+to display (the default is @code{nil}).
 
 @vindex rmail-highlighted-headers
-  Rmailは特に重要なヘッダーフィールド ---
-デフォルトでは@samp{From}と@samp{Subject}フィールドをハイライトします。ハイライトには@code{rmail-highlight}フェイスが使用されます。変数@code{rmail-highlighted-headers}は、ハイライトするヘッダーフィールドを指定する正規表現を保持します。これがヘッダーフィールドの先頭にマッチした場合、フィールド全体がハイライトされます。この機能を無効にするには、@code{rmail-highlighted-headers}に@code{nil}をセットしてください。
+  Rmail highlights certain header fields that are especially interesting---by
+default, the @samp{From} and @samp{Subject} fields.  This highlighting uses
+the @code{rmail-highlight} face.  The variable
+@code{rmail-highlighted-headers} holds a regular expression specifying the
+header fields to highlight; if it matches the beginning of a header field,
+that whole field is highlighted.  To disable this feature, set
+@code{rmail-highlighted-headers} to @code{nil}.
 
 @cindex MIME messages (Rmail)
 @vindex rmail-enable-mime
-  メッセージが@acronym{MIME}(Multipurpose Internet Mail
-Extensions)形式で、複数パート(@acronym{MIME}エンティティー)が含まれている場合、Rmailは各パートに@dfn{タグライン(tagline)}を表示します。タグラインはそのパートのインデックス、サイズ、コンテントタイプを要約します。コンテントタイプに依存して、1つ以上のボタンが含まれる場合があります。これらのボタンは、そのパートをファイルに保存する、などの処理を行ないます。
+  If a message is in @acronym{MIME} (Multipurpose Internet Mail Extensions)
+format and contains multiple parts (@acronym{MIME} entities), Rmail displays
+each part with a @dfn{tagline}.  The tagline summarizes the part's index,
+size, and content type.  Depending on the content type, it may also contain
+one or more buttons; these perform actions such as saving the part into a
+file.
 
 @table @kbd
 @findex rmail-mime-toggle-hidden
 @item @key{RET}
-ポイント位置の@acronym{MIME}パートを隠す、または表示します(@code{rmail-mime-toggle-hidden})。
+Hide or show the @acronym{MIME} part at point
+(@code{rmail-mime-toggle-hidden}).
 
 @findex rmail-mime-next-item
 @item @key{TAB}
-次の@acronym{MIME}タグラインのボタンにポイントを移動します(@code{rmail-mime-next-item})。
+Move point to the next @acronym{MIME} tagline button.
+(@code{rmail-mime-next-item}).
 
 @findex rmail-mime-previous-item
 @item S-@key{TAB}
-前の@acronym{MIME}パートにポイントを移動します(@code{rmail-mime-previous-item})。
+Move point to the previous @acronym{MIME} part
+(@code{rmail-mime-previous-item}).
 
 @findex rmail-mime
 @item v
 @kindex v @r{(Rmail)}
-@acronym{MIME}表示とrawメッセージの表示を切り替えます(@code{rmail-mime})。
+Toggle between @acronym{MIME} display and raw message (@code{rmail-mime}).
 @end table
 
-  プレーンテキストの@acronym{MIME}パートは、最初タグラインの直後に表示され、Rmailバッファーの他のタイプの@acronym{MIME}パートは、Rmailバッファーの一部としてタグラインだけが表示され(メッセージが@acronym{HTML}パートをもたない場合。以下参照)、実際のコンテンツは隠されています。どちらの場合も、@acronym{MIME}パートのどこか、またはそれのタグラインで@key{RET}をタイプすることにより、表示と非表示を切り替えることができます(他の処理を行なうボタンがある場合を除きます)。@key{RET}とタイプするかマウスでクリックすることにより、タグラインボタンをアクティブにでき、@key{TAB}でタグラインのボタンにたいして循環的にポイントを移動できます。
+  Each plain-text @acronym{MIME} part is initially displayed immediately after
+its tagline, as part of the Rmail buffer (unless the message has an
+@acronym{HTML} part, see below), while @acronym{MIME} parts of other types
+are represented only by their taglines, with their actual contents hidden.
+In either case, you can toggle a @acronym{MIME} part between its displayed
+and hidden states by typing @key{RET} anywhere in the part---or anywhere in
+its tagline (except for buttons for other actions, if there are any).  Type
+@key{RET} (or click with the mouse) to activate a tagline button, and
+@key{TAB} to cycle point between tagline buttons.
 
-  @kbd{v}
-(@code{rmail-mime})コマンドは、上記で説明したデフォルトの@acronym{MIME}表示と、@acronym{MIME}でデコードされていないrawデータの表示を切り替えます。プレフィクス引数を指定した場合は、ポイント位置にあるものの表示だけを切り替えます。
+  The @kbd{v} (@code{rmail-mime}) command toggles between the default
+@acronym{MIME} display described above, and a raw display showing the
+undecoded @acronym{MIME} data.  With a prefix argument, this command toggles
+the display of only an entity at point.
 
 @vindex rmail-mime-prefer-html
-  メッセージに@acronym{HTML}の@acronym{MIME}パートがあり、Emacsが@acronym{HTML}を表示できる場合、Rmailはそれをplain-textパートより優先して表示します@footnote{この機能は、Emacsが@file{libxml2}サポートつきでビルドされているか、Lynxブラウザーがインストールされている必要があります。}。これを抑制してかわりにplain-textパートを表示するには、変数@code{rmail-mime-prefer-html}を@code{nil}にカスタマイズしてください。
+  If the message has an @acronym{HTML} @acronym{MIME} part, Rmail displays it
+in preference to the plain-text part, if Emacs can render
+@acronym{HTML}@footnote{ This capability requires that Emacs be built with
+@file{libxml2} support or that you have the Lynx browser installed.}.  To
+prevent that, and have the plain-text part displayed instead, customize the
+variable @code{rmail-mime-prefer-html} to a @code{nil} value.
 
-  RmailからMIMEでデコードされたメッセージの処理を抑止するには、変数@code{rmail-enable-mime}を@code{nil}に変更します。この場合、@kbd{v}
-(@code{rmail-mime})は、カレント@acronym{MIME}メッセージを表示するために、一時的なバッファーを作成します。
+  To prevent Rmail from handling MIME decoded messages, change the variable
+@code{rmail-enable-mime} to @code{nil}.  When this is the case, the @kbd{v}
+(@code{rmail-mime}) command instead creates a temporary buffer to display
+the current @acronym{MIME} message.
 
 @findex rmail-epa-decrypt
 @cindex encrypted mails (reading in Rmail)
-  カレントメッセージが暗号化されている場合、復号化するためにコマンド@kbd{C-c C-d}
-(@code{rmail-epa-decrypt})を使用します。これはEasyPGライブラリーを使用します(@ref{Top,, EasyPG,
-epa, EasyPG Assistant User's Manual}を参照)。
+  If the current message is an encrypted one, use the command @kbd{C-c C-d}
+(@code{rmail-epa-decrypt}) to decrypt it, using the EasyPG library
+(@pxref{Top,, EasyPG, epa, EasyPG Assistant User's Manual}).
 
-  RmailバッファーでGoto Addressモードを使用して、URLのハイライトとアクティブ化ができます:
+  You can highlight and activate URLs in the Rmail buffer using Goto Address
+mode:
 
 @c FIXME goto-addr.el commentary says to use goto-address instead.
 @example
@@ -834,81 +1253,130 @@ epa, EasyPG Assistant User's Manual}を参照)。
 @end example
 
 @noindent
-このモードを使用すると、そのURLを@kbd{mouse-2}でクリック(または@kbd{mouse-1}で素早くクリック)するか、ポイントをそこに移動して@kbd{C-c
-@key{RET}}とタイプすることにより、それらのURLをブラウズできます。@ref{Goto Address mode, Activating
-URLs, Activating URLs}を参照してください。
+Then you can browse these URLs by clicking on them with @kbd{mouse-2} (or
+@kbd{mouse-1} quickly) or by moving to one and typing @kbd{C-c @key{RET}}.
+@xref{Goto Address mode, Activating URLs, Activating URLs}.
 
 @node Rmail Coding
-@section Rmailとコーディングシステム
+@section Rmail and Coding Systems
 
 @cindex decoding mail messages (Rmail)
-  Rmailは、Emacsがファイルをvisitしたりサブプロセスの出力にたいして行なうように、非@acronym{ASCII}文字を含むメッセージを自動的にデコードします。Rmailはメッセージで標準の@samp{charset=@var{charset}}ヘッダーを使用し、もしそれがあれば、送信者によりメッセージがどのようにエンコードされたか決定します。これは@var{charset}を、対応するEmacsコーディングシステム(@ref{Coding
-Systems}を参照してください)にマップして、メッセージテキストをデコードするために、そのコーディングシステムを使います。メッセージヘッダーに@samp{charset}指定がない場合、または@var{charset}が認識されなかった場合、Rmailは通常のEmacsの経験則とデフォルトに則ったコーディングシステムを選択します(@ref{Recognize
-Coding}を参照してください)。
+  Rmail automatically decodes messages which contain non-@acronym{ASCII}
+characters, just as Emacs does with files you visit and with subprocess
+output.  Rmail uses the standard @samp{charset=@var{charset}} header in the
+message, if any, to determine how the message was encoded by the sender.  It
+maps @var{charset} into the corresponding Emacs coding system (@pxref{Coding
+Systems}), and uses that coding system to decode message text.  If the
+message header doesn't have the @samp{charset} specification, or if
+@var{charset} is not recognized, Rmail chooses the coding system with the
+usual Emacs heuristics and defaults (@pxref{Recognize Coding}).
 
 @cindex fixing incorrectly decoded mail messages
-  メッセージが間違ってデコードされることもあります。これは@samp{charset}指定がないためにEmacsが間違ったコーディングシステムを推測したか、そもそも指定が間違っているかです。たとえば間違って設定されたメーラーが、メッセージが実際には@code{koi8-r}でエンコードされているのに、@samp{charset=iso-8859-1}というヘッダーでメッセージを送るかもしれません。メッセージテキストが文字化けしていたり、文字が16進コードや空ボックスで表示されているときは、おそらくこれが発生しています。
+  Occasionally, a message is decoded incorrectly, either because Emacs guessed
+the wrong coding system in the absence of the @samp{charset} specification,
+or because the specification was inaccurate.  For example, a misconfigured
+mailer could send a message with a @samp{charset=iso-8859-1} header when the
+message is actually encoded in @code{koi8-r}.  When you see the message text
+garbled, or some of its characters displayed as hex codes or empty boxes,
+this may have happened.
 
 @findex rmail-redecode-body
-  正しいコーディングシステムを解決または推測できる場合、正しいコーディングシステムを使ってメッセージを再デコードすることにより、問題を訂正することができます。これを行なうには@kbd{M-x
-rmail-redecode-body}コマンドを呼び出します。これはコーディングシステムの名前を読み取り、指定したコーディングシステムを使って、メッセージを再デコードします。正しいコーディングシステムを指定した場合、デコード結果は読めるようになるでしょう。
+  You can correct the problem by decoding the message again using the right
+coding system, if you can figure out or guess which one is right.  To do
+this, invoke the @kbd{M-x rmail-redecode-body} command.  It reads the name
+of a coding system, and then redecodes the message using the coding system
+you specified.  If you specified the right coding system, the result should
+be readable.
 
 @vindex rmail-file-coding-system
-  Rmailで新しいメールを受信したとき、各メッセージは、それらがあたかも個別のファイルであるかのように、それぞれが記述されたコーディングシステムに自動的に変換されます。これは指定されたコーディングシステムの優先順を使用します。MIMEメッセージが文字セットを指定している場合、Rmailはその指定にしたがいます。Rmailファイルの読み込みと保存にたいして、Emacsは、変数@code{rmail-file-coding-system}で指定されたコーディングシステムを使用します。デフォルト値は@code{nil}で、これはRmailファイルが変換されないことを意味します(これらはEmacsの内部文字セットで読み書きされます)。
+  When you get new mail in Rmail, each message is translated automatically
+from the coding system it is written in, as if it were a separate file.
+This uses the priority list of coding systems that you have specified.  If a
+MIME message specifies a character set, Rmail obeys that specification.  For
+reading and saving Rmail files themselves, Emacs uses the coding system
+specified by the variable @code{rmail-file-coding-system}.  The default
+value is @code{nil}, which means that Rmail files are not translated (they
+are read and written in the Emacs internal character code).
 
 @node Rmail Editing
-@section メッセージの編集
+@section Editing Within a Message
 
-  通常のEmacsのキーバインドのほとんどはRmailモードで利用可能ですが、@kbd{C-M-n}や@kbd{C-M-h}のように、他の目的のためにRmailにより再定義されているものもあります。しかしRmailバッファーは通常読み取り専用で、ほとんどの文字はRmailコマンドに再定義されています。メッセージのテキストを編集したい場合、Rmailの@kbd{e}コマンドを使わなければなりません。
+  Most of the usual Emacs key bindings are available in Rmail mode, though a
+few, such as @kbd{C-M-n} and @kbd{C-M-h}, are redefined by Rmail for other
+purposes.  However, the Rmail buffer is normally read only, and most of the
+letters are redefined as Rmail commands.  If you want to edit the text of a
+message, you must use the Rmail command @kbd{e}.
 
 @table @kbd
 @item e
-カレントメッセージを通常のテキストとして編集します。
+Edit the current message as ordinary text.
 @end table
 
 @kindex e @r{(Rmail)}
 @findex rmail-edit-current-message
-  @kbd{e} command (@code{rmail-edit-current-message})は、Rmailモードから、Rmail
-Editモードという、Textモードと類似した、別のメジャーモードに切り替えます。メジャーモードの変更はモードラインに示されます。
+  The @kbd{e} command (@code{rmail-edit-current-message}) switches from Rmail
+mode into Rmail Edit mode, another major mode which is nearly the same as
+Text mode.  The mode line indicates this change.
 
 @findex rmail-cease-edit
 @findex rmail-abort-edit
-  Rmail
-Editモードでは、文字は通常どおり文字自身を挿入し、Rmailコマンドは利用できません。メッセージの本文とヘッダーフィールドを編集することができます。メッセージの編集を終えたら、@kbd{C-c
-C-c} (@code{rmail-cease-edit})でRmailモードに戻ります。かわりに@kbd{C-c C-]}
-(@code{rmail-abort-edit})とタイプすれば、編集をキャンセルしてRmailモードに戻ることができます。
+  In Rmail Edit mode, letters insert themselves as usual and the Rmail
+commands are not available.  You can edit the message body and header
+fields.  When you are finished editing the message, type @kbd{C-c C-c}
+(@code{rmail-cease-edit}) to switch back to Rmail mode.  Alternatively, you
+can return to Rmail mode but cancel any editing that you have done, by
+typing @kbd{C-c C-]} (@code{rmail-abort-edit}).
 
 @vindex rmail-edit-mode-hook
-  Rmail
-Editモードに入ることにより、フック@code{text-mode-hook}、その後にフック@code{rmail-edit-mode-hook}が実行されます(@ref{Hooks}を参照してください)。通常のRmailモードにもどると、メッセージを変更した場合には、そのメッセージに属性@samp{edited}が追加されます(@ref{Rmail
-Attributes}を参照)。
+  Entering Rmail Edit mode runs the hook @code{text-mode-hook}; then it runs
+the hook @code{rmail-edit-mode-hook} (@pxref{Hooks}).  Returning to ordinary
+Rmail mode adds the attribute @samp{edited} to the message, if you have made
+any changes in it (@pxref{Rmail Attributes}).
 
 @node Rmail Digest
-@section ダイジェストメッセージ
+@section Digest Messages
 @cindex digest message
 @cindex undigestify
 
-  @dfn{ダイジェストメッセージ(digest
-message)}は、複数の他のメッセージを含み、それを運ぶために存在するメッセージです。ダイジェストは、いくつかのメーリングリストで使用されています。1日というような一定の期間の間にメーリングリストに到着したすべてのメッセージが、1つのダイジェストにまとめられて、メーリングリストに登録した人に送られます。1つのダイジェストを送信するのにかかるコンピューター時間は、たとえ合計サイズが同じでも個別にメッセージを送信するより短くなります。なぜならネットワークでのメール送信において、メッセージ単位のオーバーヘッドがあるからです。
+  A @dfn{digest message} is a message which exists to contain and carry
+several other messages.  Digests are used on some mailing lists; all the
+messages that arrive for the list during a period of time such as one day
+are put inside a single digest which is then sent to the subscribers.
+Transmitting the single digest uses less computer time than transmitting the
+individual messages even though the total size is the same, because of the
+per-message overhead in network mail transmission.
 
 @findex undigestify-rmail-message
-  ダイジェストメッセージを受信したとき、それを読むもっとも便利な方法は、それを@dfn{非ダイジェスト化(undigestify)}することです。これはダイジェストを複数のメッセージに戻します。それから個別にメッセージを読んだり削除できます。これを行なうにはダイジェストメッセージを選択して、コマンド@kbd{M-x
-undigestify-rmail-message}をタイプします。これはダイジェストに含まれるメッセージを個別のRmailメッセージに抽出し、ダイジェストの後に挿入します。ダイジェストメッセージ自身には、削除のフラグがつけられます。
+  When you receive a digest message, the most convenient way to read it is to
+@dfn{undigestify} it: to turn it back into many individual messages.  Then
+you can read and delete the individual messages as it suits you.  To do
+this, select the digest message and type the command @kbd{M-x
+undigestify-rmail-message}.  This extracts the submessages as separate Rmail
+messages, and inserts them following the digest.  The digest message itself
+is flagged as deleted.
 
 @node Rmail Rot13
-@section Rot13メッセージを読む
+@section Reading Rot13 Messages
 @cindex rot13 code
 
-  読む人を怒らせたり不快にするかもしれないメーリングリストのメッセージは、@dfn{rot13}と呼ばれる単純なコードでエンコードされているときがあります。この名前はエンコードの方法がアルファベットを13文字分巡回させることに由来します。このコードに機密性はなく、提供もしていません。むし、実際のテキストを見るのを避けたいと思う人のためのものです。たとえばビデオの講評などでは重要なあらすじを隠す(訳注:
-いわゆるネタバレ回避)ためにrot13を使います。
+  Mailing list messages that might offend or annoy some readers are sometimes
+encoded in a simple code called @dfn{rot13}---so named because it rotates
+the alphabet by 13 letters.  This code is not for secrecy, as it provides
+none; rather, it enables those who wish to avoid seeing the real text of the
+message.  For example, a review of a film might use rot13 to hide important
+plot points.
 
 @findex rot13-other-window
-  rot13を使ったバッファーを閲覧するには、コマンド@kbd{M-x
-rot13-other-window}を使用します。これはカレントバッファーを他のウィンドウで表示します。このウィンドウではテキストを表示するときこのコードを適用します。
+  To view a buffer that uses the rot13 code, use the command @kbd{M-x
+rot13-other-window}.  This displays the current buffer in another window
+which applies the code when displaying the text.
 
 @findex rot13-region
-  関心があるのはリージョンだけであれば、コマンド@kbd{M-x
-rot13-region}を使うほうがよいかもしれません。これはアクティブなリージョンをそのまま暗号化/復号化します。読み取り専用のバッファーでは、エコーエリアに平文テキストの表示を試みます。それがエコーエリアにたいして長すぎるテキストであれば、このコマンドは暗号化/復号化されたテキストを表示する一時的なバッファーをポップアップします。
+  If you are only interested in a region, the command @kbd{M-x rot13-region}
+might be preferable.  This will encrypt/decrypt the active region in-place.
+If the buffer is read-only, it will attempt to display the plain text in the
+echo area.  If the text is too long for the echo area, the command will pop
+up a temporary buffer with the encrypted/decrypted text.
 
 @node Movemail
 @section @command{movemail} program
@@ -925,9 +1393,10 @@ versions support the same command line syntax and the same basic subset of
 options.  However, the Mailutils version offers additional features and is
 more secure.
 
-  Emacsバージョンの@command{movemail}は、通常のUnix
-mailbox形式のmailboxからメールを取得することができます。@strong{警告}:
-これはPOP3プロトコルの使用も可能ですが、暗号化されたTLSチャンネルを通じたPOP3をサポートしないので、推奨しません。
+  The Emacs version of @command{movemail} can retrieve mail from the usual
+Unix mailbox formats.  @strong{Warning}: Although it can also use the POP3
+protocol, this is not recommended because it does not support POP3 via
+encrypted TLS channels.
 
   The Mailutils version is able to handle a wide set of mailbox formats, such
 as plain Unix mailboxes, @code{maildir} and @code{MH} mailboxes, etc.  It is
@@ -942,46 +1411,52 @@ Mailutils Manual}.  In short, a @acronym{URL} is:
 @end smallexample
 
 @noindent
-角カッコ(bracket)はオプションの要素を意味します。
+where square brackets denote optional elements.
 
 @table @var
 @cindex mailbox protocol, @command{movemail}
 @cindex format, of @command{movemail} mailbox
 @item proto
-@dfn{mailboxプロトコル}、または使用する@dfn{フォーマット}を指定します。@acronym{URL}の残りの要素の正確な意味は、@var{proto}の実際の値に依存します(以下参照)。
+Specifies the @dfn{mailbox protocol}, or @dfn{format} to use.  The exact
+semantics of the rest of @acronym{URL} elements depends on the actual value
+of @var{proto} (see below).
 
 @item user
-リモートmailboxにアクセスするためのユーザー名です。
+User name to access the remote mailbox.
 
 @item password
-リモートmailboxにアクセスするためのユーザーパスワードです。
+User password to access the remote mailbox.
 
 @item host-or-file-name
-リモートmailboxのリモートサーバーのホスト名、またはローカルmailboxのファイル名です。
+Hostname of the remote server for remote mailboxes or file name of a local
+mailbox.
 
 @item port
-そのプロトコルのデフォルト以外のポート番号をオプションで指定します。
+Optional port number, if not the default for that protocol.
 @end table
 
 @noindent
-@var{proto}には以下の1つを指定します:
+@var{proto} can be one of:
 
 @table @code
 @item mbox
-通常のUnix
-mailbox形式です。この場合@var{user}、@var{pass}、@var{port}は使用せず、@var{host-or-file-name}はmailboxファイルのファイル名を意味します(例:
-@code{mbox:///var/spool/mail/smith})。
+Usual Unix mailbox format.  In this case, @var{user}, @var{pass} and
+@var{port} are not used, and @var{host-or-file-name} denotes the file name
+of the mailbox file, e.g., @code{mbox:///var/spool/mail/smith}.
 
 @item mh
-@acronym{MH}形式のローカルmailboxです。@var{user}、@var{pass}、@var{port}は使用せず、@var{host-or-file-name}は@acronym{MH}フォルダーのファイル名を意味します(例:
-@code{mh:///Mail/inbox})。
+A local mailbox in the @acronym{MH} format.  @var{user}, @var{pass} and
+@var{port} are not used.  @var{host-or-file-name} denotes the name of
+@acronym{MH} folder, e.g., @code{mh:///Mail/inbox}.
 
 @item maildir
-@acronym{maildir}形式のローカルmailboxです。@var{user}、@var{pass}、@var{port}は使用せず、@var{host-or-file-name}は@code{maildir}
-mailboxの名前を意味します(例: @code{maildir:///mail/inbox})。
+A local mailbox in the @acronym{maildir} format.  @var{user}, @var{pass} and
+@var{port} are not used, and @var{host-or-file-name} denotes the name of
+@code{maildir} mailbox, e.g., @code{maildir:///mail/inbox}.
 
 @item file
-mailbox形式の任意のローカルファイルです。実際の形式は@command{movemail}により自動的に決定されます。
+Any local file in mailbox format.  Its actual format is detected
+automatically by @command{movemail}.
 
 @item pop
 @itemx pops
@@ -994,7 +1469,8 @@ A remote mailbox to be accessed via IMAP4 protocol.  @xref{Remote
 Mailboxes}, for details.
 @end table
 
-  かわりに、使用するmailboxのファイル名を指定できます。これはプロトコルに@samp{file}を指定するのと等価です:
+  Alternatively, you can specify the file name of the mailbox to use.  This is
+equivalent to specifying the @samp{file} protocol:
 
 @smallexample
 /var/spool/mail/@var{user} @equiv{} file:///var/spool/mail/@var{user}
@@ -1002,16 +1478,25 @@ Mailboxes}, for details.
 
 @vindex rmail-movemail-program
 @vindex rmail-movemail-search-path
-  変数@code{rmail-movemail-program}は、どのバージョンの@command{movemail}を使用するかを制御します。文字列の場合、それは@command{movemail}実行ファイルの絶対ファイル名を指定します。@code{nil}の場合、Rmailは@code{rmail-movemail-search-path}、@code{exec-path}(@ref{Shell}を参照してください)、@code{exec-directory}の順で、これらの変数にリストされたディレクトリーから、@command{movemail}を検索します。
+  The variable @code{rmail-movemail-program} controls which version of
+@command{movemail} to use.  If that is a string, it specifies the absolute
+file name of the @command{movemail} executable.  If it is @code{nil}, Rmail
+searches for @command{movemail} in the directories listed in
+@code{rmail-movemail-search-path}, then in @code{exec-path} (@pxref{Shell}),
+then in @code{exec-directory}.
 
 @node Remote Mailboxes
-@section リモートmailboxからのメールの取得
+@section Retrieving Mail from Remote Mailboxes
 @pindex movemail
 @cindex remote mailboxes, accessing by @command{movemail}
 
-  inboxファイルにデータを格納するかわりに、POP3と呼ばれる手法を使用してユーザーのinboxデータにアクセスするサイトがいくつかあります。Mailutilsの@command{movemail}は、デフォルトでTLS暗号化されたPOP3をサポートします。@strong{警告:}
-たとえ@command{Emacs
-movemail}がPOP3をサポートしていても、Mailutilsバージョンがサポートする暗号化された接続をサポートしないので、これを使用することは推奨しません。どちらのバージョンの@command{movemail}も、POP3にたいしてだけ機能し、POPの古いバージョンにたいしては機能しません。
+  Some sites use a method called POP3 for accessing users' inbox data instead
+of storing the data in inbox files.  The Mailutils @command{movemail} by
+default supports POP3 with TLS encryption.  @strong{Warning:} Although the
+@command{Emacs movemail} supports POP3, its use for this is not recommended
+since it does not support encrypted connections---the Mailutils version
+does.  Both versions of @command{movemail} work only with POP3, not with
+older versions of POP.
 
 @cindex @env{MAILHOST} environment variable
 @cindex POP3 mailboxes
@@ -1029,8 +1514,12 @@ have several remote mailboxes with different passwords.  If using Mailutils
 @command{movemail} tries to use it; specify @samp{pops:} instead of
 @samp{pop:} to require such a connection.
 
-  後方互換のため、RmailはリモートのPOP3
-mailboxを指定する他の方法もサポートします。@samp{po:@var{username}:@var{hostname}:@var{port}}によるinbox名の指定は、@samp{pop://@var{username}@@@var{hostname}:@var{port}}と等価です。@var{:hostname}の部分を省略した場合は、環境変数@env{MAILHOST}で、どのマシンのPOP3サーバーを探すか指定します。
+  For backward compatibility, Rmail also supports an alternative way of
+specifying remote POP3 mailboxes.  Specifying an inbox name in the form
+@samp{po:@var{username}:@var{hostname}:@var{port}} is equivalent to
+@samp{pop://@var{username}@@@var{hostname}:@var{port}}.  If you omit the
+@var{:hostname} part, the @env{MAILHOST} environment variable specifies the
+machine on which to look for the POP3 server.
 
 @cindex IMAP mailboxes
   Another method for accessing remote mailboxes is IMAP@.  This method is
@@ -1044,40 +1533,60 @@ the @samp{imaps:} form to require one.
 
 @vindex rmail-remote-password
 @vindex rmail-remote-password-required
-  リモートmailboxへのアクセスにはパスワードが要求されます。これを取得するためにRmailは以下のアルゴリズムを使います:
+  Accessing a remote mailbox may require a password.  Rmail uses the following
+algorithm to retrieve it:
 
 @enumerate
 @item
-mailbox URL(上記参照)で@var{password}が与えられた場合はそれを使います。
+If a @var{password} is present in the mailbox URL (see above), it is used.
 @item
-変数@code{rmail-remote-password-required}が@code{nil}の場合、Rmailはパスワードが要求されないと想定します。
+If the variable @code{rmail-remote-password-required} is @code{nil}, Rmail
+assumes no password is required.
 @item
-変数@code{rmail-remote-password}が非@code{nil}の場合はその値を使います。
+If the variable @code{rmail-remote-password} is non-@code{nil}, its value is
+used.
 @item
-上記以外の場合、Rmailはパスワードの入力を求めます。
+Otherwise, Rmail will ask you for the password to use.
 @end enumerate
 
-ユーザー名にドメイン情報が含まれるメールサーバーでは、ユーザー名に@samp{@@}文字が含まれる可能性があります。inbox指定子文字列はメールサーバー名の開始シグナルに@samp{@@}を使用します。これはmovemailに混乱を生みます。ユーザー名が@samp{@@}を含み、@command{movemail}の@code{@@}を使用している場合には、ユーザー名の@samp{@@}を@acronym{URL}エンコードの@samp{%40}で置き換えることにより問題を解決できます。
+On some mail servers the usernames include domain information, which can
+mean they contain the @samp{@@} character.  The inbox specifier string uses
+@samp{@@} to signal the start of the mailserver name.  This creates
+confusion for movemail.  If your username contains @samp{@@} and you're
+using Mailutils @command{movemail} then you can fix this: Replace @code{@@}
+in the user name with its @acronym{URL} encoding @samp{%40}.
 
 @vindex rmail-movemail-flags
-  追加のコマンドラインフラグを@command{movemail}に渡す必要がある場合は、使いたいフラグのリストを変数@code{rmail-movemail-flags}にセットします。inboxの内容を保持するために。この変数を使ってフラグ@samp{-p}を渡さないでください。かわりに@code{rmail-preserve-inbox}を使用してください。
+  If you need to pass additional command-line flags to @command{movemail}, set
+the variable @code{rmail-movemail-flags} a list of the flags you wish to
+use.  Do not use this variable to pass the @samp{-p} flag to preserve your
+inbox contents; use @code{rmail-preserve-inbox} instead.
 
 @cindex Kerberos POP3 authentication
-  あなたのサイトにインストールされた@command{movemail}プログラムは、ケルベロス認証(Kerberos
-authentication)をサポートするでしょう。もしサポートされている場合、@code{rmail-remote-password}および@code{rmail-remote-password-required}がセットされていないときに、POP3メールの取得を試みたときは、デフォルトでケルベロス認証を使います。
+  The @command{movemail} program installed at your site may support Kerberos
+authentication.  If it is supported, it is used by default whenever you
+attempt to retrieve POP3 mail when @code{rmail-remote-password} and
+@code{rmail-remote-password-required} are unset.
 
 @cindex reverse order in POP3 inboxes
-  メッセージを逆順に保存するPOP3サーバーもあります。あなたのサーバーがこれを行なっている場合、到着した順にメールを読みたいときは、@code{rmail-movemail-flags}に@samp{-r}フラグを追加することにより、逆順でメッセージをダウンロードするよう、@command{movemail}に指示できます。
+  Some POP3 servers store messages in reverse order.  If your server does
+this, and you would rather read your mail in the order in which it was
+received, you can tell @command{movemail} to reverse the order of downloaded
+messages by adding the @samp{-r} flag to @code{rmail-movemail-flags}.
 
 @cindex TLS encryption (Rmail)
-  Mailutils @command{movemail}は、TLS暗号化(TLS
-encryption)をサポートします。これを使いたい場合は、@code{rmail-movemail-flags}に@samp{--tls}フラグをセットしてください。
+  Mailutils @command{movemail} supports TLS encryption.  If you wish to use
+it, add the @samp{--tls} flag to @code{rmail-movemail-flags}.
 
 @node Other Mailbox Formats
-@section さまざまな形式のローカルmailboxからのメールの取得
+@section Retrieving Mail from Local Mailboxes in Various Formats
 
-  受信したメールがローカルマシンのUnix mailbox以外の形式に保存される場合、これを取得するためにMailutils
-@command{movemail}を使う必要があるでしょう。@command{movemail}のバージョンについての詳細な説明は、@ref{Movemail}を参照してください。たとえば@file{/var/spool/mail/in}にある@code{maildir}形式のinboxのメールにアクセスするには、Rmailのinboxリストに以下を含める必要があるでしょう:
+  If your incoming mail is stored on a local machine in a format other than
+Unix mailbox, you will need the Mailutils @command{movemail} to retrieve
+it.  @xref{Movemail}, for the detailed description of @command{movemail}
+versions.  For example, to access mail from an inbox in @code{maildir}
+format located in @file{/var/spool/mail/in}, you would include the following
+in the Rmail inbox list:
 
 @smallexample
 maildir:///var/spool/mail/in

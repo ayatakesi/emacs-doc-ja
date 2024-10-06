@@ -10,77 +10,124 @@
 @c Foundation, Inc.
 @c See file emacs-ja.texi for copying conditions.
 @node Modes
-@chapter メジャーモードとマイナーモード
+@chapter Major and Minor Modes
 
-  Emacsには多くの@dfn{編集用モード(editing
-modes)}が含まれており、これは基本的な振る舞いを、編集に便利な方法に変更します。これらの編集用モードは@dfn{メジャーモード(major
-modes)}と@dfn{マイナーモード(minor modes)}に分けられます。
+  Emacs contains many @dfn{editing modes} that alter its basic behavior in
+useful ways.  These are divided into @dfn{major modes} and @dfn{minor
+modes}.
 
-  メジャーモードは、Cソースファイル(@ref{Programs}を参照してください)などの特定のファイルタイプや、shellバッファー(@ref{Shell}を参照してください)などの、特別なタイプの非ファイルバッファーにたいして作業するための特別な機能を提供します。メジャーモードは互いに排他であり、各バッファーは常に1つのメジャーモードをもちます。
+  Major modes provide specialized facilities for working on a particular file
+type, such as a C source file (@pxref{Programs}), or a particular type of
+non-file buffer, such as a shell buffer (@pxref{Shell}).  Major modes are
+mutually exclusive; each buffer has one and only one major mode at any time.
 
-  マイナーモードはオンとオフを切り替えることができるオプションの機能で、ファイルやバッファーのタイプに特定する必要はありません。たとえばAuto
-Fillモードは、単語の間にタイプした@key{SPC}で行を区切るマイナーモードです(@ref{Auto
-Fill}を参照してください)。マイナーモードは互いに独立していて、選択されたメジャーモードからも独立しています。
+  Minor modes are optional features which you can turn on or off, not
+necessarily specific to a type of file or buffer.  For example, Auto Fill
+mode is a minor mode in which @key{SPC} breaks lines between words as you
+type (@pxref{Auto Fill}).  Minor modes are independent of one another, and
+of the selected major mode.
 
 @menu
-* Major Modes::              Textモード vs. Lispモード 
-                               vs. Cモード...
-* Minor Modes::              マイナーモードは他と独立して有効にできる機能です。
-* Choosing Modes::           ファイルをvisitしたときにモードが選択される方法。
+* Major Modes::              Text mode vs. Lisp mode vs. C mode...
+* Minor Modes::              Each minor mode is a feature you can turn on 
+                               independently of any others.
+* Choosing Modes::           How modes are chosen when visiting files.
 @end menu
 
 @node Major Modes
-@section メジャーモード
+@section Major Modes
 @cindex major modes
 @cindex mode, major
 @kindex TAB @r{(and major modes)}
 @kindex DEL @r{(and major modes)}
 @kindex C-j @r{(and major modes)}
 
-  すべてのバッファーはメジャーモードをもっており、そのバッファーがカレントである間の編集の動作を決定します。モードラインには通常カレントのメジャーモード名がカッコ内に表示されます(@ref{Mode
-Line}を参照してください)。
+  Every buffer possesses a major mode, which determines the editing behavior
+of Emacs while that buffer is current.  The mode line normally shows the
+name of the current major mode, in parentheses (@pxref{Mode Line}).
 
-  もっとも特殊化されていないメジャーモードは、@dfn{Fundamental(基本)モード}と呼ばれます。このモードには、モード独自の再定義や変数設定がないので、各Emacsコマンドはもっとも一般的な振る舞いをし、各ユーザーオプションはデフォルトの状態になっています。
+  The least specialized major mode is called @dfn{Fundamental mode}.  This
+mode has no mode-specific redefinitions or variable settings, so that each
+Emacs command behaves in its most general manner, and each user option
+variable is in its default state.
 
-  Lispや英文テキストのように、Emacsが認識できる特定のタイプのテキスト編集には、LispモードやTextモードのような、より特殊化されたメジャーモードを通常は使用します。ほとんどのメジャーモードは3つのグループに分けられます。最初のグループはプレインまたはマークアップされた通常テキストのためのモードを含みます。これにはTextモード、HTMLモード、SGMLモード、@TeX{}モードやOutlineモードなどが含まれます。2番目のグループはプログラミング言語特有のモードです。これらは、Lispモード(いくつかの変種を有する)、Cモード、Fortranモードなどが含まれます。3番目のグループはファイルに直接関連付けられていないメジャーモードが含まれます。これらはEmacsが特別の目的のために作るバッファーで使用されるものです。例としては、Diredが作成するバッファーのためのDiredモード(@ref{Dired}を参照)、@kbd{C-x
-m}で作成されるバッファーのためのMessageモード(@ref{Sending
-Mail}を参照)、下位のシェルプロセスとの通信用のバッファーのためのShellモード(@ref{Interactive
-Shell}を参照)などが含まれます。
+  For editing text of a specific type that Emacs knows about, such as Lisp
+code or English text, you typically use a more specialized major mode, such
+as Lisp mode or Text mode.  Most major modes fall into three major groups.
+The first group contains modes for normal text, either plain or with
+mark-up.  It includes Text mode, HTML mode, SGML mode, @TeX{} mode and
+Outline mode.  The second group contains modes for specific programming
+languages.  These include Lisp mode (which has several variants), C mode,
+Fortran mode, and others.  The third group consists of major modes that are
+not associated directly with files; they are used in buffers created for
+specific purposes by Emacs.  Examples include Dired mode for buffers made by
+Dired (@pxref{Dired}), Message mode for buffers made by @kbd{C-x m}
+(@pxref{Sending Mail}), and Shell mode for buffers used to communicate with
+an inferior shell process (@pxref{Interactive Shell}).
 
-  通常、メジャーモードは最初にファイルをvisitしたとき、またはバッファーを作成したときに、Emacsにより自動的にセットされます。@kbd{M-x}コマンドを使うことにより、新しいメジャーモードを明示的に選択することができます。モードの名前に@code{-mode}を追加することにより、モードを選択するコマンド名を得ることができます(たとえば、Lispモードを選択する場合は@kbd{M-x
-lisp-mode})。すべてのバッファーは厳密に1つのメジャーモードをもつので、メジャーモードを``オフ''にする方法はなく、かわりに他のメジャーモードに切り替えなければなりません。
+  Usually, the major mode is automatically set by Emacs, when you first visit
+a file or create a buffer (@pxref{Choosing Modes}).  You can explicitly
+select a new major mode by using an @kbd{M-x} command.  Take the name of the
+mode and add @code{-mode} to get the name of the command to select that mode
+(e.g., @kbd{M-x lisp-mode} enters Lisp mode).  Since every buffer has
+exactly one major mode, there is no way to ``turn off'' a major mode;
+instead you must switch to a different one.
 
 @vindex major-mode
-  バッファーローカルな変数@code{major-mode}の値は、メジャーモードコマンドと同じ名前のシンボル(たとえば@code{lisp-mode})です。この変数は自動的にセットされます。あなた自身が変更するべきではありません。
+  The value of the buffer-local variable @code{major-mode} is a symbol with
+the same name as the major mode command (e.g., @code{lisp-mode}).  This
+variable is set automatically; you should not change it yourself.
 
-  @code{major-mode}のデフォルト値は、メジャーモードが指定されていないファイルを使うときや、@kbd{C-x
-b}で作成した新しいバッファーのメジャーモードを決定します。通常、デフォルト値はFundamentalモードを指定する、シンボル@code{fundamental-mode}です。Customizationインターフェースを通じて、このデフォルト値を変更できます(@ref{Easy
-Customization}を参照してください)。initファイルに以下のような行を追加しても変更できます(@ref{Init
-File}を参照してください):
+  The default value of @code{major-mode} determines the major mode to use for
+files that do not specify a major mode, and for new buffers created with
+@kbd{C-x b}.  Normally, this default value is the symbol
+@code{fundamental-mode}, which specifies Fundamental mode.  You can change
+this default value via the Customization interface (@pxref{Easy
+Customization}), or by adding a line like this to your init file
+(@pxref{Init File}):
 
 @example
 (setq-default major-mode 'text-mode)
 @end example
 
 @noindent
-@code{major-mode}のデフォルト値が@code{nil}の場合、メジャーモードは前のカレントバッファーから引き継がれます。
+If the default value of @code{major-mode} is @code{nil}, the major mode is
+taken from the previously current buffer.
 
-  特殊化されたメジャーモードは、特定のキーにたいして、そのモードにより適した何かを行うよう、意味づけが変更される場合があります。たとえばプログラミングに関連するモードでは、@key{TAB}には、カレント行をその言語のルールにしたがってインデントする機能がバインドされます(@ref{Indentation}を参照してください)。一般的に変更されるキーは@key{TAB}、@key{DEL}、@kbd{C-j}です。多くのモードがモード自身の特別なコマンドを定義しており、それらは通常、プレフィクスキーが@kbd{C-c}であるようなキーシーケンスにバインドされます。メジャーモードはユーザーオプションと変数も変更できます。たとえばプログラミングに間するモードは通常、変数@code{comment-start}にバッファーローカルな値をセットします。これはソースコードのコメントがどのように区切られるかを決定します(@ref{Comments}を参照してください)。
+  Specialized major modes often change the meanings of certain keys to do
+something more suitable for the mode.  For instance, programming language
+modes bind @key{TAB} to indent the current line according to the rules of
+the language (@pxref{Indentation}).  The keys that are commonly changed are
+@key{TAB}, @key{DEL}, and @kbd{C-j}.  Many modes also define special
+commands of their own, usually bound to key sequences whose prefix key is
+@kbd{C-c} (@pxref{Keys}).  Major modes can also alter user options and
+variables; for instance, programming language modes typically set a
+buffer-local value for the variable @code{comment-start}, which determines
+how source code comments are delimited (@pxref{Comments}).
 
-  カレントメジャーモードのキーバインディング一覧も含めたドキュメントを閲覧するには、@kbd{C-h m}
-(@code{describe-mode})とタイプします。@ref{Misc Help}を参照してください。
+  To view the documentation for the current major mode, including a list of
+its key bindings, type @kbd{C-h m} (@code{describe-mode}).  @xref{Misc
+Help}.
 
 @cindex mode hook
 @vindex prog-mode-hook
-  Fundamentalモード以外のすべてのメジャーモードは、@dfn{モードフック(mode
-hook)}を定義します。これはバッファーでそのモードが有効になるたびに実行される、カスタマイズ可能なLisp関数のリストです。フックに間する詳細は、@ref{Hooks}を参照してください。各モードフックはメジャーモード名の後に名前がつけられます。たとえばFortranモードのモードフックは、@code{fortran-mode-hook}です。さらに、すべてのテキストベースのメジャーモードは、@code{text-mode-hook}を実行し、多くの、プログラミング言語のモード(Emacsとともに配布されるものを含む)
-は、その言語モード自身のモードフックの前に、@code{prog-mode-hook}を実行します@footnote{より具体的には、そのモードは@code{prog-mode}から``派生''したモードです(@ref{Derived
-Modes,,, elisp, The Emacs Lisp Reference Manual}を参照)。}
-。フック関数は変数@code{major-mode}の値を調べて、どのモードに入ろうとしているか調べることができます。
+  Every major mode, apart from Fundamental mode, defines a @dfn{mode hook}, a
+customizable list of Lisp functions to run each time the mode is enabled in
+a buffer.  @xref{Hooks}, for more information about hooks.  Each mode hook
+is named after its major mode, e.g., Fortran mode has
+@code{fortran-mode-hook}.  Furthermore, all text-based major modes run
+@code{text-mode-hook}, and many programming language modes @footnote{More
+specifically, the modes which are ``derived'' from @code{prog-mode}
+(@pxref{Derived Modes,,, elisp, The Emacs Lisp Reference Manual}).}
+(including all those distributed with Emacs) run @code{prog-mode-hook},
+prior to running their own mode hooks.  Hook functions can look at the value
+of the variable @code{major-mode} to see which mode is actually being
+entered.
 
-  モードフックは、一般的にマイナーモードを有効にするために使用されます(@ref{Minor
-Modes}を参照)。たとえば以下の行をinitファイルに記述すると、すべてのテキストベースのメジャーモードでFlyspellマイナーモード(@ref{Spelling}を参照)を、Emacs
-LispモードでElDocマイナーモード(@ref{Programming Language Doc}を参照)を有効にすることができます:
+  Mode hooks are commonly used to enable minor modes (@pxref{Minor Modes}).
+For example, you can put the following lines in your init file to enable
+Flyspell minor mode in all text-based major modes (@pxref{Spelling}), and
+ElDoc minor mode in Emacs Lisp mode (@pxref{Programming Language Doc}):
 
 @example
 (add-hook 'text-mode-hook 'flyspell-mode)
@@ -88,248 +135,347 @@ LispモードでElDocマイナーモード(@ref{Programming Language Doc}を参�
 @end example
 
 @node Minor Modes
-@section マイナーモード
+@section Minor Modes
 @cindex minor modes
 @cindex mode, minor
 
-  マイナーモードは明確な方法でEmacsの動作を変更する、オプションの編集用モードです。メジャーモードとは異なり、いつでも任意の数のマイナーモードを有効にできます。いくつかのマイナーモードは@dfn{バッファーローカル(buffer-local)}で、特定のバッファーにたいしてオン(有効)にして、他のバッファーではオフ(無効)に切り替えることができます。それ以外のマイナーモードは@dfn{グローバル(global)}で、それが有効な間はEmacsセッションのすべてのバッファーで行う、すべての操作に影響します。ほとんどのマイナーモードはデフォルトで無効ですが、デフォルトで有効なものもいくつかあります。
+  A minor mode is an optional editing mode that alters the behavior of Emacs
+in some well-defined way.  Unlike major modes, any number of minor modes can
+be in effect at any time.  Some minor modes are @dfn{buffer-local}, and can
+be turned on (enabled) in certain buffers and off (disabled) in others.
+Other minor modes are @dfn{global}: while enabled, they affect everything
+you do in the Emacs session, in all buffers.  Most minor modes are disabled
+by default, but a few are enabled by default.
 
-  ほとんどのバッファーローカルなマイナーモードは、モードラインのメジャーモード標識のすぐ後ろに有効であることを示します。たとえばモードラインに@samp{Fill}と表示されているとき、それはAuto
-Fillモードが有効であることを意味します。@ref{Mode Line}を参照してください。
+  Most buffer-local minor modes say in the mode line when they are enabled,
+just after the major mode indicator.  For example, @samp{Fill} in the mode
+line means that Auto Fill mode is enabled.  @xref{Mode Line}.
 
 @cindex mode commands for minor modes
-  メジャーモードと同様に、各マイナーモードは@dfn{モードコマンド(mode
-command)}に関連付けられていて、それはモード名の後ろに@samp{-mode}を付けた名前です。たとえばAuto
-Fillモードのモードコマンドは@code{auto-fill-mode}です。しかしメジャーモードのコマンドは、単純にそのモードを有効にするだけですが、マイナーモードのモードコマンドは、モードを有効または無効にすることができます。
+  Like major modes, each minor mode is associated with a @dfn{mode command},
+whose name consists of the mode name followed by @samp{-mode}.  For
+instance, the mode command for Auto Fill mode is @code{auto-fill-mode}.  But
+unlike a major mode command, which simply enables the mode, the mode command
+for a minor mode can either enable or disable it:
 
 @itemize
 @item
-@kbd{M-x}を通じて、またはバインドしたキー(@ref{Key
-Bindings}を参照してください)をタイプすることにより、モードコマンドをプレフィクスキーなしで直接呼び出すと、それはマイナーモードを@dfn{切り替え(toggles)}ます。つまり、マイナーモードがオフのときはオンに、オンのときはオフに切り替えます。
+If you invoke the mode command directly with no prefix argument (either via
+@kbd{M-x}, or by binding it to a key and typing that key; @pxref{Key
+Bindings}), that @dfn{toggles} the minor mode.  The minor mode is turned on
+if it was off, and turned off if it was on.
 
 @item
-プレフィクス引数を指定してモードコマンドを呼び出すと、引数が0または負のときは無条件にマイナーモードをオフにし、それ以外のときは無条件にオンに切り替えます。
+If you invoke the mode command with a prefix argument, the minor mode is
+unconditionally turned off if that argument is zero or negative; otherwise,
+it is unconditionally turned on.
 
 @item
-Lispからモードコマンドが呼び出された場合、引数が省略されているか@code{nil}のとき、マイナーモードは無条件にオンになります。これはメジャーモードのモードフックからマイナーモードをオンに切り替えるのを簡単にします(@ref{Major
-Modes}を参照してください)。非@code{nil}の引数は、上で説明したインタラクティブなプレフィクス引数と同様に処理されます。
+If the mode command is called via Lisp, the minor mode is unconditionally
+turned on if the argument is omitted or @code{nil}.  This makes it easy to
+turn on a minor mode from a major mode's mode hook (@pxref{Major Modes}).  A
+non-@code{nil} argument is handled like an interactive prefix argument, as
+described above.
 @end itemize
 
-  ほとんどのマイナーモードは、モードコマンドと同じ名前の@dfn{モード変数(mode
-variable)}をもっています。変数の値が非@code{nil}のときはモードが有効で、@code{nil}なら無効です。一般的に、Lispから直接モード変数を変更して、モードを有効または無効にするべきではありません。かわりにモードコマンドを使うべきです。しかしCustomizeインターフェース(@ref{Easy
-Customization}を参照してください)を通じてのノード変数のセットは、Customizeが自動的にモードコマンドを実行するので、常に正しくモードを有効または無効にします。
+  Most minor modes also have a @dfn{mode variable}, with the same name as the
+mode command.  Its value is non-@code{nil} if the mode is enabled, and
+@code{nil} if it is disabled.  In general, you should not try to enable or
+disable the mode by changing the value of the mode variable directly in
+Lisp; you should run the mode command instead.  However, setting the mode
+variable through the Customize interface (@pxref{Easy Customization}) will
+always properly enable or disable the mode, since Customize automatically
+runs the mode command for you.
 
-  以下にいくつかのバッファーローカルなマイナーモードのリストを示します:
+  The following is a list of some buffer-local minor modes:
 
 @itemize @bullet
 @item
-Abbrevモードは、事前に定義された省略形(abbreviation)の定義にもとづいて、テキストを自動的に展開します。@ref{Abbrevs}を参照してください。
+Abbrev mode automatically expands text based on pre-defined abbreviation
+definitions.  @xref{Abbrevs}.
 
 @item
-Auto Fillモードは、行が長くなりすぎるのを防ぐため、タイプされた文字にしたがって改行を挿入します。@ref{Filling}を参照してください。
+Auto Fill mode inserts newlines as you type to prevent lines from becoming
+too long.  @xref{Filling}.
 
 @item
-Auto Saveモードはバッファー内容を定期的に保存して、クラッシュした場合等に失われる作業量を減らします。@ref{Auto
-Save}を参照してください。
+Auto Save mode saves the buffer contents periodically to reduce the amount
+of work you can lose in case of a crash.  @xref{Auto Save}.
 
 @item
-Electric Quoteモードは、クォーテーションマークを自動的に変換します。たとえば、@t{`like
-this'}とタイプするとこれは、@kbd{`like
-this'}のように再クォートされます。どうのような種類のテキストを処理するかを制御できます。また特定のバッファーにたいしてこれを完全に無効にできます。@ref{Quotation
-Marks}を参照してください。
+Electric Quote mode automatically converts quotation marks.  For example, it
+requotes text typed @kbd{`like this'} to text @t{‘like this’}.  You can
+control what kind of text it operates in, and you can disable it entirely in
+individual buffers.  @xref{Quotation Marks}.
 
 @item
-Enrichedモードは、書式つきのテキストの編集と保存を可能にします。@ref{Enriched Text}を参照してください。
+Enriched mode enables editing and saving of formatted text.  @xref{Enriched
+Text}.
 
 @item
-Flyspellモードは、自動的に間違ったスペルの単語をハイライトします。@ref{Spelling}を参照してください。
+Flyspell mode automatically highlights misspelled words.  @xref{Spelling}.
 
 @item
-Font-Lockモードは、プログラム内で見つかった特定のテキスト単位を自動的にハイライトします。このモードはデフォルトでグローバルに有効になっていますが、個別のバッファーで無効にすることができます。@ref{Faces}を参照してください。
+Font-Lock mode automatically highlights certain textual units found in
+programs.  It is enabled globally by default, but you can disable it in
+individual buffers.  @xref{Faces}.
 
 @item
-Display Line
-Numbersモードは@code{display-line-numbers}の便利なラッパーであり、@code{display-line-numbers-type}の値を使用してセッティングします。@ref{Display
-Custom}を参照してください。
+Display Line Numbers mode is a convenience wrapper around
+@code{display-line-numbers}, setting it using the value of
+@code{display-line-numbers-type}.  @xref{Display Custom}.
 
 @item
-Outline minorモードは、Outlineモードと呼ばれるメジャーモードと同様な機能を提供します。@ref{Outline
-Mode}を参照してください。
+Outline minor mode provides similar facilities to the major mode called
+Outline mode.  @xref{Outline Mode}.
 
 @cindex Overwrite mode
 @cindex mode, Overwrite
 @findex overwrite-mode
 @kindex INSERT
 @item
-Overwriteモードは、通常のプリント文字の挿入により、後の文字をずらすかわりに、既存のテキストを置き換えます。たとえば、ポイントが@samp{FOOBAR}の@samp{B}の前にある場合、@kbd{G}をタイプすると通常は@samp{FOOGBAR}となりますが、Overwriteモードでは@samp{FOOGAR}になります。Overwriteモードでは、コマンド@kbd{C-q}は次の文字が何であれ、たとえそれが数字であってもその文字を挿入します
----
-これにより既存のテキストを置き換える代わりに文字を挿入する方法が与えられます。モードコマンド@code{overwrite-mode}は、@key{Insert}キーにバインドされています。
+Overwrite mode causes ordinary printing characters to replace existing text
+instead of shoving it to the right.  For example, if point is in front of
+the @samp{B} in @samp{FOOBAR}, then in Overwrite mode typing a @kbd{G}
+changes it to @samp{FOOGAR}, instead of producing @samp{FOOGBAR} as usual.
+In Overwrite mode, the command @kbd{C-q} inserts the next character whatever
+it may be, even if it is a digit---this gives you a way to insert a
+character instead of replacing an existing character.  The mode command,
+@code{overwrite-mode}, is bound to the @key{Insert} key.
 
 @findex binary-overwrite-mode
 @item
-Binary
-Overwriteモードは、バイナリーファイルを編集するための、Overwriteモードの変種です。このモードは改行とタブを他の文字と同じように扱うので、他の文字を上書きしたり、他の文字で上書きさせたりすることができます。Binary
-Overwriteモードでは@kbd{C-q}の後の数字は、通常どおり8進文字コードを指定します。
+Binary Overwrite mode is a variant of Overwrite mode for editing binary
+files; it treats newlines and tabs like other characters, so that they
+overwrite other characters and can be overwritten by them.  In Binary
+Overwrite mode, digits after @kbd{C-q} specify an octal character code, as
+usual.
 
 @item
-Visual Lineモードは、 単語単位の折り返し(word
-wrapping)を処理します。これにより長い行は単語境界で折り返されます。@ref{Visual Line Mode}を参照してください。
+Visual Line mode performs word wrapping, causing long lines to be wrapped at
+word boundaries.  @xref{Visual Line Mode}.
 @end itemize
 
 @noindent
-以下に便利なグローバルマイナーモードをいくつか示します:
+And here are some useful global minor modes:
 
 @itemize @bullet
 @item
-Column Numberモードは、現在の列番号をモードラインに表示します。@ref{Mode Line}を参照してください。
+Column Number mode enables display of the current column number in the mode
+line.  @xref{Mode Line}.
 
 @item
-Delete
-Selectionモードでは、リージョンがアクティブの場合、最初にリージョンのテキストを削除してからテキストを挿入します。@ref{Using
-Region}を参照してください。
+Delete Selection mode causes text insertion to first delete the text in the
+region, if the region is active.  @xref{Using Region}.
 
 @item
-Icompleteモードは、ミニバッファーで補完がアクティブのとき、利用可能な候補を表示します。@ref{Icomplete}を参照してください。
+Icomplete mode displays an indication of available completions when you are
+in the minibuffer and completion is active.  @xref{Icomplete}.
 
 @item
-Line Numberモードは、現在の行番号をモードラインに表示します。このモードはデフォルトで有効です。@ref{Mode
-Line}を参照してください。
+Line Number mode enables display of the current line number in the mode
+line.  It is enabled by default.  @xref{Mode Line}.
 
 @item
-Menu Barモードは、各フレームにメニューバーを表示します。このモードはデフォルトで有効です。@ref{Menu Bars}を参照してください。
+Menu Bar mode gives each frame a menu bar.  It is enabled by default.
+@xref{Menu Bars}.
 
 @item
-Scroll
-Barモードは、各ウィンドウにスクロールバーを表示します。このモードはデフォルトで有効ですが、スクロールバーが表示されるのはグラフィカルな端末だけです。@ref{Scroll
-Bars}を参照してください。
+Scroll Bar mode gives each window a scroll bar.  It is enabled by default,
+but the scroll bar is only displayed on graphical terminals.  @xref{Scroll
+Bars}.
 
 @item
-Tool
-Barモードは、各フレームにツールバーを表示します。このモードはデフォルトで有効ですが、ツールバーが表示されるのはグラフィカルな端末だけです。@ref{Tool
-Bars}を参照してください。
+Tool Bar mode gives each frame a tool bar.  It is enabled by default, but
+the tool bar is only displayed on graphical terminals.  @xref{Tool Bars}.
 
 @item
 Window Tool Bar mode gives windows a tool bar.  @xref{Window Tool Bar}.
 
 @item
-Tab Barモードは各フレームにタブバーを表示します。@ref{Tab Bars}を参照してください。
+Tab Bar mode gives each frame a tab bar.  @xref{Tab Bars}.
 
 @item
-Tab Lineモードは各ウィンドウにタブラインを表示します。@ref{Tab Line}を参照してください。
+Tab Line mode gives each window a tab line.  @xref{Tab Line}.
 
 @item
-Transient
-Markモードはリージョンをハイライトして、マークがアクティブなときはEmacsの多くのコマンドがリージョンにたいして操作を行うようになります。このモードはデフォルトで有効です。@ref{Mark}を参照してください。
+Transient Mark mode highlights the region, and makes many Emacs commands
+operate on the region when the mark is active.  It is enabled by default.
+@xref{Mark}.
 @end itemize
 
 @node Choosing Modes
-@section ファイルのモードを選択する
+@section Choosing File Modes
 
 @cindex choosing a major mode
 @cindex choosing a minor mode
 @vindex auto-mode-alist
-  ファイルをvisitしたとき、Emacsは自動的にメジャーモードを選択します。これは通常、ファイル名にもとづいて選択されます---たとえば名前が@samp{.c}で終わるファイルは通常、Cモードで編集されます
----
-が、ファイル内の特別なテキストにもとづいてメジャーモードが選択されるときもあります。この特別なテキストは、バッファーローカルなマイナーモードを有効にするためにも使用されます。
+  When you visit a file, Emacs chooses a major mode automatically.  Normally,
+it makes the choice based on the file name---for example, files whose names
+end in @samp{.c} are normally edited in C mode---but sometimes it chooses
+the major mode based on special text in the file.  This special text can
+also be used to enable buffer-local minor modes.
 
-  以下は、これの正確な手順です:
+  Here is the exact procedure:
 
-  最初にEmacsは、ファイルにファイルローカル(file-local)なモード変数が含まれているかチェックします。@ref{File
-Variables}を参照してください。メジャーモードを指定するファイルローカル変数が存在する場合、Emacsは他の条件をすべて無視してそのメジャーモードを使用します。ファイルローカル変数を使用してメジャーモードを指定する方法はいくつかあります。一番単純なのは、空行でない最初の行に、そのモードの名前と、モード名の前後に@samp{-*-}を記述する方法です。他のテキストがその行にあっても問題はありません。たとえば、
+  First, Emacs checks whether the file contains file-local mode variables.
+@xref{File Variables}.  If there is a file-local variable that specifies a
+major mode, then Emacs uses that major mode, ignoring all other criteria.
+There are several methods to specify a major mode using a file-local
+variable; the simplest is to put the mode name in the first nonblank line,
+preceded and followed by @samp{-*-}.  Other text may appear on the line as
+well.  For example,
 
 @example
 ; -*-Lisp-*-
 @end example
 
 @noindent
-これはEmacsにLispモードを使用するよう指示します。Lispがこの行をコメントとして扱うように、セミコロンがどのように使われているか注意してください。以下のように書くこともできます
+tells Emacs to use Lisp mode.  Note how the semicolon is used to make Lisp
+treat this line as a comment.  You could equivalently write
 
 @example
 ; -*- mode: Lisp;-*-
 @end example
 
 @noindent
-ファイルローカル変数を使用して、バッファーローカルなマイナーモードを指定することもできます。これは@code{eval}指定を使用して行います。たとえば、空行でない最初の行に以下を記述すると、これはバッファーをLispモードにして、Auto-Fillモードを有効にします。
+You can also use file-local variables to specify buffer-local minor modes,
+by using @code{eval} specifications.  For example, this first nonblank line
+puts the buffer in Lisp mode and enables Auto-Fill mode:
 
 @example
 ; -*- mode: Lisp; eval: (auto-fill-mode 1); -*-
 @end example
 
 @noindent
-しかし、ほとんどのマイナーモードはユーザー個人の好みが表れるものなので、この方法でマイナーモードを有効にするのは、通常は不適切です。特定のファイルタイプにたいしてマイナーモードを個人的に使用したい場合は、メジャーモードフックを通じてマイナーモードを有効にするのが、より良い方法です。
+Note, however, that it is usually inappropriate to enable minor modes this
+way, since most minor modes represent individual user preferences.  If you
+personally want to use a minor mode for a particular file type, it is better
+to enable the minor mode via a major mode hook (@pxref{Major Modes}).
 
-  2番目にEmacsはファイルの拡張子がディレクトリーローカル@code{auto-mode-alist}のいずれかにマッチするかどうかをチェックします。これらは@file{.dir-locals.el}の手法により発見されます(@ref{Directory
-Variables}を参照)。
+  Second, Emacs checks whether the file's extension matches an entry in any
+directory-local @code{auto-mode-alist}.  These are found using the
+@file{.dir-locals.el} facility (@pxref{Directory Variables}).
 
 @vindex interpreter-mode-alist
-  3番目に、メジャーモードを指定するファイル変数が存在しない場合、Emacsは最初の行が@samp{#!}で開始されていないかチェックします。もし該当したら、それはそのファイルがファイルの最初の行に記述された名前のインタープリターを実行する(ファイルの残りはインタープリターへの入力として使用されます)ことにより機能する、実行可能なシェルコマンドであることを示します。したがってEmacsはインタープリター名を使って、モードの選択を試みます。たとえば、@samp{#!/usr/bin/perl}で始まるファイルは、Perlモードで開かれます。変数@code{interpreter-mode-alist}は、インタープリター名とメジャーモードの対応を指定します。
+  Third, if there is no file variable specifying a major mode, Emacs checks
+whether the file's contents begin with @samp{#!}.  If so, that indicates
+that the file can serve as an executable shell command, which works by
+running an interpreter named on the file's first line (the rest of the file
+is used as input to the interpreter).  Therefore, Emacs tries to use the
+interpreter name to choose a mode.  For instance, a file that begins with
+@samp{#!/usr/bin/perl} is opened in Perl mode.  The variable
+@code{interpreter-mode-alist} specifies the correspondence between
+interpreter program names and major modes.
 
-  最初の行が@samp{#!}で開始されている場合、最初の行で@samp{-*-}の機能は通常は使用できません。なぜならインタープリターを実行するときにシステムが混乱するからです。そのため、Emacsはそのようなファイルにたいしては、1行目と同じように2行目の@samp{-*-}を探します。これはマジック文字列@samp{'\"}で開始されるman
-pageで、troffプリプロセッサーのリストを指定することと同じです。
+  When the first line starts with @samp{#!}, you usually cannot use the
+@samp{-*-} feature on the first line, because the system would get confused
+when running the interpreter.  So Emacs looks for @samp{-*-} on the second
+line in such files as well as on the first line.  The same is true for man
+pages which start with the magic string @samp{'\"} to specify a list of
+troff preprocessors.
 
 @vindex magic-mode-alist
-  4番目に、Emacsは変数@code{magic-mode-alist}にもとづいて、バッファーの先頭のテキストを調べて、メジャーモードの決定を試みます。デフォルトではこの変数は@code{nil}(空のリスト)なので、Emacsはこのステップをスキップしますが、initファイルでこれをカスタマイズできます(@ref{Init
-File}を参照してください)。変数の値には、以下の形式のリスト要素を指定します
+  Fourth, Emacs tries to determine the major mode by looking at the text at
+the start of the buffer, based on the variable @code{magic-mode-alist}.  By
+default, this variable is @code{nil} (an empty list), so Emacs skips this
+step; however, you can customize it in your init file (@pxref{Init File}).
+The value should be a list of elements of the form
 
 @example
 (@var{regexp} . @var{mode-function})
 @end example
 
 @noindent
-ここで@var{regexp}は正規表現(@ref{Regexps}を参照してください)で、@var{mode-function}はメジャーモード関数です。ファイルの先頭のテキストが@var{regexp}にマッチした場合、Emacsは@var{mode-function}で指定したメジャーモードを選択します。
+where @var{regexp} is a regular expression (@pxref{Regexps}), and
+@var{mode-function} is a major mode command.  If the text at the beginning
+of the file matches @var{regexp}, Emacs chooses the major mode specified by
+@var{mode-function}.
 
-@code{magic-mode-alist}の要素は、以下の形式でも指定できます
+Alternatively, an element of @code{magic-mode-alist} may have the form
 
 @example
 (@var{match-function} . @var{mode-function})
 @end example
 
 @noindent
-ここで@var{match-function}は、バッファーの先頭で呼び出されるLisp関数です。この関数が非@code{nil}を返した場合、Emacsはメジャーモードを@var{mode-function}にセットします。
+where @var{match-function} is a Lisp function that is called at the
+beginning of the buffer; if the function returns non-@code{nil}, Emacs set
+the major mode with @var{mode-function}.
 
-  5番目に ---Emacsが適正なメジャーモードをまだ見つけていない場合 ---
-今度はファイル名を調べます。ファイル名とメジャーモードの対応付けは、変数@code{auto-mode-alist}で制御されます。この変数の値は、各要素が以下の形式のリストです。
+  Fifth---if Emacs still hasn't found a suitable major mode---it looks at the
+file's name.  The correspondence between file names and major modes is
+controlled by the variable @code{auto-mode-alist}.  Its value is a list in
+which each element has this form,
 
 @example
 (@var{regexp} . @var{mode-function})
 @end example
 
 @noindent
-または以下の形式です
+or this form,
 
 @example
 (@var{regexp} @var{mode-function} @var{flag})
 @end example
 
 @noindent
-たとえば、通常見られるようなリストの要素は、@code{(@t{"\\.c\\'"}
-.
-c-mode)}のような形式で、これは名前が@file{.c}で終わるファイルにたいして、Cモードを選択する役目を負っています(正規表現で@samp{.}がもつ特別な意味を打ち消すために、文字列に@samp{\}を含めなければなりません。これはLisp構文では@samp{\\}と記述する必要があります)。
+For example, one element normally found in the list has the form
+@code{(@t{"\\.c\\'"} . c-mode)}, and it is responsible for selecting C mode
+for files whose names end in @file{.c}.  (Note that @samp{\\} is needed in
+Lisp syntax to include a @samp{\} in the string, which must be used to
+suppress the special meaning of @samp{.} in regexps.)
 
 @cindex backup files, choosing a major mode
 @cindex encrypted files, choosing a major mode
-要素が@w{@code{(@var{regexp} @var{mode-function}
-@var{flag})}}の形式をもち、@var{flag}が非@code{nil}の場合には、(@code{nil}でなければ)@var{mode-function}を呼び出した後に、Emacsは@var{regexp}とマッチした接尾辞を捨ててほかのマッチを検索します。この``再帰的な拡張子除去(recursive
-extension
-stripping)''は拡張子を複数もち、実際に正しいモードを指定する``内側''の拡張子を、``外側''の拡張子が隠しているようなファイルに使用されます。たとえばバックアップファイルや拡張子@file{.gpg}をもつGPG暗号化ファイルには、この機能が使用されます。
+If the element has the form @w{@code{(@var{regexp} @var{mode-function}
+@var{flag})}} and @var{flag} is non-@code{nil}, then after calling
+@var{mode-function} (if it is non-@code{nil}), Emacs discards the suffix
+that matched @var{regexp} and searches the list again for another match.
+This ``recursive extension stripping'' is used for files which have multiple
+extensions, and the ``outer'' extension hides the ``inner'' one that
+actually specifies the right mode.  For example, backup files and
+GPG-encrypted files with @file{.gpg} extension use this feature.
 
 @vindex auto-mode-case-fold
-  GNU/Linuxおよび、ファイル名の大文字小文字を区別する他のシステムでは、Emacsは@code{auto-mode-alist}の検索で大文字小文字を区別します。この検索が失敗すると、2回目は大文字小文字を区別せずにalistを再検索します。2回目の検索を行わないようにするには、変数@code{auto-mode-case-fold}を@code{nil}に変更します。Microsoft
-Windowsのような、ファイル名の大文字小文字を区別しないシステムでは、Emacsは大文字小文字を区別しないで@code{auto-mode-alist}を検索します。
+  On GNU/Linux and other systems with case-sensitive file names, Emacs
+performs a case-sensitive search through @code{auto-mode-alist}; if this
+search fails, it performs a second case-insensitive search through the
+alist.  To suppress the second search, change the variable
+@code{auto-mode-case-fold} to @code{nil}.  On systems with case-insensitive
+file names, such as Microsoft Windows, Emacs performs a single
+case-insensitive search through @code{auto-mode-alist}.
 
 @vindex magic-fallback-mode-alist
-  最後に、Emacsが@emph{まだ}使用するメジャーモードを見つけられない場合、Emacsはバッファーの先頭のテキストと、変数@code{magic-fallback-mode-alist}を比較します。この変数は上述した@code{magic-mode-alist}と同じように機能しますが、@code{auto-mode-alist}の@emph{後}に調べられるという点が異なります。デフォルトでは@code{magic-fallback-mode-alist}にはイメージファイル、HTML/XML/SGMLファイル、PostScriptファイル、およびUnixスタイルのConfファイルをチェックする形式が含まれています。
+  Finally, if Emacs @emph{still} hasn't found a major mode to use, it compares
+the text at the start of the buffer to the variable
+@code{magic-fallback-mode-alist}.  This variable works like
+@code{magic-mode-alist}, described above, except that it is consulted only
+@emph{after} @code{auto-mode-alist}.  By default,
+@code{magic-fallback-mode-alist} contains forms that check for image files,
+HTML/XML/SGML files, PostScript files, and Unix style Conf files.
 
 @vindex major-mode-remap-alist
-  一旦メジャーモードが見つかれば、Emacsはそのモードが@code{major-mode-remap-alist}によってリマップ(remap:
-再マップ)されているか最終チェックを行います(リマップされていればそのモードを使用する)。リマップは同一のファイルタイプに使用できる複数の異なるモードが存在する際に、好みのモードを指定できるようにするために使用されます。
+  Once a major mode is found, Emacs does a final check to see if the mode has
+been remapped by @code{major-mode-remap-alist}, in which case it uses the
+remapped mode instead.  This is used when several different major modes can
+be used for the same file type, so you can specify which mode you prefer.
 
 @findex normal-mode
-  バッファーのメジャーモードを変更したとき、@kbd{M-x
-normal-mode}とタイプすると、Emacsが自動的に選択するメジャーモードに戻ることができます。この関数は@code{find-file}がメジャーモードを選択するために呼び出す関数と同じです。そのバッファーがファイルをvisitしている場合には、このコマンドは(もしあれば)ファイルの@samp{-*-}行とファイルローカル変数も処理します。@ref{File
-Variables}を参照してください。そのバッファーがファイルをvisitしていなければ、このコマンドは(もしあれば)@samp{-*-}内のモード指定とファイルローカル変数リストだけを処理します。
+  If you have changed the major mode of a buffer, you can return to the major
+mode Emacs would have chosen automatically, by typing @kbd{M-x
+normal-mode}.  This is the same function that @code{find-file} calls to
+choose the major mode.  If the buffer is visiting a file, this command also
+processes the file's @samp{-*-} line and file-local variables list (if
+any).  @xref{File Variables}.  If the buffer doesn't visit a file, the
+command processes only the major mode specification, if any, in the
+@samp{-*-} line and in the file-local variables list.
 
 @vindex change-major-mode-with-file-name
-  コマンド@kbd{C-x
-C-w}および@code{set-visited-file-name}は、新しいファイル名が何らかのモードに関係がある場合は、新しいメジャーコードに変更します(そのバッファーがファイルをvisitしていない場合、@kbd{C-x
-C-s}も同じことを行います)。しかしバッファーの内容がメジャーモードを指定していて、ある種の特別なメジャーモードはモードの変更を許しません。このモード変更機能をオフにするには、@code{change-major-mode-with-file-name}を@code{nil}にセットして下さい。
+  The commands @kbd{C-x C-w} and @code{set-visited-file-name} change to a new
+major mode if the new file name implies a mode (@pxref{Saving}).  (@kbd{C-x
+C-s} does this too, if the buffer wasn't visiting a file.)  However, this
+does not happen if the buffer contents specify a major mode, and certain
+special major modes do not allow the mode to change.  You can turn off this
+mode-changing feature by setting @code{change-major-mode-with-file-name} to
+@code{nil}.

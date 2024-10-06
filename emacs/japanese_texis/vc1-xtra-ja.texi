@@ -12,53 +12,62 @@
 @c printed version) or in the main Emacs manual (for the on-line version).
 
 @node Miscellaneous VC
-@subsection VCのその他のコマンドと機能
+@subsection Miscellaneous Commands and Features of VC
 
-  このセクションでは、それほど頻繁には使用されないVCの機能を説明します。
+  This section explains the less-frequently-used features of VC.
 
 @menu
-* Change Logs and VC::       logエントリーからChangeLogファイルを生成する。
-* VC Delete/Rename::         バージョンコントロールされたファイルの削除とリネームについて。
-* Revision Tags::            リビジョンにたいするシンボリック名。
-* Version Headers::          作業ファイルへのバージョンコントロールヘッダーの挿入。
-* Editing VC Commands::      Emacsが実行するVCシェルコマンドの編集。
-* Preparing Patches::        VC内からのパッチの準備と構成
+* Change Logs and VC::       Generating a change log file from log entries.
+* VC Delete/Rename::         Deleting and renaming version-controlled files.
+* Revision Tags::            Symbolic names for revisions.
+* Version Headers::          Inserting version control headers into working 
+                               files.
+* Editing VC Commands::      Editing the VC shell commands that Emacs will 
+                               run.
+* Preparing Patches::        Preparing and Composing patches from within VC
 @end menu
 
 @node Change Logs and VC
-@subsubsection 変更ログとVC
+@subsubsection Change Logs and VC
 
-  @file{ChangeLog}ファイル
+  If you use RCS or CVS for a program with a @file{ChangeLog} file
 @iftex
-(@ref{Change Log,,,emacs, the Emacs
-Manual}を参照してください)をもつプロググラムにたいしてRCSやCVSを使用する場合、
+(@pxref{Change Log,,,emacs, the Emacs Manual}),
 @end iftex
 @ifnottex
-(@ref{Change Log}を参照してください)をもつプロググラムにたいしてRCSやCVSを使用する場合、
+(@pxref{Change Log}),
 @end ifnottex
-バージョンコントロールの以前のコミットのログエントリーから、ChangeLogのエントリーを生成することができます。
+you can generate change log entries from the version control log entries of
+previous commits.
 
-  これはRCSとCVSだけで機能することに注意してください。この手段は特に、現代的な変更セットベースのバージョンコントロールシステムには不適切です。なぜなら、@file{ChangeLog}ファイルへの変更自体が、通常は変更セットの一部としてコミットされるからです。この場合、最初にChangeLogエントリーを記述して、コミットするときにそれを@samp{*vc-log*}バッファーに引用します
+  Note that this only works with RCS or CVS@.  This procedure would be
+particularly incorrect on a modern changeset-based version control system,
+where changes to the @file{ChangeLog} file would normally be committed as
+part of a changeset.  In that case, you should write the change log entries
+first, then pull them into the @samp{*vc-log*} buffer when you commit
 @iftex
-(@ref{Log Buffer,,,emacs, the Emacs Manual}を参照してください)。
+(@pxref{Log Buffer,,,emacs, the Emacs Manual}).
 @end iftex
 @ifnottex
-(@ref{Log Buffer}を参照してください)。
+(@pxref{Log Buffer}).
 @end ifnottex
 
 @table @kbd
 @item C-x v a
 @kindex C-x v a
 @findex vc-update-change-log
-カレントディレクトリーの@file{ChangeLog}ファイルをvisitして、そのディレクトリーの登録されたファイルにたいして、最新のChangeLogエントリー以降にコミットされたバージョンにたいする、新しいエントリーを作成します。(@code{vc-update-change-log})。
+Visit the current directory's @file{ChangeLog} file and, for registered
+files in that directory, create new entries for versions committed since the
+most recent change log entry (@code{vc-update-change-log}).
 
 @item C-u C-x v a
-上記と同様ですが、カレントバッファーのファイルにたいするエントリーだけを探します。
+As above, but only find entries for the current buffer's file.
 @end table
 
-  たとえば、@file{ChangeLog}の最初の行の日付が1999-04-10で、それ以降のチェックインは1999-05-22のNathaniel
-Bowditchによる@file{rcs2log}だけで、それのログエントリーが@samp{Ignore log messages that start
-with '#'.}だったとします。その場合、@kbd{C-x v a}は@file{ChangeLog}エントリーとして、以下を挿入します:
+  For example, suppose the first line of @file{ChangeLog} is dated 1999-04-10,
+and that the only check-in since then was by Nathaniel Bowditch to
+@file{rcs2log} on 1999-05-22 with log entry @samp{Ignore log messages that
+start with '#'.}.  Then @kbd{C-x v a} inserts this @file{ChangeLog} entry:
 
 @iftex
 @medbreak
@@ -75,8 +84,11 @@ with '#'.}だったとします。その場合、@kbd{C-x v a}は@file{ChangeLog
 @end iftex
 
 @noindent
-バージョンコントロールのログエントリーが、(行頭にカッコで括られて記述される)関数名を指定する場合、それは@file{ChangeLog}のエントリーに反映されます。たとえば@file{vc.el}にたいするログエントリーが@samp{(vc-do-command):
-Check call-process status.}の場合、@file{ChangeLog}のエントリーは以下のようになります:
+If the version control log entry specifies a function name (in parenthesis
+at the beginning of a line), that is reflected in the @file{ChangeLog}
+entry.  For example, if a log entry for @file{vc.el} is
+@samp{(vc-do-command): Check call-process status.}, the @file{ChangeLog}
+entry is:
 
 @iftex
 @medbreak
@@ -92,54 +104,76 @@ Check call-process status.}の場合、@file{ChangeLog}のエントリーは以�
 @medbreak
 @end iftex
 
-  @kbd{C-x v
-a}が複数のChangeLogエントリーを1度に追加するとき、それらがすべて同じ作者に、ほぼ同じ日時にチェックインされている場合、関連するログエントリーとしてそれらをグループ化します。複数のファイルにたいするログエントリーがすべての同じテキストの場合、それらを1つのエントリーにまとめます。
+  When @kbd{C-x v a} adds several change log entries at once, it groups
+related log entries together if they all are checked in by the same author
+at nearly the same time.  If the log entries for several such files all have
+the same text, it coalesces them into a single entry.
 
 @node VC Delete/Rename
-@subsubsection バージョンコントロールされたファイルの削除とリネーム
+@subsubsection Deleting and Renaming Version-Controlled Files
 @cindex renaming version-controlled files
 
 @table @kbd
 @item M-x vc-delete-file
-ファイル名の入力を求め、そのファイルを作業ツリーから削除して、コミット時に削除するようスケジュールします。
+Prompt for a file name, delete the file from the working tree, and schedule
+the deletion for committing.
 
 @item M-x vc-rename-file
-2つのファイル名@var{old}および@var{new}の入力を求め、作業ツリーのファイルをリネームし、コミット時にリネームを行うようスケジュールします。カレントバッファーのファイルがVC配下にある場合は、そのファイルが@var{old}のデフォルトファイルになります。
+Prompt for two file names, @var{old} and @var{new}, rename them in the
+working tree, and schedule the renaming for committing.  The @var{old} file
+defaults to the current buffer's file name if it is under VC.
 @end table
 
 @findex vc-delete-file
-  バージョンコントロールされたファイルを削除したい場合、コマンド@kbd{M-x
-vc-delete-file}を使用します。これはファイル名の入力を求め、バージョンコントロールシステムを通じてそれを削除します。ファイルは作業ツリーから削除され、VC
-Directoryバッファー
+  If you wish to delete a version-controlled file, use the command @kbd{M-x
+vc-delete-file}.  This prompts for the file name, and deletes it via the
+version control system.  The file is removed from the working tree, and in
+the VC Directory buffer
 @iftex
-(@ref{VC Directory Mode,,, emacs, the Emacs Manual}を参照してください)
+(@pxref{VC Directory Mode,,, emacs, the Emacs Manual}),
 @end iftex
 @ifnottex
-(@ref{VC Directory Mode}を参照してください)
+(@pxref{VC Directory Mode}),
 @end ifnottex
-では、状態に@samp{removed}が表示されます。それをコミットするとき、レポジトリ内で削除が実行されます。
+it is displayed with the @samp{removed} status.  When you commit it, the
+deletion takes effect in the repository.
 
 @findex vc-rename-file
-  バージョンコントロールされたファイルをリネームするには、@kbd{M-x
-vc-rename-file}とタイプします。これは2つの引数の入力を求めます。それはリネームしたいファイルの名前を、それの新しい名前です。そしてバージョンコントロールシステムを通じてリネームを処理します。作業ツリーではリネームは即座に行われます。リネームされたファイルをコミットするとき、レポジトリに反映されます。
+  To rename a version-controlled file, type @kbd{M-x vc-rename-file}.  This
+prompts for two arguments: the name of the file you wish to rename, and the
+new name; then it performs the renaming via the version control system.  The
+renaming takes effect immediately in the working tree, and takes effect in
+the repository when you commit the renamed file.
 
-  現代的なバージョンコントロールシステムは、リネームにたいするビルトインのサポートがあり、リネームされたファイルは元のファイルのすべての変更履歴を保持します。CVSおよび古いバージョンコントロールシステムでは、@code{vc-rename-file}コマンドは、実際には古いファイルを新しい名前にコピーして、それを登録してから古いファイルを削除することにより機能します。この場合、変更履歴は保存されません。
+  On modern version control systems that have built-in support for renaming,
+the renamed file retains the full change history of the original file.  On
+CVS and older version control systems, the @code{vc-rename-file} command
+actually works by creating a copy of the old file under the new name,
+registering it, and deleting the old file.  In this case, the change history
+is not preserved.
 
 @node Revision Tags
-@subsubsection リビジョンタグ
+@subsubsection Revision Tags
 @cindex revision tag
 @cindex tags for version control
 
-  ほとんどのバージョンコントロールシステムは、バージョンコントロールされたツリーの特定のバージョンにたいして、@dfn{リビジョンタグ(revision
-tag)}を適用できます。現代的な変更セットベースのバージョンコントロールシステムでは、リビジョンタグは単に特定のリビジョンにたいするシンボリック名です。CVSのようなファイルベースの古いシステムで、各タグははバージョンコントロールされた一連のファイル全体に追加され、それらを1つの単位として処理できるようにします。リビジョンタグは一般的にユーザーに配布されるリリースを識別するのに使用されます。
+  Most version control systems allow you to apply a @dfn{revision tag} to a
+specific version of a version-controlled tree.  On modern changeset-based
+version control systems, a revision tag is simply a symbolic name for a
+particular revision.  On older file-based systems like CVS, each tag is
+added to the entire set of version-controlled files, allowing them to be
+handled as a unit.  Revision tags are commonly used to identify releases
+that are distributed to users.
 
-  タグにたいする2つの基本的なコマンドがあります。1つは与えられた名前でタグを作成し、もう1つは名前がつけられたタグを取得するコマンドです。
+  There are two basic commands for tags; one makes a tag with a given name,
+the other retrieves a named tag.
 
 @table @code
 @kindex C-x v s
 @findex vc-create-tag
 @item C-x v s @var{name} @key{RET}
-カレントディレクトリーまたはその配下のディレクトリーの、すべての登録されたファイルの作業リビジョンにたいする、@var{name}という名前のタグを定義します(@code{vc-create-tag})。
+Define the working revision of every registered file in or under the current
+directory as a tag named @var{name} (@code{vc-create-tag}).
 
 @kindex C-x v r
 @findex vc-retrieve-tag
@@ -149,181 +183,292 @@ the tagged revision @var{name}.  This command will switch to a branch if
 @var{name} is a branch name and your VCS distinguishes branches from tags.
 (@code{vc-retrieve-tag}).
 
-カレントディレクトリーまたは配下のディレクトリーのファイルがロックされている場合、このコマンドは何もせずにエラーを報告します。これは作業中の上書きを避けるためです。
+This command reports an error if any files are locked at or below the
+current directory, without changing anything; this is to avoid overwriting
+work in progress.
 @end table
 
-  @kbd{C-x v =}または@kbd{C-x v ~}の引数として、タグまたはブランチ名を与えることができます
+  You can give a tag or branch name as an argument to @kbd{C-x v =} or
+@kbd{C-x v ~}
 @iftex
-(@ref{Old Revisions,,,emacs, the Emacs Manual}を参照してください)。
+(@pxref{Old Revisions,,,emacs, the Emacs Manual}).
 @end iftex
 @ifnottex
-(@ref{Old Revisions}を参照してください)。
+(@pxref{Old Revisions}).
 @end ifnottex
-したがって、カレントファイルとタグ付けされたバージョンを比較したり、タグ付けされたバージョン同士を比較することができます。
+Thus, you can use it to compare a tagged version against the current files,
+or two tagged versions against each other.
 
-  SCCSでは、VC自身がタグを実装しているので、VCを通じてのみタグを見ることができます。それより新しいほとんどのシステム(CVS、Subversion、bzr、git、hgを含む)は、ネイティブのタグ機能をもっており、利用可能な場合、VCはそれを使用します。これらのタグは、VCを通さなくても見ることができます。
+  On SCCS, VC implements tags itself; these tags are visible only through
+VC@.  Most later systems (including CVS, Subversion, bzr, git, and hg) have
+a native tag facility, and VC uses it where available; those tags will be
+visible even when you bypass VC.
 
-  ファイルベースのバージョンコントロールシステムでは、登録されたファイルをリネームするとき、それのマスターもリネームする必要があります。コマンド@code{vc-rename-file}は、これを自動的に行います
+  In file-based version control systems, when you rename a registered file you
+need to rename its master along with it; the command @code{vc-rename-file}
+will do this automatically
 @iftex
-(@ref{VC Delete/Rename,,,emacs, the Emacs Manual}を参照してください)。
+(@pxref{VC Delete/Rename,,,emacs, the Emacs Manual}).
 @end iftex
 @ifnottex
-(@ref{VC Delete/Rename}を参照してください)。
+(@pxref{VC Delete/Rename}).
 @end ifnottex
-SCCSを使用している場合、、そのファイルが新しい名前になったことを告げるために、タグの記録も更新しなければなりません(@code{vc-rename-file}もこれを行います)。記録された名前では、すでに存在しないマスターファイルを参照する古いタグは無効になります。VCはそれを取得しません。RCSおよびSCCSでのタグの手修正は、このマニュアルの範囲を超えるでしょう。@code{vc-rename-file}を使用することにより、ファイルを取得できる有効なタグを作成できますが、それですべての問題が解決されるわけではありません。たとえば、プログラムのいくつかのファイルは、他のファイルを名前で参照するかもしれません。少なくともmakefileはリネームしたファイルを参照するでしょう。古いタグを取得した場合、リネームされたファイルは、makefileが期待しない新しい名前で取得されます。そのため、プログラムはうまく機能しないでしょう。
+If you are using SCCS, you must also update the records of the tag, to
+mention the file by its new name (@code{vc-rename-file} does this, too).  An
+old tag that refers to a master file that no longer exists under the
+recorded name is invalid; VC can no longer retrieve it.  It would be beyond
+the scope of this manual to explain enough about RCS and SCCS to explain how
+to update the tags by hand.  Using @code{vc-rename-file} makes the tag
+remain valid for retrieval, but it does not solve all problems.  For
+example, some of the files in your program probably refer to others by
+name.  At the very least, the makefile probably mentions the file that you
+renamed.  If you retrieve an old tag, the renamed file is retrieved under
+its new name, which is not the name that the makefile expects.  So the
+program won't really work as retrieved.
 
 @node Version Headers
-@subsubsection バージョンコントロールヘッダーの挿入
+@subsubsection Inserting Version Control Headers
 
-  Subversion、CVS、RCS、SCCSでは、@dfn{バージョンヘッダー(version
-headers)}と呼ばれる文字列を、ファイル内に置くことができます。そのファイルがコミットされたとき、バージョンコントロールシステムは自動的にリビジョン番号、コミットしたユーザーの名前、その他関連する情報をバージョンヘッダーに挿入します。
+  On Subversion, CVS, RCS, and SCCS, you can put certain special strings
+called @dfn{version headers} into a work file.  When the file is committed,
+the version control system automatically puts the revision number, the name
+of the user who made the commit, and other relevant information into the
+version header.
 
 @vindex vc-consult-headers
-  VCは通常、バージョンヘッダーの情報を使用しません。例外として、RCSを使用している場合、EmacsはRCSのマスターファイルより信頼できる場合が多いという理由で、ファイルのバージョンを決定するためにバージョンヘッダーを使用します。この方法でバージョンヘッダーを使用するのを禁ずるには、変数@code{vc-consult-headers}を@code{nil}に変更します。その場合、VCは常に(それが信用できると推測されれば)ファイルパーミッションを使用し、それ以外はマスターファイルをチェックします。
+  VC does not normally use the information in the version headers.  As an
+exception, when using RCS, Emacs uses the version header, if there is one,
+to determine the file version, since it is often more reliable than the RCS
+master file.  To inhibit using the version header this way, change the
+variable @code{vc-consult-headers} to @code{nil}.  VC then always uses the
+file permissions (if it is supposed to trust them), or else checks the
+master file.
 
 @findex vc-insert-headers
 @vindex vc-@var{backend}-header
-  カレントバッファーに適切なヘッダー文字列を挿入するには、コマンド@kbd{M-x
-vc-insert-headers}を使用します。このコマンドはSubversion、CVS、RCS、SCCSだけで機能します。変数@code{vc-@var{backend}-header}には、バージョンヘッダーに挿入されるキーワードのリストが含まれます。たとえばCVSは@code{vc-cvs-header}を使用し、これのデフォルト値は@code{'("\$Id\$")}です(余分なバックスラッシュは、もしEmacs
-Lispファイルがバージョンコントロールにより保守されるときに、文字列定数がヘッダーと解釈されるのを防ぐためのものです)。@code{vc-insert-headers}コマンドは。ポイント位置の新しい行にリストのタブで囲まれた各キーワードを挿入し、必要ならばコメント区切りで囲みます。
+  To insert a suitable header string into the current buffer, use the command
+@kbd{M-x vc-insert-headers}.  This command works only on Subversion, CVS,
+RCS, and SCCS@.  The variable @code{vc-@var{backend}-header} contains the
+list of keywords to insert into the version header; for instance, CVS uses
+@code{vc-cvs-header}, whose default value is @code{'("\$Id\$")}.  (The extra
+backslashes prevent the string constant from being interpreted as a header,
+if the Emacs Lisp file defining it is maintained with version control.)  The
+@code{vc-insert-headers} command inserts each keyword in the list on a new
+line at point, surrounded by tabs, and inside comment delimiters if
+necessary.
 
 @vindex vc-static-header-alist
-  変数@code{vc-static-header-alist}は、バッファー名にもとづき追加する文字列を指定します。これの値は、@code{(@var{regexp}
-.
-@var{format})}という形式の要素からなるリストです。@var{regexp}がバッファー名にマッチした場合、バージョンヘッダーの一部として@var{format}も挿入されます。@var{format}の中の@samp{%s}は、そのファイルのバージョンコントロールのタイプに置換されます。
+  The variable @code{vc-static-header-alist} specifies further strings to add
+based on the name of the buffer.  Its value should be a list of elements of
+the form @code{(@var{regexp} . @var{format})}.  Whenever @var{regexp}
+matches the buffer name, @var{format} is also inserted as part of the
+version header.  A @samp{%s} in @var{format} is replaced with the file's
+version control type.
 
 @node Editing VC Commands
 @subsubsection Editing VC Commands
 
 @findex vc-edit-next-command
 @kindex C-x v !
-プレフィックスコマンド@kbd{C-x v !}
-(@code{vc-edit-next-command})を使用して、VCが実行しようとしているシェルコマンドを編集することができます。これはVCSコマンドにたいしてバックエンドのVCコマンドセットとインターフェイスの不必要な複雑化を伴うことなく、コマンド引数をオプションとして追加可能にすることを主に意図したものです。
+You can use the @kbd{C-x v !} (@code{vc-edit-next-command}) prefix command
+to edit the shell command line that VC is about to run.  This is primarily
+intended to make it possible to add optional command-line arguments to VCS
+commands without unnecessary complications of the VC command set and its
+interfaces with the backend.
 
-たとえばGitは複数ブランチのログを生成できますが、@kbd{C-x v b l}
-(@code{vc-print-branch-log})が入力を求めるのは単一のブランチ名です。@w{@kbd{C-x v ! C-x v b
-l}}とタイプしてかあVCが実行しようとしている@samp{git
-log}コマンドに追加のブランチ名を加えることによって、複数ブランチのログを取得することができます。
+For example, Git can produce logs of more than one branch, but @kbd{C-x v b
+l} (@code{vc-print-branch-log}) prompts for the name of just one branch.  To
+obtain a log of more than one branch, you can type @w{@kbd{C-x v ! C-x v b
+l}} and then append the names of additional branches to the end of the
+@samp{git log} command that VC is about to run.
 
 @node Preparing Patches
 @subsubsection Preparing Patches
 
 @findex vc-prepare-patch
-プロジェクトでの共同作業において、電子メールを通じてパッチを送信することで変更を共有するのは一般的に行われています。@code{vc-prepare-patch}コマンドで、VCを使ってこれを行うことができます。これは共有したいリビジョンと送信用の宛先として使用する電子メールアドレス(複数可)の入力を求めます。リビジョンの区切りには@var{crm-separator}の値が使用されます(デフォルトはカンマ)。それからこのコマンドはレビューと送信を行うために、あなたの@abbr{MUA,
-Mail User Agent: 電子メールクライアント}を用いてこれらのリビジョンの準備を行います。
+When collaborating on projects it is common to send patches via email, to
+share changes.  You can do this using VC with the @code{vc-prepare-patch}
+command.  This will prompt you for the revisions you wish to share, and
+which destination email address(es)  to use.  Separate the revisions using
+the value of @var{crm-separator}, commas by default.  The command will then
+prepare those revisions using your @abbr{MUA, Mail User Agent} for you to
+review and send.
 
-Log Viewバッファーでリビジョンをマークして呼び出すと、これらのリマーク済みビジョンが使用されます。
+When invoked interactively in a Log View buffer with marked revisions, those
+marked revisions will be used.
 
 @vindex vc-prepare-patches-separately
-ユーザーオプション@code{vc-prepare-patches-separately}の値に応じて、@code{vc-prepare-patch}は1つ以上のメッセージを生成します。デフォルト値である@code{t}はリビジョンそれぞれにたいしてメッセージの準備と表示を行います。値@code{nil}はbody(本文)に添付するすべてのパッチとして単一のメッセージを生成することを意味します。
+Depending on the value of the user option
+@code{vc-prepare-patches-separately}, @code{vc-prepare-patch} will generate
+one or more messages.  The default value @code{t} means prepare and display
+a message for each revision, one after another.  A value of @code{nil} means
+to generate a single message with all patches attached in the body.
 
 @vindex vc-default-patch-addressee
-定期的なパッチ提供を目論んでいる場合には、ユーザーオプション@code{vc-default-patch-addressee}に使用したいアドレスをセットできます。これは@code{vc-prepare-patch}呼び出し時のデフォルト値として使用されます。プロジェクトのメンテナーはこのオプションをディレクトリーローカル変数(@ref{Directory
-Variables}を参照)として設定することを検討することができます。
+If you expect to contribute patches on a regular basis, you can set the user
+option @code{vc-default-patch-addressee} to the address(es)  you wish to
+use.  This will be used as the default value when invoking
+@code{vc-prepare-patch}.  Project maintainers may consider setting this as a
+directory local variable (@pxref{Directory Variables}).
 
 @node Customizing VC
-@subsection VCのカスタマイズ
+@subsection Customizing VC
 
 @vindex vc-handled-backends
-  変数@code{vc-handled-backends}は、どのバージョンコントロールシステムが処理するかを決定します。デフォルト値は@code{(RCS
-CVS SVN SCCS SRC Bzr Git
-Hg)}です、これには現在サポートされている、すべてのバージョンコントロールが含まれています。VCにこれらのシステムの1つ以上を無視させたい場合には、リストからそのシステムの名前を除外します。VC全体を無効にするにはこの変数に@code{nil}をセットしてください。
+  The variable @code{vc-handled-backends} determines which version control
+systems VC should handle.  The default value is @code{(RCS CVS SVN SCCS SRC
+Bzr Git Hg)}, so it contains all the version systems that are currently
+supported.  If you want VC to ignore one or more of these systems, exclude
+its name from the list.  To disable VC entirely, set this variable to
+@code{nil}.
 
-  リストのシステム順序には意味があります。これらのシステムの1つ以上に登録されているファイルをvisitした場合、デフォルトではVCは@code{vc-handled-backends}で最初にくるシステムを使用します。ファイルを最初に登録するときも、この順序が意味をもちます
+  The order of systems in the list is significant: when you visit a file
+registered in more than one system, VC uses the system that comes first in
+@code{vc-handled-backends} by default.  The order is also significant when
+you register a file for the first time
 @iftex
-(@ref{Registering,,,emacs, the Emacs Manual}を参照してください)。
+(@pxref{Registering,,,emacs, the Emacs Manual}).
 @end iftex
 @ifnottex
-(@ref{Registering}を参照してください)。
+(@pxref{Registering}).
 @end ifnottex
 
 @menu
-* General VC Options::       複数のバックエンドに適用されるオプション。
-* RCS and SCCS::             RCSとSCCSのためのオプションについて。
-* CVS Options::              CVSにたいするオプションについて
+* General VC Options::       Options that apply to multiple back ends.
+* RCS and SCCS::             Options for RCS and SCCS.
+* CVS Options::              Options for CVS.
 @end menu
 
 @node General VC Options
-@subsubsection 一般的なオプション
+@subsubsection General Options
 
 @vindex vc-make-backup-files
-  Emacsは通常、バージョンコントロールにより保守されるソースファイルのバックアップファイルを保存しません。バージョンコントロールを使用したファイルにもバックアップファイルを作成したいときは、変数@code{vc-make-backup-files}に非@code{nil}値をセットしてください。
+  Emacs normally does not save backup files for source files that are
+maintained with version control.  If you want to make backup files even for
+files that use version control, set the variable @code{vc-make-backup-files}
+to a non-@code{nil} value.
 
 @vindex vc-follow-symlinks
 @cindex symbolic links (and version control)
-  そのファイルがバージョンコントロールされていると知らずに、シンボリックリンクを通じてバージョンコントロールされたファイルを編集すると、予期せぬ結果を招くことがあります。変数@code{vc-follow-symlinks}は、バージョンコントロールされたファイルを指すシンボリックリンクをvisitしようと試みたときの、Emacsの振る舞いを制御します。値が@code{ask}(デフォルト)の場合、Emacsは確認を求めます。値が@code{nil}の場合、Emacsは警告メッセージを表示するだけです。値が@code{t}の場合、Emacsは自動的にリンクをたどって、かわりに実際のファイルをvisitします。
+  Editing a version-controlled file through a symbolic link may cause
+unexpected results, if you are unaware that the underlying file is
+version-controlled.  The variable @code{vc-follow-symlinks} controls what
+Emacs does if you try to visit a symbolic link pointing to a
+version-controlled file.  If the value is @code{ask} (the default), Emacs
+asks for confirmation.  If it is @code{nil}, Emacs just displays a warning
+message.  If it is @code{t}, Emacs automatically follows the link and visits
+the real file instead.
 
 @vindex vc-suppress-confirm
-  @code{vc-suppress-confirm}が非@code{nil}の場合、@kbd{C-x v v}および@kbd{C-x v
-i}は確認を求めずにカレントバッファーを保存し、@kbd{C-x v u}も確認を求めず処理を行います。
+  If @code{vc-suppress-confirm} is non-@code{nil}, then @kbd{C-x v v} and
+@kbd{C-x v i} can save the current buffer without asking, and @kbd{C-x v u}
+also operates without asking for confirmation.
 
 @vindex vc-command-messages
-  VCモードは多くの処理を、バージョンコントロールシステムにたいする適切なシェルコマンドを実行することにより行います。@code{vc-command-messages}が非@code{nil}の場合、VCはそれが実行するシェルコマンドを示すメッセージと、コマンドが終了したときの追加のメッセージを表示します。
+  VC mode does much of its work by running the shell commands for the
+appropriate version control system.  If @code{vc-command-messages} is
+non-@code{nil}, VC displays messages to indicate which shell commands it
+runs, and additional messages when the commands finish.
 
 @node RCS and SCCS
-@subsubsection RCSとSCCSにたいするオプション
+@subsubsection Options for RCS and SCCS
 
 @cindex non-strict locking (RCS)
 @cindex locking, non-strict (RCS)
-  デフォルトでは、複数ユーザーの活動を調停するためにRCSはロックを使用しますが、最初にファイルをロックしなくても変更をチェックインできる、@dfn{厳密でないロック(non-strict
-locking)}と呼ばれるモードもあります。特定のファイルにたいして厳密でないロックに切り替えるには、@samp{rcs
--U}を使用します。詳細については、@code{rcs}のman-pageを参照してください。
+  By default, RCS uses locking to coordinate the activities of several users,
+but there is a mode called @dfn{non-strict locking} in which you can
+check-in changes without locking the file first.  Use @samp{rcs -U} to
+switch to non-strict locking for a particular file, see the @code{rcs}
+manual page for details.
 
-  RCSファイルのバージョンコントロール状態を推論するとき、VCは最初にそのファイルのRCSバージョンヘッダー文字列を調べます(@ref{Version
-Headers}を参照してください)。ヘッダー文字列がない場合、VCは通常、作業ファイルのパーミッションを調べます。これは速い処理です。ファイルのパーミッションが信頼できない状況もあるかもしれません。そのような場合はマスターファイルが調べられます。これはより高価な処理です。マスターファイルから判るのは、@emph{もし}そのファイルにたいして何らかのロックがある場合、作業ファイルが実際にロックされたバージョンを含むかどうか、だけです。
+  When deducing the version control state of an RCS file, VC first looks for
+an RCS version header string in the file (@pxref{Version Headers}).  If
+there is no header string, VC normally looks at the file permissions of the
+work file; this is fast.  But there might be situations when the file
+permissions cannot be trusted.  In this case the master file has to be
+consulted, which is rather expensive.  Also the master file can only tell
+you @emph{if} there's any lock on the file, but not whether your work file
+really contains that locked version.
 
-  @code{vc-consult-headers}を@code{nil}にセットすることにより、VCがファイル状態を決定するのにバージョンヘッダーを使用しないように指定できます。その場合、VCは常に、(それが信用できると思われる場合は)ファイルのパーミッションを使うか、マスターファイルをチェックします。
+  You can tell VC not to use version headers to determine the file status by
+setting @code{vc-consult-headers} to @code{nil}.  VC then always uses the
+file permissions (if it is supposed to trust them), or else checks the
+master file.
 
-  VCがSCCSの配下にあるファイルのバージョンコントロール状態を決定する方法は、RCSとほぼ同じです。しかしSCCSのバージョンヘッダーは考慮しません。したがって、@code{vc-consult-headers}はSCCSの使用に影響しません。
+  VC determines the version control state of files under SCCS much as with
+RCS@.  It does not consider SCCS version headers, though.  Thus, the
+variable @code{vc-consult-headers} does not affect SCCS use.
 
 @node CVS Options
-@subsubsection CVSに特有のオプション
+@subsubsection Options specific for CVS
 
 @vindex vc-cvs-global-switches
-  変数@code{vc-cvs-global-switches}で、すべてのCVS操作に渡す追加のコマンドラインオプションを指定できます。これらのスイッチは@code{cvs}コマンドの直後、呼び出す操作名の前に挿入されます。
+  You can specify additional command line options to pass to all CVS
+operations in the variable @code{vc-cvs-global-switches}.  These switches
+are inserted immediately after the @code{cvs} command, before the name of
+the operation to invoke.
 
 @vindex vc-cvs-stay-local
 @cindex remote repositories (CVS)
-  リモートマシン上でCVSレポジトリを使用する際は、ネットワーク通信を最小に維持するようVCに試行させることができます。これは、変数@code{vc-cvs-stay-local}により制御されます。@code{vc-cvs-stay-local}が@code{only-file}(デフォルト)の場合、VCはローカルのCVSサブディレクトリーのエントリーと、前のCVSコマンドから戻された情報だけを使って、各ファイルのバージョンコントロール状態を決定します。結果として、あなたがファイルを変更しているとき、他の誰かが他の変更をチェックインした場合、それのコミットを試みるまで衝突は通知されません。
+  When using a CVS repository on a remote machine, VC can try keeping network
+interactions to a minimum.  This is controlled by the variable
+@code{vc-cvs-stay-local}.  If @code{vc-cvs-stay-local} is @code{only-file}
+(the default), VC determines the version control status of each file using
+only the entry in the local CVS subdirectory and the information returned by
+previous CVS commands.  As a consequence, if you have modified a file and
+somebody else has checked in other changes, you will not be notified of the
+conflict until you try to commit.
 
-  @code{vc-cvs-stay-local}を@code{nil}に変更した場合、ローカルのレポジトリと同じように、@code{vc-next-action}
-(@kbd{C-x v v})が何を行うか決定する@emph{前}に、VCはリモートのレポジトリに問い合わせを行います。
+  If you change @code{vc-cvs-stay-local} to @code{nil}, VC queries the remote
+repository @emph{before} it decides what to do in @code{vc-next-action}
+(@kbd{C-x v v}), just as it does for local repositories.
 
-  @code{vc-cvs-stay-local}に、レポジトリのあるホスト名にマッチする正規表現を指定することもできます。この場合、ホスト名がパターンにマッチしたときは、VCはローカルに留まります。
+  You can also set @code{vc-cvs-stay-local} to a regular expression that is
+matched against the repository host name; VC then stays local only for
+repositories from hosts that match the pattern.
 
 @cindex automatic version backups
-  リモートのレポジトリを使用する場合、Emacsは通常、編集された各ファイルのオリジナルバージョンである、@dfn{自動バージョンバックアップ(automatic
-version
-backups)}を作成します。これらのローカルのバックアップは、変更を最初にファイルに保存したときに作成され、レポジトリに変更をコミットした後で削除されます(これらは通常のEmacsのバックアップファイルとは異なることに注意してください。
+  When using a remote repository, Emacs normally makes @dfn{automatic version
+backups} of the original versions of each edited file.  These local backups
+are made whenever you save the first changes to a file, and they are removed
+after you commit your changes to the repository.  (Note that these are not
+the same as ordinary Emacs backup files;
 @iftex
-@ref{Backup,,,emacs, the Emacs Manual}を参照してください)。
+@pxref{Backup,,,emacs, the Emacs Manual}.)
 @end iftex
 @ifnottex
-@ref{Backup}を参照してください)。
+@pxref{Backup}.)
 @end ifnottex
-@kbd{C-x v =}や@kbd{C-x v
-u}のようなコマンドは、ネットワークへのアクセスを避けるため、可能な場合は自動バージョンバックアップを使用します。
+Commands like @kbd{C-x v =} and @kbd{C-x v u} make use of automatic version
+backups, if possible, to avoid having to access the network.
 
-  @code{vc-cvs-stay-local}を@code{nil}にセットすることにより、自動バージョンバックアップの作成を無効にできます。
+  Setting @code{vc-cvs-stay-local} to @code{nil} disables the making of
+automatic version backups.
 
 @cindex manual version backups
-  自動バージョンバックアップは、@w{@code{@var{file}.~@var{version}.~}}という形式の名前をもちます。これは@kbd{C-x
-v ~}が古いバージョンを保存するときの名前と似ています
+  Automatic version backups have names of the form
+@w{@code{@var{file}.~@var{version}.~}}.  This is similar to the name that
+@kbd{C-x v ~} saves old versions to
 @iftex
-(@ref{Old Revisions,,,emacs, the Emacs Manual}を参照してください)。
+(@pxref{Old Revisions,,,emacs, the Emacs Manual}),
 @end iftex
 @ifnottex
-(@ref{Old Revisions}を参照してください)。
+(@pxref{Old Revisions}),
 @end ifnottex
-例外は、バージョンの後ろにある追加のドット(@samp{.})です。関連するVCコマンドは、これら両方の種類のバージョンバックアップを使用できます。主な違いは、@kbd{C-x
-v ~}により手動で作成されたバージョンバックアップは、コミットしたとき自動的に削除されないことです。
+except for the additional dot (@samp{.}) after the version.  The relevant VC
+commands can use both kinds of version backups.  The main difference is that
+the manual version backups made by @kbd{C-x v ~} are not deleted
+automatically when you commit.
 
 @cindex locking (CVS)
-  デフォルトでCVSはロックを使用しませんが、@env{CVSREAD}または@dfn{watch}の機能を使用して、ロックのような振る舞いを有効にする方法があります。詳細については、CVSのドキュメントを参照してください。そのような場合、ロックベースのバージョンコントロールシステムで行うように、Emacsで@kbd{C-x
-v v}を使用して、ロックを切り替えることができます
+  CVS does not use locking by default, but there are ways to enable
+locking-like behavior using its @env{CVSREAD} or @dfn{watch} feature; see
+the CVS documentation for details.  If that case, you can use @kbd{C-x v v}
+in Emacs to toggle locking, as you would for a locking-based version control
+system
 @iftex
-(@ref{VC With A Locking VCS,,,emacs, the Emacs Manual}を参照してください)。
+(@pxref{VC With A Locking VCS,,,emacs, the Emacs Manual}).
 @end iftex
 @ifnottex
-(@ref{VC With A Locking VCS}を参照してください)
+(@pxref{VC With A Locking VCS}).
 @end ifnottex

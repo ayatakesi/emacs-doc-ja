@@ -9,114 +9,188 @@
 @c Foundation, Inc.
 @c See file emacs-ja.texi for copying conditions.
 @node Windows
-@chapter 複数ウィンドウ
+@chapter Multiple Windows
 @cindex windows in Emacs
 @cindex multiple windows in Emacs
 
-  Emacsのフレームは、2つ以上のウィンドウに分割できます。複数のウィンドウで異なるバッファーを表示したり、1つのバッファーの異なる部分を表示できます。複数フレームは自ずと複数ウィンドウになります。なぜならフレームには、それぞれウィンドウがあるからです。ウィンドウは1つのフレームだけに属します。
+  Emacs can split a frame into two or many windows.  Multiple windows can
+display parts of different buffers, or different parts of one buffer.
+Multiple frames always imply multiple windows, because each frame has its
+own set of windows.  Each window belongs to one and only one frame.
 
 @menu
-* Basic Window::             Emacsウィンドウの紹介。
-* Split Window::             既存のウィンドウを分割して新しいウィンドウを作る。
-* Other Window::             他のウィンドウへの移動と操作。
-* Pop Up Window::            他のウィンドウのファイルまたはバッファーの検索。
-* Change Window::            ウィンドウの削除とサイズ変更。
-* Displaying Buffers::       Emacsがバッファーを表示するためにウィンドウを選択する方法。
-* Window Convenience::       ウィンドウ処理の便利な機能。
-* Tab Line::                 ウィンドウタブライン。
+* Basic Window::             Introduction to Emacs windows.
+* Split Window::             New windows are made by splitting existing 
+                               windows.
+* Other Window::             Moving to another window or doing something to 
+                               it.
+* Pop Up Window::            Finding a file or buffer in another window.
+* Change Window::            Deleting windows and changing their sizes.
+* Displaying Buffers::       How Emacs picks a window for displaying a 
+                               buffer.
+* Window Convenience::       Convenience functions for window handling.
+* Tab Line::                 Window tab line.
 * Window Tool Bar::          A tool bar that is attached to windows.
 @end menu
 
 @node Basic Window
-@section Emacsウィンドウの概念
+@section Concepts of Emacs Windows
 
-  Emacsの各ウィンドウには、常に1つのEmacsバッファーが表示されます。1つのバッファーは、複数のウィンドウに表示される場合があります。この場合、バッファーのテキストへの任意の変更は、それが表示されているすべてのウィンドウで表示されます。しかし各ウィンドウは独自にポイント値をもっているので、ウィンドウごとにバッファーの異なる部分を表示できます。
+  Each Emacs window displays one Emacs buffer at any time.  A single buffer
+may appear in more than one window; if it does, any changes in its text are
+displayed in all the windows where it appears.  But these windows can show
+different parts of the buffer, because each window has its own value of
+point.
 
 @cindex selected window
-  常に1つのEmacsウィンドウが、@dfn{選択されたウィンドウ}となります。このウィンドウに表示されているバッファーが、カレントバッファーとなります。グラフィカルなディスプレイでは、選択されたウィンドウのカーソルは、点滅する塗りつぶされたカーソルとなり、選択されていないウィンドウでは、中抜きボックスのカーソルになります。テキスト端末では、カーソルは選択されたウィンドウだけで描画されます。@ref{Cursor
-Display}を参照してください。
+  At any time, one Emacs window is the @dfn{selected window}; the buffer this
+window is displaying is the current buffer.  On graphical displays, the
+point is indicated by a solid blinking cursor in the selected window, and by
+a hollow box in non-selected windows.  On text terminals, the cursor is
+drawn only in the selected window.  @xref{Cursor Display}.
 
-  ポイントを移動するコマンドは、選択されたEmacsウィンドウのポイント値だけに影響します。他のEmacsウィンドウのポイント値は、たとえ同じバッファーを表示していたとしても変更されません。これと同じことは、@kbd{C-x
-b}のようなバッファー切り替えコマンドについても言えます。これらは他のウィンドウには影響を与えません。しかし@kbd{C-x 4
-b}のような、別のウィンドウを選択して、バッファーを切り替えるコマンドもあります。(たとえば)@kbd{C-h f}
-(@code{describe-function})や@kbd{C-x C-b}
-(@code{list-buffers})を含む、ウィンドウで情報を表示するコマンドは、選択されたウィンドウに影響を与えることなく、通常は選択されていないウィンドウ内にバッファーを表示することにより機能します。
+  Commands to move point affect the value of point for the selected Emacs
+window only.  They do not change the value of point in other Emacs windows,
+even those showing the same buffer.  The same is true for buffer-switching
+commands such as @kbd{C-x b}; they do not affect other windows at all.
+However, there are other commands such as @kbd{C-x 4 b} that select a
+different window and switch buffers in it.  Also, all commands that display
+information in a window, including (for example) @kbd{C-h f}
+(@code{describe-function}) and @kbd{C-x C-b} (@code{list-buffers}), usually
+work by displaying buffers in a nonselected window without affecting the
+selected window.
 
-  複数ウィンドウで同じバッファーを表示しているとき、これらは異なるリージョンを持ちます。なぜなら、それらは異なるポイント値を持つことができるからです。しかしバッファーごとにマーク位置は1つだけなので、これらは同じマーク位置をもちます。
+  When multiple windows show the same buffer, they can have different regions,
+because they can have different values of point.  However, they all have the
+same value for the mark, because each buffer has only one mark position.
 
-  それぞれのウィンドウには、独自のモードラインがあり、それにはバッファー名、変更状態、そのウィンドウに表示されているバッファーのメジャーモードとマイナーモードが表示されます。選択されたウィンドウのモードラインは、異なる色で表示されます。詳細については、@ref{Mode
-Line}を参照してください。
+  Each window has its own mode line, which displays the buffer name,
+modification status and major and minor modes of the buffer that is
+displayed in the window.  The selected window's mode line appears in a
+different color.  @xref{Mode Line}, for details.
 
 @node Split Window
-@section ウィンドウの分割
+@section Splitting Windows
 
 @table @kbd
 @item C-x 2
-選択されたウィンドウを上下に2分割します(@code{split-window-below})。
+Split the selected window into two windows, one above the other
+(@code{split-window-below}).
 @item C-x 3
-選択されたウィンドウを左右に2分割します(@code{split-window-right})。
+Split the selected window into two windows, positioned side by side
+(@code{split-window-right}).
 @item C-mouse-2
-ウィンドウのモードライン上では、ウィンドウを分割します。
+In the mode line of a window, split that window.
 @end table
 
 @kindex C-x 2
 @findex split-window-below
-  @kbd{C-x 2}
-(@code{split-window-below})は、選択されたウィンドウを上下に2つのウィンドウに分割します。分割した後は、上が選択されたウィンドウになり、新たに分割されたウィンドウが下になります。2つのウィンドウは最初同じポイント値をもち、(可能な限り)同じバッファー部分を表示します。必要ならポイントをスクリーン上に残したまま、ウィンドウをスクロールできます。デフォルトでは2つのウィンドウの高さは、元のウィンドウの高さの半分になります。正の数引数は上のウィンドウの高さが何行分かを指定し、負の数引数は下のウィンドウが何行分の高さかを指定します。
+  @kbd{C-x 2} (@code{split-window-below}) splits the selected window into two
+windows, one above the other.  After splitting, the selected window is the
+upper one, and the newly split-off window is below.  Both windows have the
+same value of point as before, and display the same portion of the buffer
+(or as close to it as possible).  If necessary, the windows are scrolled to
+keep point on-screen.  By default, the two windows each get half the height
+of the original window.  A positive numeric argument specifies how many
+lines to give to the top window; a negative numeric argument specifies how
+many lines to give to the bottom window.
 
 @vindex split-window-keep-point
-  変数@code{split-window-keep-point}を@code{nil}に変更すると、@kbd{C-x
-2}はスクリーンに表示されるテキストができるだけ前と同じになるように、ウィンドウに表示されるバッファー部分と、各ウィンドウのポイント位置を調整します。さらにポイントが元のウィンドウの下半分にあったときは、上ではなく下のウィンドウが選択されます。
+  If you change the variable @code{split-window-keep-point} to @code{nil},
+@kbd{C-x 2} instead adjusts the portion of the buffer displayed by the two
+windows, as well as the value of point in each window, in order to keep the
+text on the screen as close as possible to what it was before; furthermore,
+if point was in the lower half of the original window, the bottom window is
+selected instead of the upper one.
 
 @kindex C-x 3
 @findex split-window-right
-  @kbd{C-x 3}
-(@code{split-window-right})は、選択されたウィンドウを左右に2つのウィンドウに分割します。左のウィンドウが選択されたウィンドウとなり、右のウィンドウには同じバッファーの同じ部分が表示され、ポイント位置も同じです。正の数引数は左のウィンドウの幅を列数で指定し、負の数引数は右のウィンドウの幅を数引数で指定します。
+  @kbd{C-x 3} (@code{split-window-right}) splits the selected window into two
+side-by-side windows.  The left window is the selected one; the right window
+displays the same portion of the same buffer, and has the same value of
+point.  A positive numeric argument specifies how many columns to give the
+left window; a negative numeric argument specifies how many columns to give
+the right window.
 
 @vindex truncate-partial-width-windows
-  ウィンドウを@kbd{C-x
-3}で分割すると、分割されたウィンドウの幅はフレーム全体の幅より小さくなります。ウィンドウの幅が狭くなりすぎると、継続行が使われたバッファーを読むことが困難になる場合があります(@ref{Continuation
-Lines}を参照してください)。したがってウィンドウの幅が50列より狭くなったとき、Emacsは自動的に行を切り詰めに切り替えます。この切り詰めは、変数@code{truncate-lines}の値に関係なく発生します(@ref{Line
-Truncation}を参照してください)。@code{truncate-lines}のかわりに、この自動切り詰めを制御するのは、変数@code{truncate-partial-width-windows}です。この変数の値が正の整数(デフォルトは50)の場合、それは自動的な行切り詰めが発生する前の、分割ウィンドウの最小のトータル幅(total
-width)を指定します。この値が@code{nil}の場合、自動的な行切り詰めは無効です。他の非@code{nil}値では、分割されたウィンドウの幅に関係なく、Emacsは行を切り詰めます。ウィンドウのトータル幅(total
-width)とは、@code{window-total-width} (@ref{Window Sizes,,, elisp, The Emacs
-Lisp Reference
-Manual}を参照してください)で報告される列単位の値で、これにはフリンジと、継続および切り詰めのためのグリフ、マージン、スクロールバーが含まれます。
+  When you split a window with @kbd{C-x 3}, each resulting window occupies
+less than the full width of the frame.  If it becomes too narrow, the buffer
+may be difficult to read if continuation lines are in use
+(@pxref{Continuation Lines}).  Therefore, Emacs automatically switches to
+line truncation if the window width becomes narrower than 50 columns.  This
+truncation occurs regardless of the value of the variable
+@code{truncate-lines} (@pxref{Line Truncation}); it is instead controlled by
+the variable @code{truncate-partial-width-windows}.  If the value of this
+variable is a positive integer (the default is 50), that specifies the
+minimum total width for a partial-width window before automatic line
+truncation occurs; if the value is @code{nil}, automatic line truncation is
+disabled; and for any other non-@code{nil} value, Emacs truncates lines in
+every partial-width window regardless of its width.  The total width of a
+window is in column units as reported by @code{window-total-width}
+(@pxref{Window Sizes,,, elisp, The Emacs Lisp Reference Manual}), it
+includes the fringes, the continuation and truncation glyphs, the margins,
+and the scroll bar.
 
-  テキスト端末では、左右に分割されたウィンドウを垂直に分割する分割線は、@code{vertical-border}フェイスで描画されます。
+  On text terminals, side-by-side windows are separated by a vertical divider
+which is drawn using the @code{vertical-border} face.
 
 @kindex C-mouse-2 @r{(mode line)}
 @kindex C-mouse-2 @r{(scroll bar)}
-  ウィンドウのモードライン上で@kbd{C-mouse-2}をクリックすると、クリックした位置に垂直分割線を配してウィンドウを分割します。Emacsがコンパイルされた方法に依存しますが、ウィンドウのスクロールバー上で@kbd{C-mouse-2}をクリックすると、クリックした位置に水平分割線を配してウィンドウを分割します(この機能は、EmacsがGTK+のスクロールバーを使っているときは機能しません)。
+  If you click @kbd{C-mouse-2} in the mode line of a window, that splits the
+window, putting a vertical divider where you click.  Depending on how Emacs
+is compiled, you can also split a window by clicking @kbd{C-mouse-2} in the
+scroll bar, which puts a horizontal divider where you click (this feature
+does not work when Emacs uses GTK+ scroll bars).
 
 @vindex window-resize-pixelwise
-  デフォルトでは、ウィンドウを分割したとき、Emacsは分割されたウィンドウのサイズをフレームのデフォルトフォントの整数倍にします。これによりスクリーンが正確に2分割されない場合があります。変数@code{window-resize-pixelwise}を非@code{nil}値にセットすると、Emacsは分割されたウィンドウのサイズを、同じピクセル数にします(元のサイズが奇数のピクセル数の場合、1ピクセル増減されます)。フレームのピクセル数がフレームの文字サイズ倍でない場合、このオプションが@code{nil}でも、少なくとも1つのウィンドウがピクセル幅のサイズ変更をされることに注意してください。
+  By default, when you split a window, Emacs gives each of the resulting
+windows dimensions that are an integral multiple of the default font size of
+the frame.  That might subdivide the screen estate unevenly between the
+resulting windows.  If you set the variable @code{window-resize-pixelwise}
+to a non-@code{nil} value, Emacs will give each window the same number of
+pixels (give or take one pixel if the initial dimension was an odd number of
+pixels).  Note that when a frame's pixel size is not a multiple of the
+frame's character size, at least one window may get resized pixelwise even
+if this option is @code{nil}.
 
 @node Other Window
-@section 他のウィンドウの使用
+@section Using Other Windows
 
 @table @kbd
 @item C-x o
-他のウィンドウを選択します(@code{other-window})。
+Select another window (@code{other-window}).
 @item C-M-v
-次のウィンドウを上方にスクロールします(@code{scroll-other-window})。
+Scroll the next window upward (@code{scroll-other-window}).
 @item C-M-S-v
-次のウィンドウを下方にスクロールします(@code{scroll-other-window-down})。
+Scroll the next window downward (@code{scroll-other-window-down}).
 @item C-M-S-l
-次のウィンドウを再センタリングします(@code{recenter-other-window})。
-@item Mouse-1
-ウィンドウのテキスト領域を@kbd{mouse-1}でクリックすると、そのウィンドウを選択してクリックした位置にポイントを移動します。モードラインをクリックすると、ポイントを移動せずにそのウィンドウを選択します。
+Recenter the next window (@code{recenter-other-window}).
+@item mouse-1
+@kbd{mouse-1}, in the text area of a window, selects the window and moves
+point to the position clicked.  Clicking in the mode line selects the window
+without moving point in it.
 @end table
 
 @kindex C-x o
 @findex other-window
-キーボードで@kbd{C-x o}
-(@code{other-window})をタイプして、ウィンドウを切り替えることができます。@kbd{o}は``other''のoで、0(ゼロ)ではありません。2つ以上のウィンドウがある時、このコマンドはすべてのウィンドウを順繰りに選択します(一般的に上からした、左から右)。一番右または一番下のウィンドウの後は、左上のウィンドウに戻ります。数引数は上記の順番で何番目のウィンドウに移動するかを意味します。負の引数は逆向きで同じことを行います。ミニバッファーがアクティブのとき、ミニバッファーウィンドウはこの順番では最後のウィンドウになります。ミニバッファーのウィンドウから他のウィンドウに切り替えて、後からミニバッファーに戻って引数の入力を終了させることができます。@ref{Minibuffer
-Edit}を参照してください。
+With the keyboard, you can switch windows by typing @kbd{C-x o}
+(@code{other-window}).  That is an @kbd{o}, for ``other'', not a zero.  When
+there are more than two windows, this command moves through all the windows
+in a cyclic order, generally top to bottom and left to right.  After the
+rightmost and bottommost window, it goes back to the one at the upper left
+corner.  A numeric argument means to move several steps in the cyclic order
+of windows.  A negative argument moves around the cycle in the opposite
+order.  When the minibuffer is active, the minibuffer window is the last
+window in the cycle; you can switch from the minibuffer window to one of the
+other windows, and later switch back and finish supplying the minibuffer
+argument that is requested.  @xref{Minibuffer Edit}.
 
 @findex next-window-any-frame
-@code{other-window}コマンドは通常は(別フレームが設定されていないかぎり)カレントフレームの次のウィンドウだけに切り替えます。マルチフレーム環境において、このサイクルの一部にすべてのフレームのウィンドウを含めたければ、@kbd{C-x
-o}を@code{next-window-any-frame}コマンドにリバインドすることができます(コマンドをリバインドする方法は@ref{Rebinding}を参照)。
+The @code{other-window} command will normally only switch to the next window
+in the current frame (unless otherwise configured).  If you work in a
+multi-frame environment and you want windows in all frames to be part of the
+cycle, you can rebind @kbd{C-x o} to the @code{next-window-any-frame}
+command.  (@xref{Rebinding}, for how to rebind a command.)
 
 @kindex C-M-v
 @findex scroll-other-window
@@ -124,87 +198,104 @@ o}を@code{next-window-any-frame}コマンドにリバインドすることが�
 @findex scroll-other-window-down
 @kindex C-M-S-l
 @findex recenter-other-window
-  通常のスクロールコマンド(@ref{Display}を参照)は選択されたウィンドウだけに適用されますが、次のウィンドウをスクロールするコマンドは他にもあります。@kbd{C-M-v}
-(@code{scroll-other-window})は@kbd{C-x
-o}により選択されるようなウィンドウをスクロールします。このコマンドは別の観点から見ると@kbd{C-v}のように振る舞います。いずれのコマンドもバッファーテキストをウィンドウから相対的に上方へ移動して、どちらも正と負の引数を受け取るからです(ミニバッファーではミニバッファーに関連付けられたヘルプウィンドウがあれば、@kbd{C-M-v}は標準的なサイクル順での次ウィンドウではなくヘルプウィンドウをスクロールする。@ref{Minibuffer
-Edit}を参照)。@kbd{C-M-S-v}
-(@code{scroll-other-window-down})は同様の方法で次のウィンドウを下方にスクロールします。同様に@kbd{C-M-S-l}
-(@code{recenter-other-window})は次ウィンドウにおいて@kbd{C-l}
-(@code{recenter-top-bottom})のように振る舞います。
+  The usual scrolling commands (@pxref{Display}) apply to the selected window
+only, but there are also commands to scroll the next window.  @kbd{C-M-v}
+(@code{scroll-other-window}) scrolls the window that @kbd{C-x o} would
+select.  In other respects, the command behaves like @kbd{C-v}; both move
+the buffer text upward relative to the window, and take positive and
+negative arguments.  (In the minibuffer, @kbd{C-M-v} scrolls the help window
+associated with the minibuffer, if any, rather than the next window in the
+standard cyclic order; @pxref{Minibuffer Edit}.)  @kbd{C-M-S-v}
+(@code{scroll-other-window-down}) scrolls the next window downward in a
+similar way.  Likewise, @kbd{C-M-S-l} (@code{recenter-other-window}) behaves
+like @kbd{C-l} (@code{recenter-top-bottom}) in the next window.
 
 @vindex mouse-autoselect-window
-  @code{mouse-autoselect-window}を非@code{nil}値にセットしている場合、マウスが選択されたウィンドウ以外のウィンドウに移動すると、そのウィンドウが選択されます。この機能はデフォルトでオフです。
+  If you set @code{mouse-autoselect-window} to a non-@code{nil} value, moving
+the mouse over a different window selects that window.  This feature is off
+by default.
 
 @node Pop Up Window
-@section 他のウィンドウでの表示
+@section Displaying in Another Window
 
 @cindex selecting buffers in other windows
 @kindex C-x 4
-  @kbd{C-x
-4}は、異なるウィンドウ(他の既存のウィンドウや、選択されたウィンドウを分割することにより新たに作成されたウィンドウ)のバッファーに切り替える、さまざまなコマンドのプレフィクスキーです。Emacsがウィンドウを選択または作成する方法については、@ref{Window
-Choice}を参照してください。
+  @kbd{C-x 4} is a prefix key for a variety of commands that switch to a
+buffer in a different window---either another existing window, or a new
+window created by splitting the selected window.  @xref{Window Choice}, for
+how Emacs picks or creates the window to use.
 
 @table @kbd
 @item C-x 4 b @var{bufname} @key{RET}
-他のウィンドウのバッファー@var{bufname}を選択します(@code{switch-to-buffer-other-window})。@ref{Select
-Buffer}を参照してください。
+Select buffer @var{bufname} in another window
+(@code{switch-to-buffer-other-window}).  @xref{Select Buffer}.
 
 @findex display-buffer @r{(command)}
 @item C-x 4 C-o @var{bufname} @key{RET}
 @kindex C-x 4 C-o
-バッファー@var{bufname}を選択せずに、別のウィンドウに表示します(@code{display-buffer})。ウィンドウが選択される方法についての詳細は、@ref{Displaying
-Buffers}を参照してください。
+Display buffer @var{bufname} in some window, without trying to select it
+(@code{display-buffer}).  @xref{Displaying Buffers}, for details about how
+the window is chosen.
 
 @item C-x 4 f @var{filename} @key{RET}
-ファイル@var{filename}をvisitして、他のウィンドウでバッファーを選択します(@code{find-file-other-window}).
-@ref{Visiting}を参照してください。
+Visit file @var{filename} and select its buffer in another window
+(@code{find-file-other-window}).  @xref{Visiting}.
 
 @item C-x 4 d @var{directory} @key{RET}
-@var{directory}のDiredバッファーを、別のウィンドウで選択します(@code{dired-other-window})。@ref{Dired}を参照してください。
+Select a Dired buffer for directory @var{directory} in another window
+(@code{dired-other-window}).  @xref{Dired}.
 
 @c Don't index @kbd{C-x 4 m} and @code{compose-mail-other-window}
 @c here, they are indexed in sending-ja.texi, in the "Sending Mail" node.
 @item C-x 4 m
-@kbd{C-x m} (@ref{Sending
-Mail}を参照してください)と同様に、メールメッセージの編集を開始しますが、別のウィンドウで行います(@code{compose-mail-other-window})。
+Start composing a mail message, similar to @kbd{C-x m} (@pxref{Sending
+Mail}), but in another window (@code{compose-mail-other-window}).
 
 @findex find-tag-other-window
 @item C-x 4 .
-@kbd{M-.}
-(@ref{Xref}を参照してください)と同様に、識別子の定義を検索しますが、別のウィンドウで行います(@code{xref-find-definitions-other-window})。
+Find the definition of an identifier, similar to @kbd{M-.} (@pxref{Xref}),
+but in another window (@code{xref-find-definitions-other-window}).
 
 @item C-x 4 r @var{filename} @key{RET}
-ファイル@var{filename}を読み取り専用でvisitして、別のウィンドウでバッファーを選択します(@code{find-file-read-only-other-window})。@ref{Visiting}を参照してください。
+Visit file @var{filename} read-only, and select its buffer in another window
+(@code{find-file-read-only-other-window}).  @xref{Visiting}.
 
 @item C-x 4 4
-このプレフィックスコマンドが呼び出した次コマンドが表示するバッファーに効果を及ぼす、より一般的なプレフィックスコマンドです。これは別ウィンドウに表示する次コマンドのバッファーを要求します。
+A more general prefix command affects the buffer displayed by the next
+command invoked immediately after this prefix command.  It requests the
+buffer of the next command to be displayed in another window.
 
 @item C-x 4 1
-これは同一ウィンドウに表示する次コマンドのバッファーを要求する一般的なコマンドです。
+This general prefix command requests the buffer of the next command to be
+displayed in the same window.
 @end table
 
 @node Change Window
-@section ウィンドウの削除とリサイズ
+@section Deleting and Resizing Windows
 
 @cindex delete window
 @cindex deleting windows
 @table @kbd
 @item C-x 0
-選択されたウィンドウを削除します(@code{delete-window})。
+Delete the selected window (@code{delete-window}).
 @item C-x 1
-フレームから選択されたウィンドウ以外のすべてのウィンドウを削除します(@code{delete-other-windows})。
+Delete all windows in the selected frame except the selected window
+(@code{delete-other-windows}).
 @item C-x 4 0
-選択されていたウィンドウを削除して、それに表示されていたバッファーをkillします(@code{kill-buffer-and-window})。このキーシーケンスの最後の文字はゼロです。
+Delete the selected window and kill the buffer that was showing in it
+(@code{kill-buffer-and-window}).  The last character in this key sequence is
+a zero.
 @item C-x w 0 @key{RET} @var{buffer} @key{RET}
-指定された@var{buffer}を表示しているウィンドウを削除します。
+Delete windows showing the specified @var{buffer}.
 @item C-x ^
-選択されたウィンドウの高さを増やします(@code{enlarge-window})。
+Make selected window taller (@code{enlarge-window}).
 @item C-x @}
-選択されたウィンドウの幅を増やします(@code{enlarge-window-horizontally})。
+Make selected window wider (@code{enlarge-window-horizontally}).
 @item C-x @{
-選択されたウィンドウの幅を減らします(@code{shrink-window-horizontally})。
+Make selected window narrower (@code{shrink-window-horizontally}).
 @item C-x -
-バッファーに多くの行数が必要ない場合、そのウィンドウを縮小します(@code{shrink-window-if-larger-than-buffer})。
+Shrink this window if its buffer doesn't need so many lines
+(@code{shrink-window-if-larger-than-buffer}).
 @item C-x +
 Balance the sizes of all the windows of the selected frame
 (@code{balance-windows}).
@@ -212,24 +303,32 @@ Balance the sizes of all the windows of the selected frame
 
 @kindex C-x 0
 @findex delete-window
-  選択されたウィンドウを削除するには@kbd{C-x 0}
-(@code{delete-window})とタイプします(これはゼロ)。一度ウィンドウが削除されると、そのウィンドウが占めていたスペースは隣接したウィンドウに与えられます(ミニバッファーの場合にはアクティブな場合でも適用されない)。ウィンドウの削除はウィンドウを表示用に使っていたバッファーに影響を与えません。そのバッファーは存在を継続して、@kbd{C-x
-b}で切り替えることができます。オプション@code{delete-window-choose-selected}は、新たに選択されたウィンドウとしてどのウィンドウを選択するかを制御します(@ref{Deleting
-Windows,,, elisp, The Emacs Lisp Reference Manual}を参照)。
+  To delete the selected window, type @kbd{C-x 0} (@code{delete-window}).
+(That is a zero.)  Once a window is deleted, the space that it occupied is
+given to an adjacent window (but not the minibuffer window, even if that is
+active at the time).  Deleting the window has no effect on the buffer it
+used to display; the buffer continues to exist, and you can still switch to
+it with @kbd{C-x b}.  The option @code{delete-window-choose-selected}
+controls which window is chosen as the new selected window instead
+(@pxref{Deleting Windows,,, elisp, The Emacs Lisp Reference Manual}).
 
 @findex kill-buffer-and-window
 @kindex C-x 4 0
-  @kbd{C-x 4 0} (@code{kill-buffer-and-window})は、コマンド@kbd{C-x
-0}より強力なコマンドです。これはカレントバッファーをkillしてから、選択されたウィンドウを削除します。
+  @kbd{C-x 4 0} (@code{kill-buffer-and-window}) is a stronger command than
+@kbd{C-x 0}; it kills the current buffer and then deletes the selected
+window.
 
 @kindex C-x 1
 @findex delete-other-windows
-  @kbd{C-x 1}
-(@code{delete-other-windows})は、選択されたウィンドウ@emph{以外}のすべてのウィンドウを削除します。選択されたウィンドウはフレーム全体に拡張されます(このコマンドは、ミニバッファーのウィンドウがアクティブのとき使うことができません。これを試みるとエラーがシグナルされます)。
+  @kbd{C-x 1} (@code{delete-other-windows}) deletes all the windows,
+@emph{except} the selected one; the selected window expands to use the whole
+frame.  (This command cannot be used while the minibuffer window is active;
+attempting to do so signals an error.)
 
-  @kbd{M-x
-delete-windows-on}は、特定のバッファーを表示するウィンドウを削除します。これは、そのバッファーの入力を求めます(デフォルトはカレントバッファー)。@kbd{C-u
-0}のようにプレフィックス引数が0の場合、このコマンドはカレントディスプレイ上のフレームのウィンドウだけを削除します。
+  @kbd{M-x delete-windows-on} deletes windows that show a specific buffer.  It
+prompts for the buffer, defaulting to the current buffer.  With prefix
+argument of zero, @kbd{C-u 0}, this command deletes windows only on the
+current display's frames.
 
 @cindex resize window
 @cindex resizing windows
@@ -237,24 +336,35 @@ delete-windows-on}は、特定のバッファーを表示するウィンドウ�
 @findex enlarge-window
 @kindex C-x @}
 @vindex window-min-height
-  コマンド@kbd{C-x ^}
-(@code{enlarge-window})は、フレームの高さを変えずに垂直方向に隣接するウィンドウのスペースを縮小して、選択されたウィンドウの高さを増やします。正の数引数を与えると、このコマンドは指定した行数分ウィンドウの高さを増やします。負の数引数を与えると、指定した行数分ウィンドウの高さを増やします。垂直方向に隣接するウィンドウが存在しない場合(たとえばウィンドウの高さがフレーム全体の高さと同じとき)、エラーをシグナルします。このコマンドは変数@code{window-min-height}(デフォルトは4)で指定された、最小行数よりウィンドウの高さを縮小しようとしても、エラーをシグナルします。
+  The command @kbd{C-x ^} (@code{enlarge-window}) makes the selected window
+one line taller, taking space from a vertically adjacent window without
+changing the height of the frame.  With a positive numeric argument, this
+command increases the window height by that many lines; with a negative
+argument, it reduces the height by that many lines.  If there are no
+vertically adjacent windows (i.e., the window is at the full frame height),
+that signals an error.  The command also signals an error if you attempt to
+reduce the height of any window below a certain minimum number of lines,
+specified by the variable @code{window-min-height} (the default is 4).
 
 @findex enlarge-window-horizontally
 @findex shrink-window-horizontally
 @vindex window-min-width
-  同様に@kbd{C-x @}}
-(@code{enlarge-window-horizontally})は、選択されたウィンドウの幅を増やし、@kbd{C-x @{}
-(@code{shrink-window-horizontally})は幅を減らします。これらのコマンドは、変数@code{window-min-width}(デフォルトは10)で指定された最小列数よりウィンドウの幅を縮小すると、エラーをシグナルします。
+  Similarly, @kbd{C-x @}} (@code{enlarge-window-horizontally}) makes the
+selected window wider, and @kbd{C-x @{} (@code{shrink-window-horizontally})
+makes it narrower.  These commands signal an error if you attempt to reduce
+the width of any window below a certain minimum number of columns, specified
+by the variable @code{window-min-width} (the default is 10).
 
-  モードライン(@ref{Mode Line Mouse}を参照してください)、またはウィンドウ分割線(window
-dividers。@ref{Window
-Dividers}を参照してください)をマウスでクリックすることにより、ウィンドウの高さの変更およびウィンドウの分割や削除を行なう、別の方法を提供します。
+  Mouse clicks on the mode line (@pxref{Mode Line Mouse}) or on window
+dividers (@pxref{Window Dividers}) provide another way to change window
+heights and to split or delete windows.
 
 @kindex C-x -
 @findex shrink-window-if-larger-than-buffer
-  @kbd{C-x -}
-(@code{shrink-window-if-larger-than-buffer})は、バッファー全体を表示するのに必要な高さより選択されたウィンドウの高さが大きいときは、選択されたウィンドウの高さを減らします。余った行数はフレームの他のウィンドウに与えられます。
+  @kbd{C-x -} (@code{shrink-window-if-larger-than-buffer}) reduces the height
+of the selected window, if it is taller than necessary to show the whole
+text of the buffer it is displaying.  It gives the extra lines to other
+windows in the frame.
 
 @kindex C-x +
 @findex balance-windows
@@ -265,27 +375,39 @@ pair of adjacent windows the same height, and each vertical pair of adjacent
 windows the same width.
 
 @node Displaying Buffers
-@section ウィンドウでのバッファーの表示
+@section Displaying a Buffer in a Window
 
-  ユーザーのコマンドの結果として、任意のバッファーが表示またはポップアップされるのは、Emacsでは一般的な処理です。コマンドがこれを行うには、いくつかの異なる方法があります。
+  It is a common Emacs operation to display or pop up some buffer in response
+to a user command.  There are several different ways in which commands do
+this.
 
-  @kbd{C-x C-f}
-(@code{find-file})のような多くのコマンドは、デフォルトでは選択されたウィンドウを``乗っ取って''バッファーを表示します。
+  Many commands, like @kbd{C-x C-f} (@code{find-file}), by default display the
+buffer by ``taking over'' the selected window, expecting that the user's
+attention will be diverted to that buffer.
 
-  選択されたウィンドウを乗っ取らずに、たとえばウィンドウを分割して新しいウィドウを作り、そこにバッファーを表示するといったような、利口な表示を試みるコマンドがいくつかあります。さまざまなヘルプコマンド(@ref{Help})を含む、そのようなコマンドは内部的に@code{display-buffer}を呼び出すことにより機能します。詳細は、@ref{Window
-Choice}を参照してください
+  Some commands try to display intelligently, trying not to take over the
+selected window, e.g., by splitting off a new window and displaying the
+desired buffer there.  Such commands, which include the various help
+commands (@pxref{Help}), work by calling @code{display-buffer} internally.
+@xref{Window Choice}, for details.
 
-  他のコマンドは@code{display-buffer}と同じことを行いますが、それに加えてバッファーの編集を開始できるように、表示されたウィンドウを選択します。コマンド@kbd{M-g
-M-n} (@code{next-error})が1つの例です(@ref{Compilation
-Mode}を参照してください)。そのようなコマンドは、内部的に関数@code{pop-to-buffer}を呼び出すことにより機能します。@ref{Switching
-Buffers,,Switching to a Buffer in a Window, elisp, The Emacs Lisp Reference
-Manual}を参照してください。
+  Other commands do the same as @code{display-buffer}, and additionally select
+the displaying window so that you can begin editing its buffer.  The command
+@kbd{M-g M-n} (@code{next-error}) is one example (@pxref{Compilation
+Mode}).  Such commands work by calling the function @code{pop-to-buffer}
+internally.  @xref{Switching Buffers,,Switching to a Buffer in a Window,
+elisp, The Emacs Lisp Reference Manual}.
 
-  名前が@code{-other-window}で終わるコマンドは、@code{display-buffer}と同じように振る舞います。例外はそれらが決して選択されたウィンドウに表示しない点です。これらのコマンドのいくつかは、プレフィクスキー@kbd{C-x
-4}にバインドされています(@ref{Pop Up Window}を参照してください)。
+  Commands with names ending in @code{-other-window} behave like
+@code{display-buffer}, except that they never display in the selected
+window.  Several of these commands are bound in the @kbd{C-x 4} prefix key
+(@pxref{Pop Up Window}).
 
-  名前が@code{-other-frame}で終わるコマンドは、@code{display-buffer}と同じように振る舞います。例外は、i)選択されたウィンドウに決して表示しない、ii)望むバッファーを表示するために新たなフレームを作成するか、他のフレーム上のウィンドウを使用する、という2点です。これらのコマンドのいくつかは、プレフィクスキー@kbd{C-x
-5}にバインドされています。
+  Commands with names ending in @code{-other-frame} behave like
+@code{display-buffer}, except that they (i) never display in the selected
+window and (ii) prefer to either create a new frame or use a window on some
+other frame to display the desired buffer.  Several of these commands are
+bound in the @kbd{C-x 5} prefix key.
 
 @cindex dedicated window
   Sometimes, a window is ``dedicated'' to its current buffer.  @xref{Dedicated
@@ -295,9 +417,12 @@ a @samp{d} in the mode line (@pxref{Mode Line}).  A window can also be
 strongly dedicated, which prevents any changes to the buffer displayed in
 the window.  This is indicated by a @samp{D} in the mode line.
 
-通常だと専用ウィンドウには何か特別なバッファーに使用されますが、インタラクティブに専用化できれば便利な場合もあるかもしれません。たとえば@kbd{M-g
-M-n}
-@code{next-error}でエラーを閲覧する際に、あなたが参照していたいバッファーが新たに表示されたソースコードに置き換えられてしまうかもしれません。ウィンドウをソンバッファー専用にすれば、(@code{display-buffer}経由の)コマンドは他のウィンドウの使用を選択するようになります。
+Usually, dedicated windows are used to display specialized buffers, but
+dedication can sometimes be useful interactively.  For example, when viewing
+errors with @kbd{M-g M-n} @code{next-error}, newly displayed source code may
+replace a buffer you want to refer to.  If you dedicate a window to that
+buffer, the command (through @code{display-buffer}) will prefer to use a
+different window instead.
 
 @kindex C-x w d
 @findex toggle-window-dedicated
@@ -306,27 +431,32 @@ toggle whether the selected window is dedicated to the current buffer.  With
 a prefix argument, it makes the window strongly dedicated.
 
 @menu
-* Window Choice::            @code{display-buffer}が機能する方法。
-* Temporary Displays::       編集不可バッファーの表示
+* Window Choice::            How @code{display-buffer} works.
+* Temporary Displays::       Displaying non-editable buffers.
 @end menu
 
 @node Window Choice
-@subsection @code{display-buffer}が機能する方法
+@subsection How @code{display-buffer} works
 @findex display-buffer@r{, detailed description}
 
-@code{display-buffer}コマンド(およびこのコマンドを内部的に呼び出すコマンド)は、以下で与えられたステップに従って、表示するウィンドウを選択します。このステップの順番を変更する方法については、@ref{Choosing
-Window,,Choosing a Window for Displaying a Buffer, elisp, The Emacs Lisp
-Reference Manual}を参照してください。
+The @code{display-buffer} command (as well as commands that call it
+internally) chooses a window to display by following the steps given below.
+@xref{Choosing Window,,Choosing a Window for Displaying a Buffer, elisp, The
+Emacs Lisp Reference Manual}, for details about how to alter this sequence
+of steps.
 
 @itemize
 @item
-他に考慮されるべき点とは無関係に、そのバッファーが選択されたウィンドウ内に表示されるべき場合は、選択されたウィンドウを再利用します。デフォルトではこのステップはスキップされますが、オプション@code{display-buffer-alist}
-(@ref{Choosing Window,,Choosing a Window for Displaying a Buffer, elisp, The
-Emacs Lisp Reference
-Manual}を参照)にバッファー名にマッチする正規表現を追加して、アクション関数@code{display-buffer-same-window}
-(@ref{Buffer Display Action Functions,,Action Functions for Buffer Display,
-elisp, The Emacs Lisp Reference
-Manual}を参照)でそれを参照することにより、Emacsにスキップしないよう告げることができます。たとえば、選択されたウィンドウ内に優先的にバッファー@file{*scratch*}を表示するには、以下のように記述します:
+If the buffer should be displayed in the selected window regardless of other
+considerations, reuse the selected window.  By default, this step is
+skipped, but you can tell Emacs not to skip it by adding a regular
+expression matching the buffer's name together with a reference to the
+@code{display-buffer-same-window} action function (@pxref{Buffer Display
+Action Functions,,Action Functions for Buffer Display, elisp, The Emacs Lisp
+Reference Manual}) to the option @code{display-buffer-alist}
+(@pxref{Choosing Window,,Choosing a Window for Displaying a Buffer, elisp,
+The Emacs Lisp Reference Manual}).  For example, to display the buffer
+@file{*scratch*} preferably in the selected window write:
 
 @example
 @group
@@ -336,18 +466,22 @@ Manual}を参照)でそれを参照することにより、Emacsにスキップ�
 @end group
 @end example
 
-デフォルトでは、@code{display-buffer-alist}は@code{nil}です。
+By default, @code{display-buffer-alist} is @code{nil}.
 
 @item
-上記以外の場合、バッファーがすでに既存のウィンドウに表示されているときは、そのウィンドウを再利用します。通常は選択されたフレームのウィンドウだけが考慮されますが、対応するアクションalist@code{reusable-frames}エントリー(@ref{Buffer
-Display Action Alists,,Action Alists for Buffer Display, elisp, The Emacs
-Lisp Reference
-Manual}を参照)を使用している場合は、他のフレームのウィンドウも再利用可能です。これを行う例は、次のステップを参照してください。
+Otherwise, if the buffer is already displayed in an existing window, reuse
+that window.  Normally, only windows on the selected frame are considered,
+but windows on other frames are also reusable if you use the corresponding
+@code{reusable-frames} action alist entry (@pxref{Buffer Display Action
+Alists,,Action Alists for Buffer Display, elisp, The Emacs Lisp Reference
+Manual}).  See the next step for an example of how to do that.
 
 @item
-上記以外の場合、オプションで新しいフレームを作成して、バッファーをそこに表示します。デフォルトではこのステップはスキップされます。これを有効にするには、以下のようにオプション@code{display-buffer-base-action}
-(@ref{Choosing Window,,Choosing a Window for Displaying a Buffer, elisp, The
-Emacs Lisp Reference Manual}を参照)の値を変更してください:
+Otherwise, optionally create a new frame and display the buffer there.  By
+default, this step is skipped.  To enable it, change the value of the option
+@code{display-buffer-base-action} (@pxref{Choosing Window,,Choosing a Window
+for Displaying a Buffer, elisp, The Emacs Lisp Reference Manual}) as
+follows:
 
 @example
 @group
@@ -358,40 +492,61 @@ Emacs Lisp Reference Manual}を参照)の値を変更してください:
 @end group
 @end example
 
-このカスタマイズでは、すべての可視およびアイコン化されたフレーム上の再利用可能なウィンドウを検索するステップを先行して試みるでしょう。
+This customization will also try to make the preceding step search for a
+reusable window on all visible or iconified frames.
 
 @item
-上記以外の場合、選択されたフレームのウィンドウを分割することにより、新しいウィンドウを作成して、バッファーを新しく作成したウィンドウに表示しようと試みます。
+Otherwise, try to create a new window by splitting a window on the selected
+frame, and display the buffer in that new window.
 
 @vindex split-height-threshold
 @vindex split-width-threshold
-分割は垂直または水平に行われる可能性があり、それは変数@code{split-height-threshold}および@code{split-width-threshold}に依存します。これらの変数には整数値を指定します。@code{split-height-threshold}が選択されたウィンドウの高さより小さい場合、分割により下が新しいウィンドウになります。上記以外の場合、@code{split-width-threshold}が選択されたウィンドウの幅より小さい場合、分割により右が新しいウィンドウになります。どちらの条件も適用できなかったとき、Emacsは分割により下を新しいウィンドウにしようと試みますが、それは選択されたウィンドウが以前に分割されていなかった場合に限られます(過剰な分割を避けるため)。
+The split can be either vertical or horizontal, depending on the variables
+@code{split-height-threshold} and @code{split-width-threshold}.  These
+variables should have integer values.  If @code{split-height-threshold} is
+smaller than the chosen window's height, the split puts the new window
+below.  Otherwise, if @code{split-width-threshold} is smaller than the
+window's width, the split puts the new window on the right.  If neither
+condition holds, Emacs tries to split so that the new window is below---but
+only if the window was not split before (to avoid excessive splitting).
 
 @item
-上記以外の場合、そのウィンドウに前に表示されていたバッファーを表示します。通常は選択されたフレームのウィンドウだけが考慮されますが、適正なアクションalistエントリー@code{reusable-frames}
-(上記参照)により、他のフレームのウィンドウかもしれません。
+Otherwise, display the buffer in a window previously showing it.  Normally,
+only windows on the selected frame are considered, but with a suitable
+@code{reusable-frames} action alist entry (see above) the window may be also
+on another frame.
 
 @item
-上記以外の場合、選択されたフレームの既存のウィンドウのバッファーを表示します。
+Otherwise, display the buffer in an existing window on the selected frame.
 
 @item
-何らかの理由により上記すべてが失敗した場合、新しいフレームを作成して、そこにバッファーを表示します。
+If all the above methods fail for whatever reason, create a new frame and
+display the buffer there.
 @end itemize
 
 
 @node Temporary Displays
-@subsection 編集不可バッファーの表示
+@subsection Displaying non-editable buffers.
 @cindex temporary windows
 
-ウィンドウに表示されるバッファーの中には、編集のためではなく閲覧するためのものがあります。Helpコマンド(@ref{Help}を参照)は通常、この目的のために@file{*Help*}と呼ばれるバッファーを使用し、ミニバッファーの補完(@ref{Completion}を参照)は別の@file{*Completions*}と呼ばれるバッファーなどを使用します。このようなバッファーは通常、短時間しか表示されません。
+Some buffers are shown in windows for perusal rather than for editing.  Help
+commands (@pxref{Help}) typically use a buffer called @file{*Help*} for that
+purpose, minibuffer completion (@pxref{Completion}) uses a buffer called
+@file{*Completions*}, etc.  Such buffers are usually displayed only for a
+short period of time.
 
-  Emacsは通常、このような一時的に表示されるウィンドウを、前のサブセクションで説明したように@code{display-buffer}を通じて表示します。一方、@file{*Completions*}バッファーは通常、そのフレームにいくつウィンドウが表示されているかに関わらず、選択されたフレームの最下のウィンドウに表示されます。
+  Normally, Emacs chooses the window for such temporary displays via
+@code{display-buffer}, as described in the previous subsection.  The
+@file{*Completions*} buffer, on the other hand, is normally displayed in a
+window at the bottom of the selected frame, regardless of the number of
+windows already shown on that frame.
 
-  一時的なバッファーを他のやり方でEmacsに表示させたい場合、変数@code{display-buffer-alist} (@ref{Choosing
+  If you prefer Emacs to display a temporary buffer in a different fashion,
+customize the variable @code{display-buffer-alist} (@pxref{Choosing
 Window,,Choosing a Window for Displaying a Buffer, elisp, The Emacs Lisp
-Reference
-Manual}を参照)をカスタマイズしてください。たとえば、常に選択されたウィンドウの下に@file{*Completions*}を表示するには、初期化ファイル(@ref{Init
-File}を参照)で以下のフォームを使用します:
+Reference Manual}) appropriately.  For example, to display
+@file{*Completions*} always below the selected window, use the following
+form in your initialization file (@pxref{Init File}):
 
 @example
 @group
@@ -402,20 +557,24 @@ File}を参照)で以下のフォームを使用します:
 @end example
 
 @findex temp-buffer-resize-mode
-  Emacsは通常、バッファーの内容のすべてを表示するのに必要な大きさのウィンドウを作成するという点において、@file{*Completions*}バッファーは特別です。たとえば@file{*Help*}バッファーなど、他の一時表示でこのようなウィンドウのリサイズを行なうには、マイナーモード(@ref{Minor
-Modes}を参照)の@code{temp-buffer-resize-mode} (@ref{Temporary
-Displays,,Temporary Displays, elisp, The Emacs Lisp Reference
-Manual}を参照)に切り替えます。
+  The @file{*Completions*} buffer is also special in the sense that Emacs
+usually tries to make its window just as large as necessary to display all
+of its contents.  To resize windows showing other temporary displays, like,
+for example, the @file{*Help*} buffer, turn on the minor mode (@pxref{Minor
+Modes}) @code{temp-buffer-resize-mode} (@pxref{Temporary Displays,,Temporary
+Displays, elisp, The Emacs Lisp Reference Manual}).
 
 @vindex temp-buffer-max-height
 @vindex temp-buffer-max-width
-  @code{temp-buffer-resize-mode}でリサイズされるウィンドウの最大サイズは、オプション@code{temp-buffer-max-height}と@code{temp-buffer-max-width}
-(@ref{Temporary Displays,,Temporary Displays, elisp, The Emacs Lisp
-Reference Manual}を参照)で制御できます。最大サイズは、ウィンドウが含まれるフレームのサイズを超えることはできません。
+  The maximum size of windows resized by @code{temp-buffer-resize-mode} can be
+controlled by customizing the options @code{temp-buffer-max-height} and
+@code{temp-buffer-max-width} (@pxref{Temporary Displays,,Temporary Displays,
+elisp, The Emacs Lisp Reference Manual}), and cannot exceed the size of the
+containing frame.
 
 
 @node Window Convenience
-@section ウィンドウ処理のための便利な機能
+@section Convenience Features for Window Handling
 
 @findex winner-mode
 @vindex winner-dont-bind-my-keys
@@ -426,17 +585,25 @@ Reference Manual}を参照)で制御できます。最大サイズは、ウィ�
 @cindex mode, Winner
 @cindex undoing window configuration changes
 @cindex window configuration changes, undoing
-  Winnerモードはウィンドウの構成変更(たとえばフレームのウィンドウがどのように分割されたか)を記録するグローバルマイナーモードなのでそれらをundoできます。Winnerモードは@kbd{M-x
-winner-mode}、または変数@code{winner-mode}をカスタマイズすることにより切り替えることができます。このモードが有効な場合には、@kbd{C-c
-left} (@code{winner-undo})は左のウィンドウの構成変更をundoします。undoしてから気が変わったら、@kbd{C-c
-right} (@code{M-x
-winner-redo})を使ってundoした変更をredo(再実行)することができます。Winnerモードによる@kbd{C-c
-left}と@kbd{C-c
-right}のバインドを抑制するために、変数@code{winner-dont-bind-my-keys}を非@code{nil}値にカスタマイズできます。デフォルトではWinnerモードはフレームごとに最大200個のウィンドウ構成を格納しますが、変数@code{winner-ring-size}により変更できます。Winnerモードにリストアさせたくないようなウィンドウをもつバッファーがある場合には、それらの名前を変数@code{winner-boring-buffers}か正規表現@code{winner-boring-buffers-regexp}に追加しください。
+  Winner mode is a global minor mode that records the changes in the window
+configuration (i.e., how the frames are partitioned into windows), so that
+you can undo them.  You can toggle Winner mode with @kbd{M-x winner-mode},
+or by customizing the variable @code{winner-mode}.  When the mode is
+enabled, @kbd{C-c left} (@code{winner-undo}) undoes the last window
+configuration change.  If you change your mind while undoing, you can redo
+the changes you had undone using @kbd{C-c right} (@code{M-x winner-redo}).
+To prevent Winner mode from binding @kbd{C-c left} and @kbd{C-c right}, you
+can customize the variable @code{winner-dont-bind-my-keys} to a
+non-@code{nil} value.  By default, Winner mode stores a maximum of 200
+window configurations per frame, but you can change that by modifying the
+variable @code{winner-ring-size}.  If there are some buffers whose windows
+you wouldn't want Winner mode to restore, add their names to the list
+variable @code{winner-boring-buffers} or to the regexp
+@code{winner-boring-buffers-regexp}.
 
-  Followモード(@kbd{M-x
-follow-mode})は、複数のウィンドウの同じバッファーを同期するので、バッファーの隣接した部分が常に表示されます。@ref{Follow
-Mode}を参照してください。
+  Follow mode (@kbd{M-x follow-mode}) synchronizes several windows on the same
+buffer so that they always display adjacent sections of that buffer.
+@xref{Follow Mode}.
 
 @cindex Windmove package
 @cindex directional window selection
@@ -445,40 +612,71 @@ Mode}を参照してください。
 @findex windmove-display-default-keybindings
 @findex windmove-delete-default-keybindings
 @findex windmove-swap-states-default-keybindings
-  Windmoveパッケージはフレーム内で隣接するウィンドウに方向的に移動するコマンドを定義します。@kbd{M-x
-windmove-right}はカレントで選択されたウィンドウのすぐ右のウィンドウを選択して、他の方向(left、up、down)にたいしても同じように機能します。@code{windmove-default-keybindings}により、これらのコマンドは@kbd{S-right}等にバインドされます。これを行うことにより、それらのキーによるシフト選択は無効になります(@ref{Shift
-Selection}を参照)。ウィンドウを方向的に選択するコマンドにたいしても同じ方法でキーバインディングを定義できます。次のコマンドが表示しようとするバッファー用のウィンドウをどの方向に表示するか指定するコマンドの定義には@code{windmove-display-default-keybindings}を使用できます。方向的にウィンドウを削除するコマンド用にキーバインディングを定義するには@code{windmove-delete-default-keybindings}、選択されたウィンドウと指定方向のウィンドウのコンテンツの入れ替えるコマンド用のキーバインディング定義には@code{windmove-swap-states-default-keybindings}があります。
+  The Windmove package defines commands for moving directionally between
+neighboring windows in a frame.  @kbd{M-x windmove-right} selects the window
+immediately to the right of the currently selected one, and similarly for
+the left, up, and down counterparts.  @code{windmove-default-keybindings}
+binds these commands to @kbd{S-right} etc.; doing so disables shift
+selection for those keys (@pxref{Shift Selection}).  In the same way as key
+bindings can be defined for commands that select windows directionally, you
+can use @code{windmove-display-default-keybindings} to define keybindings
+for commands that specify in what direction to display the window for the
+buffer that the next command is going to display.  Also there is
+@code{windmove-delete-default-keybindings} to define keybindings for
+commands that delete windows directionally, and
+@code{windmove-swap-states-default-keybindings} that defines key bindings
+for commands that swap the window contents of the selected window with the
+window in the specified direction.
 
-  コマンド@kbd{M-x compare-windows}は、異なるウィンドウに表示されたテキストを比較します。@ref{Comparing
-Files}を参照してください。
+  The command @kbd{M-x compare-windows} lets you compare the text shown in
+different windows.  @xref{Comparing Files}.
 
 @vindex scroll-all-mode
 @cindex scrolling windows together
 @cindex Scroll-all mode
 @cindex mode, Scroll-all
-  Scroll Allモード(@kbd{M-x
-scroll-all-mode})は、スクロールおよびポイント移動コマンドが、表示されているすべてのウィンドウに適用されるグローバルマイナーモードです。
+  Scroll All mode (@kbd{M-x scroll-all-mode}) is a global minor mode that
+causes scrolling commands and point motion commands to apply to every single
+window.
 
 
 @node Tab Line
-@section ウィンドウのタブライン
+@section Window Tab Line
 
 @findex global-tab-line-mode
 @cindex tab line
-  コマンド@code{global-tab-line-mode}は各ウィンドウのスクリーン行上端への@dfn{タブライン(tab
-line)}の表示を切り替えます。タブラインは各バッファーにたいしてウィンドウ内に特別なボタン(``tabs'')を表示して、対応するボタンをクリックすることによりバッファーを切り替えることができます。@kbd{+}アイコンをクリックすればバッファーのウィンドウローカルタブに新たなバッファーを追加、タブの@kbd{x}アイコンをクリックすればバッファーを削除します。タブライン上のマウスホイールはタブを水平方向にスクロールします。
+  The command @code{global-tab-line-mode} toggles the display of a @dfn{tab
+line} on the top screen line of each window.  The Tab Line shows special
+buttons (``tabs'') for each buffer that was displayed in a window, and
+allows switching to any of these buffers by clicking the corresponding
+button.  Clicking on the @kbd{+} icon adds a new buffer to the window-local
+tab line of buffers, and clicking on the @kbd{x} icon of a tab deletes it.
+The mouse wheel on the tab line scrolls the tabs horizontally.
 
-  タッチスクリーン入力(@ref{Other
-Input}を参照)は``タブライン''とのやりとりにも使用できます。タブを長押し(@ref{Touchscreens}を参照)すれば、押されたタブを操作するアイテムをもつコンテキストメニューが表示されます。タブ自体をタップすればそのタブのバッファーに切り替わり、タブライン上のボタンをタップすれば@kbd{mouse-1}でクリックしたかのように振る舞います。
+  Touch screen input (@pxref{Other Input}) can also be used to interact with
+the ``tab line''.  Long-pressing (@pxref{Touchscreens})  a tab will display
+a context menu with items that operate on the tab that was pressed; tapping
+a tab itself will result in switching to that tab's buffer, and tapping a
+button on the tab line will behave as if it was clicked with @kbd{mouse-1}.
 
-前のウィンドウローカルタブの選択は@kbd{C-x @key{LEFT}}
-(@code{previous-buffer})、次のタブの選択は@kbd{C-x @key{RIGHT}}
-(@code{next-buffer})をタイプすることと等価です。いずれのコマンドも繰り返し回数としてプレフィクス数引数をサポートします。
+Selecting the previous window-local tab is the same as typing @kbd{C-x
+@key{LEFT}} (@code{previous-buffer}), selecting the next tab is the same as
+@kbd{C-x @key{RIGHT}} (@code{next-buffer}).  Both commands support a numeric
+prefix argument as a repeat count.
 
-タンブラインに優先されるコンテンツを定義するために、変数@code{tab-line-tabs-function}をカスタマイズできます。デフォルトでは上述のようにそのウィンドウで以前visitしたすべてのバッファーが表示されます。しかしカレントバッファーと同じメジャーモードのバッファーリストを表示したり、メジャーモードでグループ化したバッファー(最初のタブでモード名をクリックするとバッファーの別グループを選択可能なすべてのメジャーモードが表示される)を表示するようにセットすることもできます。
+You can customize the variable @code{tab-line-tabs-function} to define the
+preferred contents of the tab line.  By default, it displays all buffers
+previously visited in the window, as described above.  But you can also set
+it to display a list of buffers with the same major mode as the current
+buffer, or to display buffers grouped by their major mode, where clicking on
+the mode name in the first tab displays a list of all major modes where you
+can select another group of buffers.
 
-タブラインはタブバーとは異なることに注意してください(@ref{Tab
-Bars}を参照)。各フレーム上端にあるタブバーのタブはバッファーをもつ複数のウィンドウを含むウィンドウ構成間を切り替えますが、各ウィンドウ上端にあるタブラインのタブはウィンドウ内のバッファーの切り替えに使用します。
+Note that the Tab Line is different from the Tab Bar (@pxref{Tab Bars}).
+Whereas tabs on the Tab Bar at the top of each frame are used to switch
+between window configurations containing several windows with buffers, tabs
+on the Tab Line at the top of each window are used to switch between buffers
+in the window.
 
 Also note that the tab line displays in the same space as the window tool
 bar, so only one of them can be displayed at any given time, unless you

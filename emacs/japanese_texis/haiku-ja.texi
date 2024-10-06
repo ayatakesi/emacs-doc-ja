@@ -8,76 +8,127 @@
 @c Copyright (C) 2021--2024 Free Software Foundation, Inc.
 @c See file emacs-ja.texi for copying conditions.
 @node Haiku
-@appendix EmacsとHaiku
+@appendix Emacs and Haiku
 @cindex Haiku
 
-  HaikuとはオペレーティングシステムBeOSの再実装に端を発するUnix風オペレーティングシステムのことです。
+  Haiku is a Unix-like operating system that originated as a re-implementation
+of the operating system BeOS.
 
-  このアペンディクスではHaiku伝来のウィンドウシステムであるアプリケーションキットとともにビルドされたEmacsの使い方に関する特異性について説明します。ここで説明する特異性はHaiku上のウィンドウサポートなしでビルドされたEmacsや、X11とともにconfigureされたEmacsには適用されません。
+  This appendix describes the peculiarities of using Emacs built with the
+Application Kit, the windowing system indigenous to Haiku.  The
+idiosyncrasies illustrated here do not apply to Emacs on Haiku built without
+windowing support, or configured with X11.
 
 @menu
-* Haiku Basics::             Haikuにおける基本的なEmacsの使い方とインストール。
-* Haiku Fonts::              Haikuでのフォント表示にたいするさまざまなオプション。
+* Haiku Basics::             Basic Emacs usage and installation under Haiku.
+* Haiku Fonts::              Various options for displaying fonts on Haiku.
 @end menu
 
 @node Haiku Basics
-@section Haikuのインストールとセットアップ
+@section Haiku Installation and Startup
 @cindex haiku application
 @cindex haiku installation
 
-  HaikuにEmacsをインストールすると、2つの実行可能ファイルがバイナリー用ディレクトリーにコピーされます。これらはファイルシステムのメタデータを識別するための一部を除き同一です。1つ目は通常のEmacs実行可能ファイル@file{emacs}、2つ目はファイルシステムおよびそれにたいするフレームのオープンという両方をシステムに帰属させるための、アイコンとアプリケーションの``署名(signature)''が組み込まれています。これによりファイルタイプの割当を受け取って、Trackerから直接ファイルをオープンできるようになります。
+  When Emacs is installed under Haiku, two executables are copied to the
+binaries directory, which are identical save for some identifying
+file-system metadata.  The first is a normal Emacs executable, @file{emacs},
+whereas the second, @file{Emacs}, incorporates an icon and an application
+``signature'' that abets the system in attributing both file types and open
+frames to it, thereby enabling it to receive file type assignments, and thus
+to open files directly from the Tracker.
 
-  @file{Emacs}には複数のファイル属性がセットされていて、システムが実行できるのは常に1つのコピーだけです。この不変条件はディスプレイ接続の確立時に検証されて、すでに存在するディスプレイ接続の作成を試みるEmacsプロセスを終了することによって適用されます。
+  Several file attributes are set within @file{Emacs} that prompt the system
+to permit only a single copy to run at any given time.  This invariant is
+verified upon the establishment of a display connection, and is enforced by
+terminating any Emacs process that attempts to create a display connection
+when one is already present.
 
-  これと他の理由もあり@file{Emacs}はEmacsのGUIセッションの開始に適しており、もう一方の@file{emacs}については別のタイプのEmacsセッションに使う必要があります。
+  For this and other reasons, @file{Emacs} is appropriate for starting a GUI
+session of Emacs, while @file{emacs} should be used for other types of Emacs
+sessions.
 
 @cindex modifier keys and system keymap (Haiku)
-  HaikuにおけるEmacsは@kbd{Hyper}のような普通とは異なる修飾キーや、システムのSuperキーマップが生成したアクセントつき文字を受信できません。
+  Emacs is incapable of receiving unusual modifier keys such as @kbd{Hyper}
+under Haiku, or to receive accented characters produced from the system
+Super key map.
 
-  デフォルトでは@key{Super}修飾は、オペレーティングシステムによって定義されたOptionを押下した際に報告されます。同様に@key{Meta}修飾はCommandキー、そして当然@key{Control}はシステムのControlキー、@key{Shift}はシステムのShiftキーに割り当てられています。標準的なPCキーボードでは、HaikuはこれらのキーをGNUシステムで慣れ親しんだ位置へとマップする必要がありますが、これを機能させるためにはシステム構成に幾らか調節を要するかもしれません。
+  By default, the @key{Super} modifier is reported when the Option key defined
+by the operating system is depressed.  Analogously, the @key{Meta} modifier
+is assigned to the Command key, and of course @key{Control} to the system
+Control key and @key{Shift} to the system Shift key.  On a standard PC
+keyboard, Haiku should map these keys to positions familiar to those using a
+GNU system, but this may require some adjustment to your system's
+configuration to work.
 
-  システムが認識している修飾キーとEmacsが認識しているキーの関連は、以下に記述する変数によってカスタマイズすることができます。
+  You can customize the relation between modifier keys known to the system and
+those known to Emacs by means of the variables below.
 
 @cindex modifier key customization (Haiku)
 @table @code
 @vindex haiku-meta-keysym
 @item haiku-meta-keysym
-EmacsがMetaキーとして扱うシステムの修飾キー。デフォルトは@code{command}。
+The system modifier key that will be treated as the Meta key by Emacs.  It
+defaults to @code{command}.
 
 @vindex haiku-control-keysym
 @item haiku-control-keysym
-EmacsがControlキーとして扱うシステムの修飾キー。デフォルトは@code{control}。
+The system modifier key that will be treated as the Control key by Emacs.
+It defaults to @code{control}.
 
 @vindex haiku-super-keysym
 @item haiku-super-keysym
-EmacsがSuperキーとして扱うシステムの修飾キー。デフォルトは@code{option}。
+The system modifier key that will be treated as the Super key by Emacs.  It
+defaults to @code{option}.
 
 @vindex haiku-shift-keysym
 @item haiku-shift-keysym
-EmacsがShiftキーとして扱うシステムの修飾キー。デフォルトは@code{shift}。
+The system modifier key that will be treated as the Shift key by Emacs.  It
+defaults to @code{shift}.
 @end table
 
-これらの変数それぞれにたいする値としては@code{command}、@code{control}、@code{option}、@code{shift}、あるいは@code{nil}のいずれかのシンボルを指定できます。@code{nil}やこれら以外のすべての値にたいしてはデフォルト値が使用されます。
+The value of each variable can be one of the symbols @code{command},
+@code{control}, @code{option}, @code{shift}, or @code{nil}.  @code{nil} or
+any other value will cause the default value to be used instead.
 
 @cindex tooltips (haiku)
 @cindex haiku tooltips
-  HaikuでのEmacsは、デフォルトではシステムのツールチップメカニズムを使用します。これによりツールチップの応答性が向上する場合もありますが、このツールチップではテキストのプロパティやフェイスの表示はできません。これらの機能が必要な場合には、変数@code{use-system-tooltips}を@code{nil}値にカスタマイズすれば、Emacs自身で実装されたツールチップを使うことができます。
+  On Haiku, Emacs defaults to using the system tooltip mechanism.  Tooltips
+thus generated are sometimes more responsive, but will not be able to
+display text properties or faces.  If you need those features, customize the
+variable @code{use-system-tooltips} to @code{nil} value, whereupon Emacs
+will use its own implementation of tooltips instead.
 
 @cindex X resources on Haiku
-  Xウィンドウシステムとは異なり、Haikuはシステムワイドなリソースデータベースを提供しません。重要なオプションの多くはXリソースを通じて指定されるオプションなので、それのエミュレーションが提供されています。Emacsは起動時にユーザーの構成ディレクトリー(通常は@file{/boot/home/config/settings})にある@file{GNU
-Emacs}という名前のファイルをロードします。このファイルはフラット構造のシステムメッセージでキーと値(どちらも文字列)はそれぞれ属性とその属性の値に対応しています。このようなファイルは@command{xmlbmessage}ツールによって作成されるかもしれません。
+  Unlike the X window system, Haiku does not provide a system-wide resource
+database.  Since many important options are specified via X resources
+(@pxref{X Resources}), an emulation is provided: upon startup, Emacs will
+load a file named @file{GNU Emacs} inside the user configuration directory
+(normally @file{/boot/home/config/settings}), which should be a flattened
+system message where keys and values are both strings, and correspond to
+attributes and their values respectively.  Such a file may be created with
+the @command{xmlbmessage} tool.
 
 @cindex crashes, Haiku
 @cindex haiku debugger
 @vindex haiku-debug-on-fatal-error
-  変数@code{haiku-debug-on-fatal-error}が非@code{nil}の場合には、致命的シグナルの受信時にEmacsがシステムデバッガを起動します。この変数のデフォルトは@code{t}です。システムでGDBを使えない場合には、システムデバッガによって生成されたレポートをバグの報告時に添付してください。
+  If the variable @code{haiku-debug-on-fatal-error} is non-@code{nil}, Emacs
+will launch the system debugger when a fatal signal is received.  It
+defaults to @code{t}.  If GDB cannot be used on your system, please attach
+the report generated by the system debugger when reporting a bug.
 
 @node Haiku Fonts
-@section Haikuのフォントバックエンドと選択
+@section Font Backends and Selection under Haiku
 @cindex font backend selection (Haiku)
 
-  Haikuのウィンドウサポートつきでビルドした際には、サポートされるサブセットはEmacsのconfigure時に有効と表示された依存リスト次第ではあるものの、Emacsは複数の異なるフォントバックエンドをサポートします。使用するバックエンドはEmacsの呼び出しに使用するコマンドラインにおいて@w{@code{-xrm
-Emacs.fontBackend:@var{backend}}}を与えて指定できます。ここで@var{backend}は以下にリストしたバックエンドのいずれか、フレームパラメーター@code{font-backend}を変更すればフレーム単位で指定できます。
+  Emacs supports several different font backends when built with Haiku
+windowing support, though the subset supported is subject to the list of
+dependencies present and enabled when Emacs was configured.  You can specify
+which font backends to utilize by providing @w{@code{-xrm
+Emacs.fontBackend:@var{backend}}} on the command line used to invoke Emacs,
+where @var{backend} is one of the backends listed below, or on a per-frame
+basis by changing the @code{font-backend} frame parameter.
 
-  @code{ftcr}および@code{ftcrhb}という2つのバックエンドは、それぞれXウィンドウシステムの対応するバックエンドと同じです。App
-Serverを使用してフォントを描画する@code{haiku}という名前のHaiku固有のバックエンドも存在しますが、現在のところカラーフォントとEmojiの表示はできません。
+  Two of these backends, @code{ftcr} and @code{ftcrhb} are identical to their
+counterparts on the X Window System.  There is also a Haiku-specific backend
+named @code{haiku}, that uses the App Server to draw fonts, but presently
+cannot display color fonts or Emoji.

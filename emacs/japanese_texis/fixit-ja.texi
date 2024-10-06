@@ -9,105 +9,173 @@
 @c Foundation, Inc.
 @c See file emacs-ja.texi for copying conditions.
 @node Fixit
-@chapter タイプミスを訂正するコマンド
+@chapter Commands for Fixing Typos
 @cindex typos, fixing
 @cindex mistakes, correcting
 
-  このチャプターでは、編集中に間違いに気付いたときに便利なコマンドを説明します。これらのコマンドの中でもっとも基本的なのは、undoコマンド@kbd{C-/}です(これは@kbd{C-x
-u}と@kbd{C-_}にもバインドされています)。これは1つのコマンドやコマンドの一部(@code{query-replace}の場合など)、または連続するいくつかの文字の挿入を取り消します。連続して@kbd{C-/}を繰り返すと、前へ前へと変更を取り消し、undo情報が利用できる限界までさかのぼって、変更を取り消します。
+  In this chapter we describe commands that are useful when you catch a
+mistake while editing.  The most fundamental of these commands is the undo
+command @kbd{C-/} (also bound to @kbd{C-x u} and @kbd{C-_}).  This undoes a
+single command, or a part of a command (as in the case of
+@code{query-replace}), or several consecutive character insertions.
+Consecutive repetitions of @kbd{C-/} undo earlier and earlier changes, back
+to the limit of the undo information available.
 
-  ここで説明するコマンドとは別に、@key{DEL}
-(@code{delete-backward-char})のような削除コマンドでもテキストを消去できます。これらのコマンドは、このマニュアルの前のチャプターで説明しています。@ref{Erasing}を参照してください。
+  Aside from the commands described here, you can erase text using deletion
+commands such as @key{DEL} (@code{delete-backward-char}).  These were
+described earlier in this manual.  @xref{Erasing}.
 
 @menu
-* Undo::                     Undoコマンド。
-* Transpose::                2つの文字、単語、行、リスト、...の入れ替え。
-* Fixing Case::              最後に入力した文字の大文字小文字を訂正する。
-* Spelling::                 単語またはファイル全体へのスペルチェッカーの適用。
+* Undo::                     The Undo commands.
+* Transpose::                Exchanging two characters, words, lines, 
+                               lists...
+* Fixing Case::              Correcting case of last word entered.
+* Spelling::                 Apply spelling checker to a word, or a whole 
+                               file.
 @end menu
 
 @node Undo
-@section Undo(取り消し)
+@section Undo
 @cindex undo
 @cindex changes, undoing
 
-  @dfn{undo(取り消し)}コマンドは、バッファーのテキストにたいする最後の変更を無効にします。バッファーはそれぞれ変更を個別に記録しており、undoコマンドは常にカレントバッファーに適用されます。バッファーのレコードにより、バッファーにたいするすべての変更をundoできます。通常、個々の変種コマンドは、undoレコードに個別のエントリーを作成しますが、@code{query-replace}のようないくつかのコマンドは、undo操作に柔軟性をもたせるために、コマンドによる変更を複数のエントリーに分割します。連続した文字の挿入コマンドは、undo操作の冗長性をなくすために、通常1つのundoレコードにまとめられます。
+  The @dfn{undo} command reverses recent changes in the buffer's text.  Each
+buffer records changes individually, and the undo command always applies to
+the current buffer.  You can undo all the changes in a buffer for as far
+back as the buffer's records go.  Usually, each editing command makes a
+separate entry in the undo records, but some commands such as
+@code{query-replace} divide their changes into multiple entries for
+flexibility in undoing.  Consecutive character insertion commands are
+usually grouped together into a single undo record, to make undoing less
+tedious.
 
 @table @kbd
 @item C-/
 @itemx C-x u
 @itemx C-_
-カレントバッファーのundoレコードの、1エントリーでundoします(@code{undo})。
+Undo one entry in the current buffer's undo records (@code{undo}).
 @end table
 
 @kindex C-x u
 @kindex C-_
 @kindex C-/
 @findex undo
-  undoを開始するには、@kbd{C-/}(またはエイリアスの@kbd{C-_}か@kbd{C-x
-u})をタイプします@footnote{@kbd{C-/}以外に、@code{undo}コマンドは@kbd{C-x
-u}にもバインドされています。なぜならこれは初心者が記憶するのが簡単だからです。@samp{u}は``undo''に由来しています。このコマンドは@kbd{C-_}にもバインドされています。なぜならいくつかのテキスト端末では、@kbd{C-/}とタイプすることにより、@kbd{C-_}が入力されるからです。}。これは一番最近のバッファーにたいする変更を取り消して、バッファーが変更される前の位置にポイントを戻します。連続して@kbd{C-/}(またはそれのエイリアス)を繰り返すと、現在のバッファーにたいする変更を、前へ前へとさかのぼって取り消します。すでに記録されている変更がすべて取り消されているとき、undoコマンドはエラーをシグナルします。
+  To begin to undo, type @kbd{C-/} (or its aliases, @kbd{C-_} or @kbd{C-x
+u})@footnote{Aside from @kbd{C-/}, the @code{undo} command is also bound to
+@kbd{C-x u} because that is more straightforward for beginners to remember:
+@samp{u} stands for ``undo''.  It is also bound to @kbd{C-_} because typing
+@kbd{C-/} on some text terminals actually enters @kbd{C-_}.}.  This undoes
+the most recent change in the buffer, and moves point back to where it was
+before that change.  Consecutive repetitions of @kbd{C-/} (or its aliases)
+undo earlier and earlier changes in the current buffer.  If all the recorded
+changes have already been undone, the undo command signals an error.
 
 @cindex redo
 @findex undo-only
 @findex undo-redo
-  undo以外のコマンドは、undoコマンドの順序性を損ないます。undo以外のコマンドを開始した時点から、undoしてきた一連のundoコマンド全体が、undoレコードとして記録されます。したがってundoした変更を再適用するには、undoの順序性を損なわないような@kbd{C-f}のようなコマンドをタイプしてから、@kbd{C-/}を1回以上タイプして、undoコマンドをundoしていきます。
+  Any command other than an undo command breaks the sequence of undo
+commands.  Starting from that moment, the entire sequence of undo commands
+that you have just performed are themselves placed into the undo record.
+Therefore, to re-apply changes you have undone, type @kbd{C-f} or any other
+command that harmlessly breaks the sequence of undoing; then type @kbd{C-/}
+one or more times to undo some of the undo commands.
 
-  以前のundoコマンドを再実行せずにundoを再開したいときは、かわりに@kbd{M-x
-undo-only}を使います。これは@code{undo}と同様ですが、すでにundoした変更をredo(再実行)しません。これを補うために、@kbd{M-x
-undo-redo}は前のundoコマンドをundoします(そしてそのコマンド自身をアンドゥ可能なコマンドとして記録しない)。
+  Alternatively, if you want to resume undoing, without redoing previous undo
+commands, use @kbd{M-x undo-only}.  This is like @code{undo}, but will not
+redo changes you have just undone.  To complement it, @kbd{M-x undo-redo}
+will undo previous undo commands (and will not record itself as an undoable
+command).
 
-  バッファーをうっかり変更してしまったのに気付いたら、モードラインのアスタリスクが表示されなくなるまで@kbd{C-/}を繰り返しタイプするのが、もっとも簡単な復旧方法です。undoコマンドによりモードラインのアスタリスクが消えたとき、それはバッファーの内容がファイルを最後に読み込んだとき、または保存したときと同じ内容だということを意味します。バッファーを意図して変更したか覚えていないときは、@kbd{C-/}を1回タイプします。最後の変更がundoされたのを確認して、それが意図した変更なのか確かめます。もしそれが意図しない変更だったならundoしたままにします。意図した変更だった場合、上で説明した方法で変更を再実行します。
+  If you notice that a buffer has been modified accidentally, the easiest way
+to recover is to type @kbd{C-/} repeatedly until the stars disappear from
+the front of the mode line (@pxref{Mode Line}).  Whenever an undo command
+makes the stars disappear from the mode line, it means that the buffer
+contents are the same as they were when the file was last read in or saved.
+If you do not remember whether you changed the buffer deliberately, type
+@kbd{C-/} once.  When you see the last change you made undone, you will see
+whether it was an intentional change.  If it was an accident, leave it
+undone.  If it was deliberate, redo the change as described above.
 
-かわりに@kbd{M-x
-revert-buffer}を使用して、そのバッファーが最後にvisitされたとき、または最後に保存されたとき以降のすべての変更を破棄できます(@ref{Reverting}を参照)。
+Alternatively, you can discard all the changes since the buffer was last
+visited or saved with @kbd{M-x revert-buffer} (@pxref{Reverting}).
 
 @cindex selective undo
 @kindex C-u C-/
-  アクティブなリージョンがあるとき、@code{undo}は@dfn{選択的なundo(selective
-undo)}を行います。これはバッファー全体ではなく、リージョンにたいして一番最近の変更をundoします。しかしTransient
-Markモードがオフのとき(@ref{Disabled Transient
-Mark}を参照してください)、@kbd{C-/}は、リージョンではなく、常にバッファー全体を操作します。この場合@code{undo}コマンドにプレフィクス引数を指定（@kbd{C-u
-C-/})することにより、選択的なundoができます。同じリージョンにたいしてさらに変更をundoしたいときは、@code{undo}コマンドを繰り返します(プレフィクス引数は必要ありません)。
+  When there is an active region, any use of @code{undo} performs
+@dfn{selective undo}: it undoes the most recent change within the region,
+instead of the entire buffer.  However, when Transient Mark mode is off
+(@pxref{Disabled Transient Mark}), @kbd{C-/} always operates on the entire
+buffer, ignoring the region.  In this case, you can perform selective undo
+by supplying a prefix argument to the @code{undo} command: @kbd{C-u C-/}.
+To undo further changes in the same region, repeat the @code{undo} command
+(no prefix argument is needed).
 
-  undoレコードを作らない、特別なバッファーがいくつかあります。それは名前がスペースで始まるバッファーです。これらのバッファーはEmacsにより内部的に使用されており、通常ユーザーが閲覧したり編集しないテキストを保持します。
+  Some specialized buffers do not make undo records.  Buffers whose names
+start with spaces never do; these buffers are used internally by Emacs to
+hold text that users don't normally look at or edit.
 
 @vindex undo-limit
 @vindex undo-strong-limit
 @vindex undo-outer-limit
 @cindex undo limit
-  バッファーにたいするundo情報が大きくなりすぎたとき、Emacsは一番古いレコードを、時々(@dfn{ガベージコレクション(garbage
-collection)の間})廃棄します。変数@code{undo-limit}、@code{undo-strong-limit}、@code{undo-outer-limit}をセットすることにより、どれだけのundo情報を保持するか指定することができます。これらの値はバイト数で指定します。
+  When the undo information for a buffer becomes too large, Emacs discards the
+oldest records from time to time (during @dfn{garbage collection}).  You can
+specify how much undo information to keep by setting the variables
+@code{undo-limit}, @code{undo-strong-limit}, and @code{undo-outer-limit}.
+Their values are expressed in bytes.
 
-  変数@code{undo-limit}は、ソフトリミットをセットします。Emacsはこのサイズに達するまでのコマンドのundoデータを保持します。制限を超えることもあり得ますが、これを超える古いデータは保持しません。デフォルト値は160000です。変数@code{undo-strong-limit}は、厳密なリミット(stricter
-limit)をセットします。この制限を超えるような以前のコマンド(一番最近のコマンドではない)は記憶されません。@code{undo-strong-limit}のデフォルト値は240000です。
+  The variable @code{undo-limit} sets a soft limit: Emacs keeps undo data for
+enough commands to reach this size, and perhaps exceed it, but does not keep
+data for any earlier commands beyond that.  Its default value is 160000.
+The variable @code{undo-strong-limit} sets a stricter limit: any previous
+command (though not the most recent one)  that pushes the size past this
+amount is forgotten.  The default value of @code{undo-strong-limit} is
+240000.
 
-  これらの変数の値にかかわらず、一番最近の変更はundo情報が@code{undo-outer-limit}(通常は24,000,000)より大きくならない限り、廃棄されることはありません。もしこれを超えるような場合、Emacsはundoデータを廃棄して、それにたいする警告を発します。これは一番最近のコマンドをundoできない唯一の状況です。これが発生した場合、将来同じことが起こらないように@code{undo-outer-limit}の値を増やすことができます。しかしコマンドがそのような大きなundoデータを作るとは考えられない場合、それは多分バグなので、それを報告すべきです。@ref{Bugs,,
-Reporting Bugs}を参照してください。
+  Regardless of the values of those variables, the most recent change is never
+discarded unless it gets bigger than @code{undo-outer-limit} (normally
+24,000,000).  At that point, Emacs discards the undo data and warns you
+about it.  This is the only situation in which you cannot undo the last
+command.  If this happens, you can increase the value of
+@code{undo-outer-limit} to make it even less likely to happen in the
+future.  But if you didn't expect the command to create such large undo
+data, then it is probably a bug and you should report it.  @xref{Bugs,,
+Reporting Bugs}.
 
 @node Transpose
-@section テキストの入れ替え
+@section Transposing Text
 
 @table @kbd
 @item C-t
-2つの文字を入れ替えます(@code{transpose-chars})。
+Transpose two characters (@code{transpose-chars}).
 @item M-t
-2つの単語を入れ替えます(@code{transpose-words})。
+Transpose two words (@code{transpose-words}).
 @item C-M-t
-釣り合いのとれた2つの式を入れ替えます(@code{transpose-sexps})。
+Transpose two balanced expressions (@code{transpose-sexps}).
 @item C-x C-t
-2つの行を入れ替えます(@code{transpose-lines})。
+Transpose two lines (@code{transpose-lines}).
 @item M-x transpose-sentences
-2つのセンテンスを入れ替えます(@code{transpose-sentences})。
+Transpose two sentences (@code{transpose-sentences}).
 @item M-x transpose-paragraphs
-2つのパラグラフを入れ替えます(@code{transpose-paragraphs})。
+Transpose two paragraphs (@code{transpose-paragraphs}).
 @item M-x transpose-regions
-2つのリージョンを入れ替えます。
+Transpose two regions.
 @end table
 
 @kindex C-t
 @findex transpose-chars
-  2つの文字を入れ違いに入力してしまう間違いはよくありますが、それらが隣接しているときは@kbd{C-t}(@code{transpose-chars})コマンドで訂正できます。通常@kbd{C-t}はポイントの左右にある文字を入れ替えます。行末でこのコマンドを使う場合、最後の文字と改行を入れ替えるのはおそらく無意味なので、@kbd{C-t}は行末の2文字を入れ替えます。このような入れ違いミスにすぐ気付いたときは、@kbd{C-t}だけで訂正できます。すぐに間違いに気付かなかった場合、@kbd{C-t}をタイプする前に、入れ替えて入力してしまった文字の間にカーソルを移動しなければなりません。単語の最後の文字とスペースを入れ替えて入力してしまった場合、そこに戻るには単語移動コマンド(@kbd{M-f}、@kbd{M-b}など)が良い方法です。それ以外では、逆向きの検索(@kbd{C-r})が最善な方法の場合があります。@ref{Search}を参照してください。
+  The common error of transposing two characters can be fixed, when they are
+adjacent, with the @kbd{C-t} command (@code{transpose-chars}).  Normally,
+@kbd{C-t} transposes the two characters on either side of point.  When given
+at the end of a line, rather than transposing the last character of the line
+with the newline, which would be useless, @kbd{C-t} transposes the last two
+characters on the line.  So, if you catch your transposition error right
+away, you can fix it with just a @kbd{C-t}.  If you don't catch it so fast,
+you must move the cursor back between the two transposed characters before
+you type @kbd{C-t}.  If you transposed a space with the last character of
+the word before it, the word motion commands (@kbd{M-f}, @kbd{M-b}, etc.)
+are a good way of getting there.  Otherwise, a reverse search (@kbd{C-r}) is
+often the best way.  @xref{Search}.
 
 @kindex C-x C-t
 @findex transpose-lines
@@ -117,100 +185,135 @@ Reporting Bugs}を参照してください。
 @c programs-ja.texi, in the "List Commands" node.
 @c @kindex C-M-t
 @c @findex transpose-sexps
-  @kbd{M-t}は、ポイントの前にある単語と、後にある単語を入れ替えます(@code{transpose-words})。このコマンドはポイントより後方、またはポイントがある単語を前方に移動して、ポイントをその後に移動します。文字の間にある区切り文字は移動しません。たとえば@w{@samp{FOO,
-BAR}}は、@w{@samp{BAR FOO,}}ではなく、@w{@samp{BAR, FOO}}に入れ替わります。
+  @kbd{M-t} transposes the word before point with the word after point
+(@code{transpose-words}).  It moves point forward over a word, dragging the
+word preceding or containing point forward as well.  The punctuation
+characters between the words do not move.  For example, @w{@samp{FOO, BAR}}
+transposes into @w{@samp{BAR, FOO}} rather than @w{@samp{BAR FOO,}}.  When
+point is at the end of the line, it will transpose the word before point
+with the first word on the next line.
 
 @findex transpose-sentences
 @findex transpose-paragraphs
-  @kbd{C-M-t}
-(@code{transpose-sexps})も似ていますが、これは2つの式(@ref{Expressions}を参照してください)、@kbd{C-x
-C-t} (@code{transpose-lines})は行を入れ替えます。@kbd{M-x
-transpose-sentences}と@kbd{M-x
-transpose-paragraphs}はそれぞれセンテンスとパラグラフを入れ替えます。これらのコマンドは@kbd{M-t}と同様に動作しますが、入れ替えを行うテキスト単位が異なります。
+  @kbd{C-M-t} (@code{transpose-sexps}) is a similar command for transposing
+two expressions (@pxref{Expressions}), and @kbd{C-x C-t}
+(@code{transpose-lines}) exchanges lines.  @kbd{M-x transpose-sentences} and
+@kbd{M-x transpose-paragraphs} transpose sentences and paragraphs,
+respectively.  These commands work like @kbd{M-t} except as regards the
+units of text they transpose.
 
-  入れ替えコマンドに数引数を指定すると、反復回数になります。これは入れ替えコマンドに、ポイントより前(またはポイントがある)の移動させる文字(または単語、式、行)を、何文字(または単語、式、行)後に移動させるか指示します。たとえば@w{@kbd{C-u
-3
-C-t}}は、ポイントの前にある文字を3文字後ろに移動します。つまり@samp{f@point{}oobar}は@samp{oobf@point{}ar}に変更されます。これは@kbd{C-t}を3回繰り返したのと同じです@kbd{C-u
-- 4 M-t}はポイントの前にある単語を、後方に単語4つ分移動します。@kbd{C-u -
-C-M-t}は、引数を指定しない@kbd{C-M-t}の効果を取り消します。
+  A numeric argument to a transpose command serves as a repeat count: it tells
+the transpose command to move the character (or word or expression or line)
+before or containing point across several other characters (or words or
+expressions or lines).  For example, @w{@kbd{C-u 3 C-t}} moves the character
+before point forward across three other characters.  It would change
+@samp{f@point{}oobar} into @samp{oobf@point{}ar}.  This is equivalent to
+repeating @kbd{C-t} three times.  @kbd{C-u - 4 M-t} moves the word before
+point backward across four words.  @kbd{C-u - C-M-t} would cancel the effect
+of plain @kbd{C-M-t}.
 
-  数引数0には特別な意味が割り当てられています(繰り返し回数としては、0に意味がありません)。これはポイントの後ろで終わる文字(または単語、式、行)を、マーク位置で終わる文字(または単語、式、行)と入れ替えます。
+  A numeric argument of zero is assigned a special meaning (because otherwise
+a command with a repeat count of zero would do nothing): to transpose the
+character (or word or expression or line) ending after point with the one
+ending after the mark.
 
 @findex transpose-regions
-  @kbd{M-x
-transpose-regions}はポイントとマークの間のテキストを、マークリングに最後にpushされた2つのマークの間のテキストと入れ替えます(@ref{Setting
-Mark}を参照)。プレフィクス数引数を与えるとポイントとマークの間のテキストを、その個数分マークリングを戻ってから連続する2つのマークの間のテキストと入れ替えます。このコマンドは複数の文字(や単語、センテンス、パラグラフ)を一度に行うために最適です。
+  @kbd{M-x transpose-regions} transposes the text between point and mark with
+the text between the last two marks pushed to the mark ring (@pxref{Setting
+Mark}).  With a numeric prefix argument, it transposes the text between
+point and mark with the text between two successive marks that many entries
+back in the mark ring.  This command is best used for transposing multiple
+characters (or words or sentences or paragraphs) in one go.
 
 @node Fixing Case
-@section 大文字小文字の変換
+@section Case Conversion
 
 @table @kbd
 @item M-- M-l
-最後に入力した単語を小文字に変換します。@kbd{Meta--}はメタとマイナスであることに注意して下さい。
+Convert last word to lower case.  Note @kbd{Meta--} is Meta-minus.
 @item M-- M-u
-最後に入力した単語をすべて大文字に変換します。
+Convert last word to all upper case.
 @item M-- M-c
-最後に入力した単語の先頭を大文字、それ以外を小文字に変換します。
+Convert last word to lower case with capital initial.
 @end table
 
 @kindex M-@t{-} M-l
 @kindex M-@t{-} M-u
 @kindex M-@t{-} M-c
-  単語の大文字小文字を間違えてタイプするのは、とても一般的な間違えです。そのため、単語の大文字小文字の変換コマンド@kbd{M-l}、@kbd{M-u}、@kbd{M-c}に負の数引数を指定すると、カーソルを移動しないという特性があります。最後に入力した単語のタイプミスに気付いたら、単に大文字小文字を変換して、タイプを続けることができます。@ref{Case}を参照してください。
+  A very common error is to type words in the wrong case.  Because of this,
+the word case-conversion commands @kbd{M-l}, @kbd{M-u}, and @kbd{M-c} have a
+special feature when used with a negative argument: they do not move the
+cursor.  As soon as you see you have mistyped the last word, you can simply
+case-convert it and go on typing.  @xref{Case}.
 
 @node Spelling
-@section スペルのチェックと訂正
+@section Checking and Correcting Spelling
 @cindex spelling, checking and correcting
 @cindex checking spelling
 @cindex correcting spelling
 
-  このセクションでは、1つの単語、またはバッファーの一部のスペルをチェックするコマンドを説明します。これらのコマンドはHunspell、Aspell、Ispell、またはEnchantのうちのいずれかのスペルチェッカープログラムがインストールされている場合だけ機能します。これらのプログラムはEmacsの一部ではありませんが、GNU/Linuxまたは他のフリーなオペレーティングシステムには、通常1つはインストールされています。
+  This section describes the commands to check the spelling of a single word
+or of a portion of a buffer.  These commands only work if a spelling checker
+program, one of Hunspell, Aspell, Ispell or Enchant, is installed.  These
+programs are not part of Emacs, but one of them is usually installed on
+GNU/Linux and other free operating systems.
 @ifnottex
-@ref{Top, Aspell,, aspell, The Aspell Manual}を参照してください。
+@xref{Top, Aspell,, aspell, The Aspell Manual}.
 @end ifnottex
 
 @vindex ispell-program-name
-  インストールされたスペルチェッカーが1つだけなら、ここで説明するコマンドのいずれかを最初に呼び出したときに、Emacsはそれを見つけるでしょう。インストールされているのが複数なら、変数@code{ispell-program-name}をカスタマイズしてどれを使用するか制御できます。
+  If you have only one of the spelling checker programs installed, Emacs will
+find it when you invoke for the first time one of the commands described
+here.  If you have more than one of them installed, you can control which
+one is used by customizing the variable @code{ispell-program-name}.
 
 @table @kbd
 @item M-$
-ポイントがある単語スペルの、チェックと訂正をします(@code{ispell-word})。リージョンがアクティブのときは、リージョンに含まれるすべての単語にたいして行います。
+Check and correct spelling of the word at point (@code{ispell-word}).  If
+the region is active, do it for all words in the region instead.
 @item C-u M-$
-前回中断したスペル入力処理を継続します(@code{ispell-continue})。
+If a previous spelling operation was interrupted, continue that operation
+(@code{ispell-continue}).
 @item M-x ispell
-バッファーにある単語スペルの、チェックと訂正をします。リージョンがアクティブのときは、リージョンに含まれるすべての単語にたいして行います。
+Check and correct spelling of all words in the buffer.  If the region is
+active, do it for all words in the region instead.
 @item M-x ispell-buffer
-バッファーにある単語スペルの、チェックと訂正をします。
+Check and correct spelling in the buffer.
 @item M-x ispell-region
-リージョンにある単語スペルの、チェックと訂正をします。
+Check and correct spelling in the region.
 @item M-x ispell-message
-メールメッセージのドラフト(引用部分を除く)にたいして、単語スペルのチェックと訂正をします。
+Check and correct spelling in a draft mail message, excluding cited
+material.
 @item M-x ispell-comments-and-strings
-バッファーやリージョンにあるコメントと文字列のスペルチェックと訂正をします。
+Check and correct spelling of comments and strings in the buffer or region.
 @item M-x ispell-comment-or-string-at-point
-ポイント位置のコメントと文字列をチェックします。
+Check the comment or string at point.
 @item M-x ispell-change-dictionary @key{RET} @var{dict} @key{RET}
-スペルチェッカーのプロセスを再起動して、@var{dict}を辞書として使用させます。
+Restart the spell-checker process, using @var{dict} as the dictionary.
 @item M-x ispell-kill-ispell
-スペルチェッカーのサブプロセスをkillします。
+Kill the spell-checker subprocess.
 @item M-@key{TAB}
 @itemx @key{ESC} @key{TAB}
 @itemx C-M-i
-ポイントの前にある単語を、スペル辞書やその他の補完ソースをもとに補完します(@code{completion-at-point})。
+Complete the word before point based on the spelling dictionary and other
+completion sources (@code{completion-at-point}).
 @item M-x flyspell-mode
-スペルミスした単語をハイライトする、Flyspellモードを有効にします。
+Enable Flyspell mode, which highlights all misspelled words.
 @item M-x flyspell-prog-mode
-コメントと文字列にたいして、Flyspellモードを有効にします。
+Enable Flyspell mode for comments and strings only.
 @end table
 
 @kindex M-$
 @findex ispell-word
 @findex ispell-continue
-  ポイントの前または周囲にある単語スペルをチェックしたり訂正するには、@kbd{M-$}
-(@code{ispell-word})をタイプします。リージョンがアクティブのときは、リージョン内のすべての単語スペルをチェックします。@ref{Mark}を参照してください(Transient
-Markモードがオフのとき、@kbd{M-$}はリージョンを無視して、常にポイントの前または周囲の単語にたいして動作します。@ref{Disabled
-Transient Mark}を参照)。@kbd{C-u
-M-$}のようにプレフィックス引数とともに呼び出した場合には、@code{ispell-continue}を呼び出してもし@kbd{X}か@kbd{C-g}で前回中断されたスペル入力があれば、その処理を継続します。
+  To check the spelling of the word around or before point, and optionally
+correct it as well, type @kbd{M-$} (@code{ispell-word}).  If a region is
+active, @kbd{M-$} checks the spelling of all words within the region.
+@xref{Mark}.  (When Transient Mark mode is off, @kbd{M-$} always acts on the
+word around or before point, ignoring the region; @pxref{Disabled Transient
+Mark}.)  When invoked with a prefix argument, @kbd{C-u M-$}, this calls
+@code{ispell-continue}, which continues the spelling operation, if any,
+which was interrupted with @kbd{X} or @kbd{C-g}.
 
 @findex ispell
 @findex ispell-buffer
@@ -218,85 +321,123 @@ M-$}のようにプレフィックス引数とともに呼び出した場合に�
 @findex ispell-comments-and-strings
 @findex ispell-comment-or-string-at-point
 @cindex spell-checking the active region
-  同様に、コマンド@w{@kbd{M-x
-ispell}}はリージョンがアクティブのときはリージョン、それ以外のときはバッファー全体にたいしてスペルチェックを行います。コマンド@w{@kbd{M-x
-ispell-buffer}}および@w{@kbd{M-x
-ispell-region}}は、スペルチェックをバッファー全体にたいして行うのか、リージョンにたいして行うかを明示します。このコマンドはバッファー全体をチェックしますが、インデントされているテキストと、以前のメッセージの引用と思われるテキストはチェックしません。@ref{Sending
-Mail}を参照してください。ソースコードを扱う際には、コメントや文字列リテラルだけをチェックするために@kbd{M-x
-ispell-comments-and-strings}や@w{@kbd{M-x
-ispell-comment-or-string-at-point}}を使用できます。
+  Similarly, the command @kbd{M-x ispell} performs spell-checking in the
+region if one is active, or in the entire buffer otherwise.  The commands
+@w{@kbd{M-x ispell-buffer}} and @w{@kbd{M-x ispell-region}} explicitly
+perform spell-checking on the entire buffer or the region respectively.  To
+check spelling in an email message you are writing, use @w{@kbd{M-x
+ispell-message}}; that command checks the whole buffer, except for material
+that is indented or appears to be cited from other messages.  @xref{Sending
+Mail}.  When dealing with source code, you can use @kbd{M-x
+ispell-comments-and-strings} or @w{@kbd{M-x
+ispell-comment-or-string-at-point}} to check only comments or string
+literals.
 
-  これらのコマンドは、正しくないと思われる単語に出会うと、それをどうするかを尋ねます。通常は番号が振られた@dfn{近い単語(near-misses:
-正しくないと思われる単語に似た単語)}のリストを表示します。これにたいして1文字をタイプして応答しなければなりません。以下は有効な応答文字です。
+  When one of these commands encounters what appears to be an incorrect word,
+it asks you what to do.  It usually displays a list of numbered
+@dfn{near-misses}---words that are close to the incorrect word.  Then you
+must type a single-character response.  Here are the valid responses:
 
 @table @kbd
-@item @var{数字}
-今回だけは近い単語の一覧で単語を置き換えます。近い単語には番号が振られており、選択するにはその番号をタイプします。
+@item @var{digit}
+Replace the word, just this time, with one of the displayed near-misses.
+Each near-miss is listed with a digit; type that digit to select it.
 
 @item @key{SPC}
-その単語を間違いと判断することは変更しませんが、その単語をここでは変更せずスキップします。
+Skip this word---continue to consider it incorrect, but don't change it
+here.
 
 @item r @var{new} @key{RET}
-今回は単語を@var{new}で置き換えます(置換文字列にスペルエラーがないか再スキャンされます)。
+Replace the word, just this time, with @var{new}.  (The replacement string
+will be rescanned for more spelling errors.)
 
 @item R @var{new} @key{RET}
-単語を@var{new}で置き換え、@code{query-replace}を実行します。これによりバッファーの他の箇所の間違えを置換できます(置換にスペルエラーがないか再スキャンされます)。
+Replace the word with @var{new}, and do a @code{query-replace} so you can
+replace it elsewhere in the buffer if you wish.  (The replacements will be
+rescanned for more spelling errors.)
 
 @item a
-正しくないと思われる単語を正しいものとして受け入れますが、それは今回の編集セッションに限られます。
+Accept the incorrect word---treat it as correct, but only in this editing
+session.
 
 @item A
-正しくないと思われる単語を正しいものとして受け入れますが、それは今回の編集セッションとそのバッファーに限られます。
+Accept the incorrect word---treat it as correct, but only in this editing
+session and for this buffer.
 
 @item i
-この単語をプライベートな辞書ファイルに挿入するので、今後(将来のセッションを含めて)はその単語を正しいと認識します。
+Insert this word in your private dictionary file so that it will be
+considered correct from now on, even in future sessions.
 
 @item m
-@kbd{i}と同様ですが、辞書の補完情報も指定できます。
+Like @kbd{i}, but you can also specify dictionary completion information.
 
 @item u
-この単語の小文字バージョンを、プライベートな辞書ファイルに挿入します。
+Insert the lower-case version of this word in your private dictionary file.
 
 @item l @var{word} @key{RET}
-@var{word}にマッチする単語を辞書から探します。これらの単語は近い単語の新しいリストになるので、置換で数字をタイプして選択できるようになります。@var{word}にはワイルドカードとして@samp{*}を使うことができます。
+Look in the dictionary for words that match @var{word}.  These words become
+the new list of near-misses; you can select one of them as the replacement
+by typing a digit.  You can use @samp{*} in @var{word} as a wildcard.
 
 @item C-g
 @itemx X
-対話的なスペルチェックを中断します(ポイントはチェックされた単語の位置に残されます)。@w{@kbd{C-u M-$}}でチェックを再開できます。
+Interrupt the interactive spell-checking, leaving point at the word that was
+being checked.  You can restart checking again afterward with @w{@kbd{C-u
+M-$}}.
 
 @item x
-対話的なスペルチェックを終了します(ポイントはチェックを開始したときの位置に戻ります)。
+Quit interactive spell-checking and move point back to where it was when you
+started spell-checking.
 
 @item q
-対話的なスペルチェックを終了して、スペルチェッカーのサブプロセスをkillします。
+Quit interactive spell-checking and kill the spell-checker subprocess.
 
 @item C-r
-再帰編集にエンターします(@ref{Recursive
-Edit}を参照)。@kbd{C-M-c}で再帰編集からexitすると、インタラクティブなスペルチェックが再開されます。これによりスペルチェックを中断せずにバッファーのテキストを参照することができます。その再帰編集ではバッファーの編集、特にミススペルした単語の編集は再帰編集のexit時にアンドゥされるので@emph{行わないでください}。ミススペルした単語の編集には@kbd{r}か@kbd{R}、バッファーの編集には@kbd{X}を使用して、その後は@w{@kbd{C-u
-M-$}}でスペルチェックを再開できます。
+Enter recursive-edit (@pxref{Recursive Edit}).  When you exit recursive-edit
+with @kbd{C-M-c}, the interactive spell-checking will resume.  This allows
+you to consult the buffer text without interrupting the spell-checking.  Do
+@emph{not} modify the buffer in the recursive editing, and especially don't
+modify the misspelled word, as the edits will be undone when you exit
+recursive-edit.  If you need to edit the misspelled word, use @kbd{r} or
+@kbd{R} instead, or use @kbd{X}, edit the buffer, then resume with
+@w{@kbd{C-u M-$}}.
 
 @item C-z
-Emacs、あるいはアイコン化されている選択されたフレームをサスペンドします。
+Suspend Emacs or iconify the selected frame.
 
 @item ?
-オプションの一覧を表示します。
+Show the list of options.
 @end table
 
-  ポイント位置の単語の補完には、コマンド@kbd{M-@key{TAB}}
-(@code{completion-at-point})を使用します。単語の先頭を入力してから@kbd{M-@key{TAB}}をタイプすれば、補完リストから選択できます(ウィンドウマネージャーが@kbd{M-@key{TAB}}を横取りする場合には@w{@kbd{@key{ESC}
-@key{TAB}}}や@kbd{C-M-i}とタイプすればよい)。
+  Use the command @kbd{M-@key{TAB}} (@code{completion-at-point}) to complete
+the word at point.  Insert the beginning of a word, and then type
+@kbd{M-@key{TAB}} to select from a list of completions.  (If your window
+manager intercepts @kbd{M-@key{TAB}}, type @w{@kbd{@key{ESC} @key{TAB}}} or
+@kbd{C-M-i}.)
 
 @cindex @code{ispell} program
 @findex ispell-kill-ispell
-  1度プロセスが開始されれば、スペルチェッカーのサブプロセスは待機状態で実行を続けるので、一連のスペルチェックコマンドは素早く完了します。プロセスを終了させたいときは@w{@kbd{M-x
-ispell-kill-ispell}}を使います。スペルの訂正を行うとき以外プロセスがCPU時間を使うことはないので、これは通常必要ありません。
+  Once started, the spell-checker subprocess continues to run, waiting for
+something to do, so that subsequent spell-checking commands complete more
+quickly.  If you want to get rid of the process, use @w{@kbd{M-x
+ispell-kill-ispell}}.  This is not usually necessary, since the process uses
+no processor time except when you do spelling correction.
 
 @vindex ispell-dictionary
 @vindex ispell-local-dictionary
 @vindex ispell-personal-dictionary
 @findex ispell-change-dictionary
-  スペルチェッカーは、スペルを2つの辞書から探します。それは標準辞書と個人用辞書です。標準辞書は変数@code{ispell-local-dictionary}で指定されます。これが@code{nil}のときは、変数@code{ispell-dictionary}で指定されます。両方が@code{nil}のとき、スペルプログラムは既定の辞書を使います。コマンド@w{@kbd{M-x
-ispell-change-dictionary}}は、バッファーにたいする標準辞書をセットしてからサブプロセスを再起動することにより、これにより異なる標準辞書を使うことができます。個人用の辞書は、変数@code{ispell-personal-dictionary}で指定します。これが@code{nil}のとき、スペルプログラムは個人辞書を、各スペルチェッカーが指定する既定の場所から探します。
+  Spell-checkers look up spelling in two dictionaries: the standard dictionary
+and your personal dictionary.  The standard dictionary is specified by the
+variable @code{ispell-local-dictionary} or, if that is @code{nil}, by the
+variable @code{ispell-dictionary}.  If both are @code{nil}, the spelling
+program's default dictionary is used.  The command @w{@kbd{M-x
+ispell-change-dictionary}} sets the standard dictionary for the buffer and
+then restarts the subprocess, so that it will use a different standard
+dictionary.  Your personal dictionary is specified by the variable
+@code{ispell-personal-dictionary}.  If that is @code{nil}, the spelling
+program looks for a personal dictionary in a default location, which is
+specific to each spell-checker.
 
 @cindex spell-checking different languages
 @cindex language for spell-checking
@@ -321,13 +462,25 @@ language is found as a valid spelling in the dictionary of another language;
 in that case, the mis-spelled word might be missed.)
 
 @vindex ispell-complete-word-dict
-  単語の補完には別の辞書が使われます。変数@code{ispell-complete-word-dict}は、この辞書のファイル名を指定します。補完辞書は、単語の変化形を検知するためにスペルチェックが使用する、単語にたいするroot語(接辞を含まない語)とaffix語(接辞語)に関する情報を使用できないので、、別の辞書でなければなりません。補完辞書はもたないが、スペルチェック辞書はあもつ言語もいくつかあります。
+  A separate dictionary is used for word completion.  The variable
+@code{ispell-complete-word-dict} specifies the file name of this
+dictionary.  The completion dictionary must be different because it cannot
+use the information about roots and affixes of the words, which
+spell-checking uses to detect variations of words.  For some languages,
+there is a spell-checking dictionary but no word completion dictionary.
 
 @cindex Flyspell mode
 @cindex mode, Flyspell
 @findex flyspell-mode
-  Flyspellモードは、タイプしたテキストのスペルをタイプ時に自動的にチェックするマイナーモードです。認識できない単語を見つけると、その単語をハイライトします。@w{@kbd{M-x
-flyspell-mode}}とタイプすると、カレントバッファーのFlyspellモードを切り替えます。すべてのTextバッファーでFlyspellモードを有効にするには、@code{text-mode-hook}に、@code{flyspell-mode}を追加します。@ref{Hooks}を参照してください。Flyspellモードは、ユーザーの移動にしたがって各単語をチェックする必要があるので、カーソル移動やスクロールコマンドにより速度低下するかもしれないことに注意してください。タイプしていないテキストや移動と関係ないテキストの自動チェックも行いません。それを行うためには、@code{flyspell-region}や@code{flyspell-buffer}を使用してください。
+  Flyspell mode is a minor mode that performs automatic spell-checking of the
+text you type as you type it.  When it finds a word that it does not
+recognize, it highlights that word.  Type @w{@kbd{M-x flyspell-mode}} to
+toggle Flyspell mode in the current buffer.  To enable Flyspell mode in all
+text mode buffers, add @code{flyspell-mode} to @code{text-mode-hook}.
+@xref{Hooks}.  Note that, as Flyspell mode needs to check each word across
+which you move, it will slow down cursor motion and scrolling commands.  It
+also doesn't automatically check the text you didn't type or move across;
+use @code{flyspell-region} or @code{flyspell-buffer} for that.
 
 @vindex flyspell-check-changes
   Normally, Flyspell mode highlights misspelled words that you typed or
@@ -339,13 +492,20 @@ way.
 @findex flyspell-correct-word
 @findex flyspell-auto-correct-word
 @findex flyspell-correct-word-before-point
-  Flyspellモードが間違ったスペルの単語をハイライトしているとき、それを@kbd{mouse-2}
-(@code{flyspell-correct-word})でクリックして、可能な定性とアクションを表示するメニューを表示できます。このメニューをかわりに@kbd{mouse-3}にしたければ、@code{context-menu-mode}を有効にしてください。加えて@kbd{C-.}、または@kbd{@key{ESC}
-@key{TAB}}
-(@code{flyspell-auto-correct-word})はポイント位置の単語にたいする可能な訂正を提案し、@w{@kbd{C-c $}}
-(@code{flyspell-correct-word-before-point})は可能な訂正のメニューをポップアップします。もちろん、間違ったスペルの単語を、常にお好みの方法で手修正できます。
+  When Flyspell mode highlights a word as misspelled, you can click on it with
+@kbd{mouse-2} (@code{flyspell-correct-word}) to display a menu of possible
+corrections and actions.  If you want this menu on @kbd{mouse-3} instead,
+enable @code{context-menu-mode}.  In addition, @kbd{C-.} or @kbd{@key{ESC}
+@key{TAB}} (@code{flyspell-auto-correct-word})  will propose various
+successive corrections for the word at point, and @w{@kbd{C-c $}}
+(@code{flyspell-correct-word-before-point}) will pop up a menu of possible
+corrections.  Of course, you can always correct the misspelled word by
+editing it manually in any way you like.
 
 @findex flyspell-prog-mode
-  Flyspell
-Progモードは通常のFlyspellモードと同じように機能しますが、コメントと文字列に含まれた単語だけをチェックします。この機能はプログラムを編集する場合に便利です。@w{@kbd{M-x
-flyspell-prog-mode}}をタイプして、現在のバッファーにたいするこのモードの有効と無効を切り替えます。すべてのプログラミングに関連したモードでこのモードを有効にするには、@code{prog-mode-hook}に@code{flyspell-prog-mode}を追加します(@ref{Hooks}を参照してください)。
+  Flyspell Prog mode works just like ordinary Flyspell mode, except that it
+only checks words in comments and string constants.  This feature is useful
+for editing programs.  Type @w{@kbd{M-x flyspell-prog-mode}} to enable or
+disable this mode in the current buffer.  To enable this mode in all
+programming mode buffers, add @code{flyspell-prog-mode} to
+@code{prog-mode-hook} (@pxref{Hooks}).

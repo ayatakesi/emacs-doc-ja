@@ -9,97 +9,143 @@
 @c Foundation, Inc.
 @c See file emacs-ja.texi for copying conditions.
 @node Indentation
-@chapter インデント
+@chapter Indentation
 @cindex indentation
 @cindex tabs
 @cindex columns (indentation)
 
 @cindex whitespace character
-  @dfn{インデント(Indentation)}とは、@dfn{空白文字}(スペースやタブ文字)を行のテキストの先頭に挿入したり調整することを指します。このチャプターでは、インデントコマンドと、Textモードやそれに関連するモード、同様にプログラミング言語のモードでの一般的なオプションを記します。プログラミング用のモードでのインデントに関する追加のドキュメントは、@ref{Program
-Indent}を参照してください。
+  @dfn{Indentation} refers to inserting or adjusting @dfn{whitespace
+characters} (space and/or tab characters) at the beginning of a line of
+text.  This chapter documents indentation commands and options which are
+common to Text mode and related modes, as well as programming language
+modes.  @xref{Program Indent}, for additional documentation about indenting
+in programming modes.
 
 @findex indent-for-tab-command
 @kindex TAB @r{(indentation)}
-  インデントを行うもっとも簡単な方法は、@key{TAB}キーです。ほとんどのメジャーモードでは、これによりコマンド@code{indent-for-tab-command}が実行されます(Cおよびそれに関連するモードでは、@key{TAB}は同じように振る舞うコマンド@code{c-indent-line-or-region}を実行する。@ref{C
-Indent}を参照されたい)。
+  The simplest way to perform indentation is the @key{TAB} key.  In most major
+modes, this runs the command @code{indent-for-tab-command}.  (In C and
+related modes, @key{TAB} runs the command @code{c-indent-line-or-region},
+which behaves similarly, @pxref{C Indent}).
 
 @table @key
 @item TAB
-空白文字を挿入、またはモードに適した方法でカレント行をインデントします(@code{indent-for-tab-command})。リージョンがアクティブのときは、リージョンのすべての行をインデントします。
+Insert whitespace, or indent the current line, in a mode-appropriate way
+(@code{indent-for-tab-command}).  If the region is active, indent all the
+lines within it.
 @end table
 
-  @key{TAB}の正確な動作は、メジャーモードに依存します。Textモードおよびそれに関連するモードでは、@key{TAB}は通常、空白とタブ文字を組み合わせたものを挿入して、ポイントを次のタブストップに進めます。このために、先行する行の最初の空白以外の文字の位置は、追加のタブストップとして扱われるので、@key{TAB}を使って先行する行にポイントを揃えることができます。リージョンがアクティブ(@ref{Using
-Region}を参照してください)な場合、@key{TAB}は特別な動作をします。これはリージョンの各行をインデントするので、各行の最初の空白以外の文字は、先行する行に揃えられます。
+  The exact behavior of @key{TAB} depends on the major mode.  In Text mode and
+related major modes, @key{TAB} normally inserts some combination of space
+and tab characters to advance point to the next tab stop (@pxref{Tab
+Stops}).  For this purpose, the position of the first non-whitespace
+character on the preceding line is treated as an additional tab stop, so you
+can use @key{TAB} to align point with the preceding line.  If the region is
+active (@pxref{Using Region}), @key{TAB} acts specially: it indents each
+line in the region so that its first non-whitespace character is aligned
+with the preceding line.
 
-  プログラミング関連のモードでは、@key{TAB}はコードのカレント行にたいして、前の行のコードの意味を理解してインデントします。リージョンがアクティブな場合、リージョンのすべての行はこの方法でインデントされます。ポイントが最初にカレント行のインデント領域にあった場合、その行の最初の空白以外の文字に再配置されます。
+  In programming modes, @key{TAB} indents the current line of code in a way
+that makes sense given the code in the preceding lines.  If the region is
+active, all the lines in the region are indented this way.  If point was
+initially within the current line's indentation, it is repositioned to the
+first non-whitespace character on the line.
 
-  単にタブ文字をバッファーに挿入したいときは、@kbd{C-q @key{TAB}}とタイプします(@ref{Inserting
-Text}を参照してください)。
+  If you just want to insert a tab character in the buffer, type @kbd{C-q
+@key{TAB}} (@pxref{Inserting Text}).
 
 @menu
-* Indentation Commands::     インデントを処理するほかのコマンド。
-* Tab Stops::                Textモードのインデントのストップポイント。
-* Just Spaces::              インデントにスペース文字だけを使用する。
-* Indent Convenience::       インデントのオプション機能。
-* Code Alignment::           行の共通部分を同じ列から開始する。
+* Indentation Commands::     More commands for performing indentation.
+* Tab Stops::                Stop points for indentation in Text modes.
+* Just Spaces::              Using only space characters for indentation.
+* Indent Convenience::       Optional indentation features.
+* Code Alignment::           Making common parts of lines start at the same 
+                               column.
 @end menu
 
 @node Indentation Commands
-@section インデントコマンド
+@section Indentation Commands
 
-@kbd{@key{TAB}}
-(@code{indent-for-tab-command})コマンドとは別に、Emacsは他の方法でインデントを処理する、さまざまなコマンドを提供します。
+Apart from the @kbd{@key{TAB}} (@code{indent-for-tab-command})  command,
+Emacs provides a variety of commands to perform indentation in other ways.
 
 @table @kbd
 @item C-M-o
 @kindex C-M-o
 @findex split-line
-カレント行をポイント位置で分割します(@code{split-line})。その行のポイントの後にあるテキストは新しい行となり、ポイントがあった位置と同じ列にインデントされます。このコマンドは、最初にポイントを複数のスペースまたはタブを飛び越えて移動させます。その後、ポイントは挿入された行の前に配されます。
+Split the current line at point (@code{split-line}).  The text on the line
+after point becomes a new line, indented to the same column where point is
+located.  This command first moves point forward over any spaces and tabs.
+Afterward, point is positioned before the inserted newline.
 
 @kindex M-m
 @findex back-to-indentation
 @item M-m
-カレント行の最初の空白以外の文字に移動(前方または後方)します(@code{back-to-indentation})。その行に空白文字しかない場合は、その行の行末に移動します。
+Move (forward or back) to the first non-whitespace character on the current
+line (@code{back-to-indentation}).  If there are no non-whitespace
+characters on the line, move to the end of the line.
 
 @item M-i
 @kindex M-i
 @findex tab-to-tab-stop
-ポイント位置の空白文字を次のタブストップまでインデントします(@code{tab-to-tab-stop})。@ref{Tab
-Stops}を参照してください。
+Indent whitespace at point, up to the next tab stop
+(@code{tab-to-tab-stop}).  @xref{Tab Stops}.
 
 @findex indent-relative
 @item M-x indent-relative
-ポイントが前の行(実際には最後の空行以外の行)の、最初の空白以外の文字に揃うように、ポイント位置に空白文字を挿入します。ポイントがすでにその位置より右にある場合は、かわりに@code{tab-to-tab-stop}を実行します
---- ただし数引数を指定した場合は何もしません。
+Insert whitespace at point, until point is aligned with the first
+non-whitespace character on the previous line (actually, the last non-blank
+line).  If point is already farther right than that, run
+@code{tab-to-tab-stop} instead---unless called with a numeric argument, in
+which case do nothing.
 
 @item M-^
 @kindex M-^
 @findex delete-indentation
-前の行とカレント行をマージします(@code{delete-indentation})。このコマンドはカレント行の前にある任意のインデントと、行の境界を1つのスペースで置き換えて、2つの行を明解に結合(join)します。
+Merge the previous and the current line (@code{delete-indentation}).  This
+joins the two lines cleanly, by replacing any indentation at the front of
+the current line, together with the line boundary, with a single space.
 
-特別なケースとして、結合された文字が連続する開きカッコまたは閉じカッコの場合、または他の改行が続く場合、1つのスペースは省略されます(Lispコードにたいして有用)。
+As a special case (useful for Lisp code), the single space is omitted if the
+characters to be joined are consecutive opening and closing parentheses, or
+if the junction follows another newline.
 
-fillプレフィクスが存在して、それが改行の後ろにあった場合、@kbd{M-^}はfillプレフィクスを削除します。@ref{Fill
-Prefix}を参照してください。
+If there is a fill prefix, @kbd{M-^} deletes the fill prefix if it appears
+after the newline that is deleted.  @xref{Fill Prefix}.
 
-プレフィクス引数を与えると、カレント行を後続行に結合します。リージョンがアクティブでプレフィクス引数が与えられなければ、かわりにリージョン内の全行を結合します。
+With a prefix argument, join the current line to the following line.  If the
+region is active, and no prefix argument is given, join all lines in the
+region instead.
 
 @item C-M-\
 @kindex C-M-\
 @findex indent-region
-リージョンのすべての行にたいして、各行の先頭で@kbd{@key{TAB}}をタイプしたかのようにインデントします(@code{indent-region})。
+Indent all the lines in the region, as though you had typed @kbd{@key{TAB}}
+at the beginning of each line (@code{indent-region}).
 
-数引数が与えられた場合、その列番号までリージョンのすべての行をインデントします。
+If a numeric argument is supplied, indent every line in the region to that
+column number.
 
 @item C-x @key{TAB}
 @kindex C-x TAB
 @findex indent-rigidly
 @cindex remove indentation
-リージョン内で開始されるすべての行をインデントします。影響を受ける行は厳格な(rigid)単位とによって移動されます(@code{indent-rigidly})。
+Indent all lines that begin in the region, moving the affected lines as a
+rigid unit (@code{indent-rigidly}).
 
-引数を指定しないで呼び出されたとき、このコマンドは影響を受ける行のインデントを対話的に調整するために、transientモードをアクティブにします。transientモードがアクティブの間は、@kbd{@key{LEFT}}または@kbd{@key{RIGHT}}により、スペース1文字単位で左または右にインデントします。@kbd{S-@key{LEFT}}または@kbd{S-@key{RIGHT}}とタイプすることにより、タブストップ単位で左または右にインデントすることもできます。他のキーをタイプするとtransientモードは無効になり、その後はこのキーは通知のように動作します。
+If called with no argument, this command activates a transient mode for
+adjusting the indentation of the affected lines interactively.  While this
+transient mode is active, typing @kbd{@key{LEFT}} or @kbd{@key{RIGHT}}
+indents leftward and rightward, respectively, by one space.  You can also
+type @kbd{S-@key{LEFT}} or @kbd{S-@key{RIGHT}} to indent leftward or
+rightward to the next tab stop (@pxref{Tab Stops}).  Typing any other key
+disables the transient mode, and this key is then acted upon as normally.
 
-プレフィクス引数@var{n}を指定して呼び出すと、このコマンドは行を@var{n}個のスペースでインデントします(transientモードは有効になりません)。@var{n}に値を与えると後方にインデントするので、リージョン内の行のすべてのインデントを除去したいときは、以下のように充分に大きい負の引数を与えます。
+If called with a prefix argument @var{n}, this command indents the lines
+forward by @var{n} spaces (without enabling the transient mode).  Negative
+values of @var{n} indent backward, so you can remove all indentation from
+the lines in the region using a large negative argument, like this:
 
 @smallexample
 C-u -999 C-x @key{TAB}
@@ -107,16 +153,26 @@ C-u -999 C-x @key{TAB}
 @end table
 
 @node Tab Stops
-@section タブストップ
+@section Tab Stops
 @cindex tab stops
 
 @vindex tab-stop-list
-  Emacsは、特定の列番号が@dfn{タブストップ}になるよう定義しています。これらはTextモードおよびそれに関連するモードで、@key{TAB}および@kbd{M-i}のようなコマンドにより、空白文字が挿入されるときのストップポイントとして使用されます。変数@code{tab-stop-list}は、これらの位置を制御します。デフォルト値は@code{nil}で、これはタブストップが8列ごとという意味です。値には、タブストップの列番号を、0基準の列番号のリスト(昇順)で指定することもできます。Emacsは最後の要素と、その1つ前の要素の差分を繰り返すことにより、リストを無限に拡張します。
+  Emacs defines certain column numbers to be @dfn{tab stops}.  These are used
+as stopping points by @key{TAB} when inserting whitespace in Text mode and
+related modes (@pxref{Indentation}), and by commands like @kbd{M-i}
+(@pxref{Indentation Commands}).  The variable @code{tab-stop-list} controls
+these positions.  The default value is @code{nil}, which means a tab stop
+every 8 columns.  The value can also be a list of zero-based column numbers
+(in increasing order) at which to place tab stops.  Emacs extends the list
+forever by repeating the difference between the last and next-to-last
+elements.
 
 @findex edit-tab-stops
 @kindex C-c C-c @r{(Edit Tab Stops)}
-  変数@code{tab-stop-list}を直接カスタマイズするかわりに、コマンド@kbd{M-x
-edit-tab-stops}を通じて、タブストップを視認しながらセットする便利な方法があります。このコマンドは、以下のようなタブストップの説明を含んだバッファーに切り替えます。
+  Instead of customizing the variable @code{tab-stop-list} directly, a
+convenient way to view and set tab stops is via the command @kbd{M-x
+edit-tab-stops}.  This switches to a buffer containing a description of the
+tab stop settings, which looks like this:
 
 @example
         :       :       :       :       :       :
@@ -126,65 +182,97 @@ To install changes, type C-c C-c
 @end example
 
 @noindent
-最初の行は各タブストップ位置にコロンを示します。その後の2行はコロンが示す位置を表示します。@code{tab-stop-list}の値が@code{nil}(デフォルト)の場合、最初はコロンが表示されません。
+The first line contains a colon at each tab stop.  The numbers on the next
+two lines are present just to indicate where the colons are.  If the value
+of @code{tab-stop-list} is @code{nil}, as it is by default, no colons are
+displayed initially.
 
-  異なるタブストップを置きたい列に、コロンを配して指定するために、このバッファーを編集できます。このバッファーはOverwriteモードを使用します(@ref{Minor
-Modes}を参照してください)。Emacsは、最後に明示した2つのストップの差分を繰り返すことにより、タブストップのリストを無限に拡張することを思い出してください。編集が終わったら、新しいタブストップを有効にするために、@kbd{C-c
-C-c}とタイプします。通常、新しいタブストップのセッティングは、すべてのバッファーに適用されます。しかし@kbd{M-x
-edit-tab-stops}を呼び出したバッファーにたいして、ローカルな変数@code{tab-stop-list}を作成していた場合(@ref{Locals}を参照してください)、新しいタブストップのセッティングは、そのバッファーだけに適用されます。将来のEmacsセッションのためにタブストップのセッティングを保存するには、Customizeインターフェースを使用して@code{tab-stop-list}の値を保存します(@ref{Easy
-Customization}を参照してください)。
+  You can edit this buffer to specify different tab stops by placing colons on
+the desired columns.  The buffer uses Overwrite mode (@pxref{Minor Modes}).
+Remember that Emacs will extend the list of tab stops forever by repeating
+the difference between the last two explicit stops that you place.  When you
+are done, type @kbd{C-c C-c} to make the new tab stops take effect.
+Normally, the new tab stop settings apply to all buffers.  However, if you
+have made the @code{tab-stop-list} variable local to the buffer where you
+called @kbd{M-x edit-tab-stops} (@pxref{Locals}), then the new tab stop
+settings apply only to that buffer.  To save the tab stop settings for
+future Emacs sessions, use the Customize interface to save the value of
+@code{tab-stop-list} (@pxref{Easy Customization}).
 
-  このセクションで議論したタブストップは、バッファーでタブ文字が表示される方法には影響しないことに注意してください。タブ文字は常に次の@dfn{タブストップ表示(display
-tab stop)}まで拡張される、空のスペースとして表示されます。@ref{Text Display}を参照してください。
+  Note that the tab stops discussed in this section have nothing to do with
+how tab characters are displayed in the buffer.  Tab characters are always
+displayed as empty spaces extending to the next @dfn{display tab stop}.
+@xref{Text Display}.
 
 @node Just Spaces
-@section タブ vs. スペース
+@section Tabs vs.@: Spaces
 
-  インデントコマンドは通常、最小になるような一連のタブ文字とスペースを挿入(または削除)することにより、望む列に行を揃えます。タブ文字は次の@dfn{タブストップ表示(display
-tab
-stop)}まで伸長された、空のスペースとして表示されます。デフォルトでは、@code{tab-width}列ごと(デフォルトは8)に、1つのタブストップ表示があります。@ref{Text
-Display}を参照してください。
+  Normally, indentation commands insert (or remove) the shortest possible
+series of tab and space characters so as to align to the desired column.
+Tab characters are displayed as a stretch of empty space extending to the
+next @dfn{display tab stop}.  By default, there is one display tab stop
+every @code{tab-width} columns (the default is 8).  @xref{Text Display}.
 
 @vindex indent-tabs-mode
-  もし望むなら、すべてのインデントをスペースだけで行うこともできます。これを要求するには、バッファーローカルな変数@code{indent-tabs-mode}を@code{nil}にセットします。バッファーローカルな変数についての情報は、@ref{Locals}を参照してください。しかし@kbd{C-q
-@key{TAB}}は、@code{indent-tabs-mode}の値とは無関係に、常にタブ文字を挿入することに注意してください。
+  If you prefer, all indentation can be made from spaces only.  To request
+this, set the buffer-local variable @code{indent-tabs-mode} to @code{nil}.
+@xref{Locals}, for information about setting buffer-local variables.  Note,
+however, that @kbd{C-q @key{TAB}} always inserts a tab character, regardless
+of the value of @code{indent-tabs-mode}.
 
-  @code{indent-tabs-mode}を@code{nil}にセットする1つの理由は、すべてのエディターがタブ文字を同じ方法で表示するわけではないという理由です。Emacsユーザーも同様で、彼らはカスタマイズされた@code{tab-width}により、異なる値をもつかもしれません。スペースだけを使うことにより、ファイルが常に同じように見えることを保証できます。Emacsでどのように見えるかだけに関心がある場合、この問題に取り組む他の方法は、ファイルローカルな変数@code{tab-width}をセットする方法です(@ref{File
-Variables}を参照してください)。
+  One reason to set @code{indent-tabs-mode} to @code{nil} is that not all
+editors display tab characters in the same way.  Emacs users, too, may have
+different customized values of @code{tab-width}.  By using spaces only, you
+can make sure that your file always looks the same.  If you only care about
+how it looks within Emacs, another way to tackle this problem is to set the
+@code{tab-width} variable in a file-local variable (@pxref{File Variables}).
 
 @findex tabify
 @findex untabify
-  空白以外の文字の列を常に保ちながら、スペースをタブに、またはその逆の変換を行うコマンドも存在します。@kbd{M-x
-tabify}は、リージョンの連続するスペースをスキャンして、インデントを変更せずに、少なくとも2文字の連続するスペースをタブに変換します。@kbd{M-x
-untabify}は、リージョンのすべてのタブを適正な数のスペースに変更します。
+  There are also commands to convert tabs to spaces or vice versa, always
+preserving the columns of all non-whitespace text.  @kbd{M-x tabify} scans
+the region for sequences of spaces, and converts sequences of at least two
+spaces to tabs if that can be done without changing indentation.  @kbd{M-x
+untabify} changes all tabs in the region to appropriate numbers of spaces.
 
 @node Indent Convenience
-@section インデントの便利な機能
+@section Convenience Features for Indentation
 
 @vindex tab-always-indent
-  変数@code{tab-always-indent}は、@key{TAB}
-(@code{indent-for-tab-command})コマンドの動作を微調整します。デフォルト値は@code{t}で、これは@ref{Indentation}で説明した動作を与えます。値をシンボル@code{complete}に変更すると、@key{TAB}は最初にカレント行のインデントを試みます、すでにその行がインデントされている場合、このコマンドはポイント位置のテキストの補完を試みます(@ref{Symbol
-Completion}を参照してください)。値が@code{nil}の場合、@key{TAB}はポイントが行の左端かインデント位置にあるときだけインデントを行い、それ以外はタブ文字を挿入します。
+  The variable @code{tab-always-indent} tweaks the behavior of the @key{TAB}
+(@code{indent-for-tab-command}) command.  The default value, @code{t}, gives
+the behavior described in @ref{Indentation}.  If you change the value to the
+symbol @code{complete}, then @key{TAB} first tries to indent the current
+line, and if the line was already indented, it tries to complete the text at
+point (@pxref{Symbol Completion}).  If the value is @code{nil}, then
+@key{TAB} indents the current line only if point is at the left margin or in
+the line's indentation; otherwise, it inserts a tab character.
 
 @vindex tab-first-completion
-  @code{tab-always-indent}が@code{complete}の場合には、@code{tab-first-completion}変数を通じて展開するか、それともインデントするかを更にカスタマイズできます。たとえばこの変数が@code{eol}なら、ポイントが行末にある場合のみ補完します。詳細は@ref{Mode-Specific
-Indent,,, elisp, The Emacs Lisp Reference Manual}を参照してください。
+  If @code{tab-always-indent} is @code{complete}, whether to expand or indent
+can be further customized via the @code{tab-first-completion} variable.  For
+instance, if that variable is @code{eol}, only complete if point is at the
+end of a line.  @xref{Mode-Specific Indent,,, elisp, The Emacs Lisp
+Reference Manual}, for further details.
 
 @cindex Electric Indent mode
 @cindex mode, Electric Indent
 @findex electric-indent-mode
-  Electric
-Indentモードはグローバルなマイナーモードで、これは@key{RET}をタイプしたあと自動的にインデントを行います。このモードはデフォルトで有効です。このマイナーモードを切り替えるには、@kbd{M-x
-electric-indent-mode}とタイプします。1つのバッファーにたいしてモードを切り替えるには、@kbd{M-x
-electric-indent-local-mode}を使用してください。
+  Electric Indent mode is a global minor mode that automatically indents the
+line after every @key{RET} you type.  This mode is enabled by default.  To
+toggle this minor mode, type @kbd{M-x electric-indent-mode}.  To toggle the
+mode in a single buffer, use @kbd{M-x electric-indent-local-mode}.
 
 @node Code Alignment
 @section Code Alignment
 @cindex code alignment
 @cindex aligning code
 
-  @dfn{アライメント(Alignment:
-整列)}とはリージョン内の一連の行において、すべての行の特定の部分が同じ列で始まるように、空白文字を調整するプロセスのことです。これはテキストやコードの可読性を向上させるために、あなたが通常行っていることです。以下はCのようなプログラミング言語における一連の割り当てを整列する古典的な例を示しましょう:
+  @dfn{Alignment} is the process of adjusting whitespace in a sequence of
+lines in the region such that in all lines certain parts begin at the same
+column.  This is usually something you do to enhance readability of a piece
+of text or code.  The classic example is aligning a series of assignments in
+C-like programming languages:
 
 @example
 int a = 1;
@@ -193,7 +281,7 @@ double blah = 4;
 @end example
 
 @noindent
-これは典型的には以下のように整列されます:
+is commonly aligned to:
 
 @example
 int    a    = 1;
@@ -203,43 +291,81 @@ double blah = 4;
 
 @cindex alignment rules
 @findex align
-  コマンド@kbd{M-x
-align}を使えば、カレントリージョン内の行を整列できます。このコマンドは多くのマークアップやプログラミング言語に通じる一般的なアライメントパターンを承知しています。異なるコンテキストにおける異なる種類のテキストをどのように整列するかを指定するための@dfn{アライメントルール(alignment
-rules)}のセットとして、これらのパターンを符号化するのです。
+  You can use the command @kbd{M-x align} to align lines in the current
+region.  This command knows about common alignment patterns across many
+markup and programming languages.  It encodes these patterns as a set of
+@dfn{alignment rules}, that say how to align different kinds of text in
+different contexts.
 
 @vindex align-rules-list
 @vindex align-mode-rules-list
-ユーザーオプション@code{align-rules-list}は、どのアライメントルールを@kbd{M-x
-align}が参照すべきかを指示します。このオプションの値は、アライメントルールが記述された要素のリストです。要素はそれぞれ@code{(@var{title}
-.
-@var{attributes})}という形式のコンスセルです。ここで@var{title}はそのアライメントルールの名前(シンボル)、@var{attributes}はそのルールをいつ適用するか、どのように行を区切って整列するかを定義するルール属性のリストです。ルール属性はそれぞれ@code{(@var{attribute}
-.
-@var{value})}という形式のコンスセルであり@var{attribute}は属性の名前、@var{value}がその属性の値になります。唯一必須の属性である@code{regexp}値は、それぞれの行において@kbd{M-x
-align}が空白を展開、あるいは縮小すべき部分にマッチする部分式(sub-expressions)を表す正規表現です。利用可能なアライメントルールの属性についての完全な説明については、@code{align-rules-list}のドキュメント文字列(@kbd{C-h
-v align-rules-list
-@key{RET}})を参照してください。このオプションのデフォルトには、Emacsがサポートする多くの言語用にアライメントルールの長いリストがセットされています。デフォルトのルールでは、@kbd{M-x
-align}を適用するメジャーモードを指定するルール属性である@code{modes}が使用されます。メジャーモードのほうもバッファーローカル変数@code{align-mode-rules-list}に非@code{nil}のアライメントルールのリストをセットして、@code{align-rules-list}をオーバーライドできます。@code{align-mode-rules-list}が非@code{nil}なら、@kbd{M-x
-align}は@code{align-rules-list}ではなくそちらを参照します。
+The user option @code{align-rules-list} says which alignment rules @kbd{M-x
+align} should consult.  The value of this option is a list with elements
+describing alignment rules.  Each element is a cons cell @code{(@var{title}
+. @var{attributes})}, where @var{title} is the name of the alignment rule as
+a symbol, and @var{attributes} is a list of rule attributes that define when
+the rule should apply and how it partitions and aligns lines.  Each rule
+attribute is a cons cell @code{(@var{attribute} . @var{value})}, where
+@var{attribute} is the name of attribute and @var{value} is its value.  The
+only required attribute is @code{regexp}, whose value is a regular
+expression with sub-expressions matching the parts of each line where
+@kbd{M-x align} should expand or contract whitespace (@pxref{Regexp
+Backslash}).  See the documentation string of @code{align-rules-list}
+(@kbd{C-h v align-rules-list @key{RET}}) for a full description of possible
+alignment rule attributes.  By default, this option is set to a long list of
+alignment rules for many languages that Emacs supports.  The default rules
+use the @code{modes} rule attribute to specify major modes in which @kbd{M-x
+align} should apply them.  Major modes can also override
+@code{align-rules-list} by setting the buffer-local variable
+@code{align-mode-rules-list} to a non-@code{nil} list of alignment rules.
+When @code{align-mode-rules-list} is non-@code{nil}, @kbd{M-x align}
+consults it instead of @code{align-rules-list}.
 
 @cindex align exclusion rules
 @vindex align-exclude-rules-list
 @vindex align-mode-exclude-rules-list
-アライメントルール以外にも、@kbd{M-x align}は@dfn{除外ルール(exclusion
-rules)}と呼ばれる別の類のルールを使用します。@kbd{M-x
-align}にたいしてリージョン内のどの部分を整列せずに手つかずのまま残すよう指示するのが除外ルールです。この除外ルールはユーザーオプション@code{align-exclude-rules-list}によって指定されます。@code{align-rules-list}と同じように、@code{align-exclude-rules-list}の値も除外ルールを記述するコンスセルのリストです。デフォルトで@code{align-exclude-rules-list}に含まれているのはクォートされた文字列、およびLispやCなどの言語のコメントを整列から除外するためのルールです。@code{align-mode-exclude-rules-list}に非@code{nil}のルールのリストをセットすることによって、メジャーモードはデフォルトの除外ルールから更にモード用に誂えた除外ルールを定義することができます。@code{align-mode-rules-list}が@code{align-rules-list}をオーバーライドするのと同じように、このルールは@code{align-exclude-rules-list}をオーバーライドします。
+Besides alignment rules, @kbd{M-x align} uses another kind of rules called
+@dfn{exclusion rules}.  The exclusion rules say which parts in the region
+@kbd{M-x align} should not align and instead leave them intact.  The user
+option @code{align-exclude-rules-list} specifies these exclusion rules.
+Similarly to @code{align-rules-list}, the value of
+@code{align-exclude-rules-list} is also a list of cons cells that describe
+the exclusion rules.  By default, @code{align-exclude-rules-list} includes
+rules that exclude alignment in quoted strings and comments in Lisp, C and
+other languages.  Beyond the default exclusion rules in
+@code{align-exclude-rules-list}, major modes can define bespoke exclusion
+rules by setting @code{align-mode-exclude-rules-list} to a non-@code{nil}
+list of rules, this overrides @code{align-exclude-rules-list} just like
+@code{align-mode-rules-list} overrides @code{align-rules-list}.
 
 @cindex alignment sections
 @vindex align-region-separate
-@kbd{M-x
-align}はリージョンを一連の@dfn{セクション(sections)}に分割します。セクションとは通常は連続する非空行のことです。マッチするすべてのアライメントルールに応じて空白部分を展開あるいは縮小することによる、それぞれのセクションを整列します。@kbd{M-x
-align}は1つのセクション内部のすべての行にたいして一貫性をもった整列を行いますが、リージョンに含まれている別のセクションにたいしては異なる整列を行うかもしれません。@kbd{M-x
-align}がリージョンをどのようにセクションに分割するかは、ユーザーオプション@code{align-region-separate}で指定します。このオプションにはシンボル@code{entire}か@code{group}、あるいは正規表現を指定できます。@code{align-region-separate}が@code{entire}ならEmacsはリージョン全体を単一のセクションとして整列、@code{group}ならリージョン内で連続する非空行のグループそれぞれを個別のセクションとして整列します。@code{align-region-separate}が正規表現の場合には、@kbd{M-x
-align}はリージョンからその正規表現にたいするマッチをスキャンして、それらのマッチを個別のセクションとして扱います。デフォルトでは@code{align-region-separate}は空行、空白のみからなる行、単独の中カッコ(curly
-brace;
-@samp{@{}や@samp{@}})にマッチする正規表現がセットされています。正規表現では不十分であるような特殊ケースについては、セクション整列のためにリージョンをどのように分割するかを指示する関数を@code{align-region-separate}にセットすることもできます。詳細については@code{align-region-separate}のドキュメント文字列を参照してください。特定のアライメントルールはルール属性@code{separate}を指定してセクション区切りを独自に定義することによって、@code{align-region-separate}の値をオーバーライドすることができます。
+@kbd{M-x align} splits the region into a series of @dfn{sections}, usually
+sequences of non-blank lines, and aligns each section according to all
+matching alignment rule by expanding or contracting stretches of
+whitespace.  @kbd{M-x align} consistently aligns all lines inside a single
+section, but it may align different sections in the region differently.  The
+user option @code{align-region-separate} specifies how @kbd{M-x align}
+separates the region to sections.  This option can be one of the symbols
+@code{entire}, @code{group}, or a regular expression.  If
+@code{align-region-separate} is @code{entire}, Emacs aligns the entire
+region as a single section.  If this option is @code{group}, Emacs aligns
+each group of consecutive non-blank lines in the region as a separate
+section.  If @code{align-region-separate} is a regular expression, @kbd{M-x
+align} scans the region for matches to that regular expression and treats
+them as section separators.  By default @code{align-region-separate} is set
+to a regular expression that matches blank lines and lines that contains
+only whitespace and a single curly brace (@samp{@{} or @samp{@}}).  For
+special cases where regular expressions are not accurate enough, you can
+also set @code{align-region-separate} to a function that says how to
+separate the region to alignment sections.  See the documentation string of
+@code{align-region-separate} for more details.  Specific alignment rules can
+override the value of @code{align-region-separate} and define their own
+section separator by specifying the @code{separate} rule attribute.
 
-プレフィックス引数(@kbd{C-u})とともに@kbd{M-x
-align}を呼び出せば、より多くのアライメントルールを有効にできます。これは役に立つことが多いものの、場合によっては煩わし過ぎるかもしれません。たとえばLispバッファーで以下のようなフォームがあるとすると:
+If you call @kbd{M-x align} with a prefix argument (@kbd{C-u}), it enables
+more alignment rules that are often useful but may sometimes be too
+intrusive.  For example, in a Lisp buffer with the following form:
 
 @lisp
 (set-face-attribute 'mode-line-inactive nil
@@ -249,7 +375,7 @@ align}を呼び出せば、より多くのアライメントルールを有効�
 @end lisp
 
 @noindent
-@kbd{C-u M-x align}とタイプして以下が得られるでしょう:
+Typing (@kbd{C-u M-x align}) yields:
 
 @lisp
 (set-face-attribute 'mode-line-inactive nil
@@ -258,26 +384,34 @@ align}を呼び出せば、より多くのアライメントルールを有効�
                     :underline          "black")
 @end lisp
 
-ほとんどの場合においてはまずプレフィックス引数なしの@kbd{M-x
-align}を試してみて、正しい結果が生み出されなければ@kbd{C-/}でアンドゥしてから再度@kbd{C-u M-x
-align}を試みるべきでしょう。
+In most cases, you should try @kbd{M-x align} without a prefix argument
+first, and if that doesn't produce the right result you can undo with
+@kbd{C-/} and try again with @kbd{C-u M-x align}.
 
 @findex align-highlight-rule
 @findex align-unhighlight-rule
-カレントリージョンにたいして特定のアライメントルールや除外ルールの視覚的効果を確認するためにコマンド@kbd{M-x
-align-highlight-rule}を使うことができます。このコマンドはルールのタイトルの入力を求めて、そのルールが効果を及ぼすリージョン部分をハイライトします。アライメントルールにたいしてこのコマンドは@kbd{M-x
-align}が展開あるいは縮小するであろう空白をハイライト、除外ルールにたいしては@kbd{M-x
-align}が整列から除外するであろう部分をハイライトします。このコマンドが作成したハイライトを削除するには、@kbd{M-x
-align-unhighlight-rule}とタイプしてください。
+You can use the command @kbd{M-x align-highlight-rule} to visualize the
+effect of a specific alignment or exclusion rule in the current region.
+This command prompts you for the title of a rule and highlights the parts on
+the region that this rule affects.  For alignment rules, this command
+highlights the whitespace that @kbd{M-x align} would expand or contract, and
+for exclusion this command highlights the parts that @kbd{M-x align} would
+exclude from alignment.  To remove the highlighting that this command
+creates, type @kbd{M-x align-unhighlight-rule}.
 
 @findex align-current
 @findex align-entire
-  コマンド@kbd{M-x align-current}は@kbd{M-x
-align}と似ていますが、カレントリージョンとは無関係にポイントを含むアライメント対象セクションだけを処理する点が異なります。@code{align-region-separate}で定義されたセクション区切りに応じて、このコマンドはカレントセクションの境界を判断します。もう一つの@kbd{M-x
-align}の変種である@kbd{M-x
-align-entire}は@code{align-region-separate}を無視して、リージョン全体を単一のアライメント対象セクションとして一貫した整列を行います。@code{align-region-separate}に@code{entire}をセットしている場合には、@kbd{M-x
-align}はデフォルトでは@kbd{M-x
-align-entire}と同じように振る舞います。リージョン全体を単一のアライメント対象セクションとして整列する効果を説明するために、以下のコードで考えてみましょう:
+  The command @kbd{M-x align-current} is similar to @kbd{M-x align}, except
+that it operates only on the alignment section that contains point
+regardless of the current region.  This command determines the boundaries of
+the current section according to the section separators that
+@code{align-region-separate} define.  @kbd{M-x align-entire} is another
+variant of @kbd{M-x align}, that disregards @code{align-region-separate} and
+aligns the entire region as a single alignment section with consistent
+alignment.  If you set @code{align-region-separate} to @code{entire},
+@kbd{M-x align} behaves like @kbd{M-x align-entire} by default.  To
+illustrate the effect of aligning the entire region as a single alignment
+section, consider the following code:
 
 @example
 one = 1;
@@ -288,7 +422,7 @@ emacs = 4;
 @end example
 
 @noindent
-リージョンがこれらの行すべてを含む場合には、@kbd{M-x align}をタイプすることによって以下が得られるでしょう:
+when the region covers all of these lines, typing @kbd{M-x align} yields:
 
 @example
 one       = 1;
@@ -299,8 +433,8 @@ emacs = 4;
 @end example
 
 @noindent
-一方@kbd{M-x
-align-entire}はすべての行を単一のセクションとして整列するので、@samp{=}はすべての行で同じ列に表示されることになります:
+On the other hand, @kbd{M-x align-entire} aligns all of the lines as a
+single section, so the @samp{=} appears at the same column in all lines:
 
 @example
 one       = 1;
@@ -311,24 +445,43 @@ emacs     = 4;
 @end example
 
 @findex align-regexp
-  コマンド@kbd{M-x
-align-regexp}は@code{align-rules-list}に事前定義されているルールを用いるのではなく、その場で定義したアライメントルールによってカレントリージョンを整列する手段を与えます。@kbd{M-x
-align-regexp}は正規表現の入力を求めて、その式をそのとき限りのアライメントルール用の@code{regexp}属性として使用します。このコマンドはデフォルトでは指定された正規表現の最初の部分式にマッチした空白を調整します。プレフィックス引数とともに@kbd{M-x
-align-regexp}を呼び出すと、このコマンドは使用する部分式、パディングとして用いる空白の量、更にそれぞれの行において正規表現のすべてのマッチにルールを繰り返し適用するかどうかの入力を求めます。正規表現と正規表現の部分式に関する詳細については@ref{Regexp
-Backslash}を参照してください。
+  The command @kbd{M-x align-regexp} lets you align the current region with an
+alignment rule that you define ad-hoc, instead of using the predefined rules
+in @code{align-rules-list}.  @kbd{M-x align-regexp} prompts you for a
+regular expression and uses that expression as the @code{regexp} attribute
+for an ad-hoc alignment rule that this command uses to align the current
+region.  By default, this command adjusts the whitespace that matches the
+first sub-expression of the regular expression you specify.  If you call
+@kbd{M-x align-regexp} with a prefix argument, it also prompts you for the
+sub-expression to use and lets you specify the amount of whitespace to use
+as padding, as well as whether to apply the rule repeatedly to all matches
+of the regular expression in each line.  @xref{Regexp Backslash}, for more
+information about regular expressions and their sub-expressions.
 
 @vindex align-indent-before-aligning
-  ユーザーオプション@code{align-indent-before-aligning}が非@code{nil}の場合には、@kbd{M-x
-align}で整列する前にEmacsがそのリージョンをインデントします。@ref{Indentation}を参照してください。@code{align-indent-before-aligning}はデフォルトでは@code{nil}にセットされています。
+  If the user option @code{align-indent-before-aligning} is non-@code{nil},
+Emacs indents the region before aligning it with @kbd{M-x align}.
+@xref{Indentation}.  By default @code{align-indent-before-aligning} is set
+to @code{nil}.
 
 @vindex align-to-tab-stop
-  ユーザーオプション@code{align-to-tab-stop}は整列される部分をタブストップ(@ref{Tab
-Stops}を参照)から開始する必要があるかどうかを指定します。コンスオプションが@code{nil}なら、@kbd{M-x
-align}はタブストップを無視して整列に必要となる空白だけを使用します。非@code{nil}のシンボルの場合には、@kbd{M-x
-align}がそのシンボルの値をチェックして非@code{nil}なら@kbd{M-x
-align}はタブストップに整列します。このオプションはデフォルトでは@code{indent-tabs-mode}にセットされているので、インデントにタブを用いているバッファーではタブストップを考慮した整列を行います。@ref{Just
-Spaces}を参照してください。
+  The user option @code{align-to-tab-stop} says whether aligned parts should
+start at a tab stop (@pxref{Tab Stops}).  If this option is @code{nil},
+@kbd{M-x align} uses just enough whitespace for alignment, disregarding tab
+stops.  If this is a non-@code{nil} symbol, @kbd{M-x align} checks the value
+of that symbol, and if this value is non-@code{nil}, @kbd{M-x align} aligns
+to tab stops.  By default, this option is set to @code{indent-tabs-mode}, so
+alignment respects tab stops in buffers that use tabs for indentation.
+@xref{Just Spaces}.
 
 @vindex align-default-spacing
-  ユーザーオプション@code{align-default-spacing}は、@kbd{M-x
-align}とその関連コマンドが行を整列する際にそれぞれの行の異なる部分の間のパディングに用いる空白のデフォルト量を指定します。@code{align-to-tab-stop}が@code{nil}なら@code{align-default-spacing}の値はパディングに用いるスペースの数、非@code{nil}なら@code{align-default-spacing}の値はタブストップの数です。各アライメントルールは@code{spacing}属性ルールによって@code{align-default-spacing}で指定されたデフォルトをオーバーライドできます。
+  The user option @code{align-default-spacing} specifies the default amount of
+whitespace that @kbd{M-x align} and its related commands use for padding
+between the different parts of each line when aligning it.  When
+@code{align-to-tab-stop} is @code{nil}, the value of
+@code{align-default-spacing} is the number of spaces to use for padding;
+when @code{align-to-tab-stop} is non-@code{nil}, the value of
+@code{align-default-spacing} is instead the number of tab stops to use.
+Each alignment rule can override the default that
+@code{align-default-spacing} specifies with the @code{spacing} attribute
+rule.

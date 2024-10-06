@@ -11,61 +11,79 @@
 
 @c See file emacs-ja.texi for copying conditions.
 @node Display
-@chapter ディスプレイの制御
+@chapter Controlling the Display
 
-  ウィンドウに入りきらない大きなバッファーでは、Emacsはその一部しか表示できません。このチャプターでは、見たい部分のテキストを指定するコマンドや変数と、どのようにしてテキストが表示されるかを説明します。
+  Since only part of a large buffer fits in the window, Emacs has to show only
+a part of it.  This chapter describes commands and variables that let you
+specify which part of the text you want to see, and how the text is
+displayed.
 
 @menu
-* Scrolling::                ウィンドウのテキストを上下に移動させるコマンド。
-* Recentering::              カレント行を中央にするスクロールコマンド。
-* Auto Scrolling::           必要なときテキストをスクロールして再表示する。
-* Horizontal Scrolling::     ウィンドウの左右にテキストを移動させる。
-* Narrowing::                表示を制限してバッファーの一部を編集する。
-* View Mode::                読み取り専用バッファーの表示。
-* Follow Mode::              Followモードで2つのウィンドウを1つとしてスクロールさせる。
-* Faces::                    フェイスを使って表示スタイルを変更する方法。
-* Colors::                   フェイスのカラーを指定する。
-* Standard Faces::           主要な既定のフェイス。
+* Scrolling::                Commands to move text up and down in a window.
+* Recentering::              A scroll command that centers the current line.
+* Auto Scrolling::           Redisplay scrolls text automatically when 
+                               needed.
+* Horizontal Scrolling::     Moving text left and right in a window.
+* Narrowing::                Restricting display and editing to a portion of 
+                               the buffer.
+* View Mode::                Viewing read-only buffers.
+* Follow Mode::              Follow mode lets two windows scroll as one.
+* Faces::                    How to change the display style using faces.
+* Colors::                   Specifying colors for faces.
+* Standard Faces::           The main predefined faces.
 * Icons::                    How to change how icons look.
-* Text Scale::               バッファーのテキストサイズの拡大と縮小。
-* Font Lock::                フェイスを使って文法をハイライトするマイナーモード。
-* Highlight Interactively::  Emacsにハイライトするテキストを指示する。
-* Fringes::                  ウィンドウフリンジの有効と無効。
-* Displaying Boundaries::    バッファーの先頭と最後を表示する。
-* Useless Whitespace::       行末の不要な空白文字の表示。
-* Selective Display::        インデントの大きな行を隠す。
-* Optional Mode Line::       モードラインの表示機能のオプション。
-* Text Display::             テキスト文字が通常表示される方法。
-* Cursor Display::           カーソル表示の機能。
-* Line Truncation::          複数のスクリーン行で継続表示させずにスクリーン幅に行を切り詰める。
-* Visual Line Mode::         単語の折り返しとスクリーン行にもとづく編集。
-* Display Custom::           ディスプレイをカスタマイズする変数の情報。
+* Text Scale::               Increasing or decreasing text size in a buffer.
+* Font Lock::                Minor mode for syntactic highlighting using 
+                               faces.
+* Highlight Interactively::  Tell Emacs what text to highlight.
+* Fringes::                  Enabling or disabling window fringes.
+* Displaying Boundaries::    Displaying top and bottom of the buffer.
+* Useless Whitespace::       Showing possibly spurious trailing whitespace.
+* Selective Display::        Hiding lines with lots of indentation.
+* Optional Mode Line::       Optional mode line display features.
+* Text Display::             How text characters are normally displayed.
+* Cursor Display::           Features for displaying the cursor.
+* Line Truncation::          Truncating lines to fit the screen width 
+                               instead of continuing them to multiple screen 
+                               lines.
+* Visual Line Mode::         Word wrap and screen line-based editing.
+* Display Custom::           Information on variables for customizing 
+                               display.
 @end menu
 
 @node Scrolling
-@section スクロール
+@section Scrolling
 @cindex scrolling
 
-  ウィンドウがバッファーのすべてのテキストを表示するには小さい場合、その一部だけが表示されます。@dfn{スクロール}コマンドは、バッファーで表示される部分を変更します。
+  If a window is too small to display all the text in its buffer, it displays
+only a portion of it.  @dfn{Scrolling} commands change which portion of the
+buffer is displayed.
 
-  前方(forward)または上(up)へのスクロールは、ウィンドウに表示される部分を先に進めます。これはウィンドウに表示されるバッファーのテキストを、上に移動させるのと同じです。後方(backward)または下(down)へのスクロールは、ウィンドウに表示される部分を前に戻します。これはウィンドウに表示されるバッファーのテキストを下に移動させます。
+  Scrolling forward or up advances the portion of the buffer displayed in the
+window; equivalently, it moves the buffer text upwards relative to the
+window.  Scrolling backward or down displays an earlier portion of the
+buffer, and moves the text downwards relative to the window.
 
-  Emacsでのupとdownは、ウィンドウでテキストが移動する方向に基づいており、テキストにたいしてウィンドウが移動する方向では@emph{ありません}。この用語は現在のscrolling
-upやscrolling
-downが広まる前に、Emacsで採用されました。そのため@key{PageDown}は、Emacs的には上(up)にスクロールするという、奇妙な結果となりました。
+  In Emacs, scrolling up or down refers to the direction that the text moves
+in the window, @emph{not} the direction that the window moves relative to
+the text.  This terminology was adopted by Emacs before the modern meaning
+of ``scrolling up'' and ``scrolling down'' became widespread.  Hence, the
+strange result that @key{PageDown} scrolls up in the Emacs sense.
 
-  ウィンドウに表示されているバッファー部分には、常にポイントが含まれています。もしウィンドウの下端か上端を越えてポイントを移動させると、ポイントを画面に表示させるために自動的にスクロールが発生します(@ref{Auto
-Scrolling}を参照してください)。以下のコマンドで明示的にスクロールができます:
+  The portion of a buffer displayed in a window always contains point.  If you
+move point past the bottom or top of the window, scrolling occurs
+automatically to bring it back onscreen (@pxref{Auto Scrolling}).  You can
+also scroll explicitly with these commands:
 
 @table @kbd
 @item C-v
 @itemx @key{PageDown}
 @itemx @key{next}
-ウィンドウのほぼ全画面分、前方にスクロールします(@code{scroll-up-command})。
+Scroll forward by nearly a full window (@code{scroll-up-command}).
 @item M-v
 @itemx @key{PageUp}
 @itemx @key{prior}
-後方にスクロールします(@code{scroll-down-command})。
+Scroll backward (@code{scroll-down-command}).
 @end table
 
 @kindex C-v
@@ -76,514 +94,785 @@ Scrolling}を参照してください)。以下のコマンドで明示的にス
 @kindex prior
 @findex scroll-up-command
 @findex scroll-down-command
-  @kbd{C-v}
-(@code{scroll-up-command})は、ウィンドウ全体の高さに近い量、前方にスクロールします。これにより下端の2行が上端になるようスクロールして、それに続く表示されていなかった行を表示します。ポイントが上端より上になってしまう場合、ウィンドウの新たな上端の行に移動します。The
-@key{PageDown}(または@key{next})は、@kbd{C-v}と同じです。
+  @kbd{C-v} (@code{scroll-up-command}) scrolls forward by nearly the whole
+window height.  The effect is to take the two lines at the bottom of the
+window and put them at the top, followed by lines that were not previously
+visible.  If point was in the text that scrolled off the top, it ends up on
+the window's new topmost line.  The @key{PageDown} (or @key{next}) key is
+equivalent to @kbd{C-v}.
 
-  @kbd{M-v}
-(@code{scroll-down-command})は、同様の方法で後方にスクロールします。@key{PageUp}(または@key{prior})は、@kbd{M-v}と同じです。
+  @kbd{M-v} (@code{scroll-down-command}) scrolls backward in a similar way.
+The @key{PageUp} (or @key{prior}) key is equivalent to @kbd{M-v}.
 
 @vindex next-screen-context-lines
-  スクロールコマンドでオーバーラップして表示される行数は、変数@code{next-screen-context-lines}で制御され、デフォルトは2です。数引数@var{n}を与えたときは、@var{n}行スクロールします。Emacsはポイントを変更しないよう試みるので、テキストとポイントは一緒に上または下に動きます。@kbd{C-v}に負の引数を与えると、@kbd{M-v}のように反対方向へスクロールします。
+  The number of lines of overlap left by these scroll commands is controlled
+by the variable @code{next-screen-context-lines}, whose default value is 2.
+You can supply the commands with a numeric prefix argument, @var{n}, to
+scroll by @var{n} lines; Emacs attempts to leave point unchanged, so that
+the text and point move up or down together.  @kbd{C-v} with a negative
+argument is like @kbd{M-v} and vice versa.
 
 @vindex scroll-error-top-bottom
-  デフォルトでは、ウィンドウがバッファーの先頭または最後に到達していて、これ以上スクロールできない場合、これらのコマンドは(beep音をならしたり画面をフラッシュして)エラーをシグナルします。変数@code{scroll-error-top-bottom}を@code{t}に変更すると、コマンドは可能な限り、つまりバッファーの先頭の文字または最後の文字にポイントを移動します。ポイントがすでにそこにあるときは、エラーをシグナルします。
+  By default, these commands signal an error (by beeping or flashing the
+screen) if no more scrolling is possible, because the window has reached the
+beginning or end of the buffer.  If you change the variable
+@code{scroll-error-top-bottom} to @code{t}, these commands move point to the
+farthest possible position.  If point is already there, the commands signal
+an error.
 
 @vindex scroll-preserve-screen-position
 @cindex @code{scroll-command} property
-  スクロールしたとき、ポイントが同じスクリーン位置に留まることを好むユーザーもいます。そうすれば同じスクリーンにスクロールして戻ったとき、ポイントが元の位置にあると便利だからです。この動作は変数@code{scroll-preserve-screen-position}を通じて利用可能です。変数の値が@code{t}のとき、スクロールコマンドによりポイントがウィンドウの外にでるような場合、Emacsはポイントを先頭行または最終行に移動させるのではなく、同じスクリーン位置にポイントを調整して、カーソルを維持します。その他の非@code{nil}値の場合、Emacsはスクロールコマンドによりポイントがウィンドウに残っている場合にも、この方法でポイントを調整します。この変数はこのセクションで説明するすべてのスクロールコマンド、同様にマウスホイールによるスクロール(@ref{Mouse
-Commands}を参照してください)に影響を与えます。一般的にいうと、この変数は@code{scroll-command}プロパティが非@code{nil}のコマンドに影響を及ぼします。@ref{Property
-Lists,,, elisp, The Emacs Lisp Reference
-Manual}を参照してください。インクリメンタル検索においてこのプロパティが非@code{nil}のコマンドが呼び出された際に、@code{isearch-allow-scroll}が非@code{nil}であればインクリメンタル検索を終了させないという効果もあります(@ref{Not
-Exiting Isearch}を参照)。
+  Some users like scroll commands to keep point at the same screen position,
+so that scrolling back to the same screen conveniently returns point to its
+original position.  You can enable this behavior via the variable
+@code{scroll-preserve-screen-position}.  If the value is @code{t}, Emacs
+adjusts point to keep the cursor at the same screen position whenever a
+scroll command moves it off-window, rather than moving it to the topmost or
+bottommost line.  With any other non-@code{nil} value, Emacs adjusts point
+this way even if the scroll command leaves point in the window.  This
+variable affects all the scroll commands documented in this section, as well
+as scrolling with the mouse wheel (@pxref{Mouse Commands}); in general, it
+affects any command that has a non-@code{nil} @code{scroll-command}
+property.  @xref{Property Lists,,, elisp, The Emacs Lisp Reference Manual}.
+The same property also causes Emacs not to exit incremental search when one
+of these commands is invoked and @code{isearch-allow-scroll} is
+non-@code{nil} (@pxref{Not Exiting Isearch}).
 
 @vindex fast-but-imprecise-scrolling
-  ときどき、特に@kbd{C-v}や@kbd{M-v}のようなキーを押したままにすると、キーボードのオートリピートがアクティブになり、要求された高レートのスクロール要求にEmacsが対応できなくなるときがあります。そのような場合、表示は更新されず、かなり長時間の間、Emacsが応答しなくなる可能性があります。変数@code{fast-but-imprecise-scrolling}を非@code{nil}値にセットすることにより、この状況に対処できます。これはスクロールコマンドにフォント表示化(@ref{Font
-Lock}を参照してください)を行なわないように指示します。スクロールされるテキストは、それらがデフォルトフェイスをもつと仮定されなくなり、フォント表示化されなくなります。これにより、そのフェイスがすべて同じサイズのフォントを使用していない場合には、(たとえばオートリピートではない)1回のスクロールでも、Emacsが誤ったバッファー位置にスクロールするかもしれません。
+  Sometimes, particularly when you hold down keys such as @kbd{C-v} and
+@kbd{M-v}, activating keyboard auto-repeat, Emacs fails to keep up with the
+rapid rate of scrolling requested; the display doesn't update and Emacs can
+become unresponsive to input for quite a long time.  You can counter this
+sluggishness by setting the variable @code{fast-but-imprecise-scrolling} to
+a non-@code{nil} value.  This instructs the scrolling commands not to
+fontify (@pxref{Font Lock})  any unfontified text they scroll over, instead
+to assume it has the default face.  This can cause Emacs to scroll to
+somewhat wrong buffer positions when the faces in use are not all the same
+size, even with single (i.e., without auto-repeat) scrolling operations.
 
 @vindex jit-lock-defer-time
-@code{fast-but-imprecise-scrolling}をセットするかわりにJIT
-Lockによる遅延されたフォント表示化の有効化のほうが好ましいと思うかもしれません(@ref{Font
-Lock}を参照)。これを行うには@code{jit-lock-defer-time}に0.25、タイプ速度が速い場合には0.1のように小さい正の数値をセットします。これにより@kbd{C-v}押下時のぎくしゃくしたスクロールが幾分改善されますが、バッファーの新たな部分へスクロールするようなアクション後のウィンドウのコンテンツは一時的に非フォント化されるでしょう。
+As an alternative to setting @code{fast-but-imprecise-scrolling} you might
+prefer to enable jit-lock deferred fontification (@pxref{Font Lock}).  To do
+this, customize @code{jit-lock-defer-time} to a small positive number such
+as 0.25, or even 0.1 if you type quickly.  This gives you less jerky
+scrolling when you hold down @kbd{C-v}, but the window contents after any
+action which scrolls into a fresh portion of the buffer will be momentarily
+unfontified.
 
 @vindex redisplay-skip-fontification-on-input
-最後にこれらの変数にかわる3つ目の選択肢が@code{redisplay-skip-fontification-on-input}です。この変数が非@code{nil}なら、保留中の入力がある場合にはいくつかのフォント表示化をスキップします。いずれにせよ入力の保留中は再表示を完全にスキップするので通常なら表示に影響はありませんが、不要なフォント表示化を避けることでスクロールがスムーズになる可能性があります。
+Finally, a third alternative to these variables is
+@code{redisplay-skip-fontification-on-input}.  If this variable is
+non-@code{nil}, skip some fontifications if there's input pending.  This
+usually does not affect the display because redisplay is completely skipped
+anyway if input was pending, but it can make scrolling smoother by avoiding
+unnecessary fontification.
 
 @vindex scroll-up
 @vindex scroll-down
 @findex scroll-up-line
 @findex scroll-down-line
-  コマンド@kbd{M-x scroll-up}および@kbd{M-x
-scroll-down}は、@code{scroll-up-command}および@code{scroll-down-command}と同様に動作しますが、@code{scroll-error-top-bottom}を考慮しません。これらのコマンドは、Emacs
-24以前ではスクロールアップおよびスクロールダウンのためのデフォルトでした。コマンド@kbd{M-x
-scroll-up-line}および@kbd{M-x
-scroll-down-line}は、現在のウィンドウを1行スクロールさせます。もしこれらのコマンドを使う場合は、それにキーバインドを割り当てたくなるでしょう(@ref{Init
-Rebinding}を参照してください)。
+  The commands @kbd{M-x scroll-up} and @kbd{M-x scroll-down} behave similarly
+to @code{scroll-up-command} and @code{scroll-down-command}, except they do
+not obey @code{scroll-error-top-bottom}.  Prior to Emacs 24, these were the
+default commands for scrolling up and down.  The commands @kbd{M-x
+scroll-up-line} and @kbd{M-x scroll-down-line} scroll the current window by
+one line at a time.  If you intend to use any of these commands, you might
+want to give them key bindings (@pxref{Init Rebinding}).
 
   On graphical displays, you can also scroll a window using the scroll bar;
 @pxref{Scroll Bars}.
 
 @node Recentering
-@section センタリング
+@section Recentering
 
 @table @kbd
 @item C-l
-選択されているウィンドウで、現在行が中央になるようスクロールします。連続して呼び出すと、次は現在行が上端になり、その次は現在行が下端に、という順番で循環します。画面の再描画が行われる可能性があります(@code{recenter-top-bottom})。
+Scroll the selected window so the current line is the center-most text line;
+on subsequent consecutive invocations, make the current line the top line,
+the bottom line, and so on in cyclic order.  Possibly redisplay the screen
+too (@code{recenter-top-bottom}).
 
 @item C-M-S-l
-他のウィンドウをスクロールします。これは他のウィンドウに作用する@kbd{C-l}と等価です。
+Scroll the other window; this is equivalent to @kbd{C-l} acting on the other
+window.
 
 @item M-x recenter
-選択されているウィンドウで、現在行が中央になるようにスクロールします。画面の再描画が行われる可能性があります。
+Scroll the selected window so the current line is the center-most text
+line.  Possibly redisplay the screen too.
 
 @item C-M-l
-有用な情報が表示されるよう、発見的な手法でスクロールします(@code{reposition-window})。
+Scroll heuristically to bring useful information onto the screen
+(@code{reposition-window}).
 @end table
 
 @kindex C-l
 @findex recenter-top-bottom
-  @kbd{C-l}
-(@code{recenter-top-bottom})コマンドは、選択されたウィンドウにたいして@dfn{センタリング(recenters)}をします。これにより現在のスクリーン行がウィンドウの中央、または中央に一番近い行になります。
+  The @kbd{C-l} (@code{recenter-top-bottom}) command @dfn{recenters} the
+selected window, scrolling it so that the current screen line is exactly in
+the center of the window, or as close to the center as possible.
 
-  (@kbd{C-l
-C-l})のように@kbd{C-l}を2回タイプすると、ポイントのある行が上端になるようにスクロールします。@kbd{C-l}を3回タイプするとポイントのある行が下端になるようにスクロールします。連続して@kbd{C-l}をタイプすることにより、上記の3つの位置を循環してスクロールできます。
+  Typing @kbd{C-l} twice in a row (@kbd{C-l C-l}) scrolls the window so that
+point is on the topmost screen line.  Typing a third @kbd{C-l} scrolls the
+window so that point is on the bottom-most screen line.  Each successive
+@kbd{C-l} cycles through these three positions.
 
 @vindex recenter-positions
-  リスト変数@code{recenter-positions}をカスタマイズすることにより、循環する順序を変更できます。リスト要素にはシンボル@code{top}、@code{middle}、@code{bottom}または数値を指定します。数値に整数を指定すると、現在行が指定したスクリーン行になるようスクロールします。数値に0.0から1.0の浮動小数点数は、ウィンドウの上端から現在行までを割合で指定します。デフォルトは@code{(middle
-top
-bottom)}で、これは上述した循環順序です。さらに変数@code{scroll-margin}を、0以外の値@var{n}に変更すると、@kbd{C-l}は常にウィンドウの上端または下端からスクリーン行で、@var{n}行を残してスクロールします(@ref{Auto
-Scrolling}を参照してください)。
+  You can change the cycling order by customizing the list variable
+@code{recenter-positions}.  Each list element should be the symbol
+@code{top}, @code{middle}, or @code{bottom}, or a number; an integer means
+to move the line to the specified screen line, while a floating-point number
+between 0.0 and 1.0 specifies a percentage of the screen space from the top
+of the window.  The default, @code{(middle top bottom)}, is the cycling
+order described above.  Furthermore, if you change the variable
+@code{scroll-margin} to a non-zero value @var{n}, @kbd{C-l} always leaves at
+least @var{n} screen lines between point and the top or bottom of the window
+(@pxref{Auto Scrolling}).
 
-  @kbd{C-l}にプレフィクス引数を指定することもできます。@kbd{C-u
-C-l}のようにプレフィクス引数だけを指定すると、単にポイントを示す行を中央にします。正の引数@var{n}は、ポイントを示す行がウィンドウの上端から@var{n}行目になるようにスクロールします。0を指定すると、ポイントのある行がウィンドウ上端になるようにスクロールします。負の引数@minus{}@var{n}は、ポイントのある行がウィンドウの下端から@var{n}行目になるようにスクロールします。引数を与えたときは、@kbd{C-l}は画面をクリアーせず、異なるスクリーン位置への循環も行いません。
+  You can also give @kbd{C-l} a prefix argument.  A plain prefix argument,
+@kbd{C-u C-l}, simply recenters the line showing point.  A positive argument
+@var{n} moves line showing point @var{n} lines down from the top of the
+window.  An argument of zero moves point's line to the top of the window.  A
+negative argument @minus{}@var{n} moves point's line @var{n} lines from the
+bottom of the window.  When given an argument, @kbd{C-l} does not clear the
+screen or cycle through different screen positions.
 
 @vindex recenter-redisplay
-  変数@code{recenter-redisplay}が非@code{nil}値の場合、@kbd{C-l}はスクリーンのクリアーと再描画を行います。特別な値@code{tty}(デフォルト)は、これをテキスト端末上のフレームだけに限定します。再描画はスクリーンが何らかの理由により文字化けしてしまったときなどに便利です(@ref{Screen
-Garbled}を参照してください)。
+  If the variable @code{recenter-redisplay} has a non-@code{nil} value, each
+invocation of @kbd{C-l} also clears and redisplays the screen; the special
+value @code{tty} (the default) says to do this on text-terminal frames
+only.  Redisplaying is useful in case the screen becomes garbled for any
+reason (@pxref{Screen Garbled}).
 
 @findex recenter
-  より原始的なコマンド@kbd{M-x
-recenter}は、@code{recenter-top-bottom}と同じように振る舞いますが、スクリーン位置を循環しません。
+  The more primitive command @kbd{M-x recenter} behaves like
+@code{recenter-top-bottom}, but does not cycle among screen positions.
 
 @kindex C-M-l
 @findex reposition-window
-  @kbd{C-M-l}
-(@code{reposition-window})は、有用な情報がスクリーンに表示されるように、現在のウィンドウを発見的な手法によりスクロールします。たとえばLispファイルの場合、このコマンドは可能な限り現在のdefun全体がスクリーン上に表示されるよう試みます。
+  @kbd{C-M-l} (@code{reposition-window}) scrolls the current window
+heuristically in a way designed to get useful information onto the screen.
+For example, in a Lisp file, this command tries to get the entire current
+defun onto the screen if possible.
 
 @node Auto Scrolling
-@section 自動スクロール
+@section Automatic Scrolling
 
 @cindex automatic scrolling
-  ポイントが表示されているテキスト部分から外に移動すると、Emacsは@dfn{自動スクロール(automatic
-scrolling)}の処理を行います。通常自動スクロールは、ウィンドウの垂直方向の中央にポイントをセンタリングしますが、この振る舞いを変えるいくつかの方法があります。
+  Emacs performs @dfn{automatic scrolling} when point moves out of the visible
+portion of the text.  Normally, automatic scrolling centers point vertically
+in the window, but there are several ways to alter this behavior.
 
 @vindex scroll-conservatively
 @vindex scroll-minibuffer-conservatively
-  @code{scroll-conservatively}に小さい数字@var{n}をセットすると、ポイントが少し(@var{n}行以下)スクリーンの外に出たら、Emacsはポイントがスクリーンに表示されるのに充分なだけスクロールします。これでもしポイントの表示に失敗した場合、Emacsはそのウィンドウの中央にポイント行が表示されるのに充分なだけのスクロールをします。@code{scroll-conservatively}に大きな数字(100より大)も数字をセットすると、どれだけポイントを移動させようと、自動スクロールはポイント行を中央にセンタリングしなくなります。Emacsはポイントが表示されるように常にテキストをスクロールします。ウィンドウの上端または下端かはスクロールの方向に依存します。デフォルトでは@code{scroll-conservatively}は@tie{}0で、これは常にポイント行がウィンドウの中央にセンタリングされることを意味します。つまりミニバッファーウィンドウでは、@code{scroll-conservatively}より優先される@code{scroll-minibuffer-conservatively}がデフォルトでは非@code{nil}なので、常にconservative(保守的)なスクロールになると言うことです。
+  If you set @code{scroll-conservatively} to a small number @var{n}, then
+moving point just a little off the screen (no more than @var{n} lines)
+causes Emacs to scroll just enough to bring point back on screen; if doing
+so fails to make point visible, Emacs scrolls just far enough to center
+point in the window.  If you set @code{scroll-conservatively} to a large
+number (larger than 100), automatic scrolling never centers point, no matter
+how far point moves; Emacs always scrolls text just enough to bring point
+into view, either at the top or bottom of the window depending on the scroll
+direction.  By default, @code{scroll-conservatively} is@tie{}0, which means
+to always center point in the window.  This said, in minibuffer windows,
+scrolling is always conservative by default because
+@code{scroll-minibuffer-conservatively} is non-@code{nil}, which takes
+precedence over @code{scroll-conservatively}.
 
 @vindex scroll-step
-  自動スクロールを制御する他の方法は、変数@code{scroll-step}をカスタマイズすることです。この変数の値はポイントがスクリーンから外れたとき、何行を自動スクロールさせるかを決定します。その行数スクロールしてもポイントが表示されない場合、かわりにポイント行が中央にきます。デフォルト値は0で、スクロール後は常にポイント行が中央にきます。
+  Another way to control automatic scrolling is to customize the variable
+@code{scroll-step}.  Its value determines the number of lines by which to
+automatically scroll, when point moves off the screen.  If scrolling by that
+number of lines fails to bring point back into view, point is centered
+instead.  The default value is zero, which (by default) causes point to
+always be centered after scrolling.
 
 @cindex aggressive scrolling
 @vindex scroll-up-aggressively
 @vindex scroll-down-aggressively
-  自動コントロールを制御する3番目の方法は、変数@code{scroll-up-aggressively}と@code{scroll-down-aggressively}をカスタマイズすることで、これは直接スクロール後のポイントの垂直位置を指定します。@code{scroll-up-aggressively}の値には、@code{nil}(デフォルト)、または0から1までの浮動小数点数@var{f}を指定します。ポイントがウィンドウの下端を越えたとき(たとえば前方にスクロールしたとき)、Emacsはウィンドウの高さとウィンドウの下端からポイント行までの割合が、@var{f}になるようスクロールします。つまり@var{f}を大きくするとより積極的(aggressive)、つまり新しいテキストがより多く表示されることを意味します。デフォルト値@code{nil}は0.5と同じです。
+  A third way to control automatic scrolling is to customize the variables
+@code{scroll-up-aggressively} and @code{scroll-down-aggressively}, which
+directly specify the vertical position of point after scrolling.  The value
+of @code{scroll-up-aggressively} should be either @code{nil} (the default),
+or a floating point number @var{f} between 0 and 1.  The latter means that
+when point goes below the bottom window edge (i.e., scrolling forward),
+Emacs scrolls the window so that point is @var{f} parts of the window height
+from the bottom window edge.  Thus, larger @var{f} means more aggressive
+scrolling: more new text is brought into view.  The default value,
+@code{nil}, is equivalent to 0.5.
 
-  同様に@code{scroll-down-aggressively}は、ポイントがウィンドウの上端を越えたとき(たとえば後方にスクロールしたとき)の振る舞いを設定します。値にはスクロール後のウィンドウの上端からポイント行までのマージンを指定します。つまり@code{scroll-up-aggressively}を大きくすると、より積極的になります。
+  Likewise, @code{scroll-down-aggressively} is used when point goes above the
+top window edge (i.e., scrolling backward).  The value specifies how far
+point should be from the top margin of the window after scrolling.  Thus, as
+with @code{scroll-up-aggressively}, a larger value is more aggressive.
 
-  変数@code{scroll-conservatively}、@code{scroll-step}、および@code{scroll-up-aggressively}と@code{scroll-down-aggressively}は、互いに矛盾する方法で自動スクロールを制御します。したがって自動スクロールをカスタマイズする場合は、2つ以上の手法を選ぶべきではありません。もし2つ以上の変数をカスタマイズする場合は、@code{scroll-conservatively}、次に@code{scroll-step}、そして最後に@code{scroll-up-aggressively}と@code{scroll-down-aggressively}という優先順でカスタマイズしてください。
+  Note that the variables @code{scroll-conservatively}, @code{scroll-step},
+and @code{scroll-up-aggressively} / @code{scroll-down-aggressively} control
+automatic scrolling in contradictory ways.  Therefore, you should pick no
+more than one of these methods to customize automatic scrolling.  In case
+you customize multiple variables, the order of priority is:
+@code{scroll-conservatively}, then @code{scroll-step}, and finally
+@code{scroll-up-aggressively} / @code{scroll-down-aggressively}.
 
 @vindex scroll-margin
 @vindex maximum-scroll-margin
-  変数@code{scroll-margin}は(たとえscroll-up-aggressivelyやscroll-down-aggressivelyに、上端または下端からのマージンがウィンドウにたいして占める割合より大きくなるような@var{f}を指定していても)、ポイントがウィンドウの上端または下端にどれだけ近づけるかを制限します。変数の値にはスクリーン行の行数です。もしポイントがウィンドウの上端または下端から指定した行数の位置にくると、Emacsは自動的にスクロールします。デフォルトでは@code{scroll-margin}は0です。デフォルトではそのウィンドウの高さの1/4に制限されていますが、@code{maximum-scroll-margin}をカスタマイズすることにより1/2まで増加(または0まで減少)させることができます。 
+  The variable @code{scroll-margin} restricts how close point can come to the
+top or bottom of a window (even if aggressive scrolling specifies a fraction
+@var{f} that is larger than the window portion between the top and the
+bottom margins).  Its value is a number of screen lines; if point comes
+within that many lines of the top or bottom of the window, Emacs performs
+automatic scrolling.  By default, @code{scroll-margin} is 0.  The effective
+margin size is limited to a quarter of the window height by default, but
+this limit can be increased up to half (or decreased down to zero) by
+customizing @code{maximum-scroll-margin}.
 
 @node Horizontal Scrolling
-@section 水平スクロール
+@section Horizontal Scrolling
 @cindex horizontal scrolling
 
 @vindex auto-hscroll-mode
-  @dfn{水平スクロール(Horizontal
-scrolling)}は、ウィンドウの行を右方向に移動させます。そのため左端の近くのテキストは表示されなくなります。ウィンドウのテキストが水平スクロールされると、テキスト行は折り返されるのではなく、切り詰め(truncated)られます。ウィンドウが切り詰められた行を表示しているとき、ポイントがスクリーンの左端か右端を越えて移動すると、Emacsは自動的に水平スクロールを行います。デフォルトではそのウィンドウ内のすべての行は一緒に水平スクロールされますが、変数@code{auto-hscroll-mode}に特別な値@code{current-line}をセットした場合は、カーソルを表示する行だけがスクロールされます。自動的な水平スクロールを完全に無効にするには、変数@code{auto-hscroll-mode}に@code{nil}をセットしてください。また自動的な水平スクロールがオフになっている場合、ポイントがスクリーンの端を越えると、それを知らせるためにカーソルが表示されなくなることに注意してください(テキスト端末の場合カーソルは端に残されます)。
+  @dfn{Horizontal scrolling} means shifting all the lines sideways within a
+window, so that some of the text near the left margin is not displayed.
+When the text in a window is scrolled horizontally, text lines are truncated
+rather than continued (@pxref{Line Truncation}).  If a window shows
+truncated lines, Emacs performs automatic horizontal scrolling whenever
+point moves off the left or right edge of the screen.  By default, all the
+lines in the window are scrolled horizontally together, but if you set the
+variable @code{auto-hscroll-mode} to the special value of
+@code{current-line}, only the line showing the cursor will be scrolled.  To
+disable automatic horizontal scrolling entirely, set the variable
+@code{auto-hscroll-mode} to @code{nil}.  Note that when the automatic
+horizontal scrolling is turned off, if point moves off the edge of the
+screen, the cursor disappears to indicate that.  (On text terminals, the
+cursor is left at the edge instead.)
 
 @vindex hscroll-margin
-  変数@code{hscroll-margin}は、自動的なスクロールが起こる前に、ポイントがウィンドウの左端または右端に、どれだけ近づけるかを制御します。変数の値は列数で指定します。たとえば変数の値が5のときは、端から5列目にポイントが移動すると、水平スクロールが発生します。
+  The variable @code{hscroll-margin} controls how close point can get to the
+window's left and right edges before automatic scrolling occurs.  It is
+measured in columns.  For example, if the value is 5, then moving point
+within 5 columns of an edge causes horizontal scrolling away from that edge.
 
 @vindex hscroll-step
-  変数@code{hscroll-step}はmポイントが端に近づきすぎたときに、何列スクロールするかを決定します。デフォルト値の0は、ポイントがウィンドウの中央になるようにスクロールされることを意味します。正の整数はスクロールされる列数を指定します。浮動小数点数(0から1の値であること)は、スクロールされる量を、ウィンドウの幅にたいする割合で指定します。
+  The variable @code{hscroll-step} determines how many columns to scroll the
+window when point gets too close to the edge.  Zero, the default value,
+means to center point horizontally within the window.  A positive integer
+value specifies the number of columns to scroll by.  A floating-point number
+(whose value should be between 0 and 1)  specifies the fraction of the
+window's width to scroll by.
 
-  以下のコマンドで明示的に水平スクロールすることもできます:
+  You can also perform explicit horizontal scrolling with the following
+commands:
 
 @table @kbd
 @item C-x <
-現在のウィンドウのテキストを左にスクロールします(@code{scroll-left})。
+Scroll text in current window to the left (@code{scroll-left}).
 @item C-x >
-右にスクロールします(@code{scroll-right})。
+Scroll to the right (@code{scroll-right}).
 @end table
 
 @kindex C-x <
 @kindex C-x >
 @findex scroll-left
 @findex scroll-right
-  @kbd{C-x <}
-(@code{scroll-left})は選択された、ウィンドウをウィンドウ幅から2列少ない列数、左にスクロール(いいかえればウィンドウのテキストは左に移動)します。数引数@var{n}を指定すると、@var{n}列スクロールします。
+  @kbd{C-x <} (@code{scroll-left}) scrolls text in the selected window to the
+left by the full width of the window, less two columns.  (In other words,
+the text in the window moves left relative to the window.)  With a numeric
+argument @var{n}, it scrolls by @var{n} columns.
 
-  テキストが左にスクロールされて、ポイントがウィンドウの左端を越えると、ポイントが表示されているテキストに戻るまで、カーソルはフリーズします。これは@code{auto-hscroll-mode}の設定とは独立しています(これはテキストを左にスクロールするときのウィンドウの右端での振る舞いだけに影響します)。
+  If the text is scrolled to the left, and point moves off the left edge of
+the window, the cursor will freeze at the left edge of the window, until
+point moves back to the displayed portion of the text.  This is independent
+of the current setting of @code{auto-hscroll-mode}, which, for text scrolled
+to the left, only affects the behavior at the right edge of the window.
 
-  @kbd{C-x >}
-(@code{scroll-right})は、同様に右にスクロールします。ウィンドウが通常の表示(行の先頭がウィンドウの左端に表示されている状態)のときは、それ以上スクロールできないので何も起こりません。これは@w{@kbd{C-x
->}}の引数を正確に計算する必要がないことを意味します。充分に大きな引数を与えれば、通常の表示が復元されます。
+  @kbd{C-x >} (@code{scroll-right}) scrolls similarly to the right.  The
+window cannot be scrolled any farther to the right once it is displayed
+normally, with each line starting at the window's left margin; attempting to
+do so has no effect.  This means that you don't have to calculate the
+argument precisely for @w{@kbd{C-x >}}; any sufficiently large argument will
+restore the normal display.
 
-  これらのコマンドでウィンドウを水平方向にスクロールすると、自動水平スクロールの下限値がセットされます。自動スクロールはウィンドウのスクロールを続けますが、前に@code{scroll-left}にセットされた値を越えて右にスクロールできなくなります。@code{auto-hscroll-mode}が@code{current-line}にセットされているときは、カーソルを表示する行以外の行は、最小限度だけスクロールされるでしょう。
+  If you use those commands to scroll a window horizontally, that sets a lower
+bound for automatic horizontal scrolling.  Automatic scrolling will continue
+to scroll the window, but never farther to the right than the amount you
+previously set by @code{scroll-left}.  When @code{auto-hscroll-mode} is set
+to @code{current-line}, all the lines other than the one showing the cursor
+will be scrolled by that minimal amount.
 
   On graphical displays, you can scroll a window horizontally using the
 horizontal scroll bar, if you turn on the optional
 @code{horizontal-scroll-bar-mode}; @pxref{Scroll Bars}.
 
 @node Narrowing
-@section ナローイング
+@section Narrowing
 @cindex widening
 @cindex restriction
 @cindex narrowing
 @cindex accessible portion
 
-  @dfn{ナローイング(Narrowing)}とはバッファーのある範囲にフォーカスを置き、他の部分を一時的にアクセス不能にすることを意味します。扱うことのできる範囲のことを、@dfn{アクセス可能範囲(accessible
-portion)}と呼びます。ナローイングを取り消すと、バッファー全体に再びアクセスできるようになります。これを@dfn{ワイドニング(widening)}と呼びます。バッファーにたいして、ナローイングにより境界を設けることを、バッファーの@dfn{制限(restriction)}と呼びます。
+  @dfn{Narrowing} means focusing in on some portion of the buffer, making the
+rest temporarily inaccessible.  The portion which you can still get to is
+called the @dfn{accessible portion}.  Canceling the narrowing, which makes
+the entire buffer once again accessible, is called @dfn{widening}.  The
+bounds of narrowing in effect in a buffer are called the buffer's
+@dfn{restriction}.
 
-  ナローイングにより、他の部分に気を取られずに、1つのサブルーチンやパラグラフに集中することが容易になります。ナローイングは、置換コマンドやキーボードマクロの繰り返しにより操作される範囲を制限するためにも使われます。
+  Narrowing can make it easier to concentrate on a single subroutine or
+paragraph by eliminating clutter.  It can also be used to limit the range of
+operation of a replace command or repeating keyboard macro.
 
 @table @kbd
 @item C-x n n
-ポイントとマークの間にナローイングします(@code{narrow-to-region})。
+Narrow down to between point and mark (@code{narrow-to-region}).
 @item C-x n w
-バッファー全体をワイドニングして、再びアクセス可能にします(@code{widen})。
+Widen to make the entire buffer accessible again (@code{widen}).
 @item C-x n p
-現在のページにナローイングします(@code{narrow-to-page})。
+Narrow down to the current page (@code{narrow-to-page}).
 @item C-x n d
-現在のdefunにナローイングします(@code{narrow-to-defun})。
+Narrow down to the current defun (@code{narrow-to-defun}).
 @end table
 
-  バッファーをナローイングしているときは、表示されている範囲がすべてです。残りの部分を見ることはできず、移動もできず(移動コマンドによりアクセス可能範囲の外に移動することはできません)、変更もできません。しかし残りの部分がなくなったわけではないので、ファイルを保存するとアクセス不能範囲のテキストもすべて保存されます。ナローイングが有効なときは、モードラインに@samp{Narrow}という単語が表示されます。
+  When you have narrowed down to a part of the buffer, that part appears to be
+all there is.  You can't see the rest, you can't move into it (motion
+commands won't go outside the accessible part), you can't change it in any
+way.  However, it is not gone, and if you save the file all the inaccessible
+text will be saved.  The word @samp{Narrow} appears in the mode line
+whenever narrowing is in effect.
 
 @kindex C-x n n
 @findex narrow-to-region
-  主要なナローイングコマンドは、@kbd{C-x n n}
-(@code{narrow-to-region})です。これは現在のバッファーを制限するので、現在のリージョンだけがアクセス可能になり、リージョンの前後のすべてのテキストはアクセス不能になります。ポイントとマークは変化しません。
+  The primary narrowing command is @kbd{C-x n n} (@code{narrow-to-region}).
+It sets the current buffer's restrictions so that the text in the current
+region remains accessible, but all text before the region or after the
+region is inaccessible.  Point and mark do not change.
 
 @kindex C-x n p
 @findex narrow-to-page
 @kindex C-x n d
 @findex narrow-to-defun
-  かわりに@kbd{C-x n p}
-(@code{narrow-to-page})を使うと、現在のページにナローイングされます。ページの定義については、@ref{Pages}を参照してください。@kbd{C-x
-n d}
-(@code{narrow-to-defun})は、ポイントを含むdefunにナローイングします(@ref{Defuns}を参照してください)。
+  Alternatively, use @kbd{C-x n p} (@code{narrow-to-page}) to narrow down to
+the current page.  @xref{Pages}, for the definition of a page.  @kbd{C-x n
+d} (@code{narrow-to-defun}) narrows down to the defun containing point
+(@pxref{Defuns}).
 
 @kindex C-x n w
 @findex widen
-  ナローイングを取り消す方法は、@kbd{C-x n w}
-(@code{widen})です。これにより再びバッファーのテキストすべてにアクセス可能になります。
+  The way to cancel narrowing is to widen with @kbd{C-x n w} (@code{widen}).
+This makes all text in the buffer accessible again.
 
-  バッファーのどの範囲にナローイングされているかは、@kbd{C-x =}コマンドを使って情報を得ることができます。@ref{Position
-Info}を参照してください。
+  You can get information on what part of the buffer you are narrowed down to
+using the @kbd{C-x =} command.  @xref{Position Info}.
 
-  ナローイングは、それを理解していないユーザーを容易に混乱させるので、通常@code{narrow-to-region}コマンドは無効になっています。このコマンドを使おうとすると、Emacsは確認を求め、有効にするオプションを提供します。このコマンドを有効にすると、それ以降は確認を求められなくなります。@ref{Disabling}を参照してください。
+  Because narrowing can easily confuse users who do not understand it,
+@code{narrow-to-region} is normally a disabled command.  Attempting to use
+this command asks for confirmation and gives you the option of enabling it;
+if you enable the command, confirmation will no longer be required for it.
+@xref{Disabling}.
 
 @node View Mode
-@section Viewモード
+@section View Mode
 @cindex View mode
 @cindex mode, View
 
 @kindex s @r{(View mode)}
 @kindex SPC @r{(View mode)}
 @kindex DEL @r{(View mode)}
-  Viewモードは、バッファーをスクリーン上でスキャンするためのマイナーモードです。このモードは、バッファーを変更せずにスクロールする、便利なコマンドを提供します。Emacsのカーソル移動コマンドとは別に、@key{SPC}で前方にスクロール、@kbd{S-@key{SPC}}または@key{DEL}で後方にスクロール、@kbd{s}でインクリメンタルサーチができます。
+  View mode is a minor mode that lets you scan a buffer by sequential
+screenfuls.  It provides commands for scrolling through the buffer
+conveniently but not for changing it.  Apart from the usual Emacs cursor
+motion commands, you can type @key{SPC} to scroll forward one windowful,
+@kbd{S-@key{SPC}} or @key{DEL} to scroll backward, and @kbd{s} to start an
+incremental search.
 
 @kindex q @r{(View mode)}
 @kindex e @r{(View mode)}
 @findex View-quit
 @findex View-exit
-  @kbd{q}
-(@code{View-quit})とタイプするとViewモードが無効になり、Viewモードが有効になる前のパッファーの位置に戻ります。@kbd{e}
-(@code{View-exit})とタイプするとViewモードが無効になり、現在のバッファーと位置は維持されます。
+  Typing @kbd{q} (@code{View-quit}) disables View mode, and switches back to
+the buffer and position before View mode was enabled.  Typing @kbd{e}
+(@code{View-exit}) disables View mode, keeping the current buffer and
+position.
 
 @findex view-buffer
 @findex view-file
-  @kbd{M-x
-view-buffer}は、既存のEmacsバッファー名を入力として求め、そのバッファーに切り替えてViewモードを有効にします。@kbd{M-x
-view-file}はファイル名を入力として求め、そのファイルをvisitしてViewモードを有効にします。
+  @kbd{M-x view-buffer} prompts for an existing Emacs buffer, switches to it,
+and enables View mode.  @kbd{M-x view-file} prompts for a file and visits it
+with View mode enabled.
 
 @node Follow Mode
-@section Followモード
+@section Follow Mode
 @cindex Follow mode
 @cindex mode, Follow
 @findex follow-mode
 @cindex windows, synchronizing
 @cindex synchronizing windows
 
-  @dfn{Followモード}は、同じバッファーを表示する2つのウィンドウを、1つの仮想ウィンドウとしてスクロールするマイナーモードです。Followモードを使うには、ウィンドウが1つだけのフレームを選択して、それを@kbd{C-x
-3}を使って縦に並べて2分割してから、@kbd{M-x
-follow-mode}とタイプします。それ以降はバッファーをどちらのウィンドウでも編集でき、どちらかのウィンドウをスクロールすると、他方のウィンドウも追従してスクロールします。
+  @dfn{Follow mode} is a minor mode that makes two windows, both showing the
+same buffer, scroll as a single tall virtual window.  To use Follow mode, go
+to a frame with just one window, split it into two side-by-side windows
+using @kbd{C-x 3}, and then type @kbd{M-x follow-mode}.  From then on, you
+can edit the buffer in either of the two windows, or scroll either one; the
+other window follows it.
 
-  Followモードでは、一方のウィンドウで表示されている部分の外にポイントを移動して、もう一方のウィンドウで表示されている部分にポイントを移動させると、そのウィンドウが選択されます。つまり2つのウィンドウを1つの大きなウィンドウとして扱えるのです。
+  In Follow mode, if you move point outside the portion visible in one window
+and into the portion visible in the other window, that selects the other
+window---again, treating the two as if they were parts of one large window.
 
-  Followモードをオフにするには、もう一度@kbd{M-x follow-mode}とタイプしてください。
+  To turn off Follow mode, type @kbd{M-x follow-mode} a second time.
 
 @node Faces
-@section テキストのフェイス
+@section Text Faces
 @cindex faces
 
-  Emacsは@dfn{フェイス(faces)}と呼ばれる仕組みを通じて、テキストをいくつかの異なるスタイルで表示できます。フェイスにはfont(フォント)、height(高さ)、weight(太さ)、slant(傾き)、foreground(前景)およびbackground(背景)、underline(アンダーライン)、overline(オーバーライン)などの様々な@dfn{フェイス属性(face
-attributes)}を指定できます。ほとんどのメジャーモードはFont
-Lockモードを通じて、テキストに自動的にフェイスを割り当てます。これらのフェイスを割り当てる方法については、@ref{Font
-Lock}を参照してください。
+  Emacs can display text in several different styles, called @dfn{faces}.
+Each face can specify various @dfn{face attributes}, such as the font,
+height, weight, slant, foreground and background color, and underlining or
+overlining.  Most major modes assign faces to the text automatically, via
+Font Lock mode.  @xref{Font Lock}, for more information about how these
+faces are assigned.
 
 @findex list-faces-display
-  現在定義されているフェイスと、それがどのような外観なのかを見るには、@kbd{M-x
-list-faces-display}とタイプします。プレフィクス引数を指定すると、このコマンドは正規表現の入力を求め、その正規表現にマッチするフェイスだけを表示します(@ref{Regexps}を参照してください)。
+  To see what faces are currently defined, and what they look like, type
+@kbd{M-x list-faces-display}.  With a prefix argument, this prompts for a
+regular expression, and displays only faces with names matching that regular
+expression (@pxref{Regexps}).
 
 @vindex frame-background-mode
-  あるフェイスが、フレームが異なると違って見えるのことがあり得ます。たとえばいくつかのテキスト端末ではすべてのフェース属性、特に特にfont、height、widthはサポートされておらず、指定できるcolorも限られているものがあります。加えて、ほとんどのEmacsフェースは視認性をよくするために、フレームのバックグラウンドが明るい(light)か暗い(dark)かで属性が異なります。デフォルトでは、Emacsはフレームの現在のバックグラウンドカラーに基づいて、表示するフェイスの属性を自動的に選択します。しかし変数@code{frame-background-mode}に非@code{nil}値を与えると、これをオーバーライドできます。値@code{dark}ではすべてのフレームの背景色が暗い色であるかのように処理し、値@code{light}ではすべてのフレームの背景色が明るい色であるかのように処理させることができます。
+  It's possible for a given face to look different in different frames.  For
+instance, some text terminals do not support all face attributes,
+particularly font, height, and width, and some support a limited range of
+colors.  In addition, most Emacs faces are defined so that their attributes
+are different on light and dark frame backgrounds, for reasons of
+legibility.  By default, Emacs automatically chooses which set of face
+attributes to display on each frame, based on the frame's current background
+color.  However, you can override this by giving the variable
+@code{frame-background-mode} a non-@code{nil} value.  A value of @code{dark}
+makes Emacs treat all frames as if they have a dark background, whereas a
+value of @code{light} makes it treat all frames as if they have a light
+background.
 
 @cindex background color
 @cindex @code{default face}
-  フェイスの属性を変えてフェイスをカスタマイズして、将来のEmacsセッション用にカスタマイズ結果を保存することができます。詳細については、@ref{Face
-Customization}を参照してください。
+  You can customize a face to alter its attributes, and save those
+customizations for future Emacs sessions.  @xref{Face Customization}, for
+details.
 
-  @code{default}フェイスはテキストを表示するデフォルトのフェイスで、そのすべての属性は指定されています。バックグラウンドカラーは、フレームのバックグラウンドカラーとしても使用されます。@ref{Colors}を参照してください。
+  The @code{default} face is the default for displaying text, and all of its
+attributes are specified.  Its background color is also used as the frame's
+background color.  @xref{Colors}.
 
 @cindex @code{cursor} face
-  他の特別なフェイスとしては、@code{cursor}フェイスがあります。グラフィカルなディスプレイでは、このフェイスのバックグラウンドカラーは、テキストカーソルを描画するのに使用されます。このフェイスで効果があるのはこの属性だけです。カーソルの下のテキストのフォアグラウンドカラーには、そのテキストのバックグラウンドカラーが使われます。テキスト端末でのテキストカーソルの外観は、@code{cursor}フェイスではなく端末により決定されます。
+  Another special face is the @code{cursor} face.  On graphical displays, the
+background color of this face is used to draw the text cursor.  None of the
+other attributes of this face have any effect; the foreground color for text
+under the cursor is taken from the background color of the underlying text.
+On text terminals, the appearance of the text cursor is determined by the
+terminal, not by the @code{cursor} face.
 
-  特定のフェイスの属性を指定するのにXのリソースを使うこともできます。@ref{Resources}を参照してください。
+  You can also use X resources to specify attributes of any particular face.
+@xref{Resources}.
 
-  Emacsは可変幅フォント(variable-width
-fonts)を表示できますが、いくつかのコマンド、特にインデントを行うコマンドは、可変幅の文字幅の表示をうまく処理できません。そのため、ほとんどのフェイスにたいして可変幅フォントを使わないこと、特にそれがFont
-Lockモードに割り当てられている場合は、使わないことを推奨します。
+  Emacs can display variable-width fonts, but some Emacs commands,
+particularly indentation commands, do not account for variable character
+display widths.  Therefore, we recommend not using variable-width fonts for
+most faces, particularly those assigned by Font Lock mode.
 
 @node Colors
-@section フェイスのカラー
+@section Colors for Faces
 
-  フェイスには、さまざまなフォアグラウンドカラーとバックグラウンドカラーをもたせることができます。フェイスにカラーを指定するとき、たとえばフェイスをカスタマイズ(@ref{Face
-Customization}を参照してください)するときは、@dfn{カラーネーム(color name)}か、@dfn{RGBトリプレット(RGB
-triplet)}で指定することができます。
+  Faces can have various foreground and background colors.  When you specify a
+color for a face---for instance, when customizing the face (@pxref{Face
+Customization})---you can use either a @dfn{color name} or an @dfn{RGB
+triplet}.
 
-@subsection カラー名
+@subsection Color Names
 @cindex color name
 @findex list-colors-display
 @vindex list-colors-sort
-  カラーネームとは、@samp{dark orange}や@samp{medium sea
-green}のような、事前に定義された名前です。カラーネームの一覧を見るには、@kbd{M-x
-list-colors-display}とタイプします。表示されるカラーの順番を制御するには、@code{list-colors-sort}をカスタマイズします。このコマンドをグラフィカルなディスプレイで実行すると、Emacsで既知のカラーネームのすべてが表示されます(これらは標準のX11のカラーネームで、Xの@file{rgb.txt}で定義されています)。コマンドをテキスト端末で実行すると、端末で安全に表示することができる一部のカラーだけが表示されます。フェイスには、さまざまなフォアグラウンドカラーとバックグラウンドカラーを持たせることができます。しかしEmacsは、テキスト端末でもX11のカラーネームを理解できます。もしフェイスにX11のカラーネームが指定されている場合、最も近い端末の色で表示されます。
+  A color name is a pre-defined name, such as @samp{dark orange} or
+@samp{medium sea green}.  To view a list of color names, type @kbd{M-x
+list-colors-display}.  To control the order in which colors are shown,
+customize @code{list-colors-sort}.  If you run this command on a graphical
+display, it shows the full range of color names known to Emacs (these are
+the standard X11 color names, defined in X's @file{rgb.txt} file).  If you
+run the command on a text terminal, it shows only a small subset of colors
+that can be safely displayed on such terminals.  However, Emacs understands
+X11 color names even on text terminals; if a face is given a color specified
+by an X11 color name, it is displayed using the closest-matching terminal
+color.
 
-@subsection RGBトリプレット
+@subsection RGB Triplets
 @cindex RGB triplet
-  RGBトリプレットは@samp{#RRGGBB}という形式の文字列で指定します。主要カラーコンポーネントはそれぞれ@samp{00}
-(色強度0)から@samp{FF}
-(最大強度)の16進数として表現されます。各コンポーネントにたいして1桁、3桁、あるいは4桁の16進数を使用することもできるので@samp{red}は@samp{#F00}、@samp{#fff000000}、あるいは@samp{#ffff00000000}と表すことができます。各コンポーネントは同じ桁数でなければなりません。16進数のAからFは、大文字小文字を区別しません。
+  An RGB triplet is a string of the form @samp{#RRGGBB}.  Each of the primary
+color components is represented by a hexadecimal number between @samp{00}
+(intensity 0) and @samp{FF} (the maximum intensity).  It is also possible to
+use one, three, or four hex digits for each component, so @samp{red} can be
+represented as @samp{#F00}, @samp{#fff000000}, or @samp{#ffff00000000}.  The
+components must have the same number of digits.  For hexadecimal values A to
+F, either upper or lower case are acceptable.
 
-  @kbd{M-x
-list-colors-display}は、カラーネームと、それに相当するRGBトリプレットを表示します。たとえば@samp{medium sea
-green}は@samp{#3CB371}と同じです。
+  The @kbd{M-x list-colors-display} command also shows the equivalent RGB
+triplet for each named color.  For instance, @samp{medium sea green} is
+equivalent to @samp{#3CB371}.
 
 @cindex face colors, setting
 @findex set-face-foreground
 @findex set-face-background
-  @kbd{M-x set-face-foreground}と@kbd{M-x
-set-face-background}で、フェイスのフォアグラウンドとバックグラウンドのカラーを変更できます。これらのコマンドは、ミニバッファーでフェイス名とカラーの入力を求め(補完機能あり)、指定したカラーをフェイスにセットします。フェイスのカラーは全フレームに影響しますが、カスタマイズバッファーやXリソースを使うのとは異なり、将来のEmacsセッションには引き継がれません。フレームパラメーターを使って、特定のフレームのフォアグラウンドとバックグラウンドのカラーをセットすることもできます。@ref{Frame
-Parameters}を参照してください。
+  You can change the foreground and background colors of a face with @kbd{M-x
+set-face-foreground} and @kbd{M-x set-face-background}.  These commands
+prompt in the minibuffer for a face name and a color, with completion, and
+then set that face to use the specified color.  They affect the face colors
+on all frames, but their effects do not persist for future Emacs sessions,
+unlike using the customization buffer or X resources.  You can also use
+frame parameters to set foreground and background colors for a specific
+frame; @xref{Frame Parameters}.
 
 @node Standard Faces
-@section 標準フェイス
+@section Standard Faces
 @cindex standard faces
 
-  以下はテキストの外見を指定する標準フェイスです。これらのフェイスの効果が欲しい場合は、特定のテキストに適用することができます。
+  Here are the standard faces for specifying text appearance.  You can apply
+them to specific text when you want the effects they produce.
 
 @table @code
 @item default
-このフェイスは特定のフェイスをもたない普通のテキストに使われます。フェイスのバックグラウンドカラーは、フレームのバックグラウンドカラーとして使用されます。
+This face is used for ordinary text that doesn't specify any face.  Its
+background color is used as the frame's background color.
 
 @item bold
-このフェイスは、デフォルトフォントのbold(太字)バージョンです。
+This face uses a bold variant of the default font.
 
 @item italic
-このフェイスはデフォルトフォントのitalic(斜体)バージョンです。
+This face uses an italic variant of the default font.
 
 @item bold-italic
-このフェイスはデフォルトフォントのbold italic(太字斜体)バージョンです。
+This face uses a bold italic variant of the default font.
 
 @item underline
-このフェイスはunderline(下線)のテキストです。
+This face underlines text.
 
 @item fixed-pitch
-このフェイスはfixed-width
-font(固定幅フォント)の使用を強制します。もし望むなら、このフェイスから他の固定幅フォントにカスタマイズするのは妥当ですが、可変幅フォントにするべきではありません。
+This face forces use of a fixed-width font.  It's reasonable to customize
+this face to use a different fixed-width font, if you like, but you should
+not make it a variable-width font.
 
 @item fixed-pitch-serif
-このフェイスは@code{fixed-pitch}と似ていますが、フォントはセリフ(serif:
-HやIなどの上下のひげ飾り)をもち、伝統的なタイプライター文字に、より似ています。
+This face is like @code{fixed-pitch}, except the font has serifs and looks
+more like traditional typewriting.
 
 @cindex @code{variable-pitch} face
 @item variable-pitch
-このフェイスは可変幅のフォント(プロポーショナルフォント)の使用を強制します。このフォント用に選択されたフォントのサイズは、デフォルトのフォント(通常は固定幅)として選択されたフォントのサイズと一致します。
+This face forces use of a variable-width (i.e., proportional) font.  The
+font size picked for this face matches the font picked for the default
+(usually fixed-width) font.
 
 @item variable-pitch-text
-これは@code{variable-pitch}
-(継承元)と似ていますが、若干大きめのフェイスです。プロポーショナルフォントは通常は同じ高さのモノスペースフォントよりも視覚的に小さい外観になるので、読み難くなる可能性があります。長いテキストを表示する際には、(小さめの)@code{variable-pitch}フェイスよりも、こちらのフェイスのほうが良い選択かもしれません。
+This is like the @code{variable-pitch} face (from which it inherits), but is
+slightly larger.  A proportional font of the same height as a monospace font
+usually appears visually smaller, and can therefore be harder to read.  When
+displaying longer texts, this face can be a good choice over the (slightly
+smaller) @code{variable-pitch} face.
 
 @cindex @code{shadow} face
 @item shadow
-このフェースはまわりのテキストに比べて、そのテキストを目立たなくします。通常これはデフォルトの黒または白のフォアグラウンドカラーではなく、グレーが使われます。
+This face is used for making the text less noticeable than the surrounding
+ordinary text.  Usually this can be achieved by using shades of gray in
+contrast with either black or white default foreground color.
 @end table
 
-  以下は特別な目的のために、一時的にテキストの一部をハイライトするのに使われるフェイスの、不完全なリストです(他にも多くのモードが、そのモードの目的のために、独自のフェイスを定義しています)。
+  Here's an incomplete list of faces used to highlight parts of the text
+temporarily for specific purposes.  (Many other modes define their own faces
+for this purpose.)
 
 @table @code
 @item highlight
-このフェイスはさまざまなコンテキスト、たとえばハイパーリンク上をマウスカーソルが通過したときなどに、テキストをハイライトするのに使われます。
+This face is used for text highlighting in various contexts, such as when
+the mouse cursor is moved over a hyperlink.
 @item isearch
-このフェイスは、現在のIsearch(インクリメンタル検索)のマッチをハイライトするのに使われます(@ref{Incremental
-Search}を参照してください)。
+This face is used to highlight the current Isearch match (@pxref{Incremental
+Search}).
 @item query-replace
-このフェイスは、現在の問い合わせ置換(Query
-Replace)のマッチをハイライトするのに使われます(@ref{Replace}を参照してください)。
+This face is used to highlight the current Query Replace match
+(@pxref{Replace}).
 @item lazy-highlight
-このフェイスは、Isearchおよび問い合わせ置換で、カレントのマッチ(現在カーソルがあるマッチ)以外のマッチ(lazy
-matches)をハイライトするのに使われます。
+This face is used to highlight lazy matches for Isearch and Query Replace
+(matches other than the current one).
 @item region
-このフェイスは、アクティブなリージョンを表示するのに使われます(@ref{Mark}を参照してください)。EmacsをGTK+サポートつきでビルドした場合、カラーは現在のGTK+のテーマから提供されます。
+This face is used for displaying an active region (@pxref{Mark}).  When
+Emacs is built with GTK+ support, its colors are taken from the current GTK+
+theme.
 @item secondary-selection
-このフェイスは、Xのセカンダリー選択(secondary X selection)を表示するのに使われます(@ref{Secondary
-Selection}を参照してください)。
+This face is used for displaying a secondary X selection (@pxref{Secondary
+Selection}).
 @item trailing-whitespace
-このフェイスは、@code{show-trailing-whitespace}は非@code{nil}のとき、行末の余分なスペースやタブをハイライトするためのものです(@ref{Useless
-Whitespace}を参照してください)。
+The face for highlighting excess spaces and tabs at the end of a line when
+@code{show-trailing-whitespace} is non-@code{nil} (@pxref{Useless
+Whitespace}).
 @item escape-glyph
-このフェイスは、制御文字やエスケープシーケンスを表示するためのものです(@ref{Text Display}を参照してください)。
+The face for displaying control characters and escape sequences (@pxref{Text
+Display}).
 @item homoglyph
-このフェイスは、類似文字(表示しようとする文字と似ているが異なる文字)を表示するためのものです(@ref{Text Display}を参照)。 
+The face for displaying lookalike characters, i.e., characters that look
+like but are not the characters being represented (@pxref{Text Display}).
 @item nobreak-space
-このフェイスは、no-breakスペース文字を表示するためのものです(@ref{Text Display}を参照してください)。
+The face for displaying no-break space characters (@pxref{Text Display}).
 @item nobreak-hyphen
-このフェイスは、no-breakハイフン文字を表示するためのものです(@ref{Text Display}を参照してください)。
+The face for displaying no-break hyphen characters (@pxref{Text Display}).
 @end table
 
-  以下のフェイスは、Emacsフレームの一部の外見を制御します:
+  The following faces control the appearance of parts of the Emacs frame:
 
 @table @code
 @item mode-line
 @cindex @code{mode-line} face
-これはモードラインやヘッダーライン、およびツールキットのメニューを使っていない際のメニューバーに使用される基本フェイスです。デフォルトでは、グラフィカルなウィンドウではraised(浮き彫り)効果をだすため影つきで描画され、テキスト端末ではデフォルトのフェイスを反転して描画されます。
+This is the base face used for the mode lines, as well as header lines and
+for menu bars when toolkit menus are not used.  By default, it's drawn with
+shadows for a raised effect on graphical displays, and drawn as the inverse
+of the default face on text terminals.
 
-(モードラインに使用されている)@code{mode-line-active}と@code{mode-line-inactive}はこのフェイスから派生したフェイスです。
+The @code{mode-line-active} and @code{mode-line-inactive} faces (which are
+the ones used on the mode lines) inherit from this face.
 
 @item mode-line-active
 @cindex faces for mode lines
-@code{mode-line}と似ていますが、カレントで選択されているウィンドウのモードラインに使用されます。このフェイスは@code{mode-line}を継承するので、フェイスを変更するとすべてのウィンドウのモードラインが影響を受けます。
+Like @code{mode-line}, but used for the mode line of the currently selected
+window.  This face inherits from @code{mode-line}, so changes in that face
+affect mode lines in all windows.
 
 @item mode-line-inactive
 @cindex @code{mode-line-inactive} face
-@code{mode-line}と似ていますが、選択されていないウィンドウのモードラインに使われます(@code{mode-line-in-non-selected-windows}が非@code{nil}のとき)。このフェイスは@code{mode-line}を継承するので、フェイスを変更するとすべてのウィンドウのモードラインが影響を受けます。
+Like @code{mode-line}, but used for mode lines of the windows other than the
+selected one (if @code{mode-line-in-non-selected-windows} is
+non-@code{nil}).  This face inherits from @code{mode-line}, so changes in
+that face affect mode lines in all windows.
 
 @item mode-line-highlight
 @cindex @code{mode-line-highlight} face
-@code{highlight}と似ていますが、モードライン上でマウスセンシティブ(マウスに感応する)なテキスト範囲に使われます。通常このようなテキスト範囲は上にマウスポインターがくると、ツールチップ(@ref{Tooltips}を参照してください)をポップアップします。
+Like @code{highlight}, but used for mouse-sensitive portions of text on mode
+lines.  Such portions of text typically pop up tooltips (@pxref{Tooltips})
+when the mouse pointer hovers above them.
 
 @item mode-line-buffer-id
 @cindex @code{mode-line-buffer-id} face
-このフェイスは、モードライン上でバッファーを識別する部分に使われます。
+This face is used for buffer identification parts in the mode line.
 
 @item header-line
 @cindex @code{header-line} face
-@code{mode-line}と似ていますが、ウィンドウのヘッダーラインのためのものです。モードラインがウィンドウの一番下に表示されるように、ヘッダーラインはウィンドウの一番上に表示されます。ほとんどのウィンドウはヘッダーラインを持ちません。Infoモードのような特別なモードだけがヘッダーラインを持ちます。
+Similar to @code{mode-line} for a window's header line, which appears at the
+top of a window just as the mode line appears at the bottom.  Most windows
+do not have a header line---only some special modes, such Info mode, create
+one.
 
 @item header-line-highlight
 @cindex @code{header-line-highlight} face
-@code{highlight}や@code{mode-line-highlight}と似ていますが、ヘッダー行のマウスに感応する部分に使用されます。@code{header-line}フェイスは@code{highlight}とは無関係にカスタマイズされるかもしれないので、このフェイスが別に設けられています。 
+Similar to @code{highlight} and @code{mode-line-highlight}, but used for
+mouse-sensitive portions of text on header lines.  This is a separate face
+because the @code{header-line} face might be customized in a way that does
+not interact well with @code{highlight}.
 
 @item tab-line
 @cindex @code{tab-line} face
-@code{mode-line}と似ていますが、ウィンドウのタブラインのためのものです。タブラインはウィンドウのバッファーを表し、ウィンドウの上端に表示されます。@ref{Tab
-Line}を参照してください。
+Similar to @code{mode-line} for a window's tab line, which appears at the
+top of a window with tabs representing window buffers.  @xref{Tab Line}.
 
 @item vertical-border
 @cindex @code{vertical-border} face
-このフェイスは、テキスト端末上でウィンドウを縦に分割するとき使われます。
+This face is used for the vertical divider between windows on text
+terminals.
 
 @item minibuffer-prompt
 @cindex @code{minibuffer-prompt} face
 @vindex minibuffer-prompt-properties
-このフェイスは、ミニバッファーで入力を求めるプロンプトのテキストに使われます。デフォルトでは、Emacsは自動的にプロンプトのテキストの、テキストプロパティ(@ref{Text
-Properties,,, elisp, the Emacs Lisp Reference
-Manual}を参照してください)のリスト@code{minibuffer-prompt-properties}に、このフェイスを追加します(この変数はミニバッファーに入ったときに効果をあらわします)。
+This face is used for the prompt strings displayed in the minibuffer.  By
+default, Emacs automatically adds this face to the value of
+@code{minibuffer-prompt-properties}, which is a list of text properties
+(@pxref{Text Properties,,, elisp, the Emacs Lisp Reference Manual}) used to
+display the prompt text.  (This variable takes effect when you enter the
+minibuffer.)
 
 @item fringe
 @cindex @code{fringe} face
-グラフィカルなウィンドウでの、左右のフリンジのためのフェイスです(フリンジはEmacsフレームで、テキストエリアとウィンドウの左右の境界線の間にある、狭い領域です)。@ref{Fringes}を参照してください。
+The face for the fringes to the left and right of windows on graphic
+displays.  (The fringes are the narrow portions of the Emacs frame between
+the text area and the window's right and left borders.)  @xref{Fringes}.
 
 @item cursor
-このフェイスの@code{:background}属性は、テキストカーソルのカラーを指定します。@ref{Cursor
-Display}を参照してください。
+The @code{:background} attribute of this face specifies the color of the
+text cursor.  @xref{Cursor Display}.
 
 @item tooltip
-このフェイスは、ツールチップのテキストに使われます。デフォルトでは、EmacsがGTK+サポートつきでビルドされた場合、ツールチップはGTK+を通じて描画されるので、このフェイスは効果がありません。@ref{Tooltips}を参照してください。
+This face is used for tooltip text.  By default, if Emacs is built with GTK+
+support, tooltips are drawn via GTK+ and this face has no effect.
+@xref{Tooltips}.
 
 @item mouse
-このファイスは、マウスポインターのカラーを決定します。
+This face determines the color of the mouse pointer.
 @end table
 
-  以下のフェイスは、Emacsフレームの一部の外見を制御するときと同様ですが、テキスト端末またはEmacsをXサポートつき(ただしツールキットサポートなし)でビルドしたときだけ使われます(それ以外の場合、フレームの対応する各要素は広義なシステム設定により決定されます)。
+  The following faces likewise control the appearance of parts of the Emacs
+frame, but only on text terminals, or when Emacs is built on X with no
+toolkit support.  (For all other cases, the appearance of the respective
+frame elements is determined by system-wide settings.)
 
 @table @code
 @item scroll-bar
-このフェイスは、スクロールバーの外見を決定します。@ref{Scroll Bars}を参照してください。
+This face determines the visual appearance of the scroll bar.  @xref{Scroll
+Bars}.
 @item tool-bar
-このフェイスは、ツールバーのアイコンのカラーを決定します。@ref{Tool Bars}を参照してください。
+This face determines the color of tool bar icons.  @xref{Tool Bars}.
 @item tab-bar
-このフェイスはタブバーのアイコンのカラーを決定します。@ref{Tab Bars}を参照してください。
+This face determines the color of tab bar icons.  @xref{Tab Bars}.
 @item menu
 @cindex menu bar appearance
 @cindex @code{menu} face, no effect if customized
 @cindex customization of @code{menu} face
-このフェイスはEmacsメニューのカラーとフォントを決定します。@ref{Menu Bars}を参照してください。
+This face determines the colors and font of Emacs's menus.  @xref{Menu
+Bars}.
 @item tty-menu-enabled-face
 @cindex faces for text-mode menus
 @cindex TTY menu faces
-このフェイスは、テキスト端末で利用可能なメニューアイテムを表示するのに使われます。
+This face is used to display enabled menu items on text-mode terminals.
 @item tty-menu-disabled-face
-このフェイスは、テキスト端末で利用不可なメニューアイテムを表示するのに使われます。
+This face is used to display disabled menu items on text-mode terminals.
 @item tty-menu-selected-face
-このフェイスは、テキスト端末でマウスをクリックするか、@key{RET}を押せば選択できるメニューアイテムを表示するのに使われます。
+This face is used to display on text-mode terminals the menu item that would
+be selected if you click a mouse or press @key{RET}.
 @end table
 
 @node Icons
-@section アイコン
+@section Icons
 @cindex icons, on clickable buttons
 
-Emacsはクリックできるボタン(あるいは情報を提供するためのアイコン)を表示するときがあり、これらの表示のされかたをカスタマイズできます。
+Emacs sometimes displays clickable buttons (or other informative icons), and
+you can customize how these look on display.
 
 @vindex icon-preference
-ここでのカスタマイズにおける主要ポイントはユーザーオプション@code{icon-preference}です。これを使うことによって、アイコンにたいするあなたの全般的な嗜好を伝えることができるのです。このユーザーオプションはアイコンのタイプのリストで、サポートされている最初のアイコンタイプが使用されます。サポートされているタイプは:
+The main customization point here is the @code{icon-preference} user
+option.  By using this, you can tell Emacs your overall preferences for
+icons.  This is a list of icon types, and the first icon type that's
+supported will be used.  The supported types are:
 
 @table @code
 @item image
-アイコンにイメージを使用します。
+Use an image for the icon.
 
 @item emoji
-アイコンにカラフルな絵文字を使用します。
+Use a colorful emoji for the icon.
 
 @item symbol
-アイコンに白黒のシンボルを使用します。
+Use a monochrome symbol for the icon.
 
 @item text
-アイコンにシンプルなテキストを使用します。
+Use a simple text for the icon.
 @end table
 
-更に個々のアイコンを@kbd{M-x customize-icon}でカスタマイズでき、テーマによってアイコンの見栄えを大きく変えることができます。
+In addition, each individual icon can be customized with @kbd{M-x
+customize-icon}, and themes can further alter the looks of the icons.
 
-あるアイコンについての説明を手早く入手するには、@kbd{M-x describe-icon}コマンドを使用してください。
+To get a quick description of an icon, use the @kbd{M-x describe-icon}
+command.
 
 @node Text Scale
-@section テキストのスケール
+@section Text Scale
 
 @cindex adjust buffer font size
 @cindex font size of @code{default} face, increase or decrease
@@ -594,20 +883,34 @@ Emacsはクリックできるボタン(あるいは情報を提供するため�
 @kindex C-x C-0
 @kindex C-wheel-down
 @kindex C-wheel-up
-  カレントバッファーの@code{default}フェイスのフォントサイズを大きくするには、@kbd{C-x C-+}または@kbd{C-x
-C-=}、小さくするには@kbd{C-x C--}をタイプします。デフォルトのフォントサイズ(グローバル)に復元するには、@kbd{C-x
-C-0}とタイプします。これらのキーは、すべて同じコマンド@code{text-scale-adjust}にバインドされています。このコマンドは最後にタイプされたキーを判断してどの処理を行うかを判断、処理に応じてデフォルトフェイスの高さを変更してフォントサイズを調節します。
+  To increase the font size of the @code{default} face in the current buffer,
+type @kbd{C-x C-+} or @kbd{C-x C-=}.  To decrease it, type @kbd{C-x C--}.
+To restore the default (global) font size, type @kbd{C-x C-0}.  These keys
+are all bound to the same command, @code{text-scale-adjust}, which looks at
+the last key typed to determine which action to take and adjusts the font
+size accordingly by changing the height of the default face.
 
-  多くのフェイスの@code{:height}属性には明確なセッティングがされておらず、高さを@code{default}フェイスから継承するものがほとんどです。したがって上記のコマンドによってこれらのフェイスもスケーリングされます。
+  Most faces don't have an explicit setting of the @code{:height} attribute,
+and thus inherit the height from the @code{default} face.  Those faces are
+also scaled by the above commands.
 
-  @code{default}以外で@code{:height}属性に明確なセッティングをもつフェイスでは、これらのフォントサイズの影響を受けません。ただし@code{header-line}フェイスは例外です。たとえ@code{:height}属性に明確なセッティングがあっても、このフェイはスケーリングされます。
+  Faces other than @code{default} that have an explicit setting of the
+@code{:height} attribute are not affected by these font size changes.  The
+@code{header-line} face is an exception: it will be scaled even if it has an
+explicit setting of the @code{:height} attribute.
 
-  同様にマウスポインターがバッファーテキスト上にある際に@kbd{Ctrl}修飾キーを押下してマウスホイールをスクロールすると、スクロール方向に応じて影響を受けるフェイスのフォントサイズを増加あるいは減少します。
+  Similarly, scrolling the mouse wheel with the @kbd{Ctrl} modifier pressed,
+when the mouse pointer is above buffer text, will increase or decrease the
+font size of the affected faces, depending on the direction of the
+scrolling.
 
-  これらのコマンドの最後のキーは、@kbd{C-x}を前置せず修飾キーなしで繰り返すことができます。たとえば@w{@kbd{C-x C-= C-=
-C-=}}と@w{@kbd{C-x C-= =
-=}}は、どちらもフェイスの大きさを3段階に大きくします。各ステップで大きくなる倍率は1.2です。この倍率を変更するには、変数@code{text-scale-mode-step}をカスタマイズします。@code{text-scale-adjust}コマンドに数引数0を指定すると、@kbd{C-x
-C-0}とタイプしたのと同様に、デフォルトの大きさに復元します。
+  The final key of these commands may be repeated without the leading
+@kbd{C-x} and without the modifiers.  For instance, @w{@kbd{C-x C-= C-=
+C-=}} and @w{@kbd{C-x C-= = =}} increase the face height by three steps.
+Each step scales the text height by a factor of 1.2; to change this factor,
+customize the variable @code{text-scale-mode-step}.  A numeric argument of 0
+to the @code{text-scale-adjust} command restores the default height, the
+same as typing @kbd{C-x C-0}.
 
 @cindex adjust global font size
 @findex global-text-scale-adjust
@@ -618,112 +921,151 @@ C-0}とタイプしたのと同様に、デフォルトの大きさに復元し�
 @kindex C-x C-M-0
 @kindex C-M-wheel-down
 @kindex C-M-wheel-up
-  同様にフォントサイズをグローバルに変更するには@kbd{C-x C-M-+}、@kbd{C-x C-M-=}、@kbd{C-x
-C-M--}、@kbd{C-x
-C-M-0}、あるいは修飾キーの@kbd{Ctrl}と@kbd{Meta}を両方押したままマウスホイールをスクロールしてください。フォントのサイズがグローバルに変更された際のフレーズのリサイズを有効にするには、変数@code{global-text-scale-adjust-resizes-frames}をカスタマイズしてください(@ref{Easy
-Customization}を参照)。
+  Similarly, to change the sizes of the fonts globally, type @kbd{C-x C-M-+},
+@kbd{C-x C-M-=}, @kbd{C-x C-M--} or @kbd{C-x C-M-0}, or scroll the mouse
+wheel with both the @kbd{Ctrl} and @kbd{Meta} modifiers pressed.  To enable
+frame resizing when the font size is changed globally, customize the
+variable @code{global-text-scale-adjust-resizes-frames} (@pxref{Easy
+Customization}).
 
 @cindex increase buffer font size
 @findex text-scale-increase
 @cindex decrease buffer font size
 @findex text-scale-decrease
-  コマンド@code{text-scale-increase}と@code{text-scale-decrease}は、@kbd{C-x
-C-+}や@kbd{C-x
-C--}と同じようにカレントバッファーのフォントサイズを増加または減少させます。キーをバインドする場合には、これらのコマンドのほうが@code{text-scale-adjust}より便利でしょう。
+  The commands @code{text-scale-increase} and @code{text-scale-decrease}
+increase or decrease the size of the font in the current buffer, just like
+@kbd{C-x C-+} and @kbd{C-x C--} respectively.  You may find it convenient to
+bind to these commands, rather than @code{text-scale-adjust}.
 
 @cindex set buffer font size
 @findex text-scale-set
-  コマンド@code{text-scale-set}は、数引数でカレントバッファーのフォントサイズを絶対倍率で指定します。
+  The command @code{text-scale-set} scales the size of the font in the current
+buffer to an absolute level specified by its prefix argument.
 
 @findex text-scale-mode
-  上記のコマンドは、現在のフォント倍率が1以外のときは、自動的にマイナーモード@code{text-scale-mode}を有効にし、そうでない場合は無効にします。
+  The above commands automatically enable the minor mode
+@code{text-scale-mode} if the current font scaling is other than 1, and
+disable it otherwise.
 
 @cindex pinch to scale
 @findex text-scale-pinch
-  コマンド@code{text-scale-pinch}はタッチパッドに2本の指を置いて、互いに近づけたり離したりというピンチジェスチャーを行った際に、指の間の距離にもとづいてテキストのサイズを拡大あるいは縮小します。このコマンドはサポートされているハードウェアをもつ一部のシステムでのみ利用できます。
+  The command @code{text-scale-pinch} increases or decreases the text scale
+based on the distance between fingers on a touchpad when a pinch gesture is
+performed by placing two fingers on a touchpad and moving them towards or
+apart from each other.  This is only available on some systems with
+supported hardware.
 
 @findex mouse-wheel-text-scale
-  コマンド@code{mouse-wheel-text-scale}でもテキストのスケールの変更ができます。このコマンドは、通常は@key{Ctrl}を押したままマウスホイールを動かすことにより実行されます。テキストのスケーリングはホイールを下方に動かすと拡大、上方に動かすと縮小されます。
+  The command @code{mouse-wheel-text-scale} also changes the text scale.
+Normally, it is run when you press @key{Ctrl} while moving the mouse wheel.
+The text scale is increased when the wheel is moved downwards, and it is
+decreased when the wheel is moved upwards.
 
 @node Font Lock
-@section Font Lockモード
+@section Font Lock mode
 @cindex Font Lock mode
 @cindex mode, Font Lock
 @cindex syntax highlighting and coloring
 
-  Font
-Lockモードはマイナーモードで、常に特定のバッファーにローカルで、バッファーのテキストにフェイスを割り当てます(または@dfn{フォント表示化(fontifies)します})。各バッファーのメジャーモードは、Font
-Lockモードにどのテキストをフォント表示可するか指示します。たとえばプログラム言語のモードは、コメントや文字列、関数名のような、構文に関連する構成をフォント表示化します。
+  Font Lock mode is a minor mode, always local to a particular buffer, which
+assigns faces to (or @dfn{fontifies}) the text in the buffer.  Each buffer's
+major mode tells Font Lock mode which text to fontify; for instance,
+programming language modes fontify syntactically relevant constructs like
+comments, strings, and function names.
 
 @findex font-lock-mode
-  Font
-Lockモードは、それをサポートするメジャーモードでは、デフォルトで有効になっています。カレントバッファーでこれを切り替えるには、@kbd{M-x
-font-lock-mode}とタイプします。正の数引数は無条件にFont Lockモードを有効にし、負または0の数引数を指定すると無効になります。
+  Font Lock mode is enabled by default in major modes that support it.  To
+toggle it in the current buffer, type @kbd{M-x font-lock-mode}.  A positive
+numeric argument unconditionally enables Font Lock mode, and a negative or
+zero argument disables it.
 
 @findex global-font-lock-mode
 @vindex global-font-lock-mode
-  @kbd{M-x global-font-lock-mode}とタイプすると、すべてのバッファーでFont
-Lockモードを切り替えます。このセッティングを将来のEmacsセッションに引き継ぐには、変数@code{global-font-lock-mode}をカスタマイズ(@ref{Easy
-Customization}を参照してください)するか、以下の行をinitファイルに追加します。
+  Type @kbd{M-x global-font-lock-mode} to toggle Font Lock mode in all
+buffers.  To impose this setting for future Emacs sessions, customize the
+variable @code{global-font-lock-mode} (@pxref{Easy Customization}), or add
+the following line to your init file:
 
 @example
 (global-font-lock-mode 0)
 @end example
 
 @noindent
-Global Font Lockモードを無効にしていたとしても、モードフック(mode
-hooks)に関数を追加することにより、特定のメジャーモードでFont Lockモードを有効にできます。たとえばCファイルの編集でFont
-Lockモードを有効にするには、以下のように記述します:
+If you have disabled Global Font Lock mode, you can still enable Font Lock
+for specific major modes by adding the function @code{font-lock-mode} to the
+mode hooks (@pxref{Hooks}).  For example, to enable Font Lock mode for
+editing C files, you can do this:
 
 @example
 (add-hook 'c-mode-hook 'font-lock-mode)
 @end example
 
-  Font
-Lockモードは、@code{font-lock-string-face}、@code{font-lock-comment-face}のような、いくつかの特別な名前のフェイスを使って処理を行います。これらすべてを簡単に探す方法には、@kbd{M-x
-customize-group @key{RET} font-lock-faces
-@key{RET}}を使います。それからカスタマイズバッファーでそれらのフェイスの外見をカスタマイズできます。@ref{Face
-Customization}を参照してください。
+  Font Lock mode uses several specifically named faces to do its job,
+including @code{font-lock-string-face}, @code{font-lock-comment-face}, and
+others.  The easiest way to find them all is to use @kbd{M-x customize-group
+@key{RET} font-lock-faces @key{RET}}.  You can then use that customization
+buffer to customize the appearance of these faces.  @xref{Face
+Customization}.
 
 @cindex just-in-time (JIT) font-lock
 @cindex background syntax highlighting
-  非常に大きいバッファーのフォント表示化には、長い時間を要することもあります。ファイルをvisitしたとき大きな遅延を避けるには、Emacsが最初はバッファーの表示された部分だけをフォント表示化するようにします。バッファーをスクロールすると、新たに表示される部分がフォント表示化されます。このタイプのFont
-Lockは、@dfn{Just-In-Time}(または@dfn{JIT})
-Lockと呼ばれます。カスタマイズグループ@samp{jit-lock}の値をカスタマイズすることにより、アイドル状態のときにフォント表示可を行うことも含めて、JIT
-Lockがどのように振る舞うか制御できます。@ref{Specific Customization}を参照してください。
+  Fontifying very large buffers can take a long time.  To avoid large delays
+when a file is visited, Emacs initially fontifies only the visible portion
+of a buffer.  As you scroll through the buffer, each portion that becomes
+visible is fontified as soon as it is displayed; this type of Font Lock is
+called @dfn{Just-In-Time} (or @dfn{JIT})  Lock.  You can control how JIT
+Lock behaves, including telling it to perform fontification while idle, by
+customizing variables in the customization group @samp{jit-lock}.
+@xref{Specific Customization}.
 
-  バッファーのどの部分のテキストをフォント表示するか、そしてどのフェイスを使用するかをメジャーモードが判断するために用いるのは、異なる複数のテキスト分析手法にもとづく情報かもしれません:
+  The information that major modes use for determining which parts of buffer
+text to fontify and what faces to use can be based on several different ways
+of analyzing the text:
 
 @itemize @bullet
 @item
-正規表現によるキーワードやその他テキストパターンの検索(@ref{Regexp Search,, Regular Expression
-Search}を参照)。
+Search for keywords and other textual patterns based on regular expressions
+(@pxref{Regexp Search,, Regular Expression Search}).
 
 @item
-組み込み構文テーブルにもとづき構文的に異なる部分をテキストから検索(@ref{Syntax Tables,,, elisp, The Emacs
-Lisp Reference Manual}を参照)。
+Find syntactically distinct parts of text based on built-in syntax tables
+(@pxref{Syntax Tables,,, elisp, The Emacs Lisp Reference Manual}).
 
 @item
-tree-sitterライブラリーのような特殊用途用ライブラリーや外部プログラムを通じて、本格的パーサーが生成した構文木を使用する(@ref{Parsing
-Program Source,,, elisp, The Emacs Lisp Reference Manual}を参照)。
+Use syntax tree produced by a full-blown parser, via a special-purpose
+library, such as the tree-sitter library (@pxref{Parsing Program Source,,,
+elisp, The Emacs Lisp Reference Manual}), or an external program.
 @end itemize
 
 @menu
-* Traditional Font Lock::    正規表現や構文テーブルにもとづくフォントロック。
-* Parser-based Font Lock::   外部パーサーにもとづくフォントロック。
+* Traditional Font Lock::    Font Lock based on regexps and syntax tables.
+* Parser-based Font Lock::   Font Lock based on external parser.
 @end menu
 
 @node Traditional Font Lock
-@subsection 伝統的なFont Lock
+@subsection Traditional Font Lock
 @cindex traditional font-lock
 
-  フォントロック情報を提供するための``伝統的''な手法は正規表現検索、およびEmacsに組み込まれた構文テーブルを用いた構文解析にもとづいています。このサブセクションでは、これら伝統的手法を用いるメジャーモードでのフォントロックの用法とカスタマイズについて説明します。
+  ``Traditional'' methods of providing font-lock information are based on
+regular-expression search and on syntactic analysis using syntax tables
+built into Emacs.  This subsection describes the use and customization of
+font-lock for major modes which use these traditional methods.
 
 @vindex font-lock-maximum-decoration
-  変数@code{font-lock-maximum-decoration}をカスタマイズして、この機能をサポートするメジャーモードにたいして、Font
-Lockモードで適用されるフォント表示化の量を制御できます。この変数の値には数字を指定します(1は最小限のフォント表示化で、3という高いレベルのモードもあります)。@code{t}は``可能な限り高く''という意味です(デフォルト)。効果を得るには、そのファイルがvisitされる@emph{前}に@code{font-lock-maximum-decoration}をカスタマイズするべきです。この変数をカスタマイズする時点で、すでにそのファイルをバッファーでvisitしている場合は、そのバッファーをkillしてから、スタマイズ後に再度そのファイルをvisitしてください。
+  You can control the amount of fontification applied by Font Lock mode by
+customizing the variable @code{font-lock-maximum-decoration}, for major
+modes that support this feature.  The value of this variable should be a
+number (with 1 representing a minimal amount of fontification; some modes
+support levels as high as 3); or @code{t}, meaning ``as high as possible''
+(the default).  To be effective for a given file buffer, the customization
+of @code{font-lock-maximum-decoration} should be done @emph{before} the file
+is visited; if you already have the file visited in a buffer when you
+customize this variable, kill the buffer and visit the file again after the
+customization.
 
-特定のモードに異なる数字を指定することもできます。たとえばC/C++モードにはレベル1を指定して、他のモードにはデフォルトのレベルを適用するには、以下の値を使います
+You can also specify different numbers for particular major modes; for
+example, to use level 1 for C/C++ modes, and the default level otherwise,
+use the value
 
 @example
 '((c-mode . 1) (c++-mode . 1)))
@@ -732,12 +1074,21 @@ Lockモードで適用されるフォント表示化の量を制御できます�
 @cindex incorrect fontification
 @cindex parenthesis in column zero and fontification
 @cindex brace in column zero and fontification
-  コメントと文字列のフォント表示化(または``構文的''なフォント表示化)は、バッファーのテキストの構文構造の解析に依存します。速度向上のため、Lispモードを含めたいくつかのモードでは、特別な慣習に依存しています。たとえば一番左の列の開きカッコ(open-parenthesis)または開き大カッコ(open-brace)は常にdefunの開始であり、すなわち常に文字列またはコメントの外部にあるとみなす、というように解析します。したがって文字列やコメントの中で、一番左の列に開きカッコや開き大カッコを記述するのは避けるべきです。詳細については、@ref{Left
-Margin Paren}を参照してください。
+  Comment and string fontification (or ``syntactic'' fontification)  relies on
+analysis of the syntactic structure of the buffer text.  For the sake of
+speed, some modes, including Lisp mode, rely on a special convention: an
+open-parenthesis or open-brace in the leftmost column always defines the
+beginning of a defun, and is thus always outside any string or comment.
+Therefore, you should avoid placing an open-parenthesis or open-brace in the
+leftmost column, if it is inside a string or comment.  @xref{Left Margin
+Paren}, for details.
 
 @findex font-lock-add-keywords
-  Font
-Lockは、ほとんどのモードで既存のパターンをハイライトしますが、追加のパターンをフォント表示化したいときもあるでしょう。特定のモードでハイライトするパターンを追加するには、関数@code{font-lock-add-keywords}を使うことができます。たとえばCコメント中の@samp{FIXME:}という単語をハイライトするには、以下を使います:
+  Font Lock highlighting patterns already exist for most modes, but you may
+want to fontify additional patterns.  You can use the function
+@code{font-lock-add-keywords}, to add your own highlighting patterns for a
+particular mode.  For example, to highlight @samp{FIXME:} words in C
+comments, use this:
 
 @example
 (add-hook 'c-mode-hook
@@ -750,68 +1101,92 @@ Lockは、ほとんどのモードで既存のパターンをハイライトし�
 @findex font-lock-remove-keywords
 @vindex font-lock-ignore
 @noindent
-font-lockのハイライトパターンからキーワードを削除するには、関数@code{font-lock-remove-keywords}を使います。@ref{Search-based
-Fontification,,, elisp, The Emacs Lisp Reference
-Manual}を参照してください。かわりに@code{font-lock-ignore}オプションをカスタマイズすれば、いくつかのキーワードによって選択的にハイライトを無効にすることもできます。@ref{Customizing
-Keywords,,, elisp, The Emacs Lisp Reference Manual}を参照してください。
+To remove keywords from the font-lock highlighting patterns, use the
+function @code{font-lock-remove-keywords}.  @xref{Search-based
+Fontification,,, elisp, The Emacs Lisp Reference Manual}.  Alternatively,
+you can selectively disable highlighting due to some keywords by customizing
+the @code{font-lock-ignore} option, @pxref{Customizing Keywords,,, elisp,
+The Emacs Lisp Reference Manual}.
 
 @node Parser-based Font Lock
-@subsection パーサーベースのFont Lock
+@subsection Parser-based Font Lock
 @cindex font-lock via tree-sitter
 @cindex parser-based font-lock
-  Emacsをtree-sitterライブラリーとともにビルドした場合には、フォント表示化に際してそのライブラリーがバッファーのテキストをパースした結果を使うことができます。tree-sitterライブラリーはサポートしているプログラミング言語やその他のフォーマットされたテキストにたいして本格的なパーサーを提供するので、通常は前のサブセクションで説明した``伝統的''な手法より高速かつ正確です。tree-sitterライブラリーを利用するメジャーモードには@code{@var{foo}-ts-mode}という名前がつけられています(@samp{-ts-}の部分がそのライブラリーを使用することを示す)。このサブセクションでは、tree-sitterライブラリーにもとづくFont
-Lockサポートについて説明します。
+  If your Emacs was built with the tree-sitter library, it can use the results
+of parsing the buffer text by that library for the purposes of
+fontification.  This is usually faster and more accurate than the
+``traditional'' methods described in the previous subsection, since the
+tree-sitter library provides full-blown parsers for programming languages
+and other kinds of formatted text which it supports.  Major modes which
+utilize the tree-sitter library are named @code{@var{foo}-ts-mode}, with the
+@samp{-ts-} part indicating the use of the library.  This subsection
+documents the Font Lock support based on the tree-sitter library.
 
 @vindex treesit-font-lock-level
-  変数@code{treesit-font-lock-level}をカスタマイズして、tree-sitterにもとづくメジャーモードのFont
-Lockモードに適用するフォント表示化の量を制御できます。変数の値は1から4の数値です:
+  You can control the amount of fontification applied by Font Lock mode of
+major modes based on tree-sitter by customizing the variable
+@code{treesit-font-lock-level}.  Its value is a number between 1 and 4:
 
 @table @asis
 @item Level 1
-このレベルでは、通常はコメントおよび関数定義の関数名だけをフォント表示します。
+This level usually fontifies only comments and function names in function
+definitions.
 @item Level 2
-このレベルではキーワード、文字列、データタイプへのフォント表示化が追加されます。
+This level adds fontification of keywords, strings, and data types.
 @item Level 3
-デフォルトのレベルです。割り当て、数値等のフォント表示化が追加されます。
+This is the default level; it adds fontification of assignments, numbers,
+etc.
 @item Level 4
-このレベルでは演算子、区切り文字、カッコ、その他の句読点文字、関数呼び出し内の関数名、プロパティ参照、変数などフォント表示化が可能なすべてが追加されます。
+This level adds everything else that can be fontified: operators,
+delimiters, brackets, other punctuation, function names in function calls,
+property look ups, variables, etc.
 @end table
 
 @vindex treesit-font-lock-feature-list
 @noindent
-上記で示した構文的カテゴリーそれぞれが正確には何によって構成するかはメジャーモード、およびそのメジャーモードの言語にたいしてtree-sitterが使用するパーサーグラマー(parser
-grammar:
-解析文法)に依存します。とはいうものの、このカテゴリーは一般的にはそのメジャーモードによってサポートされるプログラミング言語やファイルフォーマットの規約にしたがいます。変数@code{treesit-font-lock-feature-list}のバッファーローカル値には、tree-sitterベースのメジャーモードがサポートしているフォント表示化機能が保持されています。このリストの要素は、その要素が対応するフォント表示化レベルが提供する機能を示すリストです(訳注:
-GNU Emacsのソースに含まれるadmin/notes/tree-sitter/starter-guideに値の例があるので参考にしてください)。
+What exactly constitutes each of the syntactical categories mentioned above
+depends on the major mode and the parser grammar used by tree-sitter for the
+major-mode's language.  However, in general the categories follow the
+conventions of the programming language or the file format supported by the
+major mode.  The buffer-local value of the variable
+@code{treesit-font-lock-feature-list} holds the fontification features
+supported by a tree-sitter based major mode, where each sub-list shows the
+features provided by the corresponding fontification level.
 
-  @w{@kbd{M-x customize-variable}} (@ref{Specific
-Customization}を参照)を通じて@code{treesit-font-lock-level}の値を変更すれば既存のすべてのバッファー、および同一セッションにおいて今後visitするすべてのファイルに即座に効果が表れます。
+  Once you change the value of @code{treesit-font-lock-level} via @w{@kbd{M-x
+customize-variable}} (@pxref{Specific Customization}), it takes effect
+immediately in all the existing buffers and for files you visit in the
+future in the same session.
 
 
 @node Highlight Interactively
-@section インタラクティブなハイライト
+@section Interactive Highlighting
 @cindex highlighting by matching
 @cindex interactive highlighting
 @cindex Highlight Changes mode
 
 @findex highlight-changes-mode
-Highlight
-Changesモードは、最近変更されたバッファー部分のテキストに、異なるフェイスを与えることにより@dfn{ハイライト}するマイナーモードです。Highlight
-Changesモードを有効または無効にするには、@kbd{M-x highlight-changes-mode}を使います。
+Highlight Changes mode is a minor mode that @dfn{highlights} the parts of
+the buffer that were changed most recently, by giving that text a different
+face.  To enable or disable Highlight Changes mode, use @kbd{M-x
+highlight-changes-mode}.
 
 @cindex Hi Lock mode
 @findex hi-lock-mode
-  Hi
-Lockモードは、指定した正規表現にマッチするテキストをハイライトする、マイナーモードです。たとえば、プログラムのソースファイルで、特定の変数へのすべての参照をハイライトしたり、何らかのプログラムの大量の出力の一部をハイライトしたり、記事中の特定の名前をハイライトするために使用できます。Hi
-Lockモードを有効または無効にするには、コマンド@kbd{M-x hi-lock-mode}を使います。すべてのバッファーでHi
-Lockモードを有効にするには、@kbd{M-x
-global-hi-lock-mode}を使うか、@file{.emacs}ファイルに@code{(global-hi-lock-mode
-1)}と記述してください。
+  Hi Lock mode is a minor mode that highlights text that matches regular
+expressions you specify.  For example, you can use it to highlight all the
+references to a certain variable in a program source file, highlight certain
+parts in a voluminous output of some program, or highlight certain names in
+an article.  To enable or disable Hi Lock mode, use the command @kbd{M-x
+hi-lock-mode}.  To enable Hi Lock mode for all buffers, use @kbd{M-x
+global-hi-lock-mode} or place @code{(global-hi-lock-mode 1)} in your
+@file{.emacs} file.
 
-  Hi LockモードはFont Lockモード(@ref{Font
-Lock}を参照してください)と同じように動作しますが、ハイライトするパターンを明示的に正規表現で指定します。これらは以下のコマンドで制御できます(@kbd{C-x
-w}で始まるキーバインドは、@kbd{M-s
-h}で始まるグローバルなバインドが優先されるため推奨されておらず、将来のEmacsのバージョンで廃止されるでしょう)。
+  Hi Lock mode works like Font Lock mode (@pxref{Font Lock}), except that you
+specify explicitly the regular expressions to highlight.  You can control
+them with the following commands.  (The key bindings below that begin with
+@kbd{C-x w} are deprecated in favor of the global @kbd{M-s h} bindings, and
+will be removed in some future Emacs version.)
 
 @table @kbd
 @item M-s h r @var{regexp} @key{RET} @var{face} @key{RET}
@@ -819,22 +1194,37 @@ h}で始まるグローバルなバインドが優先されるため推奨され
 @kindex M-s h r
 @kindex C-x w h
 @findex highlight-regexp
-@var{regexp}にマッチするテキストを、フェイス@var{face}を使ってハイライトします(@code{highlight-regexp})。ハイライトはバッファーがロードされている限り残ります。たとえば単語``whim''をデフォルトのフェイス(黄色いバックグラウンドカラー)でハイライトするには、@kbd{M-s
-h r whim @key{RET} @key{RET}}とタイプします。ハイライトには任意のフェイスを使うことができますが、Hi
-Lockモードはモード自身でいくつかのフェイスを提供しており、それらはデフォルト値のリストに事前ロードされています。フェイスの入力プロンプトで@kbd{M-n}と@kbd{M-p}を使うことにより、それらを巡回することができます。プレフィクス数引数は対応する部分式にハイライトを制限します。
+Highlight text that matches @var{regexp} using face @var{face}
+(@code{highlight-regexp}).  The highlighting will remain as long as the
+buffer is loaded.  For example, to highlight all occurrences of the word
+``whim'' using the default face (a yellow background), type @kbd{M-s h r
+whim @key{RET} @key{RET}}.  Any face can be used for highlighting, Hi Lock
+provides several of its own and these are pre-loaded into a list of default
+values.  While being prompted for a face use @kbd{M-n} and @kbd{M-p} to
+cycle through them.  A prefix numeric argument limits the highlighting to
+the corresponding subexpression.
 
 @vindex hi-lock-auto-select-face
-オプション@code{hi-lock-auto-select-face}に非@code{nil}値をセットすることにより、このコマンド(およびその他のフェイスを読みとるHi
-Lockコマンド)は、入力を求めることなく、デフォルト値のリストから次のフェイスを自動的に選択します。
+Setting the option @code{hi-lock-auto-select-face} to a non-@code{nil} value
+causes this command (and other Hi Lock commands that read faces)  to
+automatically choose the next face from the default list without prompting.
 
-このコマンドを複数回使用して、さまざまな正規表現を指定し、それぞれを異なる方法でハイライトできます。
+You can use this command multiple times, specifying various regular
+expressions to highlight in different ways.
 
 @item M-s h u @var{regexp} @key{RET}
 @itemx C-x w r @var{regexp} @key{RET}
 @kindex M-s h u
 @kindex C-x w r
 @findex unhighlight-regexp
-@var{regexp}のハイライトを解除します(@code{unhighlight-regexp})。メニューから呼び出した場合、ハイライト解除する正規表現をリストから選択します。キーボードから呼び出した場合は、ミニバッファーを使います。一番最近追加された正規表現を表示し、@kbd{M-n}を使って次に古い正規表現、@kbd{M-p}で次に新しい正規表現を表示できます(手入力もでき、その場合は補完機能つきです)。ハイライト解除したい正規表現がミニバッファーに表示されたら、@kbd{@key{RET}}を押してミニバッファーを抜けだし、ハイライトを解除できます。
+Unhighlight @var{regexp} (@code{unhighlight-regexp}).  If you invoke this
+from the menu, you select the expression to unhighlight from a list.  If you
+invoke this from the keyboard, you use the minibuffer.  It will show the
+most recently added regular expression; use @kbd{M-n} to show the next older
+expression and @kbd{M-p} to select the next newer expression.  (You can also
+type the expression by hand, with completion.)  When the expression you want
+to unhighlight appears in the minibuffer, press @kbd{@key{RET}} to exit the
+minibuffer and unhighlight it.
 
 @item M-s h l @var{regexp} @key{RET} @var{face} @key{RET}
 @itemx C-x w l @var{regexp} @key{RET} @var{face} @key{RET}
@@ -843,7 +1233,8 @@ Lockコマンド)は、入力を求めることなく、デフォルト値のリ
 @findex highlight-lines-matching-regexp
 @cindex lines, highlighting
 @cindex highlighting lines of text
-@var{regexp}とのマッチを含む行全体を、フェイス@var{face}を使ってハイライトします(@code{highlight-lines-matching-regexp})。
+Highlight entire lines containing a match for @var{regexp}, using face
+@var{face} (@code{highlight-lines-matching-regexp}).
 
 @item M-s h p @var{phrase} @key{RET} @var{face} @key{RET}
 @itemx C-x w p @var{phrase} @key{RET} @var{face} @key{RET}
@@ -852,7 +1243,10 @@ Lockコマンド)は、入力を求めることなく、デフォルト値のリ
 @findex highlight-phrase
 @cindex phrase, highlighting
 @cindex highlighting phrase
-@var{phrase}にマッチするフレーズを、フェイス@var{face}でハイライトします(@code{highlight-phrase})。@var{phrase}には正規表現を指定できますが、スペースは空白文字にマッチする正規表現に置き換えられます。また、先頭に小文字を使用することにより、大文字小文字を区別しなくなります。
+Highlight matches of @var{phrase}, using face @var{face}
+(@code{highlight-phrase}).  @var{phrase} can be any regexp, but spaces will
+be replaced by matches to whitespace and initial lower-case letters will
+become case insensitive.
 
 @item M-s h .
 @itemx C-x w .
@@ -861,266 +1255,413 @@ Lockコマンド)は、入力を求めることなく、デフォルト値のリ
 @findex highlight-symbol-at-point
 @cindex symbol, highlighting
 @cindex highlighting symbol at point
-ポイントの近くで見つかったシンボルを、次に利用可能なフェイスでハイライトします(@code{highlight-symbol-at-point})。
+Highlight the symbol found near point, using the next available face
+(@code{highlight-symbol-at-point}).
 
 @item M-s h w
 @itemx C-x w b
 @kindex M-s h w
 @kindex C-x w b
 @findex hi-lock-write-interactive-patterns
-現在ハイライトを行っている正規表現/フェイスのペアを、バッファーのポイント位置に挿入します。挿入はプログラムを変更してしまわないように、コメント文字列でコメント化されます(このキーバインドは@code{hi-lock-write-interactive-patterns}コマンドを実行します)。
+Insert all the current highlighting regexp/face pairs into the buffer at
+point, with comment delimiters to prevent them from changing your program.
+(This key binding runs the @code{hi-lock-write-interactive-patterns}
+command.)
 
-これらのパターンは、コメントからも逆抽出されます。それは、コメントに記述されたテキストが適正で、@kbd{M-x
-hi-lock-find-patterns}を呼び出した、あるいはHi
-Lockモードが有効なときファイルをvisit(これは@code{hi-lock-find-patterns}を実行します)したときです。
+These patterns are extracted from the comments, if appropriate, if you
+invoke @kbd{M-x hi-lock-find-patterns}, or if you visit the file while Hi
+Lock mode is enabled (since that runs @code{hi-lock-find-patterns}).
 
 @item M-s h f
 @itemx C-x w i
 @kindex M-s h f
 @kindex C-x w i
 @findex hi-lock-find-patterns
-正規表現/フェイスのペアを、現在のバッファーのコメントから抽出します(@code{hi-lock-find-patterns})。これらのコマンドを使えば、@code{highlight-regexp}でパターンを対話的に入力、@code{hi-lock-write-interactive-patterns}でそれをファイルに保存、それらを編集(あるマッチのフェイスを別のフェイスにしたり)、そして最後にこのコマンド(@code{hi-lock-find-patterns})で編集済みのパターンを、Hi
-Lockのハイライトに適用することができます。
+Extract regexp/face pairs from comments in the current buffer
+(@code{hi-lock-find-patterns}).  Thus, you can enter patterns interactively
+with @code{highlight-regexp}, store them into the file with
+@code{hi-lock-write-interactive-patterns}, edit them (perhaps including
+different faces for different parenthesized parts of the match), and finally
+use this command (@code{hi-lock-find-patterns}) to have Hi Lock highlight
+the edited patterns.
 
 @vindex hi-lock-file-patterns-policy
-変数@code{hi-lock-file-patterns-policy}はファイルをvisitしたとき、Hi
-Lockモードがパターンを探して、それを自動的に抽出するべきかを制御します。値には@code{nil}(ハイライトしない)、@code{ask}(ユーザーに尋ねる)、または関数を指定します。関数の場合、@code{hi-lock-find-patterns}はパターンを引数としてその関数を呼び出します。関数が非@code{nil}を返した場合、パターンを使用します。デフォルトは@code{ask}です。直接@code{hi-lock-find-patterns}を呼び出した場合、この変数の値に関係なく、常にパターンはハイライトされることに注意してください。
+The variable @code{hi-lock-file-patterns-policy} controls whether Hi Lock
+mode should automatically extract and highlight patterns found in a file
+when it is visited.  Its value can be @code{nil} (never highlight),
+@code{ask} (query the user), or a function.  If it is a function,
+@code{hi-lock-find-patterns} calls it with the patterns as argument; if the
+function returns non-@code{nil}, the patterns are used.  The default is
+@code{ask}.  Note that patterns are always highlighted if you call
+@code{hi-lock-find-patterns} directly, regardless of the value of this
+variable.
 
 @vindex hi-lock-exclude-modes
-現在のメジャーモードのシンボルが、リスト@code{hi-lock-exclude-modes}のメンバーの場合、@code{hi-lock-find-patterns}は何もしません。
+Also, @code{hi-lock-find-patterns} does nothing if the current major mode's
+symbol is a member of the list @code{hi-lock-exclude-modes}.
 @end table
 
 @node Fringes
-@section ウィンドウのフリンジ
+@section Window Fringes
 @cindex fringes
 
 @findex set-fringe-style
 @findex fringe-mode
 @vindex fringe-mode @r{(variable)}
-  グラフィカルなディスプレイでは、通常Emacsの各ウィンドウの左右の端に、狭い@dfn{フリンジ(fringes:
-縁、へり)}があります。フリンジは、ウィンドウのテキストに関する情報を提供するシンボルの表示に使用されます。@kbd{M-x
-fringe-mode}とタイプしてフリンジ表示を切り替えたり、幅を変更できます。このコマンドは全フレームのフリンジに影響します。選択されたフレームのフリンジだけを変更するには、@kbd{M-x
-set-fringe-style}を使います。変数@code{fringe-mode}をカスタマイズして、フリンジへの変更を永続化できます。
+  On graphical displays, each Emacs window normally has narrow @dfn{fringes}
+on the left and right edges.  The fringes are used to display symbols that
+provide information about the text in the window.  You can type @kbd{M-x
+fringe-mode} to toggle display of the fringes or to modify their width.
+This command affects fringes in all frames; to modify fringes on the
+selected frame only, use @kbd{M-x set-fringe-style}.  You can make your
+changes to the fringes permanent by customizing the variable
+@code{fringe-mode}.
 
-  フリンジのもっとも一般的な使われかたは、継続行の表示です(@ref{Continuation
-Lines}を参照してください)。テキストの1行が複数のスクリーン行に分割されるとき、最初の行を除いた各行の左フリンジには曲矢印が表示され、その行の先頭が実際の行頭ではないことを示します。そして、最後の行を除いた各行の右フリンジにも曲矢印が表示され、その行の最後が実際の行末ではないことを示します。行の方向が右から左(@ref{Bidirectional
-Editing}を参照してください)の場合、フリンジの曲矢印の意味は逆になります。
+  The most common use of the fringes is to indicate a continuation line
+(@pxref{Continuation Lines}).  When one line of text is split into multiple
+screen lines, the left fringe shows a curving arrow for each screen line
+except the first, indicating that this is not the real beginning.  The right
+fringe shows a curving arrow for each screen line except the last,
+indicating that this is not the real end.  If the line's direction is
+right-to-left (@pxref{Bidirectional Editing}), the meanings of the curving
+arrows in the fringes are swapped.
 
-  行が切り詰められているとき(@ref{Line
-Truncation}を参照してください)は水平方向の直矢印を表示して、この行には水平スクロールしなければ見ることのできないテキストがあることを示します。矢印の上でマウスをクリックすれば、矢印の指す方向に水平スクロールします。
+  The fringes indicate line truncation (@pxref{Line Truncation}) with short
+horizontal arrows meaning there's more text on this line which is scrolled
+horizontally out of view.  Clicking the mouse on one of the arrows scrolls
+the display horizontally in the direction of the arrow.
 
-  フリンジはバッファーの境界(@ref{Displaying
-Boundaries}を参照)やウィンドウ下端付近の使用されていない行、デバッグ(@ref{Debuggers}を参照)しているプログラムが実行中であることを示すためにも使われます。
+  The fringes can also indicate other things, such as buffer boundaries
+(@pxref{Displaying Boundaries}), unused lines near the end of the window
+(@pxref{indicate-empty-lines}), and where a program you are debugging is
+executing (@pxref{Debuggers}).
 
 @vindex overflow-newline-into-fringe
-  現在の行がウィンドウの幅と正確に一致して、ポイントがその行の行末にある場合、フリンジにはカーソルが描画されます。これを無効にするには、変数@code{overflow-newline-into-fringe}を@code{nil}に変更します。これによりEmacsはウィンドウ幅と同じ長さの行にたいしても、継続または切り詰めを行います。
+  The fringe is also used for drawing the cursor, if the current line is
+exactly as wide as the window and point is at the end of the line.  To
+disable this, change the variable @code{overflow-newline-into-fringe} to
+@code{nil}; this causes Emacs to continue or truncate lines that are exactly
+as wide as the window.
 
-  表示されているウィンドウの片側、または両側のフリンジを削除するために@code{fringe-mode}をカスタマイズする場合、フリンジ上にに表示する機能は利用できなくなりますが、行の継続と切り詰めの標識は例外です。フリンジが利用できない場合、Emacsは特別なASCII文字(@ref{Continuation
-Lines}、および@ref{Line
-Truncation}を参照してください)により、行の継続と切り詰めを示すために、最左および最右の文字セルを使用します。行の継続と切り詰めの標識に使用される文字セルは、この目的のために予約されるので、各行に表示するテキストのための列数は減少します。バッファーのテキストには双方向のテキスト、およびleft-to-right(左から右)とright-to-left(右から左)の両方のパラグラフ(@ref{Bidirectional
-Editing}を参照してください)が含まれるかもしれないので、、片側のフリンジを削除しただけでは依然として2つの文字セルが予約されます。つまり行の継続と切り詰めの標識のために、ウィンドウの両側にそれぞれ1つの文字セルが予約されます。なぜなら、right-to-leftのパラグラフでは、これらの標識はウィンドウの反対側に表示されるからです。
+  If you customize @code{fringe-mode} to remove the fringes on one or both
+sides of the window display, the features that display on the fringe are not
+available.  Indicators of line continuation and truncation are an exception:
+when fringes are not available, Emacs uses the leftmost and rightmost
+character cells to indicate continuation and truncation with special ASCII
+characters, see @ref{Continuation Lines}, and @ref{Line Truncation}.  This
+reduces the width available for displaying text on each line, because the
+character cells used for truncation and continuation indicators are reserved
+for that purpose.  Since buffer text can include bidirectional text, and
+thus both left-to-right and right-to-left paragraphs (@pxref{Bidirectional
+Editing}), removing only one of the fringes still reserves two character
+cells, one on each side of the window, for truncation and continuation
+indicators, because these indicators are displayed on opposite sides of the
+window in right-to-left paragraphs.
 
 @node Displaying Boundaries
-@section バウンダリーの表示
+@section Displaying Boundaries
 
 @cindex mode, display-fill-column-indicator
 @findex display-fill-column-indicator-mode
 @findex global-display-fill-column-indicator-mode
-  Emacsに@code{fill-column}の位置(@ref{Fill
-Commands}を参照)を表示するインジケーターを追加できます。フィル列インジケーターは特に@code{prog-mode}とその派生モード(@ref{Major
-Modes}を参照)においてプログラムのソースコードのフォーマットにたいして特別な意味をもつ特定の列位置を示すために有用な機能です。これは等幅フォント(fixed-ｐpitch
-font)のすべての文字を想定した機能です。ここで等幅フォントとはすべての文字の幅が等しいフォントのことです(全角文字は例外かもしれない)。可変幅フォント(variable-pitch
-font)を使用バッファーでは、行が異なればフィル列インジケーターは不揃いに表示されるかもしれません。
+  Emacs can display an indication of the @code{fill-column} position
+(@pxref{Fill Commands}).  The fill-column indicator is a useful
+functionality especially in @code{prog-mode} and its descendants
+(@pxref{Major Modes}) to indicate the position of a specific column that has
+some special meaning for formatting the source code of a program.  This
+assumes the buffer uses a fixed-pitch font, where all the characters (with
+the possible exception of double-width characters) have the same width on
+display.  If the buffer uses variable-pitch fonts, the fill-column
+indicators on different lines might appear unaligned.
 
-  フィル列インジケーターの表示を有効にするには、インジケーターをローカルまたはグローバルに有効にする、@code{display-fill-column-indicator-mode}または@code{global-display-fill-column-indicator-mode}のマイナーモードを使用します。
+  To activate the fill-column indication display, use the minor modes
+@code{display-fill-@-column-indicator-mode} and
+@code{global-display-fill-column-indicator-mode}, which enable the indicator
+locally or globally, respectively.
 
-かわりにインジケーターの有効化とインジケートに使用する文字の制御に、@code{display-fill-column-indicator}と@code{display-fill-column-indicator-character}という2つのバッファーローカル変数セットできます。インジケーターを表示するためには、これらの変数がどちらも非@code{nil}でなければならないことに注意してください(マイナーモードをオンにすることによりこれらの変数がセットされる)。
+Alternatively, you can set the two buffer-local variables
+@code{display-fill-column-indicator} and
+@code{display-fill-column-indicator-character} to activate the indicator and
+control the character used for the indication.  Note that both variables
+must be non-@code{nil} for the indication to be displayed.  (Turning on the
+minor mode sets both these variables.)
 
-このモードをカスタマイズするために2つのバッファーローカル変数と1つのフェイスがあります:
+There are 2 buffer local variables and a face to customize this mode:
 
 @table @code
 @item display-fill-column-indicator-column
 @vindex display-fill-column-indicator-column
-インジケーターをセットするべき列数を指定します。列にたいする正の数値、あるいは変数@code{fill-column}の値の使用を意味する@code{t}を指定できます。
+Specifies the column number where the indicator should be set.  It can take
+positive numerical values for the column, or the special value @code{t},
+which means that the value of the variable @code{fill-column} will be used.
 
-それ以外の値ではインジケーターは無効になります。デフォルト値は@code{t}です。
+Any other value disables the indicator.  The default value is @code{t}.
 
 @item display-fill-column-indicator-character
 @vindex display-fill-column-indicator-character
-インジケーターに使用する文字を指定します。フォントがサポートすれば、Unicode文字を含む任意の文字を指定できます。値@code{nil}はインジケーターを無効にします。@code{display-fill-column-indicator-mode}や@code{global-display-fill-column-indicator-mode}でモードを有効にしたときは、値が非@code{nil}ならばこの変数が指定する文字が使用されます。それ以外ならEmacsは文字U+2502
-@sc{box drawings light vertical}、U+2502が表示できなければフォールバックとして@samp{|}を使用します。
+Specifies the character used for the indicator.  This character can be any
+valid character including Unicode ones if the font supports them.  The value
+@code{nil} disables the indicator.  When the mode is enabled through the
+functions @code{display-fill-column-indicator-mode} or
+@code{global-display-fill-column-indicator-mode}, they will use the
+character specified by this variable, if it is non-@code{nil}; otherwise
+Emacs will use the character U+2502 @sc{box drawings light vertical},
+falling back to @samp{|} if U+2502 cannot be displayed.
 
 @item fill-column-indicator
 @vindex fill-column-indicator
-インジケーターの表示に使用するフェイスを指定します。これはバックグラウンドカラーを除くデフォルト値をフェイス@code{shadow}から継承します。インジケーターのカラーを変更するために必要なのは、このフェイスのフォアグラウンドカラーのセットだけです。
+Specifies the face used to display the indicator.  It inherits its default
+values from the face @code{shadow}, but without background color.  To change
+the indicator color, you need only set the foreground color of this face.
 @end table
 
 @vindex indicate-buffer-boundaries
-  グラフィカルなディスプレイでは、Emacsはバッファーのバウンダリー(boundary:
-境界)を、フリンジに表示することもできます。この機能を有効にすると、最初の行と最後の行ではフリンジに、かぎカッコが表示されます。上矢印または下矢印の場合、それはウィンドウをその方向に、もっとスクロールできることを示します。
+  On graphical displays, Emacs can indicate the buffer boundaries in the
+fringes.  If you enable this feature, the first line and the last line are
+marked with angle images in the fringes.  This can be combined with up and
+down arrow images which say whether it is possible to scroll the window.
 
-  バッファーローカルな変数@code{indicate-buffer-boundaries}は、バッファーのバウンダリーととウィンドウのスクロールが、フリンジでどのように表示されるかを制御します。値が@code{left}(または@code{right})の場合、かぎカッコと矢印のビットマップは、左フリンジ(または右フリンジ)に表示されます。
+  The buffer-local variable @code{indicate-buffer-boundaries} controls how the
+buffer boundaries and window scrolling is indicated in the fringes.  If the
+value is @code{left} or @code{right}, both angle and arrow bitmaps are
+displayed in the left or right fringe, respectively.
 
-  値がalist(association list: 連想リスト。@ref{Association Lists,,, elisp, the Emacs
-Lisp Reference Manual}を参照してください)の場合、各要素の@code{(@var{indicator} .
-@var{position})}で、標識(indicator)の位置(position)を指定します。@var{indicator}には@code{top}、@code{bottom}、@code{up}、@code{down}、または@code{t}(指定されていない標識のデフォルト位置)を指定します。@var{position}には@code{left}、@code{right}、または@code{nil}(標識を表示しない)を指定します。
+  If value is an alist (@pxref{Association Lists,,, elisp, the Emacs Lisp
+Reference Manual}), each element @code{(@var{indicator} .  @var{position})}
+specifies the position of one of the indicators.  The @var{indicator} must
+be one of @code{top}, @code{bottom}, @code{up}, @code{down}, or @code{t}
+which specifies the default position for the indicators not present in the
+alist.  The @var{position} is one of @code{left}, @code{right}, or
+@code{nil} which specifies not to show this indicator.
 
-  たとえば@code{((top . left) (t
-.
-right))}は、最上行の左フリンジにかぎカッコを表示し、右フリンジには最下行のかぎカッコとスクロール矢印を表示します。左フリンジにかぎカッコだけを表示させる場合は、@code{((top
-.  left)  (bottom . left))}を使います。
+  For example, @code{((top . left) (t . right))} places the top angle bitmap
+in left fringe, the bottom angle bitmap in right fringe, and both arrow
+bitmaps in right fringe.  To show just the angle bitmaps in the left fringe,
+but no arrow bitmaps, use @code{((top .  left)  (bottom . left))}.
 
 @node Useless Whitespace
-@section 不要なスペース
+@section Useless Whitespace
 
 @cindex trailing whitespace
 @cindex whitespace, trailing
 @vindex show-trailing-whitespace
-  意識せずに不必要なスペースを行末に残してしまったり、バッファーの最後に空行を残してしまうことはよくあります。ほとんどの場合、そのような@dfn{行末の空白文字(trailing
-whitespace)}は何の影響も及ぼしませんが、厄介物になる場合もあります。
+  It is easy to leave unnecessary spaces at the end of a line, or empty lines
+at the end of a buffer, without realizing it.  In most cases, this
+@dfn{trailing whitespace} has no effect, but sometimes it can be a nuisance.
 
 @cindex @code{trailing-whitespace} face
-  バッファーローカルな変数@code{show-trailing-whitespace}を@code{t}にセットすることにより、行末の空白文字を可視化できます。これによりEmacsはフェイス@code{trailing-whitespace}で、行末の空白文字を表示します。
+  You can make trailing whitespace at the end of a line visible by setting the
+buffer-local variable @code{show-trailing-whitespace} to @code{t}.  Then
+Emacs displays trailing whitespace, using the face
+@code{trailing-whitespace}.
 
-  この機能は行末に空白文字を含む行の、行末にポイントがあるときは適用されません。厳密にいえば、これも行末の空白文字なのですが、それを特別に表示してしまうと、新しいテキストをタイプするとき面倒です。このような特別なケースでは、ポイントの位置に表示されるカーソルより、空白文字があることが自明だからです。
+  This feature does not apply when point is at the end of the line containing
+the whitespace.  Strictly speaking, that is trailing whitespace nonetheless,
+but displaying it specially in that case looks ugly while you are typing in
+new text.  In this special case, the location of point is enough to show you
+that the spaces are present.
 
 @findex delete-trailing-whitespace
 @vindex delete-trailing-lines
-  @kbd{M-x
-delete-trailing-whitespace}とタイプすると、すべての行末の空白文字を削除します。このコマンドは、バッファー内の各行の行末にあるすべての余分なスペースと、バッファーの最後にある空行を削除します。バッファー内の空行を削除しない場合は、変数@code{delete-trailing-lines}を@code{nil}に変更してください。リージョンがアクティブのときは、リージョン内の各行の行末の余分なスペースを削除します。
+  Type @kbd{M-x delete-trailing-whitespace} to delete all trailing
+whitespace.  This command deletes all extra spaces at the end of each line
+in the buffer, and all empty lines at the end of the buffer; to ignore the
+latter, change the variable @code{delete-trailing-lines} to @code{nil}.  If
+the region is active, the command instead deletes extra spaces at the end of
+each line in the region.
 
 @vindex indicate-empty-lines
 @cindex unused lines
 @cindex fringes, and unused line indication
 @anchor{indicate-empty-lines}
-  グラフィカルなディスプレイでは、Emacsはウィンドウの最後の使われていない行の左フリンジに小さなイメージを表示して、それを示すことができます。このイメージはバッファーのテキストが何も含まれていないスクリーン行に表示されるので、バッファーの最後にある空行は、このイメージが表示されないことで見分けることができます。この機能を有効にするにはバッファーローカルな変数@code{indicate-empty-lines}に非@code{nil}値をセットします。すべての新しいバッファーでこの機能を有効または無効にするには、この変数のデフォルト値をセットします(例
-@code{(setq-default indicate-empty-lines t)})
+  On graphical displays, Emacs can indicate unused lines at the end of the
+window with a small image in the left fringe (@pxref{Fringes}).  The image
+appears for screen lines that do not correspond to any buffer text, so blank
+lines at the end of the buffer stand out because they lack this image.  To
+enable this feature, set the buffer-local variable
+@code{indicate-empty-lines} to a non-@code{nil} value.  You can enable or
+disable this feature for all new buffers by setting the default value of
+this variable, e.g., @code{(setq-default indicate-empty-lines t)}.
 
 @cindex Whitespace mode
 @cindex mode, Whitespace
 @findex whitespace-mode
 @vindex whitespace-style
 @findex whitespace-toggle-options
-  Whitespaceモードはバッファーローカルなマイナーモードで、バッファー内にある多くの種類の空白文字を視覚化します。これは空白文字を特別なフェイスで描画するか、特別なグリフで表示することにより行われます。このモードを切り替えるには、@kbd{M-x
-whitespace-mode}とタイプします。視覚化される空白文字の種類は、リスト変数@code{whitespace-style}により決定されます。@w{@kbd{M-x
-whitespace-toggle-options}}とタイプして、カレントバッファーでこのリスト内の個々の要素のオンとオフを切り替えることができます。以下はリストに指定できる要素の一部です(完全なリストは変数のドキュメントを参照してください)。
+  Whitespace mode is a buffer-local minor mode that lets you visualize many
+kinds of whitespace in the buffer, by either drawing the whitespace
+characters with a special face or displaying them as special glyphs.  To
+toggle this mode, type @kbd{M-x whitespace-mode}.  The kinds of whitespace
+visualized are determined by the list variable @code{whitespace-style}.
+Individual elements in that list can be toggled on or off in the current
+buffer by typing @w{@kbd{M-x whitespace-toggle-options}}.  Here is a partial
+list of possible elements (see the variable's documentation for the full
+list):
 
 @table @code
 @item face
-特別なフェイスを使った視覚化をすべて有効にします。この要素には特別な意味があります。もしこれがリストに含まれていない場合、@code{space-mark}、@code{tab-mark}、@code{newline-mark}を除く他の視覚化は効果がなくなります。
+Enable all visualizations which use special faces.  This element has a
+special meaning: if it is absent from the list, none of the other
+visualizations take effect except @code{space-mark}, @code{tab-mark}, and
+@code{newline-mark}.
 
 @item trailing
-行末の空白文字をハイライトします。
+Highlight trailing whitespace.
 
 @item tabs
-タブ文字をハイライトします。
+Highlight tab characters.
 
 @item spaces
-スペースおよびnon-breaking space文字をハイライトします。
+Highlight space and non-breaking space characters.
 
 @item lines
 @vindex whitespace-line-column
-80列以上の行をハイライトします。列の上限を変更するには、変数@code{whitespace-line-column}をカスタマイズします。
+Highlight lines longer than 80 columns.  To change the column limit,
+customize the variable @code{whitespace-line-column}.
 
 @item newline
-改行をハイライトします。
+Highlight newlines.
 
 @item missing-newline-at-eof
-バッファーが改行で終端されていなければ最後の文字をハイライトします。
+Highlight the final character if the buffer doesn't end with a newline
+character.
 
 @item empty
-バッファーの先頭、および/または終端の空行をハイライトします。
+Highlight empty lines at the beginning and/or end of the buffer.
 
 @item big-indent
 @vindex whitespace-big-indent-regexp
-非常に深いインデントをハイライトします。デフォルトでは、少なくとも4個の連続するTAB文字と、32個の連続するスペースからなる、任意のシーケンスがハイライトされます。これを変更するには、正規表現@code{whitespace-big-indent-regexp}をカスタマイズしてください。
+Highlight too-deep indentation.  By default any sequence of at least 4
+consecutive tab characters or 32 consecutive space characters is
+highlighted.  To change that, customize the regular expression
+@code{whitespace-big-indent-regexp}.
 
 @item space-mark
-スペースとnon-breaking文字を特別なグリフで描画します。
+Draw space and non-breaking characters with a special glyph.
 
 @item tab-mark
-タブ文字を特別なグリフで描画します。
+Draw tab characters with a special glyph.
 
 @item newline-mark
-改行文字を特別なグリフで描画します。
+Draw newline characters with a special glyph.
 @end table
 
 @findex global-whitespace-toggle-options
 @findex global-whitespace-mode
-Global
-Whitespaceモードは、すべてのバッファーで空白文字を視覚化する、グローバルなマイナーモードです。この機能を個別に切り替えるには、@kbd{M-x
-global-whitespace-toggle-options}を使用してください。
+Global Whitespace mode is a global minor mode that lets you visualize
+whitespace in all buffers.  To toggle individual features, use @kbd{M-x
+global-whitespace-toggle-options}.
 
 @node Selective Display
-@section 選択的な表示
+@section Selective Display
 @cindex selective display
 @findex set-selective-display
 @kindex C-x $
 
-  Emacsには、与えられたレベルより多くインデントされた行を隠す機能があります。これをプログラムの概要を理解するのに使うことができます。
+  Emacs has the ability to hide lines indented more than a given number of
+columns.  You can use this to get an overview of a part of a program.
 
-  現在のバッファーの行を隠すには、数引数@var{n}を指定して@kbd{C-x $}
-(@code{set-selective-display})をタイプします。すると少なくとも@var{n}列のインデントをもつ行は、スクリーンに表示されなくなります。隠された行の存在を示すのは、表示されている行末に表示された3つのドット(@samp{@dots{}})だけで、これは1行以上の行が後に隠されていることを意味します。
+  To hide lines in the current buffer, type @kbd{C-x $}
+(@code{set-selective-display}) with a numeric argument @var{n}.  Then lines
+with at least @var{n} columns of indentation disappear from the screen.  The
+only indication of their presence is that three dots (@samp{@dots{}}) appear
+at the end of each visible line that is followed by one or more hidden ones.
 
-  コマンド@kbd{C-n}および@kbd{C-p}は、隠された行が存在しないかのように、隠された行をスキップして移動します。
+  The commands @kbd{C-n} and @kbd{C-p} move across the hidden lines as if they
+were not there.
 
-  隠された行は依然としてバッファーに存在し、ほとんどの編集コマンドはそれらを見ることができるので、隠されな行にポイントを移動することもありえます。これが起こるとカーソルは前の行の最後、つまり3つのドットの後ろに表示されます。ポイントが表示されている行の行末、つまり改行の前にある場合、カーソルは3つのドットの前に表示されます。
+  The hidden lines are still present in the buffer, and most editing commands
+see them as usual, so you may find point in the middle of the hidden text.
+When this happens, the cursor appears at the end of the previous line, after
+the three dots.  If point is at the end of the visible line, before the
+newline that ends it, the cursor appears before the three dots.
 
-  隠された行のすべてを再び表示するには、引数を指定せずに@kbd{C-x $}とタイプしてください。
+  To make all lines visible again, type @kbd{C-x $} with no argument.
 
 @vindex selective-display-ellipses
-  変数@code{selective-display-ellipses}に@code{nil}をセットすると、隠された行があることを示す3つのドットは表示されなくなり、隠された行があることを示す視覚的な表示はなくなります。変数がセットされると、それは自動的にローカルになります。
+  If you set the variable @code{selective-display-ellipses} to @code{nil}, the
+three dots do not appear at the end of a line that precedes hidden lines.
+Then there is no visible indication of the hidden lines.  This variable
+becomes local automatically when set.
 
-  バッファーのテキストの一部を隠す他の方法については、@ref{Outline Mode}を参照してください。
+  See also @ref{Outline Mode} for another way to hide part of the text in a
+buffer.
 
 @node Optional Mode Line
-@section モードラインのオプション
+@section Optional Mode Line Features
 
 @cindex buffer size display
 @cindex display of buffer size
 @findex size-indication-mode
-  バッファーのパーセント表示@var{pos}は、ウィンドウの上端がバッファーのどの場所にあるかを100分率で示します。@kbd{M-x
-size-indication-mode}とタイプしてSize
-Indicationモードをオンにすることにより、バッファーのサイズを追加で表示できます。サイズは以下のようにパーセント表示のすぐ後に表示されます:
+  The buffer percentage @var{pos} indicates the percentage of the buffer above
+the top of the window.  You can additionally display the size of the buffer
+by typing @kbd{M-x size-indication-mode} to turn on Size Indication mode.
+The size will be displayed immediately following the buffer percentage like
+this:
 
 @example
 @var{pos} of @var{size}
 @end example
 
 @noindent
-@var{size}は、バッファーの文字数を人間が理解しやすい形式(@samp{k}は10^3、@samp{M}は10^6、@samp{G}は10^9などの短縮形が使用されます)で表示します。
+Here @var{size} is the human readable representation of the number of
+characters in the buffer, which means that @samp{k} for 10^3, @samp{M} for
+10^6, @samp{G} for 10^9, etc., are used to abbreviate.
 
 @cindex line number display
 @cindex display of current line number
 @findex line-number-mode
-  Line Numberモードが有効なとき、ポイント位置の現在の行番号はモードラインに表示されます。@kbd{M-x
-line-number-mode}コマンドを使って、Line
-Numberモードのオンとオフを切り替えることができます(通常はオンです)。行番号はそれが何であるかを示す文字@samp{L}とともに、バッファーのパーセント表示@var{pos}の後ろに表示されます。
+  The current line number of point appears in the mode line when Line Number
+mode is enabled.  Use the command @kbd{M-x line-number-mode} to turn this
+mode on and off; normally it is on.  The line number appears after the
+buffer percentage @var{pos}, with the letter @samp{L} to indicate what it
+is.
 
 @cindex Column Number mode
 @cindex mode, Column Number
 @findex column-number-mode
-  同様に、@kbd{M-x column-number-mode}でColumn
-Numberモードをオンにすることにより、現在の列番号を表示できます。列番号は文字@samp{C}で示されます。しかし両方のモードが有効になっているときは、行番号と列番号は@samp{L}や@samp{C}ではなく、@samp{(561,2)}のようにカッコつきで表示されます。マイナーモードとこれらのコマンドの使い方については、@ref{Minor
-Modes}を参照してください。
+  Similarly, you can display the current column number by turning on Column
+Number mode with @kbd{M-x column-number-mode}.  The column number is
+indicated by the letter @samp{C}.  However, when both of these modes are
+enabled, the line and column numbers are displayed in parentheses, the line
+number first, rather than with @samp{L} and @samp{C}.  For example:
+@samp{(561,2)}.  @xref{Minor Modes}, for more information about minor modes
+and about how to use these commands.
 
 @vindex column-number-indicator-zero-based
-  Column
-Numberモードでは、列番号はそのウィンドウの左マージンより0からカウントされます。1からカウントした列番号を表示したい場合は、@code{column-number-indicator-zero-based}を@code{nil}にセットしてください。
+  In Column Number mode, the displayed column number counts from zero starting
+at the left margin of the window.  If you would prefer for the displayed
+column number to count from one, you may set
+@code{column-number-indicator-zero-based} to @code{nil}.
 
 @cindex narrowing, and line number display
-  ナローイング(@ref{Narrowing}を参照してください)によりバッファーを制限している場合、アクセスできる部分にもとづいた行番号が表示されます。そのため、これは@code{goto-line}の引数として使用するには適しません(コマンド@code{what-line}はファイル全体にたいする相対行番号を表示する)。ナローされたバッファーのアクセス可能範囲に相対的な行へポイントを移動するには@code{goto-line-relative}コマンドを使用できます。
+  If you have narrowed the buffer (@pxref{Narrowing}), the displayed line
+number is relative to the accessible portion of the buffer.  Thus, it isn't
+suitable as an argument to @code{goto-line}.  (The command @code{what-line}
+shows the line number relative to the whole file.)  You can use
+@code{goto-line-relative} command to move point to the line relative to the
+accessible portion of the narrowed buffer.
 
 @vindex line-number-display-limit
-  バッファーが非常に大きい場合(@code{line-number-display-limit}の値より大)、速度が遅くなるのでEmacsは行番号を計算しません。そのためモードラインに行番号は表示されません。この制限を取り除くには、@code{line-number-display-limit}に@code{nil}をセットします。
+  If the buffer is very large (larger than the value of
+@code{line-number-display-limit}), Emacs won't compute the line number,
+because that would be too slow; therefore, the line number won't appear on
+the mode-line.  To remove this limit, set @code{line-number-display-limit}
+to @code{nil}.
 
 @vindex line-number-display-limit-width
-  バッファーの行が長いときも、行番号の計算が遅くなります。この理由により、Emacsはポイントの近くの行の幅の平均文字数が、@code{line-number-display-limit-width}より大きいときは、行番号を表示しません。デフォルト値は200文字です。
+  Line-number computation can also be slow if the lines in the buffer are too
+long.  For this reason, Emacs doesn't display line numbers if the average
+width, in characters, of lines near point is larger than the value of
+@code{line-number-display-limit-width}.  The default value is 200
+characters.
 
 @findex display-time
 @cindex time (on mode line)
-  Emacsはオプションで、時刻とシステムロードを、すべてのモードラインで表示できます。この機能を有効にするには、@kbd{M-x
-display-time}とタイプするか、オプション@code{display-time-mode}をカスタマイズします。モードラインに追加される情報は以下のような形式です:
+  Emacs can optionally display the time and system load in all mode lines.  To
+enable this feature, type @kbd{M-x display-time} or customize the option
+@code{display-time-mode}.  The information added to the mode line looks like
+this:
 
 @example
 @var{hh}:@var{mm}PM @var{l.ll}
@@ -1128,61 +1669,112 @@ display-time}とタイプするか、オプション@code{display-time-mode}を�
 
 @noindent
 @vindex display-time-24hr-format
-ここで@var{hh}と@var{mm}は時間と分で、後ろに@samp{AM}と@samp{PM}がつきます。@var{l.ll}は、過去数分間における、システム全体で実行中または実行準備ができている(例:
-利用可能なプロセッサー待ち)プロセスの平均数です(オペレーティングシステムがサポートしないフィールドは表示されません)。時刻を24時間表示にしたいときは、変数@code{display-time-24hr-format}に@code{t}をセットしてください。
+Here @var{hh} and @var{mm} are the hour and minute, followed always by
+@samp{AM} or @samp{PM}.  @var{l.ll} is the average number, collected for the
+last few minutes, of processes in the whole system that were either running
+or ready to run (i.e., were waiting for an available processor).  (Some
+fields may be missing if your operating system cannot support them.)  If you
+prefer time display in 24-hour format, set the variable
+@code{display-time-24hr-format} to @code{t}.
 
 @cindex mail (on mode line)
 @vindex display-time-use-mail-icon
 @vindex display-time-mail-face
 @vindex display-time-mail-file
 @vindex display-time-mail-directory
-  もし未読メールがある場合、ロードレベルの後ろに@samp{Mail}という単語が表示されます。グラフィカルなディスプレイでは、@code{display-time-use-mail-icon}をカスタマイズすることにより、@samp{Mail}のかわりにアイコンを使うことができます。これによりモードラインのスペースが多少節約できます。@code{display-time-mail-face}をカスタマイズして、メールの表示を目立たせることができます。@code{display-time-mail-file}を使ってチェックするメールファイルを指定したり、@code{display-time-mail-directory}で受信メールのディレクトリーを指定できます(ディレクトリー内の空でない普通のファイルは、新しい受信メールと判断されます)。
+  The word @samp{Mail} appears after the load level if there is mail for you
+that you have not read yet.  On graphical displays, you can use an icon
+instead of @samp{Mail} by customizing @code{display-time-use-mail-icon};
+this may save some space on the mode line.  You can customize
+@code{display-time-mail-face} to make the mail indicator prominent.  Use
+@code{display-time-mail-file} to specify the mail file to check, or set
+@code{display-time-mail-directory} to specify the directory to check for
+incoming mail (any nonempty regular file in the directory is considered to
+be newly arrived mail).
 
 @cindex battery status (on mode line)
 @findex display-battery-mode
 @vindex display-battery-mode
 @vindex battery-mode-line-format
-  Emacsをラップトップコンピューターで実行している場合、コマンド@code{display-battery-mode}を使うか、変数@code{display-battery-mode}をカスタマイズすることにより、モードラインにバッテリー充電状況を表示できます。変数@code{battery-mode-line-format}は、バッテリーの充電状況の表示方法を決定します。モードラインに表示されるメッセージの正確さはオペレーティングシステムに依存しており、通常はバッテリーの充電トータルにたいする現在のバッテリー充電率が表示されます。@code{battery-update-functions}の関数の実行はモードラインの更新後であり、バッテリー状況にもとづいたアクションをトリガーするために使用できます。
+  When running Emacs on a laptop computer, you can display the battery charge
+on the mode-line, by using the command @code{display-battery-mode} or
+customizing the variable @code{display-battery-mode}.  The variable
+@code{battery-mode-line-format} determines the way the battery charge is
+displayed; the exact mode-line message depends on the operating system, and
+it usually shows the current battery charge as a percentage of the total
+charge.  The functions in @code{battery-update-functions} are run after
+updating the mode line, and can be used to trigger actions based on the
+battery status.
 
 @cindex mode line, 3D appearance
 @cindex attributes of mode line, changing
 @cindex non-integral number of lines in a window
-  グラフィカルなディスプレイでは、モードラインは立体的に描画されます。この効果が気に入らない場合は、@code{mode-line}フェイスをカスタマイズして、@code{box}属性に@code{nil}をセットすることにより無効にできます。@ref{Face
-Customization}を参照してください。
+  On graphical displays, the mode line is drawn as a 3D box.  If you don't
+like this effect, you can disable it by customizing the @code{mode-line}
+face and setting its @code{box} attribute to @code{nil}.  @xref{Face
+Customization}.
 
 @cindex non-selected windows, mode line appearance
-  デフォルトでは、選択されていないウィンドウのモードラインは、@code{mode-line-inactive}と呼ばれる、別のフェイスで表示されます。選択されたウィンドウのモードラインだけが、@code{mode-line}フェイスで表示されます。これにより、どのウィンドウが選択されているかがわかりやすくなります。モードラインがないミニバッファーが選択されているときは、ミニバッファーをアクティブにしたウィンドウのモードラインが、@code{mode-line}で表示されます。結果として通常のミニバッファーの使用では、モードラインは変化しません。
+  By default, the mode line of nonselected windows is displayed in a different
+face, called @code{mode-line-inactive}.  Only the selected window is
+displayed in the @code{mode-line} face.  This helps show which window is
+selected.  When the minibuffer is selected, since it has no mode line, the
+window from which you activated the minibuffer has its mode line displayed
+using @code{mode-line}; as a result, ordinary entry to the minibuffer does
+not change any mode lines.
 
 @vindex mode-line-in-non-selected-windows
-  変数@code{mode-line-in-non-selected-windows}を@code{nil}にセットすることにより、@code{mode-line-inactive}の使用を無効にできます。これによりすべてのモードラインが、@code{mode-line}フェイスで表示されます。
+  You can disable use of @code{mode-line-inactive} by setting variable
+@code{mode-line-in-non-selected-windows} to @code{nil}; then all mode lines
+are displayed in the @code{mode-line} face.
 
 @vindex eol-mnemonic-unix
 @vindex eol-mnemonic-dos
 @vindex eol-mnemonic-mac
 @vindex eol-mnemonic-undecided
-  モードラインに表示される改行フォーマットは、変数@code{eol-mnemonic-unix}、@code{eol-mnemonic-dos}、@code{eol-mnemonic-mac}、および@code{eol-mnemonic-undecided}をセットすることにより、カスタマイズできます。
+  You can customize the mode line display for each of the end-of-line formats
+by setting each of the variables @code{eol-mnemonic-unix},
+@code{eol-mnemonic-dos}, @code{eol-mnemonic-mac}, and
+@code{eol-mnemonic-undecided} to the strings you prefer.
 
 @node Text Display
-@section テキストが表示される方法
+@section How Text Is Displayed
 @cindex characters (in text)
 @cindex printing character
 
-  ほとんどの文字は、@dfn{印字文字(printing
-characters)}です。これらの文字がバッファーに存在すると、スクリーンにそのまま表示されます。印字文字には@acronym{ASCII}の数字、文字、区切り文字、同様に多くの非@acronym{ASCII}文字が含まれます。
+  Most characters are @dfn{printing characters}: when they appear in a buffer,
+they are displayed literally on the screen.  Printing characters include
+@acronym{ASCII} numbers, letters, and punctuation characters, as well as
+many non-@acronym{ASCII} characters.
 
 @vindex tab-width
 @cindex control characters on display
-  @acronym{ASCII}文字セットには、印字されない@dfn{制御文字(control
-characters)}が含まれます。その中でも特別に表示されるものが2つあります。1つ目は改行文字(UnicodeのコードポイントU+000A)で、新しい行を開始するのに表示されます。2つ目はタブ文字(U+0009)で、次のタブストップ(通常は8文字ごと)までをスペースで表示します。タブを何文字のスペースで表示するかは、バッファーローカルな変数@code{tab-width}で制御され、1から1000の整数で指定しなければなりません。バッファーのタブ文字が表示される方法は、コマンドとしての@key{TAB}の定義には関係ないことに注意してください。
+  The @acronym{ASCII} character set contains non-printing @dfn{control
+characters}.  Two of these are displayed specially: the newline character
+(Unicode code point U+000A) is displayed by starting a new line, while the
+tab character (U+0009) is displayed as a space that extends to the next tab
+stop column (normally every 8 columns).  The number of spaces per tab is
+controlled by the buffer-local variable @code{tab-width}, which must have an
+integer value between 1 and 1000, inclusive.  Note that the way the tab
+character in the buffer is displayed has nothing to do with the definition
+of @key{TAB} as a command.
 
-  他の@acronym{ASCII}制御文字としては、U+0020(8進の40、10進の32)より下のコードがあり、それらはカレット(@samp{^})と、その後ろに非制御文字バージョンの文字を続けて、@code{escape-glyph}フェイスで表示されます。たとえば文字@samp{control-A}(U+0001)は、@samp{^A}と表示されます。
+  Other @acronym{ASCII} control characters, whose codes are below U+0020
+(octal 40, decimal 32), are displayed as a caret (@samp{^}) followed by the
+non-control version of the character, with the @code{escape-glyph} face.
+For instance, the @samp{control-A} character, U+0001, is displayed as
+@samp{^A}.
 
 @cindex octal escapes
 @vindex ctl-arrow
-  コードU+0080(8進の200)からU+009F(8進の237)までのrawバイトは、@code{escape-glyph}フェイスにより@dfn{8進エスケープシーケンス(octal
-escape
-sequences)}で表示されます。たとえば文字コードU+0098(8進の230)は@samp{\230}と表示されます。バッファーローカルな変数@code{ctl-arrow}を@code{nil}に変更すると、@acronym{ASCII}制御文字もカレットエスケープシーケンスではなく8進エスケープシーケンスで表示されます(rawバイトを16進表示するように要求することも可能。@ref{Display
-Custom, display-raw-bytes-as-hex}を参照)。
+  The raw bytes with codes U+0080 (octal 200) through U+009F (octal 237) are
+displayed as @dfn{octal escape sequences}, with the @code{escape-glyph}
+face.  For instance, character code U+0098 (octal 230) is displayed as
+@samp{\230}.  If you change the buffer-local variable @code{ctl-arrow} to
+@code{nil}, the @acronym{ASCII} control characters are also displayed as
+octal escape sequences instead of caret escape sequences.  (You can also
+request that raw bytes be shown in hex, @pxref{Display Custom,
+display-raw-bytes-as-hex}.)
 
 @vindex nobreak-char-display
 @cindex non-breaking space
@@ -1190,55 +1782,86 @@ Custom, display-raw-bytes-as-hex}を参照)。
 @cindex soft hyphen
 @cindex @code{escape-glyph} face
 @cindex @code{nobreak-space} face
-  非@acronym{ASCII}文字の中には、@acronym{ASCII}のスペースやハイフン(マイナス記号)と同じ外観を持つものがあります。そのような文字は、意識せずにバッファーに入力されたとき(たとえばyankなどで)、問題となることがあります。たとえばソースコードコンパイラーは通常、非@acronym{ASCII}のスペースを、空白文字として扱いません。この問題に対処するため、Emacsはそのような文字を特別な方法(U+00A0
-@sc{no-break space}および他のUnicode horizontal space
-class由来の文字は@code{nobreak-space}フェイス、U+00AD @sc{soft hyphen}、U+2010
-@sc{hyphen}、およびU+2011 @sc{non-breaking
-hyphen}は@code{nobreak-hyphen}フェイス)で表示します。これを無効にするには、変数@code{nobreak-char-display}を@code{nil}に変更します。この変数に非@code{nil}かつ非@code{t}の値を与えると、Emacsはハイライトされたバックスラッシュの後に、スペースまたはハイフンを表示します。
+  Some non-@acronym{ASCII} characters have the same appearance as an
+@acronym{ASCII} space or hyphen (minus) character.  Such characters can
+cause problems if they are entered into a buffer without your realization,
+e.g., by yanking; for instance, source code compilers typically do not treat
+non-@acronym{ASCII} spaces as whitespace characters.  To deal with this
+problem, Emacs displays such characters specially: it displays U+00A0
+@sc{no-break space} and other characters from the Unicode horizontal space
+class with the @code{nobreak-space} face, and it displays U+00AD @sc{soft
+hyphen}, U+2010 @sc{hyphen}, and U+2011 @sc{non-breaking hyphen} with the
+@code{nobreak-hyphen} face.  To disable this, change the variable
+@code{nobreak-char-display} to @code{nil}.  If you give this variable a
+non-@code{nil} and non-@code{t} value, Emacs instead displays such
+characters as a highlighted backslash followed by a space or hyphen.
 
-  特定の文字コードの表示のカスタマイズは、ディスプレイテーブル(display table)によって行われます。@ref{Display Tables,,
-Display Tables, elisp, The Emacs Lisp Reference Manual}を参照してください。
+  You can customize the way any particular character code is displayed by
+means of a display table.  @xref{Display Tables,, Display Tables, elisp, The
+Emacs Lisp Reference Manual}.
 
 @cindex glyphless characters
 @cindex characters with no font glyphs
 @cindex @code{glyphless-char} face
-  グラフィカルなディスプレイでは、Emacsが利用可能なフォントにグリフがない文字がいくつかあります。これらの@dfn{グリフがない文字(glyphless
-characters)}は、通常16進文字を含むボックスで表示されます。テキスト端末では、端末エンコーディング(@ref{Terminal
-Coding}を参照してください)で表示できない文字は、通常クエスチョン記号で表示されます。表示方法は、変数@code{glyphless-char-display-control}で制御できます。これらの文字の表示がより目立つように、@code{glyphless-char}フェイスをカスタマイズすることもできます。詳細は、@ref{Glyphless
-Chars,, Glyphless Character Display, elisp, The Emacs Lisp Reference
-Manual}を参照してください。
+  On graphical displays, some characters may have no glyphs in any of the
+fonts available to Emacs.  These @dfn{glyphless characters} are normally
+displayed as boxes containing the hexadecimal character code.  Similarly, on
+text terminals, characters that cannot be displayed using the terminal
+encoding (@pxref{Terminal Coding}) are normally displayed as question
+signs.  You can control the display method by customizing the variable
+@code{glyphless-char-display-control}.  You can also customize the
+@code{glyphless-char} face to make these characters more prominent on
+display.  @xref{Glyphless Chars,, Glyphless Character Display, elisp, The
+Emacs Lisp Reference Manual}, for details.
 
 @findex glyphless-display-mode
-  マイナーモード@code{glyphless-display-mode}を使えば、カレントバッファーにおけるグリフなし文字の表示を切り替えることができます。グリフのない文字は、中にその文字の名前の頭文字が入ったボックスとして表示されます。
+  The @code{glyphless-display-mode} minor mode can be used to toggle the
+display of glyphless characters in the current buffer.  The glyphless
+characters will be displayed as boxes with acronyms of their names inside.
 
 @cindex curly quotes, and terminal capabilities
 @cindex curved quotes, and terminal capabilities
 @cindex @code{homoglyph} face
 
-Emacsはカレントのディスプレイでcurved
-quotes(@t{‘}と@t{’})が表示可能か判断を試みます。デフォルトでは、表示可能ならEmacsはメッセージやヘルプテキスト内の@acronym{ASCII}クォート(@w{(@samp{`}と@samp{'})})をcurved
-quotesに変換します。ユーザーオプション@code{text-quoting-style}をカスタマイズすることにより、この変換を有効または無効にできます(@ref{Keys
-in Documentation,,, elisp, The Emacs Lisp Reference Manual}を参照)。
+Emacs tries to determine if the curved quotes @t{‘} and @t{’} can be
+displayed on the current display.  By default, if this seems to be so, then
+Emacs will translate the @acronym{ASCII} quotes @w{(@samp{`} and @samp{'})},
+when they appear in messages and help texts, to these curved quotes.  You
+can influence or inhibit this translation by customizing the user option
+@code{text-quoting-style} (@pxref{Keys in Documentation,,, elisp, The Emacs
+Lisp Reference Manual}).
 
-  curved
-quotes(@t{‘}、@t{’}、@t{“}、@t{”})を@acronym{ASCII}文字と同様な外観で見ることができる場合、それらは@code{homoglyph}フェイスで表示されます。表示できないことが既知のcurved
-quotesは、それらの@acronym{ASCII}による代替である@samp{`}、@samp{'}、@samp{"}が@code{homoglyph}で表示されます。
+  If the curved quotes @t{‘}, @t{’}, @t{“}, and @t{”} are known to look just
+like @acronym{ASCII} characters, they are shown with the @code{homoglyph}
+face.  Curved quotes that are known not to be displayable are shown as their
+@acronym{ASCII} approximations @samp{`}, @samp{'}, and @samp{"} with the
+@code{homoglyph} face.
 
 @node Cursor Display
-@section カーソルの表示
+@section Displaying the Cursor
 @cindex text cursor
 
 @vindex visible-cursor
-  テキスト端末では、カーソルの外見は端末により制御され、大部分はEmacsの制御が及びません。いくつかの端末は、普通の固定的なカーソルと、目立つ点滅カーソルの2種類を提供します。デフォルトではEmacsは目立つカーソルを使い、Emacsを開始または再開したときは、そのカーソルに切り替えます。変数@code{visible-cursor}が@code{nil}の場合、Emacsを開始または再開したとき、普通のカーソルを使います。
+  On a text terminal, the cursor's appearance is controlled by the terminal,
+largely out of the control of Emacs.  Some terminals offer two different
+cursors: a visible static cursor, and a very visible blinking cursor.  By
+default, Emacs uses the very visible cursor, and switches to it when you
+start or resume Emacs.  If the variable @code{visible-cursor} is @code{nil}
+when Emacs starts or resumes, it uses the normal cursor.
 
 @vindex cursor-type
-  グラフィカルなディスプレイでは、より多くのテキストカーソルのプロパティを変更できます。カラーを変えるには、フェイス@code{cursor}の、属性@code{:background}を変更します(このフェイスの他の属性には、何を指定しても効果はありません。カーソルの下にあるテキストはフレームのバックグラウンドカラーを使って描画されます)。外見を変更するには、バッファーローカルな変数@code{cursor-type}をカスタマイズします。有効な値は@code{box}
-(デフォルト)、
-@code{(box . @var{size})}
-(いずれかの次元において@var{size}ピクセルより大なマスクされたイメージ下で中抜きのボックスになるボックスカーソル)、@code{hollow}
-(中抜きのボックス)、@code{bar} (垂直のバー)、@code{(bar . @var{n})} (幅が@var{n}ピクセルの垂直バー),
-@code{hbar} (水平バー)、@code{(hbar . @var{n})}
-(高さが@var{n}ピクセルの水平バー)、または@code{nil} (カーソルなし)です。
+  On a graphical display, many more properties of the text cursor can be
+altered.  To customize its color, change the @code{:background} attribute of
+the face named @code{cursor} (@pxref{Face Customization}).  (The other
+attributes of this face have no effect; the text shown under the cursor is
+drawn using the frame's background color.)  To change its shape, customize
+the buffer-local variable @code{cursor-type}; possible values are @code{box}
+(the default), @code{(box . @var{size})} (box cursor becoming a hollow box
+under masked images larger than @var{size} pixels in either dimension),
+@code{hollow} (a hollow box), @code{bar} (a vertical bar), @code{(bar
+. @var{n})} (a vertical bar @var{n} pixels wide), @code{hbar} (a horizontal
+bar), @code{(hbar . @var{n})} (a horizontal bar @var{n} pixels tall), or
+@code{nil} (no cursor at all).
 
 @findex blink-cursor-mode
 @cindex cursor, blinking
@@ -1246,157 +1869,249 @@ quotesは、それらの@acronym{ASCII}による代替である@samp{`}、@samp{
 @vindex blink-cursor-mode
 @vindex blink-cursor-blinks
 @vindex blink-cursor-alist
-  デフォルトでは、カーソルは10回点滅する間にEmacsに何も入力がないと、点滅をストップします。そして何らかの入力イベントがあると、また0からカウントを再開します。変数@code{blink-cursor-blinks}をカスタマイズして、これを制御できます。変数の値には、何の入力もないとき点滅をストップする点滅回数を指定します。変数に0または負の値をセットすると、カーソルはずっと点滅したままになります。カーソルの点滅を無効にするには、変数@code{blink-cursor-mode}を@code{nil}に変更するか(@ref{Easy
-Customization}を参照してください)、initファイルに以下の行を追加します:
+  By default, the cursor stops blinking after 10 blinks, if Emacs does not get
+any input during that time; any input event restarts the count.  You can
+customize the variable @code{blink-cursor-blinks} to control that: its value
+says how many times to blink without input before stopping.  Setting that
+variable to a zero or negative value will make the cursor blink forever.  To
+disable cursor blinking altogether, change the variable
+@code{blink-cursor-mode} to @code{nil} (@pxref{Easy Customization}), or add
+the line
 
 @lisp
   (blink-cursor-mode 0)
 @end lisp
 
 @noindent
-リスト変数@code{blink-cursor-alist}をカスタマイズして、カーソルが点滅をストップしたとき、どのように見えるかを変更できます。リストの各要素は、@code{(@var{on-type}
-.
-@var{off-type})}という形式を指定します。@var{on-type}には、点滅しているときのカーソルを指定します(@var{on-type}には、上で説明したカーソルタイプを指定します)。そして@var{off-type}には、点滅していないときのカーソルを指定します。
+to your init file.  Alternatively, you can change how the cursor looks when
+it blinks off by customizing the list variable @code{blink-cursor-alist}.
+Each element in the list should have the form @code{(@var{on-type}
+. @var{off-type})}; this means that if the cursor is displayed as
+@var{on-type} when it blinks on (where @var{on-type} is one of the cursor
+types described above), then it is displayed as @var{off-type} when it
+blinks off.
 
 @vindex x-stretch-cursor
 @cindex wide block cursor
-  タブ文字のように、特別に幅が広い文字もあります。そのような文字上にカーソルがあるとき、通常はデフォルトの文字幅で描画されます。カーソルを文字幅に伸ばすには、変数@code{x-stretch-cursor}を非@code{nil}値に変更してください。
+  Some characters, such as tab characters, are extra wide.  When the cursor is
+positioned over such a character, it is normally drawn with the default
+character width.  You can make the cursor stretch to cover wide characters,
+by changing the variable @code{x-stretch-cursor} to a non-@code{nil} value.
 
 @cindex cursor in non-selected windows
 @vindex cursor-in-non-selected-windows
-  選択されていないウィンドウのカーソルは、通常点滅していない中抜きのボックスで表示されます(カーソルにバーを使っている場合、より細いバーで表示されます)。選択されていないウィンドウでカーソルを非表示にするには、変数@code{cursor-in-non-selected-windows}を@code{nil}に変更してください。
+  The cursor normally appears in non-selected windows as a non-blinking hollow
+box.  (For a bar cursor, it instead appears as a thinner bar.)  To turn off
+cursors in non-selected windows, change the variable
+@code{cursor-in-non-selected-windows} to @code{nil}.
 
 @findex hl-line-mode
 @findex global-hl-line-mode
 @cindex highlight current line
-  カーソルをよりはっきりと表示させるために、HL
-Lineモードを使用できます。このモードでは、ポイントを含む行がハイライトされます。現在のバッファーで有効または無効にするには、@kbd{M-x
-hl-line-mode}を使います。このモードをグローバルに有効または無効にするには、@kbd{M-x
-global-hl-line-mode}を使用してください。
+  To make the cursor even more visible, you can use HL Line mode, a minor mode
+that highlights the line containing point.  Use @kbd{M-x hl-line-mode} to
+enable or disable it in the current buffer.  @kbd{M-x global-hl-line-mode}
+enables or disables the same mode globally.
 
 @node Line Truncation
-@section 行の切り詰め
+@section Line Truncation
 
 @cindex truncation
 @cindex line truncation
-  Emacsは行を継続(@ref{Continuation
-Lines}を参照してください)するかわりに、長い行を@dfn{切り詰めて}表示できます。これは、スクリーンやウィンドウの幅より長い行は、全体が表示されないことを意味します。グラフィカルなディスプレイでは、行が切り詰められている場合、フリンジに小さな直矢印が表示されます。テキスト端末では、右端および/または左端の列に@samp{$}が表示されます。
+  As an alternative to continuation (@pxref{Continuation Lines}), Emacs can
+display long lines by @dfn{truncation}.  This means that all the characters
+that do not fit in the width of the screen or window do not appear at all.
+On graphical displays, a small straight arrow in the fringe indicates
+truncation at either end of the line.  On text terminals, this is indicated
+with @samp{$} signs in the rightmost and/or leftmost columns.
 
 @kindex C-x x t
 @vindex truncate-lines
 @findex toggle-truncate-lines
-  水平スクロールは、自動的に行の切り詰めを引き起こします(@ref{Horizontal
-Scrolling}を参照してください)。特定のバッファーにたいして行の切り詰めを明示的に有効にするには、コマンド@kbd{C-x x t}
-(@code{toggle-truncate-lines})を使います。これは変数@code{truncate-lines}をローカルに変更することで機能します。値が非@code{nil}のときは、長い行は切り詰められ、@code{nil}のときは複数のスクリーン行に分けられます。変数@code{truncate-lines}をセットすると、現在のバッファーにローカルに適用されます。値を変更するまでは、デフォルト値(@code{nil})が使われます。
+  Horizontal scrolling automatically causes line truncation (@pxref{Horizontal
+Scrolling}).  You can explicitly enable line truncation for a particular
+buffer with the command @kbd{C-x x t} (@code{toggle-truncate-lines}).  This
+works by locally changing the variable @code{truncate-lines}.  If that
+variable is non-@code{nil}, long lines are truncated; if it is @code{nil},
+they are continued onto multiple screen lines.  Setting the variable
+@code{truncate-lines} in any way makes it local to the current buffer; until
+that time, the default value, which is normally @code{nil}, is in effect.
 
-  行切り詰めと単語折り返し(次セクションで説明)は排他なので、@code{toggle-truncate-lines}で行切り詰めをオンにすると単語折り返しが無効になります。
+  Since line truncation and word wrap (described in the next section)  are
+contradictory, @code{toggle-truncate-lines} disables word wrap when it turns
+on line truncation.
 
-  ウィンドウを分割して狭くなりすぎたとき、Emacsは自動的に行の切り詰めを有効にします。これを制御する変数@code{truncate-partial-width-windows}については、@ref{Split
-Window}を参照してください。
+  If a split window becomes too narrow, Emacs may automatically enable line
+truncation.  @xref{Split Window}, for the variable
+@code{truncate-partial-width-windows} which controls this.
 
 @node Visual Line Mode
-@section Visual Lineモード
+@section Visual Line Mode
 
 @cindex word wrap
-  このモードでは、通常の行継続の代わりに、@dfn{単語での折り返し} (@ref{Continuation
-Lines}を参照)が使われます。通常の行継続のように、長い論理行は2行以上のスクリーン行に分割されます。しかしEmacsはウィンドウの右端(RTL言語:Right-To-Leftlanguageでは左端)の近くの、単語の境界で折り返すよう試みます。これは単語の途中で折り返さないことにより、可読性を高めるためです。
+  Another alternative to ordinary line continuation (@pxref{Continuation
+Lines}) is to use @dfn{word wrap}.  Here, each long logical line is divided
+into two or more screen lines, or ``visual lines'', like in ordinary line
+continuation.  However, Emacs attempts to wrap the line at word boundaries
+near the right window edge.  (If the line's direction is right-to-left, it
+is wrapped at the left window edge instead.)  This makes the text easier to
+read, as wrapping does not occur in the middle of words.
 
 @cindex mode, Visual Line
 @cindex Visual Line mode
 @findex visual-line-mode
 @findex global-visual-line-mode
-  単語での折り返しは、オプションのマイナーモードである、Visual Lineモードで有効になります。現在のバッファーでVisual
-Lineモードの有効と無効を切り替えるには、@kbd{M-x visual-line-mode}とタイプします。メニューバーからVisual
-Lineモードを有効にすることもできます(Optionsメニューから、サブメニュー@samp{Line Wrapping in this
-Buffer}の、メニューアイテム@samp{Word Wrap (Visual Line Mode)}を選択します)。Visual
-Lineモードが有効なときは、モードラインのモード表示に@samp{wrap}という文字が表示されます。コマンド@kbd{M-x
-global-visual-line-mode}は、全バッファーのVisual Lineモードを切り替えます。
+  Word wrap is enabled by Visual Line mode, an optional minor mode.  To turn
+on Visual Line mode in the current buffer, type @kbd{M-x visual-line-mode};
+repeating this command turns it off.  You can also turn on Visual Line mode
+using the menu bar: in the Options menu, select the @samp{Line Wrapping in
+this Buffer} submenu, followed by the @samp{Word Wrap (Visual Line mode)}
+menu item.  While Visual Line mode is enabled, the mode line shows the
+string @samp{wrap} in the mode display.  The command @kbd{M-x
+global-visual-line-mode} toggles Visual Line mode in all buffers.
 
-  単語折り返し(前セクションで説明)と行切り詰めは排他なので、@code{visual-line-mode}をオンにすると行切り詰めが無効になります。
+  Since word wrap and line truncation (described in the previous section) are
+contradictory, turning on @code{visual-line-mode} disables line truncation.
 
 @findex beginning-of-visual-line
 @findex end-of-visual-line
 @findex next-logical-line
 @findex previous-logical-line
-  Visual Lineモードでは、いくつかのコマンドは論理行ではなくスクリーン行に作用します。@kbd{C-a}
-(@code{beginning-of-visual-line})はスクリーン行の先頭に移動し、@kbd{C-e}
-(@code{end-of-visual-line})はスクリーン行の最後に移動、@kbd{C-k}
-(@code{kill-visual-line})はテキストをスクリーン行の最後までkillします。
+  In Visual Line mode, some editing commands work on screen lines instead of
+logical lines: @kbd{C-a} (@code{beginning-of-visual-line})  moves to the
+beginning of the screen line, @kbd{C-e} (@code{end-of-visual-line}) moves to
+the end of the screen line, and @kbd{C-k} (@code{kill-visual-line}) kills
+text to the end of the screen line.
 
-  論理行単位で移動するには、コマンド@kbd{M-x next-logical-line}または@kbd{M-x
-previous-logical-line}を使います。これらのコマンドはVisual
-Lineモードが有効であるかにかかわらず、次または前の論理行に移動します。これらのコマンドを頻繁に使う場合は、キーを割り当てると便利でしょう。@ref{Init
-Rebinding}を参照してください。
+  To move by logical lines, use the commands @kbd{M-x next-logical-line} and
+@kbd{M-x previous-logical-line}.  These move point to the next logical line
+and the previous logical line respectively, regardless of whether Visual
+Line mode is enabled.  If you use these commands frequently, it may be
+convenient to assign key bindings to them.  @xref{Init Rebinding}.
 
-  デフォルトでは、単語の折り返し表示はフリンジに表示されません。Visual
-Lineモードは、長い論理行を含むファイルを編集するときに使われる場合があり、折り返し行すべてにフリンジの表示をすると見にくくなるためです。これを変更するには、変数@code{visual-line-fringe-indicators}をカスタマイズしてください。
+  By default, word-wrapped lines do not display fringe indicators.  Visual
+Line mode is often used to edit files that contain many long logical lines,
+so having a fringe indicator for each wrapped line would be visually
+distracting.  You can change this by customizing the variable
+@code{visual-line-fringe-indicators}.
 
 @vindex word-wrap-whitespace-mode
-  デフォルトではEmacsは@key{SPC}や@key{TAB}のような空白文字の後でのみ行ブレークを行い、@key{EN
-QUAD}のような空白文字の後での行ブレークは行いません。Emacsはカレントモードでの単語折り返しを切り替える@code{word-wrap-whitespace-mode}と呼ばれるマイナーモードを提供しています。このモードはどの文字で行の折り返しを行うかをユーザーオプション@code{word-wrap-whitespace-characters}にもとづいてセットアップします。
+  By default, Emacs only breaks lines after whitespace characters like
+@key{SPC} and @key{TAB}, but does not break after whitespace characters like
+@key{EN QUAD}.  Emacs provides a minor mode called
+@code{word-wrap-whitespace-mode} that switches on word wrapping in the
+current mode, and sets up which characters to wrap lines on based on the
+@code{word-wrap-whitespace-characters} user option.  There's also a
+globalized version of that mode called
+@code{global-word-wrap-whitespace-mode}.
 
 @vindex word-wrap-by-category
 @findex modify-category-entry
 @findex char-category-set
 @findex category-set-mnemonics
-  CJKとLatinが混ざったテキストでは、空白文字の後でのみブレークすると正しくない結果を生成するかもしれません(CJKは単語区切りに空白文字を使用しないため)。CJK文字にたいしてより良いサポートを提供するために任意の@samp{|}カテゴリー(@ref{Categories,,,
-elisp, the Emacs Lisp Reference
-Manual}を参照)の文字の後でEmacsが行ブレークできるように、オプション@code{word-wrap-by-category}をカスタマイズできます。この変数がCustomizeを使用してセットされていると、Emacsは自動的に@file{kinsoku.el}をロードします。@file{kinsoku.el}のロード時には、Emacsは行ブレークする際に禁足規則にしたがいます。これは@samp{>}カテゴリーの文字(たとえばU+FF0C
-@sc{fullwidth comma})が行頭、@samp{<}カテゴリーの文字(たとえばU+300A @sc{left double angle
-bracket})が行末に出現しないことを意味します。コマンド@code{char-category-set}か@code{category-set-mnemonics}を使用してカテゴリーを閲覧したり、あるいはポイント上で@kbd{C-u
-C-x
-=}とタイプして結果の``category''セクションを調べることができます。コマンド@code{modify-category-entry}を使用して、文字にカテゴリーを追加できます。
+  Only breaking after whitespace character produces incorrect results when CJK
+and Latin text are mixed together (because CJK characters don't use
+whitespace to separate words).  You can customize the option
+@code{word-wrap-by-category} to allow Emacs to break lines after any
+character with @samp{|} category (@pxref{Categories,,, elisp, the Emacs Lisp
+Reference Manual}), which provides better support for CJK characters.  Also,
+if this variable is set using Customize, Emacs automatically loads
+@file{kinsoku.el}.  When @file{kinsoku.el} is loaded, Emacs respects kinsoku
+rules when breaking lines.  That means characters with the @samp{>} category
+don't appear at the beginning of a line (e.g., U+FF0C @sc{fullwidth comma}),
+and characters with the @samp{<} category don't appear at the end of a line
+(e.g., U+300A @sc{left double angle bracket}).  You can view the category
+set of a character using the commands @code{char-category-set} and
+@code{category-set-mnemonics}, or by typing @kbd{C-u C-x =} with point on
+the character and looking at the ``category'' section in the report.  You
+can add categories to a character using the command
+@code{modify-category-entry}.
 
 @node Display Custom
-@section ディスプレイのカスタマイズ
+@section Customization of Display
 
-  このセクションでは、Emacsスクリーンの外観を制御するさまざまな変数を説明します。初心者はスキップして構いません。
+  This section describes variables that control miscellaneous aspects of the
+appearance of the Emacs screen.  Beginning users can skip it.
 
 @vindex display-line-numbers
 @cindex number lines in a buffer
 @cindex display line numbers
-  Emacsにバッファー内の各行にたいして行番号を表示させたい場合は、バッファーローカルな変数@code{display-line-numbers}(デフォルトは@code{nil})をカスタマイズします。この変数は行番号表示のさまざまなモードをサポートするために、いくつかの異なる値をもつことができます。
+  If you want to have Emacs display line numbers for every line in the buffer,
+customize the buffer-local variable @code{display-line-numbers}; it is
+@code{nil} by default.  This variable can have several different values to
+support various modes of line-number display:
 
 @table @asis
 @item @code{t}
-バッファーテキストを表示する継続行ではないスクリーン各行の前に、、(絶対)行番号を表示します。その行が継続行の場合、またはスクリーン行全体がディスプレイ文字列(display
-string)、またはオーバーレイ文字列(overlay string)の場合、その行に番号は振られません。
+Display (an absolute) line number before each non-continuation screen line
+that displays buffer text.  If the line is a continuation line, or if the
+entire screen line displays a display or an overlay string, that line will
+not be numbered.
 
 @item @code{relative}
-バッファーテキストを表示する非継続行の前に、相対行番号(relative line
-number)を表示します。行番号はポイントを表示する行にたいして相対的なので、カレント行から遠ざかるにしたがって、行番号は増加または減少します。
+Display relative line numbers before non-continuation lines which show
+buffer text.  The line numbers are relative to the line showing point, so
+the numbers grow both up and down as lines become farther from the current
+line.
 
 @item @code{visual}
-この値により、Emacsにビジュアル的に行をカウントさせます。実際にディスプレイに表示されている行だけがカウントされ、ラップして複数行を占めるスクリーン行は、複数回番号付けされます。表示される番号は、上述の値@code{relative}のように相対的です。これはOutlineモード(@ref{Outline
-Mode}を参照)のような、テキストをフォールド(fold: 折り畳む)するモードで、正確なスクリーン行の番号により移動するときに役立つでしょう。
+This value causes Emacs to count lines visually: only lines actually shown
+on the display will be counted (disregarding any lines in invisible parts of
+text), and lines which wrap to consume more than one screen line will be
+numbered that many times.  The displayed numbers are relative, as with
+@code{relative} value above.  This is handy in modes that fold text, such as
+Outline mode (@pxref{Outline Mode}), and when you need to move by exact
+number of screen lines.
 
-@item その他
-その他の非@code{nil}値は、@code{t}として扱われます。
+@item anything else
+Any other non-@code{nil} value is treated as @code{t}.
 @end table
 
 @findex display-line-numbers-mode
 @findex global-display-line-numbers-mode
 @vindex display-line-numbers-type
-コマンド@kbd{M-x
-display-line-numbers-mode}は、行番号表示を切り替える便利な方法を提供します。このモードのグローバル版は、@code{global-display-line-numbers-mode}です。ユーザーオプション@code{display-line-numbers-type}は、上述した行番号表示のサブモードのどのモードをアクティブにするかを制御します。
+The command @kbd{M-x display-line-numbers-mode} provides a convenient way to
+turn on display of line numbers.  This mode has a globalized variant,
+@code{global-display-line-numbers-mode}.  The user option
+@code{display-line-numbers-type} controls which sub-mode of line-number
+display, described above, these modes will activate.
 
 @noindent
-たとえグローバルに@code{display-line-numbers-mode}をオンにしていても、ミニバッファーやツールチップ内に行番号は表示されないことに注意してください。
+Note that line numbers are not displayed in the minibuffer and in the
+tooltips, even if you turn on @code{display-line-numbers-mode} globally.
 
 @vindex display-line-numbers-current-absolute
-Emacsが相対行番号を表示しているとき、カレント行(ポイントを表示している行)の前に表示される番号を制御できます。デフォルトでは、Emacsはカレント行にたいしては、他のすべての行が相対行番号であっても、絶対行番号を表示します。変数@code{display-line-numbers-current-absolute}を@code{nil}値にカスタマイズした場合、カレント行に表示される番号は0になります。これはカレント行の番号が重要ではなく、大きなバッファー内のテキストにたいして、より多くの水平方向の空きを残したいとき便利でしょう。
+When Emacs displays relative line numbers, you can control the number
+displayed before the current line, the line showing point.  By default,
+Emacs displays the absolute number of the current line there, even though
+all the other line numbers are relative.  If you customize the variable
+@code{display-line-numbers-current-absolute} to a @code{nil} value, the
+number displayed for the current line will be zero.  This is handy if you
+don't care about the number of the current line, and want to leave more
+horizontal space for text in large buffers.
 
 @vindex display-line-numbers-widen
-ナロー(@ref{Narrowing}を参照)されたバッファーでは通常、ナローイングの先頭から番号が開始されます。しかし、変数@code{display-line-numbers-widen}を非@code{nil}値にカスタマイズした場合、ナローイングは無視されて、そのバッファーの最初の文字から行番号が開始されます。
+In a narrowed buffer (@pxref{Narrowing}) lines are normally numbered
+starting at the beginning of the narrowing.  However, if you customize the
+variable @code{display-line-numbers-widen} to a non-@code{nil} value, line
+numbers will disregard any narrowing and will start at the first character
+of the buffer.
 
 @vindex display-line-numbers-offset
-@code{display-line-numbers-offset}の値が非0なら、各絶対行番号に追加されて、行はあたかも@code{display-line-numbers-widen}が非@code{nil}であるかのようにバッファー先頭から計数されます。0にセットされた場合、あるいは行番号が絶対でない場合には影響はありません。
+If the value of @code{display-line-numbers-offset} is non-zero, it is added
+to each absolute line number, and lines are counted from the beginning of
+the buffer, as if @code{display-line-numbers-widen} were non-@code{nil}.  It
+has no effect when set to zero, or when line numbers are not absolute.
 
 @vindex display-line-numbers-width-start
 @vindex display-line-numbers-grow-only
 @vindex display-line-numbers-width
-Selective Display(選択的表示)モード(@ref{Selective
-Display}を参照)、およびその他の(OutlineモードやOrgモードのような)ディスプレイから多くの行を隠すモードでは、行番号のために予約済みのスペースにたいする法則性のない計算ミスを避けるために、変数@code{display-line-numbers-width-start}および@code{display-line-numbers-grow-only}のカスタマイズ、または@code{display-line-numbers-width}に十分大きな値をセットしたいと思うかもしれません。
+In selective display mode (@pxref{Selective Display}), and other modes that
+hide many lines from display (such as Outline and Org modes), you may wish
+to customize the variables @code{display-line-numbers-width-start} and
+@code{display-line-numbers-grow-only}, or set
+@code{display-line-numbers-width} to a large enough value, to avoid
+occasional miscalculations of space reserved for the line numbers.
 
 @cindex @code{line-number} face
 The line numbers are displayed in a special face @code{line-number}.  The
@@ -1410,40 +2125,81 @@ lines which are a multiple of certain numbers.  Customize
 @code{display-line-numbers-minor-tick} respectively to set those numbers.
 
 @vindex visible-bell
-  変数@code{visible-bell}が非@code{nil}の場合、Emacsは通常ベルサウンドを鳴らす場面で、スクリーン全体を点滅するよう試みます。端末がスクリーンを点滅させる方法を持たないとき、この変数は効果がありません。
+  If the variable @code{visible-bell} is non-@code{nil}, Emacs attempts to
+make the whole screen blink when it would normally make an audible bell
+sound.  This variable has no effect if your terminal does not have a way to
+make the screen blink.
 
 @vindex echo-keystrokes
-  変数@code{echo-keystrokes}は、複数文字キーのエコー表示を制御します。値にはエコーが開始されるまでの秒数を指定します。0の場合、エコーされません。何かエコーされるべきものがあるときは、この変数の値が効果をもちます。@ref{Echo
-Area}を参照してください。
+  The variable @code{echo-keystrokes} controls the echoing of multi-character
+keys; its value is the number of seconds of pause required to cause echoing
+to start, or zero, meaning don't echo at all.  The value takes effect when
+there is something to echo.  @xref{Echo Area}.
 
 @vindex echo-keystrokes-help
-  変数@code{echo-keystrokes-help}が非@code{nil}
-(デフォルト)の場合には、すでにタイプしたプレフィクスにたいするコマンドリストを表示する@code{describe-prefix-bindings}
-(@ref{Misc
-Help}を参照)を呼び出すキーに関する短いヘルプテキストを、@code{echo-keystrokes}に応じた複数文字のキーシーケンスとともにエコー表示します。関連するヘルプ機能については、@ref{which-key}を参照してください。
+  If the variable @code{echo-keystrokes-help} is non-@code{nil} (the default),
+the multi-character key sequence echo shown according to
+@code{echo-keystrokes} will include a short help text about keys which will
+invoke @code{describe-prefix-bindings} (@pxref{Misc Help}) to show the list
+of commands for the prefix you already typed.  For a related help facility,
+see @ref{which-key}.
 
 @cindex mouse pointer
 @cindex hourglass pointer display
 @vindex display-hourglass
 @vindex hourglass-delay
-  グラフィカルなディスプレイでは、Emacsはビジーのときにマウスポインターを砂時計で表示します。この機能を無効にするには、変数@code{display-hourglass}に@code{nil}をセットします。変数@code{hourglass-delay}は、砂時計が表示されるまでのビジーな時間を、秒数で指定します。デフォルトは1です。
+  On graphical displays, Emacs displays the mouse pointer as an hourglass if
+Emacs is busy.  To disable this feature, set the variable
+@code{display-hourglass} to @code{nil}.  The variable @code{hourglass-delay}
+determines the number of seconds of busy time before the hourglass is shown;
+the default is 1.
 
 @vindex make-pointer-invisible
-  マウスポインターがEmacsのフレーム内にある場合、文字をタイプしてテキストを挿入するまでの間、テキストを隠さないよう、Emacsはマウスポインターを非表示にします(正確に言うとマウスポインターの非表示は、自己挿入的(self-inserting)な文字をタイプしたときです。@ref{Inserting
-Text}を参照してください)。マウスポインターを動かすと、再び表示されます。この機能を無効にするには、変数@code{make-pointer-invisible}に@code{nil}をセットしてください。
+  If the mouse pointer lies inside an Emacs frame, Emacs makes it invisible
+each time you type a character to insert text, to prevent it from obscuring
+the text.  (To be precise, the hiding occurs when you type a self-inserting
+character.  @xref{Inserting Text}.)  Moving the mouse pointer makes it
+visible again.  To disable this feature, set the variable
+@code{make-pointer-invisible} to @code{nil}.
 
 @vindex underline-minimum-offset
 @vindex x-underline-at-descent-line
-  グラフィカルなディスプレイでは、変数@code{underline-minimum-offset}は、アンダーラインされたテキストの、アンダーラインから文字の基底線までの最小距離を、ピクセルで決定します。デフォルトでは値は1です。この変数を増加させると、特定のフォントにおいて、アンダーラインされたテキストの可読性が向上します(しかしEmacsは、カレント行にはアンダーラインを描画しません)。変数@code{x-underline-at-descent-line}は、テキストにアンダーラインを引く方法を決定します。デフォルトは@code{nil}で、これはフォントの基底線と同じレベルに描画されることを意味します。これを@code{t}に変更すると、Emacsはフォントが同じ大きさになるよう、アンダーラインを少し下に描画します。(アンダーラインされるテキストにたいして非デフォルトの行間が指定された場合、Emacsは追加される行間の下にアンダーラインを描画する。@ref{Line
-Height,,, elisp, The Emacs Lisp Reference Manual}を参照されたい。)
+  On graphical displays, the variable @code{underline-minimum-offset}
+determines the minimum distance between the baseline and underline, in
+pixels, for underlined text.  By default, the value is 1; increasing it may
+improve the legibility of underlined text for certain fonts.  (However,
+Emacs will never draw the underline below the current line area.)  The
+variable @code{x-underline-at-descent-line} determines how to draw
+underlined text.  The default is @code{nil}, which means to draw it at the
+baseline level of the font; if you change it to @code{t}, Emacs draws the
+underline at the same height as the font's descent line.  (If non-default
+line spacing was specified for the underlined text, see @ref{Line Height,,,
+elisp, The Emacs Lisp Reference Manual}, Emacs draws the underline below the
+additional spacing.)
 
 @vindex overline-margin
-  変数@code{overline-margin}は、テキストの上のオーバーラインの垂直位置を、オーバーライン自身の高さも含めて、ピクセルで指定します。デフォルトは2です。
+  The variable @code{overline-margin} specifies the vertical position of an
+overline above the text, including the height of the overline itself, in
+pixels; the default is 2.
 
 @findex tty-suppress-bold-inverse-default-colors
-  テキスト端末には、bold(太字)かつ反転されたテキストが読みにくいものがあります。関数@code{tty-suppress-bold-inverse-default-colors}に、引数非@code{nil}を与えて呼び出すと、このような場合のbold-faceの効果を抑制します。
+  On some text terminals, bold face and inverse video together result in text
+that is hard to read.  Call the function
+@code{tty-suppress-bold-inverse-default-colors} with a non-@code{nil}
+argument to suppress the effect of bold-face in this case.
 
 @vindex display-raw-bytes-as-hex
-  デフォルトではrawバイトは、たとえば10進で128という値をもつバイトは@code{\200}といったように8進形式で表示されます。これを@code{\x80}のように16進形式で表示するよう変更するには、変数@code{display-raw-bytes-as-hex}に@code{t}をセットしてください。Emacsセッションを含む端末からテキストをコピーしたり、端末の@code{escape-glyph}Careフェイスの外観がデフォルトフェイスに似ている際には、rawバイトの解釈に注意が必要かもしれません。たとえばEmacsが@samp{\}、@samp{2}、@samp{0}、@samp{0}という4つの文字を表示するのは、値が10進で128であるようなバイトを表示する際と同じ文字です。更に悪いことに16進の表示ではrawバイトの128の後に文字@samp{7}がある場合には、Emacs
-LispはこれをU+0807、すなわちSAMARITAN LETTER
-ITという単一の文字として読み取ってしまいます。8進エスケープでは最大で3桁なので、これに相当する8進の@code{\2007}という表示でも混乱は生じません。
+  Raw bytes are displayed in octal format by default, for example a byte with
+a decimal value of 128 is displayed as @code{\200}.  To change display to
+the hexadecimal format of @code{\x80}, set the variable
+@code{display-raw-bytes-as-hex} to @code{t}.  Care may be needed when
+interpreting a raw byte when copying text from a terminal containing an
+Emacs session, or when a terminal's @code{escape-glyph} face looks like the
+default face.  For example, by default Emacs displays the four characters
+@samp{\}, @samp{2}, @samp{0}, @samp{0} with the same characters it displays
+a byte with decimal value 128.  The problem can be worse with hex displays,
+where the raw byte 128 followed by the character @samp{7} is displayed as
+@code{\x807}, which Emacs Lisp reads as the single character U+0807
+SAMARITAN LETTER IT; this confusion does not occur with the corresponding
+octal display @code{\2007} because octal escapes contain at most three
+digits.
