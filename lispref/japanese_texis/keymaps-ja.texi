@@ -3,6 +3,7 @@
 @c This file was generated with po4a. Translate the source file.
 @c
 @c ===========================================================================
+
 @c -*- mode: texinfo; coding: utf-8 -*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
 @c Copyright (C) 1990--1994, 1998--2024 Free Software Foundation, Inc.
@@ -11,36 +12,28 @@
 @chapter キーマップ
 @cindex keymap
 
-  The command bindings of input events are recorded in data structures called
-@dfn{keymaps}.  Each entry in a keymap associates (or @dfn{binds}) an
-individual event type, either to another keymap or to a command.  When an
-event type is bound to a keymap, that keymap is used to look up the next
-input event; this continues until a command is found.  The whole process is
-called @dfn{key lookup}.
+  入力イベントのコマンドバインディングは@dfn{キーマップ(keymap)}と呼ばれるデータ構造に記録されます。キーマップ内の各エントリーは個別のイベント型(他のキーマップ、またはコマンド)に関連づけ(または@dfn{バインド})されます。イベント型がキーマップにバインドされていれば、そのキーマップは次の入力イベントを調べるために使用されます。これはコマンドが見つかるまで継続されます。このプロセス全体を@dfn{キールックアップ(key
+lookup: キーの照合)}と呼びます。
 
 @menu
-* Key Sequences::            Key sequences as Lisp objects.
-* Keymap Basics::            Basic concepts of keymaps.
-* Format of Keymaps::        What a keymap looks like as a Lisp object.
-* Creating Keymaps::         Functions to create and copy keymaps.
-* Inheritance and Keymaps::  How one keymap can inherit the bindings of 
-                               another keymap.
-* Prefix Keys::              Defining a key with a keymap as its definition.
-* Active Keymaps::           How Emacs searches the active keymaps for a key 
-                               binding.
-* Searching Keymaps::        A pseudo-Lisp summary of searching active maps.
-* Controlling Active Maps::  Each buffer has a local keymap to override the 
-                               standard (global) bindings. A minor mode can 
-                               also override them.
-* Key Lookup::               Finding a key's binding in one keymap.
-* Functions for Key Lookup::  How to request key lookup.
-* Changing Key Bindings::    Redefining a key in a keymap.
-* Low-Level Key Binding::    Legacy key syntax description.
-* Remapping Commands::       A keymap can translate one command to another.
-* Translation Keymaps::      Keymaps for translating sequences of events.
-* Key Binding Commands::     Interactive interfaces for redefining keys.
-* Scanning Keymaps::         Looking through all keymaps, for printing help.
-* Menu Keymaps::             Defining a menu as a keymap.
+* Key Sequences::            Lispオブジェクトとしてのキーシーケンス。
+* Keymap Basics::            キーマップの基本概念。
+* Format of Keymaps::        キーマップはLispオブジェクトとしてどのように見えるか。
+* Creating Keymaps::         キーマップの作成やコピーを行う関数。
+* Inheritance and Keymaps::  キーマップが他のキーマップのバインディングを継承する方法。
+* Prefix Keys::              キーマップの定義としてキーを定義する。
+* Active Keymaps::           Emacsがアクティブなキーマップでキーバインディングを探す方法。
+* Searching Keymaps::        アクティブなマップ検索のLisp処理概要。
+* Controlling Active Maps::  各バッファーは標準(グローバル)のバインディングをオーバーライドするためのキーマップをもつ。マイナーモードもそれらをオーバーライドできる。
+* Key Lookup::               1つのキーマップから、あるキーのバインディングを探す。
+* Functions for Key Lookup::  キールックアップを要求する方法。
+* Changing Key Bindings::    キーマップ内でのキーの再定義。
+* Low-Level Key Binding::    従来のキー構文について。
+* Remapping Commands::       キーマップはあるコマンドを他のコマンドに変換できる。
+* Translation Keymaps::      イベントシーケンスを変換するキーマップ。
+* Key Binding Commands::     キーの再定義にたいするインタラクティブなインターフェイス。
+* Scanning Keymaps::         ヘルプをプリントするためにすべてのキーマップを走査する。
+* Menu Keymaps::             キーマップとしてキーマップを定義する。
 @end menu
 
 @node Key Sequences
@@ -49,43 +42,28 @@ called @dfn{key lookup}.
 @cindex keystroke
 @cindex key sequence
 
-  A @dfn{key sequence}, or @dfn{key} for short, is a sequence of one or more
-input events that form a unit.  Input events include characters, function
-keys, mouse actions, or system events external to Emacs, such as
-@code{iconify-frame} (@pxref{Input Events}).  The Emacs Lisp representation
-for a key sequence is a string or vector.  Unless otherwise stated, any
-Emacs Lisp function that accepts a key sequence as an argument can handle
-both representations.
+  @dfn{キーシーケンス(key
+sequence)}、短くは@dfn{キー(key)}とは1つの単位を形成する1つ以上の入力イベントのシーケンスです。入力イベントには文字、ファンクションキー、マウスアクション、または@code{iconify-frame}のようなEmacs外部のシステムイベントが含まれます(@ref{Input
+Events}を参照)。キーシーケンスにたいするEmacs
+Lispの表現は文字列かベクターです。特に明記しない限り、引数としてキーシーケンスを受け取るEmacs
+Lisp関数は両方の表現を処理することができます。
 
-  In the string representation, alphanumeric characters ordinarily stand for
-themselves; for example, @code{"a"} represents @kbd{a} and @code{"2"}
-represents @kbd{2}.  Control character events are prefixed by the substring
-@code{"\C-"}, and meta characters by @code{"\M-"}; for example,
-@code{"\C-x"} represents the key @kbd{C-x}.  In addition, the @key{TAB},
-@key{RET}, @key{ESC}, and @key{DEL} events are represented by @code{"\t"},
-@code{"\r"}, @code{"\e"}, and @code{"\d"} respectively.  The string
-representation of a complete key sequence is the concatenation of the string
-representations of the constituent events; thus, @code{"\C-xl"} represents
-the key sequence @kbd{C-x l}.
+  文字列表現ではたとえば@code{"a"}は@kbd{a}、@code{"2"}は@kbd{2}を表すといったように、英数字はその文字自身を意味します。コントロール文字イベントは部分文字列@code{"\C-"}、メタ文字は@code{"\M-"}によりプレフィクスされます。たとえば@code{"\C-x"}はキー@kbd{C-x}を表します。それらに加えて@key{TAB}、@key{RET}、@key{ESC}、@key{DEL}などのイベントはそれぞれ@code{"\t"}、@code{"\r"}、@code{"\e"}、@code{"\d"}で表されます。複雑なキーシーケンスの文字列表現はイベント成分の文字列表現を結合したものです。したがって@code{"\C-xl"}はキーシーケンス@kbd{C-x
+l}を表します。
 
-  Key sequences containing function keys, mouse button events, system events,
-or non-@acronym{ASCII} characters such as @kbd{C-=} or @kbd{H-a} cannot be
-represented as strings; they have to be represented as vectors.
+  キーシーケンスにはファンクションキー、マウスボタンイベント、システムイベント、または@kbd{C-=}や@kbd{H-a}のような文字列で表現できない非@acronym{ASCII}文字が含まれます。これらはベクターとして表現する必要があります。
 
-  In the vector representation, each element of the vector represents an input
-event, in its Lisp form.  @xref{Input Events}.  For example, the vector
-@code{[?\C-x ?l]} represents the key sequence @kbd{C-x l}.
+  ベクター表現ではベクターの各要素は1つの入力イベントをイベントのLisp形式で表します。@ref{Input
+Events}を参照してください。たとえばベクター@code{[?\C-x ?l]}はキーシーケンス@kbd{C-x l}を表します。
 
-  For examples of key sequences written in string and vector representations,
-@ref{Init Rebinding,,, emacs, The GNU Emacs Manual}.
+  キーシーケンスを文字列やベクターによる表現で記述する例は、@ref{Init Rebinding,,, emacs, The GNU Emacs
+Manual}を参照してください。
 
 @defun kbd keyseq-text
-This function converts the text @var{keyseq-text} (a string constant)  into
-a key sequence (a string or vector constant).  The contents of
-@var{keyseq-text} should use the same syntax as in the buffer invoked by the
-@kbd{C-x C-k @key{RET}} (@code{kmacro-edit-macro}) command; in particular,
-you must surround function key names with @samp{<@dots{}>}.  @xref{Edit
-Keyboard Macro,,, emacs, The GNU Emacs Manual}.
+この関数はテキスト@var{keyseq-text}(文字列定数)をキーシーケンス(文字列かベクターの定数)に変換する。@var{keyseq-text}の内容は@kbd{C-x
+C-k @key{RET}}
+(@code{kmacro-edit-macro})コマンドにより呼び出されたバッファー内と同じ構文を使用するべきである。特にファンクションキーの名前は@samp{<@dots{}>}で囲まなければならない。@ref{Edit
+Keyboard Macro,,, emacs, The GNU Emacs Manual}を参照のこと。
 
 @example
 (kbd "C-x") @result{} "\C-x"
@@ -99,9 +77,7 @@ Keyboard Macro,,, emacs, The GNU Emacs Manual}.
 @end example
 
 @findex key-valid-p
-The @code{kbd} function is very permissive, and will try to return something
-sensible even if the syntax used isn't completely conforming.  To check
-whether the syntax is actually valid, use the @code{key-valid-p} function.
+@code{kbd}は非常に融通の効く関数であり、完全には準拠していない構文が使用されたとしても適切な何かをリターンしようと試みる。構文が実際に有効か否かをチェックするには@code{key-valid-p}関数を使用すること。
 @end defun
 
 
@@ -112,47 +88,29 @@ whether the syntax is actually valid, use the @code{key-valid-p} function.
 @cindex complete key
 @cindex undefined key
 
-  A keymap is a Lisp data structure that specifies @dfn{key bindings} for
-various key sequences.
+  キーマップはさまざまなキーシーケンスにたいして@dfn{キーバインディング(key binding)}を指定するLispデータ構造です。
 
-  A single keymap directly specifies definitions for individual events.  When
-a key sequence consists of a single event, its binding in a keymap is the
-keymap's definition for that event.  The binding of a longer key sequence is
-found by an iterative process: first find the definition of the first event
-(which must itself be a keymap); then find the second event's definition in
-that keymap, and so on until all the events in the key sequence have been
-processed.
+  1つのキーマップが、個々のイベントにたいする定義を直接指定します。単一のイベントでキーシーケンスが構成されるとき、そのキーシーケンスのキーマップ内でのバインディングは、そのイベントにたいするそのキーマップの定義です。それより長いキーシーケンスのバインディングは対話的プロセスによって見つけ出されます。まず最初にイベント(それ自身がキーマップでなければならない)の定義を探します。そして次にそのキーマップ内で2つ目のイベントを探すといったように、そのキーシーケンス内のすべてのイベントが処理されるまで、これを続けます。
 
-  If the binding of a key sequence is a keymap, we call the key sequence a
-@dfn{prefix key}.  Otherwise, we call it a @dfn{complete key} (because no
-more events can be added to it).  If the binding is @code{nil}, we call the
-key @dfn{undefined}.  Examples of prefix keys are @kbd{C-c}, @kbd{C-x}, and
-@kbd{C-x 4}.  Examples of defined complete keys are @kbd{X}, @key{RET}, and
-@kbd{C-x 4 C-f}.  Examples of undefined complete keys are @kbd{C-x C-g}, and
-@kbd{C-c 3}.  @xref{Prefix Keys}, for more details.
+  あるキーシーケンスのバインディングがキーマップであるような場合、わたしたちはそのキーシーケンスを@dfn{プレフィクスキー(prefix
+key)}と呼び、それ以外の場合には(それ以上イベントを追加できないので)@dfn{コンプリートキー(complete
+keyl}と呼んでいます。バインディングが@code{nil}の場合、わたしたちはそのキーを@dfn{未定義(undefined)}と呼びます。@kbd{C-c}、@kbd{C-x}、@kbd{C-x
+4}などはプレフィクスキーの例です。@kbd{X}、@key{RET}、@kbd{C-x 4
+C-f}などは定義されたコンプリートキーの例です。@kbd{C-x C-g}や@kbd{C-c
+3}などは未定義なコンプリートキーの例です。詳細は@ref{Prefix Keys}を参照してください。
 
-  The rule for finding the binding of a key sequence assumes that the
-intermediate bindings (found for the events before the last) are all
-keymaps; if this is not so, the sequence of events does not form a unit---it
-is not really one key sequence.  In other words, removing one or more events
-from the end of any valid key sequence must always yield a prefix key.  For
-example, @kbd{C-f C-n} is not a key sequence; @kbd{C-f} is not a prefix key,
-so a longer sequence starting with @kbd{C-f} cannot be a key sequence.
+  キーシーケンスのバインディングを見つけ出すルールは、(最後のイベントの前までに見つかる)中間的なバインディングがすべてキーマップであると仮定します。もしそうでなければ、そのイベントシーケンスは単位を形成せず、実際の単一キーシーケンスではありません。言い換えると任意の有効なキーシーケンスから1つ以上のイベントを取り除くと、常にプレフィクスキーにならなければなりません。たとえば@kbd{C-f
+C-n}はキーシーケンスではありません。@kbd{C-f}はプレフィクスキーではないので、@kbd{C-f}で始まるこれより長いシーケンスは、キーシーケンスではあり得ないからです。
 
-  The set of possible multi-event key sequences depends on the bindings for
-prefix keys; therefore, it can be different for different keymaps, and can
-change when bindings are changed.  However, a one-event sequence is always a
-key sequence, because it does not depend on any prefix keys for its
-well-formedness.
+  利用可能な複数イベントキーシーケンスのセットは、プレフィクスキーにたいするバインディングに依存します。したがってこれはキーマップが異なれば異なるかもしれず、バインディングが変更されたときに変更されるかもしれません。しかし単一イベントキーシーケンスは整合性において任意のプレフィクスキーに依存しないので、常に単一のキーシーケンスです。
 
-  At any time, several primary keymaps are @dfn{active}---that is, in use for
-finding key bindings.  These are the @dfn{global map}, which is shared by
-all buffers; the @dfn{local keymap}, which is usually associated with a
-specific major mode; and zero or more @dfn{minor mode keymaps}, which belong
-to currently enabled minor modes.  (Not all minor modes have keymaps.)  The
-local keymap bindings shadow (i.e., take precedence over) the corresponding
-global bindings.  The minor mode keymaps shadow both local and global
-keymaps.  @xref{Active Keymaps}, for details.
+  常に複数のプライマリーキーマップ(primary keymap:
+主キーマップ)がアクティブであり、これらはキーバインディングを見つけるために使用されます。すべてのバッファーで共有される@dfn{グローバルキーマップ(global
+map)}というキーマップが存在します。@dfn{ローカルキーマップ(local
+keymap)}は通常は特定のメジャーモードに関連します。そして0個以上の@dfn{マイナーモードキーマップ(minor mode
+keymap)}はカレントで有効なマイナーモードに属します(すべてのマイナーモードがキーマップをもつわけでなない)。ローカルキーマップは対応するグローバルバインディングをshadow(訳注:
+隠すという意味)します。マイナーモードキーマップは、ローカルキーマップとグローバルキーマップの両方をshadowします。詳細は@ref{Active
+Keymaps}を参照してください。
 
 @node Format of Keymaps
 @section キーマップのフォーマット
@@ -161,93 +119,66 @@ keymaps.  @xref{Active Keymaps}, for details.
 @cindex full keymap
 @cindex sparse keymap
 
-  Each keymap is a list whose @sc{car} is the symbol @code{keymap}.  The
-remaining elements of the list define the key bindings of the keymap.  A
-symbol whose function definition is a keymap is also a keymap.  Use the
-function @code{keymapp} (see below) to test whether an object is a keymap.
+  キーマップはそれぞれ@sc{car}がシンボル@code{keymap}であるようなリストです。このリストの残りの要素はそのキーマップのキーバインディングを定義します。関数定義がキーマップであるようなシンボルもキーマップです。あるオブジェクトがキーマップかどうかテストするには、関数@code{keymapp}(以下参照)を使用してください。
 
-  Several kinds of elements may appear in a keymap, after the symbol
-@code{keymap} that begins it:
+  キーマップを開始するシンボル@code{keymap}の後には、いくつかの種類の要素が出現します:
 
 @table @code
 @item (@var{type} .@: @var{binding})
-This specifies one binding, for events of type @var{type}.  Each ordinary
-binding applies to events of a particular @dfn{event type}, which is always
-a character or a symbol.  @xref{Classifying Events}.  In this kind of
-binding, @var{binding} is a command.
+これは型@var{type}のイベントにたいする1つのバインディングを指定する。通常のバインディングはそれぞれ、常に文字かシンボルであるような特定の@dfn{イベント型(event
+type)}のイベントに適用される。@ref{Classifying
+Events}を参照のこと。この種のバインディングでは、@var{binding}はコマンドである。
 
 @item (@var{type} @var{item-name} .@: @var{binding})
-This specifies a binding which is also a simple menu item that displays as
-@var{item-name} in the menu.  @xref{Simple Menu Items}.
+これはメニュー内で@var{item-name}として表示されるシンプルなメニューアイテムでもあるようなバインディングを指定する。@ref{Simple
+Menu Items}を参照のこと。
 
 @item (@var{type} @var{item-name} @var{help-string} .@: @var{binding})
-This is a simple menu item with help string @var{help-string}.
+これはヘルプ文字列@var{help-string}のシンプルなメニューアイテムである。
 
 @item (@var{type} menu-item .@: @var{details})
-This specifies a binding which is also an extended menu item.  This allows
-use of other features.  @xref{Extended Menu Items}.
+これは拡張されたメニューアイテムでもあるようなバインディングを指定する。これは他の機能も使用できる。@ref{Extended Menu
+Items}を参照のこと。
 
 @item (t .@: @var{binding})
 @cindex default key binding
-This specifies a @dfn{default key binding}; any event not bound by other
-elements of the keymap is given @var{binding} as its binding.  Default
-bindings allow a keymap to bind all possible event types without having to
-enumerate all of them.  A keymap that has a default binding completely masks
-any lower-precedence keymap, except for events explicitly bound to
-@code{nil} (see below).
+これは@dfn{デフォルトキーバインディング(default key
+binding)}を指定する。キーマップの他の要素でバインドされないイベントは、バインディングとして@var{binding}が与えられる。デフォルトバインディングにより、利用可能なすべてのイベント型を列挙することなくバインドできる。デフォルトバインディングをもつキーマップは、明示的に@code{nil}にバインドされるイベント(以下参照)を除いて、より低い優先度にあるすべてのキーマップをマスクする。
 
 @item @var{char-table}
-If an element of a keymap is a char-table, it counts as holding bindings for
-all character events with no modifier bits (@pxref{modifier bits}): the
-element whose index is @var{c} is the binding for the character @var{c}.
-This is a compact way to record lots of bindings.  A keymap with such a
-char-table is called a @dfn{full keymap}.  Other keymaps are called
-@dfn{sparse keymaps}.
+キーマップのある要素が文字テーブル(char-table)なら、それは修飾ビットなしのすべての文字イベントにたいするバインディングを保持するとみなされる(@ref{modifier
+bits}を参照)。インデックス@var{c}の要素は文字@var{c}にたいしてバインドされる。これは多量のバインディングを記録するためのコンパクトな方法である。そのような文字テーブルのキーマップは、@dfn{fullキーマップ(full
+keymap: 完全なキーマップ)}と呼ばれる。それにたいして他のキーマップは@dfn{sparseキーマップ(sparse keymaps:
+疎なキーマップ)}と呼ばれる。
 
 @item @var{vector}
-This kind of element is similar to a char-table: the element whose index is
-@var{c} is the binding for the character @var{c}.  Since the range of
-characters that can be bound this way is limited by the vector size, and
-vector creation allocates space for all character codes from 0 up, this
-format should not be used except for creating menu keymaps (@pxref{Menu
-Keymaps}), where the bindings themselves don't matter.
+この種の要素は文字テーブルと類似する。インデックス@var{c}の要素は文字@var{c}にバインドされる。この方法でバインド可能な文字の範囲はそのベクターのサイズに制限され、かつベクターの作成により0からすべての文字コードまでスペースが割り当てられるので、バインディング自身が問題とならないメニューキーマップ(@ref{Menu
+Keymaps}を参照)の作成以外では、このフォーマットを使用しないこと。
 
 @item @var{string}
 @cindex keymap prompt string
 @cindex overall prompt string
 @cindex prompt string of keymap
-Aside from elements that specify bindings for keys, a keymap can also have a
-string as an element.  This is called the @dfn{overall prompt string} and
-makes it possible to use the keymap as a menu.  @xref{Defining Menus}.
+キーにたいするバインディングを指定する要素は別として、キーマップは要素として文字列ももつことができる。これは@dfn{overallプロンプト文字列(overall
+prompt string: 全般的なプロンプト文字列)}と呼ばれ、メニューとしてキーマップを使用することを可能にする。@ref{Defining
+Menus}を参照のこと。
 
 @item (keymap @dots{})
-If an element of a keymap is itself a keymap, it counts as if this inner
-keymap were inlined in the outer keymap.  This is used for
-multiple-inheritance, such as in @code{make-composed-keymap}.
+キーマップのある要素それ自身がキーマップなら、外側のキーマップ内でこれが内側のキーマップとしてinline指定されているかのようにみなされる。これは@code{make-composed-keymap}内で行なわれるような多重継承にたいして使用される。
 @end table
 
-When the binding is @code{nil}, it doesn't constitute a definition but it
-does take precedence over a default binding or a binding in the parent
-keymap.  On the other hand, a binding of @code{nil} does @emph{not} override
-lower-precedence keymaps; thus, if the local map gives a binding of
-@code{nil}, Emacs uses the binding from the global map.
+バインディングが@code{nil}なら、それは定義の構成要素ではありませんが、デフォルトバインディングや親キーマップ内のバインディングに優先されます。一方@code{nil}のバインディングは、より低い優先度のキーマップを@emph{オーバーライドしません}。したがってローカルマップで@code{nil}のバインディングが与えられると、Emacsはグローバルマップのバインディングを使用します。
 
 @cindex meta characters lookup
-  Keymaps do not directly record bindings for the meta characters.  Instead,
-meta characters are regarded for purposes of key lookup as sequences of two
-characters, the first of which is @key{ESC} (or whatever is currently the
-value of @code{meta-prefix-char}).  Thus, the key @kbd{M-a} is internally
-represented as @kbd{@key{ESC} a}, and its global binding is found at the
-slot for @kbd{a} in @code{esc-map} (@pxref{Prefix Keys}).
+  キーマップはメタ文字にたいするバインディングを直接記録しません。かわりにメタ文字は１文字目が@key{ESC}(または何であれ@code{meta-prefix-char}のカレント値)であるような、2文字のキーシーケンスをルックアップするものとみなされます。したがってキー@kbd{M-a}は内部的には@kbd{@key{ESC}
+a}で表され、そのグローバルバインディングは@code{esc-map}内の@kbd{a}にたいするスロットで見つけることができます(@ref{Prefix
+Keys}を参照)。
 
-  This conversion applies only to characters, not to function keys or other
-input events; thus, @kbd{M-@key{end}} has nothing to do with @kbd{@key{ESC}
-@key{end}}.
+  この変換は文字にたいしてのみ適用され、ファンクションキーや他の入力イベントには適用されないので@kbd{M-@key{end}}は@kbd{@key{ESC}
+@key{end}}と何も関係ありません。
 
-  Here as an example is the local keymap for Lisp mode, a sparse keymap.  It
-defines bindings for @key{DEL}, @kbd{C-c C-z}, @kbd{C-M-q}, and @kbd{C-M-x}
-(the actual value also contains a menu binding, which is omitted here for
-the sake of brevity).
+  以下に例としてLispモードにたいするローカルキーマップ(sparseキーマップ)を挙げます。以下では@key{DEL}、@kbd{C-c
+C-z}、@kbd{C-M-q}、@kbd{C-M-x}にたいするバインディングを定義しています(実際の値はメニューバインディングも含まれるが簡潔にするためここでは省略)。
 
 @example
 @group
@@ -262,27 +193,24 @@ lisp-mode-map
 @end group
 @group
  (27 keymap
-     ;; @r{@kbd{C-M-x}, treated as @kbd{@key{ESC} C-x}}
+     ;; @r{@kbd{C-M-x}は@kbd{@key{ESC} C-x}として扱われる}
      (24 . lisp-send-defun))
 @end group
 @group
- ;; @r{This part is inherited from @code{lisp-mode-shared-map}.}
+ ;; @r{この部分は@code{lisp-mode-shared-map}から継承}
  keymap
  ;; @key{DEL}
  (127 . backward-delete-char-untabify)
 @end group
 @group
  (27 keymap
-     ;; @r{@kbd{C-M-q}, treated as @kbd{@key{ESC} C-q}}
+     ;; @r{@kbd{C-M-q}は@kbd{@key{ESC} C-q}として扱われる}
      (17 . indent-sexp)))
 @end group
 @end example
 
 @defun keymapp object
-This function returns @code{t} if @var{object} is a keymap, @code{nil}
-otherwise.  More precisely, this function tests for a list whose @sc{car} is
-@code{keymap}, or for a symbol whose function definition satisfies
-@code{keymapp}.
+この関数は@var{object}がキーマップなら@code{t}、それ以外は@code{nil}をリターンする。より正確にはこの関数はリストにたいしてその@sc{car}が@code{keymap}か、あるいはシンボルにたいしてその関数定義が@code{keymapp}かどうかをテストする。
 
 @example
 @group
@@ -305,13 +233,10 @@ otherwise.  More precisely, this function tests for a list whose @sc{car} is
 @section キーマップの作成
 @cindex creating keymaps
 
-  Here we describe the functions for creating keymaps.
+  以下はキーマップを作成する関数です。
 
 @defun make-sparse-keymap &optional prompt
-This function creates and returns a new sparse keymap with no entries.  (A
-sparse keymap is the kind of keymap you usually want.)  The new keymap does
-not contain a char-table, unlike @code{make-keymap}, and does not bind any
-events.
+この関数はエントリーをもたない新たなsparseキーマップを作成してそれをリターンする(sparseキーマップはあなたが通常望む類のキーマップのこと)。@code{make-keymap}と異なり新たなキーマップは文字テーブルを含まず、何のイベントもバインドしない。
 
 @example
 @group
@@ -320,21 +245,12 @@ events.
 @end group
 @end example
 
-If you specify @var{prompt}, that becomes the overall prompt string for the
-keymap.  You should specify this only for menu keymaps (@pxref{Defining
-Menus}).  A keymap with an overall prompt string will always present a mouse
-menu or a keyboard menu if it is active for looking up the next input
-event.  Don't specify an overall prompt string for the main map of a major
-or minor mode, because that would cause the command loop to present a
-keyboard menu every time.
+@var{prompt}を指定すると、それはキーマップにたいするoverallプロンプト文字列になる。これはメニューキーマップ(@ref{Defining
+Menus}を参照)にたいしてのみ指定すべきである。overallプロンプト文字列をともなうキーマップがアクティブなら、次の入力イベントのルックアップにたいしてマウスメニューとキーボードメニューを常に提示する。これはコマンドループにたいして毎回キーボードメニューを提示するので、overallプロンプト文字列をメインマップ、メジャーモードマップ、マイナーモードマップに指定しないこと。
 @end defun
 
 @defun make-keymap &optional prompt
-This function creates and returns a new full keymap.  That keymap contains a
-char-table (@pxref{Char-Tables}) with slots for all characters without
-modifiers.  The new keymap initially binds all these characters to
-@code{nil}, and does not bind any other kind of event.  The argument
-@var{prompt} specifies a prompt string, as in @code{make-sparse-keymap}.
+この関数は新たなfullキーマップを作成してそれをリターンする。このキーマップは修飾されないすべての文字にたいするスロットをもつ文字テーブル(@ref{Char-Tables}を参照)を含む。この新たなキーマップは初期状態ではすべての文字、およびその他の種類のイベントが@code{nil}にバインドされている。引数@var{prompt}は@code{make-sparse-keymap}のようにプロンプト文字列を指定する。
 
 @c This example seems kind of pointless, but I guess it serves
 @c to contrast the result with make-sparse-keymap above.
@@ -345,17 +261,12 @@ modifiers.  The new keymap initially binds all these characters to
 @end group
 @end example
 
-A full keymap is more efficient than a sparse keymap when it holds lots of
-bindings; for just a few, the sparse keymap is better.
+fullキーマップは多くのスロットを保持するときはsparseキーマップより効果的であり、少ししかスロットを保持しないときはsparseキーマップのほうが適している。
 @end defun
 
 @defun define-keymap &key options... &rest pairs...
-You can create a keymap with the functions described above, and then use
-@code{keymap-set} (@pxref{Changing Key Bindings}) to specify key bindings in
-that map.  When writing modes, however, you frequently have to bind a large
-number of keys at once, and using @code{keymap-set} on them all can be
-tedious and error-prone.  Instead you can use @code{define-keymap}, which
-creates a keymap and binds a number of keys.  Here's a very basic example:
+上述した関数によってキーマップを作成してから、@code{keymap-set} (@ref{Changing Key
+Bindings}を参照)を使用してそのマップ内のキーバインディングを指定する。ただしモードを記述する際には一度に大量のキーのバインドを要することが頻繁にあるため、@code{keymap-set}を使用してそれらすべてをバインドするのは面倒かもしれないしエラーも起きやすいだろう。かわりにキーマップの作成と複数のキーのバインドを行う@code{define-keymap}を使うことができる。基本的な例を以下に示す:
 
 @lisp
 (define-keymap
@@ -364,15 +275,10 @@ creates a keymap and binds a number of keys.  Here's a very basic example:
   "C-c C-c" #'quit-window)
 @end lisp
 
-This function creates a new sparse keymap, defines the keystrokes in
-@var{pairs}, and returns the new keymap.  It signals an error if there are
-duplicate key bindings in @var{pairs}.
+この関数は@var{pairs}内のキーストロークを定義するsparseキーマップを新たに作成して、そのキーマップをリターンする。@var{pairs}内に重複したキーバインディングがあればエラーをシグナルする。
 
-@var{pairs} is a list of alternating key bindings and key definitions, as
-accepted by @code{keymap-set}.  In addition, the key can be the special
-symbol @code{:menu}, in which case the definition should be a menu
-definition as accepted by @code{easy-menu-define} (@pxref{Easy Menu}).
-Here's a brief example of this usage:
+@var{pairs}は@code{keymap-set}が受け入れるようなキーバインディングとキー定義が交互に指定されたリスト。更にキーは特別なシンボル@code{:menu}でもよい。この場合には、定義@code{easy-menu-define}
+(@ref{Easy Menu}を参照)が許容するようなメニュー定義であること。以下は使い方を示す簡単な例:
 
 @lisp
 (define-keymap :full t
@@ -382,59 +288,42 @@ Here's a brief example of this usage:
           ["Reload" eww-reload t]))
 @end lisp
 
-A number of keywords can be used before the key/definition pairs to change
-features of the new keymap.  If any of the feature keywords is missing from
-the @code{define-keymap} call, the default value for that feature is
-@code{nil}.  Here's a list of the available feature keywords:
+新たなキーマップの機能を変更するために、キー/定義のペアーの前にいくつかのキーワードを使うことができる。@code{define-keymap}の呼び出しに含まれていないキーワードの機能にたいするデフォルト値は@code{nil}。利用可能な機能キーワードは以下のとおり:
 
 @table @code
 @item :full
-If non-@code{nil}, create a char-table keymap (as from @code{make-keymap})
-instead of a sparse keymap (as from @code{make-sparse-keymap}
-(@pxref{Creating Keymaps}).  A sparse keymap is the default.
+非@code{nil}なら(@code{make-sparse-keymap}が作成するような)sparseキーマップのかわりに、(@code{make-keymap}が作成するような)文字テーブルキーマップを作成する(@ref{Creating
+Keymaps}を参照)。デフォルトはsparseキーマップ。
 
 @item :parent
-If non-@code{nil}, the value should be a keymap to use as the parent
-(@pxref{Inheritance and Keymaps}).
+非@code{nil}なら値は親として使用するキーマップであること(@ref{Inheritance and Keymaps}を参照)。
 
 @item :keymap
-If non-@code{nil}, the value should be a keymap.  Instead of creating a new
-keymap, the specified keymap is modified instead.
+非@code{nil}なら、値はキーマップであること。新たにキーマップを作成するかわりに指定されたキーマップを変更する。
 
 @item :suppress
-If non-@code{nil}, the keymap will be suppressed with @code{suppress-keymap}
-(@pxref{Changing Key Bindings}).  By default, digits and the minus sign are
-exempt from suppressing, but if the value is @code{nodigits}, this
-suppresses digits and minus-sign like it does with other characters.
+非@code{nil}なら、そのキーマップは@code{suppress-keymap}によって抑制される(@ref{Changing Key
+Bindings}を参照)。デフォルトでは数字とマイナス記号は抑制から除外されるが、値が@code{nodigits}なら他の文字と同様に数字とマイナス記号も抑制する。
 
 @item :name
-If non-@code{nil}, the value should be a string to use as the menu for the
-keymap if you use it as a menu with @code{x-popup-menu} (@pxref{Pop-Up
-Menus}).
+非@code{nil}、かつ@code{x-popup-menu} (@ref{Pop-Up
+Menus}を参照)によるメニューとして使用する場合には、値をメニューとして使用するような文字列にする必要がある。
 
 @item :prefix
-If non-@code{nil}, the value should be a symbol to be used as a prefix
-command (@pxref{Prefix Keys}).  If this is the case, this symbol is returned
-by @code{define-keymap} instead of the map itself.
+非@code{nil}なら、値はプレフィックスコマンドとして使用するシンボルであること(@ref{Prefix
+Keys}を参照)。この場合にはマップ自体ではなく、このシンボルが@code{define-keymap}によってリターンされる。
 @end table
 
 @end defun
 
 @defmac defvar-keymap name &key options... &rest pairs...
-By far, the most common thing to do with a keymap is to bind it to a
-variable.  This is what virtually all modes do---a mode called @code{foo}
-almost always has a variable called @code{foo-mode-map}.
+キーマップでもっとも一般的に行われるのは専ら変数へのバインドであろう。これはほぼすべてのモードが行っていることであり、@code{foo}と呼ばれるモードにはほとんど常に@code{foo-mode-map}と呼ばれる変数が存在する。
 
-This macro defines @var{name} as a variable, passes @var{options} and
-@var{pairs} to @code{define-keymap}, and uses the result as the default
-value for the variable.  It signals an error if there are duplicate key
-bindings in @var{pairs}.
+このマクロは@var{name}を変数として定義して、@var{options}と@var{pairs}を@code{define-keymap}に渡した結果をその変数のデフォルト値として使用する。@var{pairs}内に重複したキーバインディングがあればエラーをシグナルする。
 
-@var{options} is like the keywords in @code{define-keymap}, but there's an
-additional @code{:doc} keyword that provides the doc string for the defined
-variable.
+@var{options}は@code{define-keymap}におけるキーワードと同様だが、定義される変数にたいしてdoc文字列を提供するためのキーワード@code{:doc}が追加されている。
 
-Here's an example:
+以下は例:
 
 @lisp
 (defvar-keymap eww-textarea-map
@@ -447,47 +336,31 @@ Here's an example:
 @kindex :repeat
 @kindex repeat-mode
 @cindex repeatable key bindings
-Each command in the keymap can be marked as `repeatable', i.e. usable in
-@code{repeat-mode}, by putting a @code{repeat-map} property on it, e.g.
+キーマップ内のコマンドはそれぞれ@code{repeat-map}プロパティを配置することによって、(@code{repeat-mode}で便利なように)`repeatable(繰り返し可能)'とマークすることができる、たとえば
 
 @lisp
 (put 'undo 'repeat-map 'undo-repeat-map)
 @end lisp
 
-where the value of the property is the map to be used by @code{repeat-mode}.
+@code{repeat-mode}によって使用されるマップがこのプロパティになる。
 
-To avoid repetitive invocations of @code{put}, @code{defvar-keymap} also has
-a @code{:repeat} keyword, which can be used to specify which commands in the
-keymap are usable by @code{repeat-mode}.  The following values are
-available:
+@code{put}を繰り返し呼び出すことを避けるためのキーワードとして、@code{defvar-keymap}には@code{:repeat}がある。このキーワードを使えばキーマップのどのコマンドが@code{repeat-mode}で使用可能かを指定できる。使用できる値は以下のとおり:
 
 @table @code
 @item t
-This means all the commands in the keymap are repeatable, and is the most
-common usage.
+キーマップのすべてのコマンドが繰り返し可能ということを意味する。もっとも一般的な使い方。
 
 @item (:enter (commands ...) :exit (commands ...) :hints ((command . "hint") ...))
-This specifies that the commands in the @code{:enter} list enter
-@code{repeat-mode}, and the commands in the @code{:exit} list exit repeat
-mode.
+@code{:enter}リストにあるコマンドで@code{repeat-mode}にエンター、@code{:exit}リストにあるコマンドでrepeatモードからexitすることを指定する。
 
-If the @code{:enter} list is empty, then all commands in the map enter
-@code{repeat-mode}.  Specifying one or more commands in this list is useful
-if there is a command which doesn't exist in the map being defined, but
-which should have the @code{repeat-map} property.
+@code{:enter}リストが空の場合には、そのマップのすべてのコマンドが@code{repeat-mode}にエンターする。このリストに1つ以上のコマンドを指定しておけば、定義しているマップには存在しないものの、@code{repeat-map}プロパティをもつべきコマンドがある場合に役に立つだろう。
 
-If the @code{:exit} list is empty then no commands in the map exit
-@code{repeat-mode}.  Specifying one or more commands in this list is useful
-if the keymap being defined contains a command that should not have the
-@code{repeat-map} property.
+@code{:exit}リストが空なら、そのマップにおいて@code{repeat-mode}をexitするコマンドは存在しない。このリストに1つ以上のコマンドを指定しておけば、定義しているマップに@code{repeat-map}プロパティをもつべきではないコマンドが含まれる場合に役に立つだろう。
 
-The @code{:hints} list can contain cons pairs where the @sc{car} is a
-command and the @sc{cdr} is a string that is displayed alongside of the
-repeatable key in the echo area.
+@code{:hints}リストには@sc{car}がコマンド、@sc{cdr}には繰り返し可能なキーと並べてエコーエリアに表示する文字列がセットされているようなコンスセルのペアーを含めることができる。
 @end table
 
-In order to make e.g.@: @kbd{u} repeat the @code{undo} command, the
-following two stanzas are equivalent:
+たとえば@kbd{u}で@code{undo}コマンドを繰り返す場合には、以下の2節は等価である:
 
 @lisp
 (defvar-keymap undo-repeat-map
@@ -495,7 +368,7 @@ following two stanzas are equivalent:
 (put 'undo 'repeat-map 'undo-repeat-map)
 @end lisp
 
-and
+または
 
 @lisp
 (defvar-keymap undo-repeat-map
@@ -503,14 +376,11 @@ and
   "u" #'undo)
 @end lisp
 
-The latter is preferred when there are many commands in the map, all of
-which should be repeatable.
+マップに多くのコマンドがあり、それらすべてを繰り返し可能にする必要がある場合には後者を使うほうがよいだろう。
 @end defmac
 
 @defun copy-keymap keymap
-This function returns a copy of @var{keymap}.  This is almost never needed.
-If you want a keymap that's like another yet with a few changes, you should
-use map inheritance rather than copying.  I.e., something like:
+この関数は@var{keymap}のコピーをリターンする。これはほとんど必要ないだろう。ほとんど差のないキーマップが必要なら、コピーより以下のように継承を使用するべきである:
 
 @example
 @group
@@ -521,11 +391,7 @@ use map inheritance rather than copying.  I.e., something like:
 @end group
 @end example
 
-When performing @code{copy-keymap}, any keymaps that appear directly as
-bindings in @var{keymap} are also copied recursively, and so on to any
-number of levels.  However, recursive copying does not take place when the
-definition of a character is a symbol whose function definition is a keymap;
-the same symbol appears in the new copy.
+@code{copy-keymap}を処理する際には、@var{keymap}内でバインディングとして直接出現するすべてのキーマップも、すべてのレベルまで再帰的にコピーされる。しかしある文字の定義が関数定義にキーマップをもつ関数のときには再帰的なコピーは行われず、新たにコピーされたキーマップには同じシンボルがコピーされる。
 
 @example
 @group
@@ -533,7 +399,7 @@ the same symbol appears in the new copy.
 @result{} (keymap
 @end group
 @group
-     ;; @r{(This implements meta characters.)}
+     ;; @r{(これはメタ文字を実装する)}
      (27 keymap
          (83 . center-paragraph)
          (115 . center-line))
@@ -556,47 +422,31 @@ the same symbol appears in the new copy.
 @cindex keymap inheritance
 @cindex inheritance, keymap
 
-  A keymap can inherit the bindings of another keymap, which we call the
-@dfn{parent keymap}.  Such a keymap looks like this:
+  キーマップは他のキーマップを継承することができ、この継承元のキーマップを@dfn{親キーマップ(parent
+keymap)}と呼びます。そのようなキーマップは以下のようなキーマップです:
 
 @example
 (keymap @var{elements}@dots{} . @var{parent-keymap})
 @end example
 
 @noindent
-The effect is that this keymap inherits all the bindings of
-@var{parent-keymap}, whatever they may be at the time a key is looked up,
-but can add to them or override them with @var{elements}.
+これにはそのキーマップのキールックアップ時に@var{parent-keymap}のすべてのバインディングを継承するものの、それらにバインディングを追加したり@var{elements}でオーバーライドできるという効果があります。
 
-If you change the bindings in @var{parent-keymap} using @code{keymap-set} or
-other key-binding functions, these changed bindings are visible in the
-inheriting keymap, unless shadowed by the bindings made by @var{elements}.
-The converse is not true: if you use @code{keymap-set} to change bindings in
-the inheriting keymap, these changes are recorded in @var{elements}, but
-have no effect on @var{parent-keymap}.
+@code{keymap-set}や他のキーバインディング関数を使用して@var{parent-keymap}内のバインディングを変更すると、変更されたバインディングは@var{elements}で作られたバインディングにshadowされない限り継承されたキーマップ内で可視になります。逆は成り立ちません。@code{keymap-set}を使用して継承されたキーマップ内のバインディングを変更すると、これらの変更は@var{elements}内に記録されますが@var{parent-keymap}に影響はありません。
 
-The proper way to construct a keymap with a parent is to use
-@code{set-keymap-parent}; if you have code that directly constructs a keymap
-with a parent, please convert the program to use @code{set-keymap-parent}
-instead.
+親キーマップからキーマップを構築するには@code{set-keymap-parent}を使用するのが正しい方法です。親キーマップから直接キーマップを構築するコードがあるなら、かわりに@code{set-keymap-parent}を使用するようにプログラムを変更してください。
 
 @defun keymap-parent keymap
-This returns the parent keymap of @var{keymap}.  If @var{keymap} has no
-parent, @code{keymap-parent} returns @code{nil}.
+これは@var{keymap}の親キーマップをリターンする。@var{keymap}に親キーマップがなければ@code{keymap-parent}は@code{nil}をリターンする。
 @end defun
 
 @defun set-keymap-parent keymap parent
-This sets the parent keymap of @var{keymap} to @var{parent}, and returns
-@var{parent}.  If @var{parent} is @code{nil}, this function gives
-@var{keymap} no parent at all.
+これは@var{keymap}の親キーマップを@var{parent}にセットして@var{parent}をリターンする。@var{parent}が@code{nil}ならこの関数は@var{keymap}に親キーマップを与えない。
 
-If @var{keymap} has submaps (bindings for prefix keys), they too receive new
-parent keymaps that reflect what @var{parent} specifies for those prefix
-keys.
+@var{keymap}がサブマップ(プレフィクスキーにたいするバインディング)をもつ場合は、それらも新たな親キーマップを受け取ってそれらのプレフィクスキーにたいして@var{parent}が何を指定するかが反映される。
 @end defun
 
-   Here is an example showing how to make a keymap that inherits from
-@code{text-mode-map}:
+   以下は@code{text-mode-map}から継承してキーマップを作成する方法を示す例です:
 
 @example
 (let ((map (make-sparse-keymap)))
@@ -604,29 +454,17 @@ keys.
   map)
 @end example
 
-  A non-sparse keymap can have a parent too, but this is not very useful.  A
-non-sparse keymap always specifies something as the binding for every
-numeric character code without modifier bits, even if it is @code{nil}, so
-these character's bindings are never inherited from the parent keymap.
+  非sparseキーマップも親キーマップをもつことができますが便利とは言えません。非sparseキーマップは修飾ビットをもたないすべての数値文字コードにたいするバインディングとして、たとえそれが@code{nil}であっても常に何かを指定するので、これらの文字のバインディングが親キーマップから継承されることは決してないのです。
 
 @cindex keymap inheritance from multiple maps
-  Sometimes you want to make a keymap that inherits from more than one map.
-You can use the function @code{make-composed-keymap} for this.
+  複数のマップからキーマップを継承したいときがあるかもしれません。これにたいして関数@code{make-composed-keymap}が使用できます。
 
 @defun make-composed-keymap maps &optional parent
-This function returns a new keymap composed of the existing keymap(s)
-@var{maps}, and optionally inheriting from a parent keymap @var{parent}.
-@var{maps} can be a single keymap or a list of more than one.  When looking
-up a key in the resulting new map, Emacs searches in each of the @var{maps}
-in turn, and then in @var{parent}, stopping at the first match.  A
-@code{nil} binding in any one of @var{maps} overrides any binding in
-@var{parent}, but it does not override any non-@code{nil} binding in any
-other of the @var{maps}.
+この関数は既存のキーマップから構成される新たなキーマップをリターンする。またオプションで親キーマップ@var{parent}から継承を行う。@var{maps}には単一のキーマップ、または複数のキーマップのリストを指定できる。リターンされた新たなマップ内でキーをルックアップするとき、Emacsは@var{maps}内のキーマップを順に検索してから@var{parent}内を検索する。この検索は最初のマッチで停止する。@var{maps}のいずれか1つのキーマップ内の@code{nil}バインディングは、@var{parent}内のすべてのバインディングをオーバーライドするが、@var{maps}にないキーマップの非@code{nil}なバインディングはオーバーライドしない。
 @end defun
 
 @noindent For example, here is how Emacs sets the parent of
-@code{help-mode-map}, such that it inherits from both
-@code{button-buffer-map} and @code{special-mode-map}:
+たとえば以下は@code{button-buffer-map}と@code{special-mode-map}の両方を継承する@code{help-mode-map}のようなキーマップの親キーマップをEmacsがセットする方法です:
 
 @example
 (defvar-keymap help-mode-map
@@ -640,116 +478,89 @@ other of the @var{maps}.
 @section プレフィクスキー
 @cindex prefix key
 
-  A @dfn{prefix key} is a key sequence whose binding is a keymap.  The keymap
-defines what to do with key sequences that extend the prefix key.  For
-example, @kbd{C-x} is a prefix key, and it uses a keymap that is also stored
-in the variable @code{ctl-x-map}.  This keymap defines bindings for key
-sequences starting with @kbd{C-x}.
+  @dfn{プレフィクスキー(prefix
+key)}とは、バインディングがキーマップであるようなキーシーケンスです。このキーマップはプレフィクスキーを拡張するキーシーケンスが何を行うかを定義します。たとえば@kbd{C-x}はプレフィクスキーであり、これはキーマップを使用してそのキーマップは変数@code{ctl-x-map}にも格納されています。このキーマップは@kbd{C-x}で始まるキーシーケンスにたいするバインディングを定義します。
 
-  Some of the standard Emacs prefix keys use keymaps that are also found in
-Lisp variables:
+  標準的なEmacsのプレフィクスキーのいくつかは、Lisp変数でも見い出すことができるキーマップを使用しています:
 
 @itemize @bullet
 @item
 @vindex esc-map
 @findex ESC-prefix
-@code{esc-map} is the global keymap for the @key{ESC} prefix key.  Thus, the
-global definitions of all meta characters are actually found here.  This map
-is also the function definition of @code{ESC-prefix}.
+@code{esc-map}はプレフィクスキー@key{ESC}にたいするグローバルキーマップである。したがってすべてのメタ文字にたいする定義は、このキーマップで見い出すことができる。このマップは@code{ESC-prefix}の関数定義でもある。
 
 @item
 @cindex @kbd{C-h}
-@code{help-map} is the global keymap for the @kbd{C-h} prefix key.
+@code{help-map}はプレフィクスキー@kbd{C-h}にたいするグローバルキーマップである。
 
 @item
 @cindex @kbd{C-c}
 @vindex mode-specific-map
-@code{mode-specific-map} is the global keymap for the prefix key @kbd{C-c}.
-This map is actually global, not mode-specific, but its name provides useful
-information about @kbd{C-c} in the output of @kbd{C-h b}
-(@code{display-bindings}), since the main use of this prefix key is for
-mode-specific bindings.
+@code{mode-specific-map}はプレフィクスキー@kbd{C-c}にたいするグローバルキーマップである。このマップは実際にはモード特有(mode-specific)ではなくグローバルであるが、このプレフィクスキーは主にモード特有なバインディングに使用されるので、@kbd{C-h
+b} (@code{display-bindings})の出力内の@kbd{C-c}に関する情報で、この名前は有意義な情報を提供する。
 
 @item
 @cindex @kbd{C-x}
 @vindex ctl-x-map
 @findex Control-X-prefix
-@code{ctl-x-map} is the global keymap used for the @kbd{C-x} prefix key.
-This map is found via the function cell of the symbol
-@code{Control-X-prefix}.
+@code{ctl-x-map}はプレフィクスキー@kbd{C-x}にたいして使用されるグローバルキーマップである。このマップはシンボル@code{Control-X-prefix}の関数セルを通して見つけることができる。
 
 @item
 @cindex @kbd{C-x @key{RET}}
 @vindex mule-keymap
-@code{mule-keymap} is the global keymap used for the @kbd{C-x @key{RET}}
-prefix key.
+@code{mule-keymap}はプレフィクスキー@kbd{C-x @key{RET}} にたいして使用されるグローバルキーマップである。
 
 @item
 @cindex @kbd{C-x 4}
 @vindex ctl-x-4-map
-@code{ctl-x-4-map} is the global keymap used for the @kbd{C-x 4} prefix key.
+@code{ctl-x-4-map}はプレフィクスキー@kbd{C-x 4}にたいして使用されるグローバルキーマップである。
 
 @item
 @cindex @kbd{C-x 5}
 @vindex ctl-x-5-map
-@code{ctl-x-5-map} is the global keymap used for the @kbd{C-x 5} prefix key.
+@code{ctl-x-5-map}はプレフィクスキー@kbd{C-x 5}にたいして使用されるグローバルキーマップである。
 
 @item
 @cindex @kbd{C-x 6}
 @vindex 2C-mode-map
-@code{2C-mode-map} is the global keymap used for the @kbd{C-x 6} prefix key.
+@code{2C-mode-map}はプレフィクスキー@kbd{C-x 6}にたいして使用されるグローバルキーマップである。
 
 @item
 @cindex @kbd{C-x t}
 @vindex tab-prefix-map
-@code{tab-prefix-map} is the global keymap used for the @kbd{C-x t} prefix
-key.
+@code{tab-prefix-map}はプレフィクスキー@kbd{C-x t}にたいして使用されるグローバルキーマップである。
 
 @item
 @cindex @kbd{C-x v}
 @vindex vc-prefix-map
-@code{vc-prefix-map} is the global keymap used for the @kbd{C-x v} prefix
-key.
+@code{vc-prefix-map}はプレフィクスキー@kbd{C-x v}にたいして使用されるグローバルキーマップである。
 
 @item
 @cindex @kbd{M-g}
 @vindex goto-map
-@code{goto-map} is the global keymap used for the @kbd{M-g} prefix key.
+@code{goto-map}はプレフィクスキー@kbd{M-g}にたいして使用されるグローバルキーマップである。
 
 @item
 @cindex @kbd{M-s}
 @vindex search-map
-@code{search-map} is the global keymap used for the @kbd{M-s} prefix key.
+@code{search-map}はプレフィクスキー@kbd{M-s}にたいして使用されるグローバルキーマップである。
 
 @item
-The other Emacs prefix keys are @kbd{C-x @@}, @kbd{C-x a i}, @kbd{C-x
-@key{ESC}} and @kbd{@key{ESC} @key{ESC}}.  They use keymaps that have no
-special names.
+Emacsの他のプレフィクスキーには@kbd{C-x @@}、@kbd{C-x a i}、@kbd{C-x
+@key{ESC}}、@kbd{@key{ESC} @key{ESC}}がある。これらは特別な名前をもたないキーマップを使用する。
 @end itemize
 
-  The keymap binding of a prefix key is used for looking up the event that
-follows the prefix key.  (It may instead be a symbol whose function
-definition is a keymap.  The effect is the same, but the symbol serves as a
-name for the prefix key.)  Thus, the binding of @kbd{C-x} is the symbol
-@code{Control-X-prefix}, whose function cell holds the keymap for @kbd{C-x}
-commands.  (The same keymap is also the value of @code{ctl-x-map}.)
+  プレフィクスキーのキーマップバインディングは、プレフィクスキーに続くイベントをルックアップするために使用されます(これは関数定義がキーマップであるようなシンボルかもしれない。効果は同じだがシンボルはプレフィクスキーにたいする名前の役割を果たす)。したがって@kbd{C-x}のバインディングはシンボル@code{Control-X-prefix}であり、このシンボルの関数セルが@kbd{C-x}コマンドにたいするキーマップを保持します(@code{ctl-x-map}の値も同じキーマップ)。
 
-  Prefix key definitions can appear in any active keymap.  The definitions of
-@kbd{C-c}, @kbd{C-x}, @kbd{C-h} and @key{ESC} as prefix keys appear in the
-global map, so these prefix keys are always available.  Major and minor
-modes can redefine a key as a prefix by putting a prefix key definition for
-it in the local map or the minor mode's map.  @xref{Active Keymaps}.
+  プレフィクスキー定義は任意のアクティブなキーマップ内に置くことができます。プレフィクスキーとしての@kbd{C-c}、@kbd{C-x}、@kbd{C-h}、@key{ESC}の定義はグローバルマップ内にもあるので、これらのプレフィクスキーは常に使用できます。メジャーモードとマイナーモードは、ローカルマップやマイナーモードのマップ内にプレフィクスキー定義を置くことによってキーをプレフィクスキーとして再定義できます。@ref{Active
+Keymaps}を参照してください。
 
-  If a key is defined as a prefix in more than one active map, then its
-various definitions are in effect merged: the commands defined in the minor
-mode keymaps come first, followed by those in the local map's prefix
-definition, and then by those from the global map.
+  あるキーが複数のアクティブなマップ内でプレフィクスキーとして定義されていると、それぞれの定義がマージされて効果をもちます。まずマイナーモードキーマップ内で定義されたコマンド、次にローカルマップのプレフィクス定義されたコマンド、そしてグローバルマップのコマンドが続きます。
 
-  In the following example, we make @kbd{C-p} a prefix key in the local
-keymap, in such a way that @kbd{C-p} is identical to @kbd{C-x}.  Then the
-binding for @kbd{C-p C-f} is the function @code{find-file}, just like
-@kbd{C-x C-f}.  By contrast, the key sequence @kbd{C-p 9} is not found in
-any active keymap.
+  以下の例ではローカルキーマップ内で@kbd{C-p}を@kbd{C-x}と等価なプレフィクスキーにしています。すると@kbd{C-p
+C-f}にたいするバインディングは@kbd{C-x
+C-f}と同様に関数@code{find-file}になります。これとは対照的にキーシーケンス@kbd{C-p
+9}はすべてのアクティブなキーマップで見つけることができません。
 
 @example
 @group
@@ -773,100 +584,70 @@ any active keymap.
 @defun define-prefix-command symbol &optional mapvar prompt
 @cindex prefix command
 @anchor{Definition of define-prefix-command}
-This function prepares @var{symbol} for use as a prefix key's binding: it
-creates a sparse keymap and stores it as @var{symbol}'s function
-definition.  Subsequently binding a key sequence to @var{symbol} will make
-that key sequence into a prefix key.  The return value is @code{symbol}.
+この関数はプレフィクスキーのバインディングとして使用するために@var{symbol}を用意する。これはsparseキーマップを作成してそれを@var{symbol}の関数定義として格納する。その後は@var{symbol}にキーシーケンスをバインディングすると、そのキーシーケンスはプレフィクスキーになるだろう。リターン値は@code{symbol}。
 
-This function also sets @var{symbol} as a variable, with the keymap as its
-value.  But if @var{mapvar} is non-@code{nil}, it sets @var{mapvar} as a
-variable instead.
+この関数は値がそのキーマップであるような変数としても@var{symbol}をセットする。しかし@var{mapvar}が非@code{nil}なら、かわりに@var{mapvar}を変数としてセットする。
 
-If @var{prompt} is non-@code{nil}, that becomes the overall prompt string
-for the keymap.  The prompt string should be given for menu keymaps
-(@pxref{Defining Menus}).
+@var{prompt}が非@code{nil}なら、これはそのキーマップにたいするoverallプロンプト文字列になる。プロンプト文字列はメニューキーマップにたいして与えらること(@ref{Defining
+Menus}を参照)。
 @end defun
 
 @node Active Keymaps
 @section アクティブなキーマップ
 @cindex active keymap
 
-  Emacs contains many keymaps, but at any time only a few keymaps are
-@dfn{active}.  When Emacs receives user input, it translates the input event
-(@pxref{Translation Keymaps}), and looks for a key binding in the active
-keymaps.
+  Emacsには多くのキーマップを含まれていますが、常にいくつかのキーマップだけが@dfn{アクティブ}です。Emacsがユーザー入力を受け取ったとき、それは入力イベントに変換されて(@ref{Translation
+Keymaps}を参照)、アクティブなキーマップ内でキーバインディングがルックアップされます。
 
-  Usually, the active keymaps are: (i) the keymap specified by the
-@code{keymap} property, (ii) the keymaps of enabled minor modes, (iii)  the
-current buffer's local keymap, and (iv) the global keymap, in that order.
-Emacs searches for each input key sequence in all these keymaps.
+  アクティブなキーマップは通常は、(1) @code{keymap}プロパティにより指定されるキーマップ、(2) 有効なマイナーモードのキーマップ、(3)
+カレントバッファーのローカルキーマップ、(4)
+グローバルキーマップの順です。Emacsは入力キーシーケンスそれぞれにたいして、これらすべてのキーマップ内を検索します。
 
-  Of these usual keymaps, the highest-precedence one is specified by the
-@code{keymap} text or overlay property at point, if any.  (For a mouse input
-event, Emacs uses the event position instead of point;
+  これらの通常のキーマップのうち最優先されるのは、もしあればポイント位置の@code{keymap}テキストにより指定されるキーマップかoverallプロパティです(マウス入力イベントにたいしてはEmacsはポイント位置のかわりにイベント位置を使用する。
 @iftex
-see the next section for details.)
+詳細は次のセクションを参照されたい)。
 @end iftex
 @ifnottex
-@pxref{Searching Keymaps}.)
+@ref{Searching Keymaps}を参照されたい)。
 @end ifnottex
 
-  Next in precedence are keymaps specified by enabled minor modes.  These
-keymaps, if any, are specified by the variables
-@code{emulation-mode-map-alists}, @code{minor-mode-overriding-map-alist},
-and @code{minor-mode-map-alist}.  @xref{Controlling Active Maps}.
+  次に優先されるのは有効なマイナーモードにより指定されるキーマップです。もしあればこれらのキーマップは変数@code{emulation-mode-map-alists}、@code{minor-mode-overriding-map-alist}、@code{minor-mode-map-alist}により指定されます。@ref{Controlling
+Active Maps}を参照してください。
 
 @cindex local keymap
-  Next in precedence is the buffer's @dfn{local keymap}, containing key
-bindings specific to the buffer.  The minibuffer also has a local keymap
-(@pxref{Intro to Minibuffers}).  If there is a @code{local-map} text or
-overlay property at point, that specifies the local keymap to use, in place
-of the buffer's default local keymap.
+  次に優先されるのはバッファーの@dfn{ローカルキーマップ(local
+keymap)}で、これにはそのバッファー特有なキーバインディングが含まれます。ミニバッファーもローカルキーマップをもちます(@ref{Intro to
+Minibuffers}を参照)。ポイント位置に@code{local-map}テキスト、またはoverlayプロパティがあるなら、それはバッファーのデフォルトローカルキーマップのかわりに使用するローカルキーマップを指定します。
 
 @cindex major mode keymap
-  The local keymap is normally set by the buffer's major mode, and every
-buffer with the same major mode shares the same local keymap.  Hence, if you
-call @code{keymap-local-set} (@pxref{Key Binding Commands})  to change the
-local keymap in one buffer, that also affects the local keymaps in other
-buffers with the same major mode.
+  ローカルキーマップは通常はそのバッファーのメジャーモードによってセットされます。同じメジャーモードをもつすべてのバッファーは、同じローカルキーマップを共有します。したがってあるバッファーでローカルキーマップを変更するために@code{keymap-local-set}
+(@ref{Key Binding
+Commands}を参照)を呼び出すと、それは同じメジャーモードをもつ他のバッファーのローカルキーマップにも影響を与えます。
 
 @cindex global keymap
-  Finally, the @dfn{global keymap} contains key bindings that are defined
-regardless of the current buffer, such as @kbd{C-f}.  It is always active,
-and is bound to the variable @code{global-map}.
+  最後は@kbd{C-f}のようなカレントバッファーとは関係なく定義されるキーバインディングを含んだ@dfn{グローバルキーマップ(global
+keymap)}です。このキーマップは常にアクティブであり変数@code{global-map}にバインドされています。
 
-  Apart from the above usual keymaps, Emacs provides special ways for programs
-to make other keymaps active.  Firstly, the variable
-@code{overriding-local-map} specifies a keymap that replaces the usual
-active keymaps, except for the global keymap.  Secondly, the terminal-local
-variable @code{overriding-terminal-local-map} specifies a keymap that takes
-precedence over @emph{all} other keymaps (including
-@code{overriding-local-map}); this is normally used for modal/transient key
-bindings (the function @code{set-transient-map} provides a convenient
-interface for this).  @xref{Controlling Active Maps}, for details.
+  これら通常のキーマップとは別に、Emacsはプログラムが他のキーマップをアクティブにするための特別な手段を提供します。1つ目はグローバルキーマップ以外の通常アクティブなキーマップを置き換えるキーマップを指定する変数@code{overriding-local-map}です。2つ目は他の@emph{すべて}のキーマップより優先されるキーマップを指定する端末ローカル変数@code{overriding-terminal-local-map}です。この端末ローカル変数は通常はmodal(訳注:
+他のキーマップを選択できない状態)かつ一時的なキーバインディングに使用されます(ここの変数にたいして関数@code{set-transient-map}は便利なインターフェイスを提供する)。詳細は@ref{Controlling
+Active Maps}を参照してください。
 
-  Making keymaps active is not the only way to use them.  Keymaps are also
-used in other ways, such as for translating events within
-@code{read-key-sequence}.  @xref{Translation Keymaps}.
+  これらを使用するのがキーマップをアクティブにする唯一の方法ではありません。キーマップは@code{read-key-sequence}によるイベントの変換のような他の用途にも使用されます。@ref{Translation
+Keymaps}を参照してください。
 
-  @xref{Standard Keymaps}, for a list of some standard keymaps.
+  いくつかの標準的なキーマップのリストは@ref{Standard Keymaps}を参照してください。
 
 @defun current-active-maps &optional olp position
-This returns the list of active keymaps that would be used by the command
-loop in the current circumstances to look up a key sequence.  Normally it
-ignores @code{overriding-local-map} and
-@code{overriding-terminal-local-map}, but if @var{olp} is non-@code{nil}
-then it pays attention to them.  @var{position} can optionally be either an
-event position as returned by @code{event-start} or a buffer position, and
-may change the keymaps as described for @code{keymap-lookup}
-(@pxref{Functions for Key Lookup, keymap-lookup}).
+これはカレント状況下でコマンドループによりキーシーケンスをルックアップするために使用される、アクティブなキーマップのリストをリターンする。これは通常は@code{overriding-local-map}と@code{overriding-terminal-local-map}を無視するが、@var{olp}が非@code{nil}なら、それらのキーマップにも注意を払う。オプションで@var{position}に@code{event-start}によってリターンされるイベント位置、またはバッファー位置を指定でき、@code{keymap-lookup}
+(@ref{Functions for Key Lookup,
+keymap-lookup}を参照)で説明されているようにキーマップを変更するかもしれない。
 @end defun
 
 @node Searching Keymaps
 @section アクティブなキーマップの検索
 @cindex searching active keymaps for keys
 
-Here is a pseudo-Lisp summary of how Emacs searches the active keymaps:
+以下はEmacsがアクティブなキーマップを検索する方法を示すLisp処理の概要です:
 
 @lisp
 (or (if overriding-terminal-local-map
@@ -884,51 +665,30 @@ Here is a pseudo-Lisp summary of how Emacs searches the active keymaps:
 @end lisp
 
 @noindent
-Here, @var{find-in} and @var{find-in-any} are pseudo functions that search
-in one keymap and in an alist of keymaps, respectively.  Note that the
-@code{set-transient-map} function works by setting
-@code{overriding-terminal-local-map} (@pxref{Controlling Active Maps}).
+ここで@var{find-in}と@var{find-in-any}はそれぞれ、1つのキーマップとキーマップのalistを検索する仮の関数です。関数@code{set-transient-map}が@code{overriding-terminal-local-map}
+(@ref{Controlling Active Maps}を参照)をセットすることによって機能する点に注意してください。
 
-  In the above pseudo-code, if a key sequence starts with a mouse event
-(@pxref{Mouse Events}), that event's position is used instead of point, and
-the event's buffer is used instead of the current buffer.  In particular,
-this affects how the @code{keymap} and @code{local-map} properties are
-looked up.  If a mouse event occurs on a string embedded with a
-@code{display}, @code{before-string}, or @code{after-string} property
-(@pxref{Special Properties}), and the string has a non-@code{nil}
-@code{keymap} or @code{local-map} property, that overrides the corresponding
-property in the underlying buffer text (i.e., the property specified by the
-underlying text is ignored).
+  上記の処理概要ではキーシーケンスがマウスイベント(@ref{Mouse
+Events}を参照)で始まる場合には、ポイント位置のかわりにそのイベント位置、カレントバッファーのかわりにそのイベントのバッファーが使用されます。これは特にプロパティ@code{keymap}と@code{local-map}をルックアップする方法に影響を与えます。@code{display}、@code{before-string}、@code{after-string}プロパティ(@ref{Special
+Properties}を参照)が埋め込まれていて@code{keymap}か@code{local-map}プロパティが非@code{nil}の文字列上でマウスイベントが発生すると、それは基調となるバッファーテキストの対応するプロパティをオーバーライドします(バッファーテキストにより指定されたプロパティは無視される)。
 
-  When a key binding is found in one of the active keymaps, and that binding
-is a command, the search is over---the command is executed.  However, if the
-binding is a symbol with a value or a string, Emacs replaces the input key
-sequences with the variable's value or the string, and restarts the search
-of the active keymaps.  @xref{Key Lookup}.
+  アクティブなキーマップの1つでキーバインディングが見つかって、そのバインディングがコマンドなら検索は終了してそのコマンドが実行されます。しかしそのバインディングが値をもつ変数か文字列なら、Emacsは入力キーシーケンスをその変数の値か文字列で置き換えて、アクティブなキーマップの検索を再開します。
+@ref{Key Lookup}を参照してください。
 
-  The command which is finally found might also be remapped.  @xref{Remapping
-Commands}.
+  最終的に見つかったコマンドもリマップされるかもしれません。@ref{Remapping Commands}を参照してください。
 
 @node Controlling Active Maps
 @section アクティブなキーマップの制御
 @cindex active keymap, controlling
 
 @defvar global-map
-This variable contains the default global keymap that maps Emacs keyboard
-input to commands.  The global keymap is normally this keymap.  The default
-global keymap is a full keymap that binds @code{self-insert-command} to all
-of the printing characters.
+この変数はEmacsキーボード入力をコマンドにマップするデフォルトのグローバルキーマップを含む。通常はこのキーマップがグローバルキーマップである。デフォルトグローバルキーマップは@code{self-insert-command}をすべてのプリント文字にバインドするfullキーマップである。
 
-It is normal practice to change the bindings in the global keymap, but you
-should not assign this variable any value other than the keymap it starts
-out with.
+これはグローバルキーマップ内のバインディングを変更する通常の手段だが、この変数に開始時のキーマップ以外の値を割り当てるべきではない。
 @end defvar
 
 @defun current-global-map
-This function returns the current global keymap.  This is the same as the
-value of @code{global-map} unless you change one or the other.  The return
-value is a reference, not a copy; if you use @code{keymap-set} or other
-functions on it you will alter global bindings.
+この関数はカレントのグローバルキーマップをリターンする。デフォルトグローバルキーマップとカレントグローバルキーマップのいずれも変更していなければ@code{global-map}と同じ値。リターン値はコピーではなく参照である。これに@code{keymap-set}などの関数を使用すると、グローバルバインディングが変更されるだろう。
 
 @example
 @group
@@ -940,10 +700,8 @@ functions on it you will alter global bindings.
 @end defun
 
 @defun current-local-map
-This function returns the current buffer's local keymap, or @code{nil} if it
-has none.  In the following example, the keymap for the @file{*scratch*}
-buffer (using Lisp Interaction mode) is a sparse keymap in which the entry
-for @key{ESC}, @acronym{ASCII} code 27, is another sparse keymap.
+この関数はカレントバッファーのローカルキーマップをリターンする。ローカルキーマップがなければ@code{nil}をリターンする。以下の例では、(Lisp
+Interactionモードを使用する)@file{*scratch*}バッファーにたいするキーマップは、@key{ESC}(@acronym{ASCII}コード27)にたいするエントリーが別のsparseキーマップであるようなsparseキーマップである。
 
 @example
 @group
@@ -961,153 +719,96 @@ for @key{ESC}, @acronym{ASCII} code 27, is another sparse keymap.
 @end example
 @end defun
 
-@code{current-local-map} returns a reference to the local keymap, not a copy
-of it; if you use @code{keymap-set} or other functions on it you will alter
-local bindings.
+@code{current-local-map}はローカルキーマップのコピーではなく参照をリターンします。これに@code{keymap-set}などの関数を使用するとローカルバインディングが変更されるでしょう。
 
 @defun current-minor-mode-maps
-This function returns a list of the keymaps of currently enabled minor
-modes.
+この関数はカレントで有効なメジャーモードのキーマップリストをリターンする。
 @end defun
 
 @defun use-global-map keymap
-This function makes @var{keymap} the new current global keymap.  It returns
-@code{nil}.
+この関数は@var{keymap}を新たなカレントグローバルキーマップにする。これは@code{nil}をリターンする。
 
-It is very unusual to change the global keymap.
+グローバルキーマップの変更は異例である。
 @end defun
 
 @defun use-local-map keymap
-This function makes @var{keymap} the new local keymap of the current
-buffer.  If @var{keymap} is @code{nil}, then the buffer has no local
-keymap.  @code{use-local-map} returns @code{nil}.  Most major mode commands
-use this function.
+この関数は@var{keymap}をカレントバッファーの新たなローカルキーマップにする。@var{keymap}が@code{nil}なら、そのバッファーはローカルキーマップをもたない。@code{use-local-map}は@code{nil}をリターンする。ほとんどのメジャーモードコマンドはこの関数を使用する。
 @end defun
 
 @defvar minor-mode-map-alist
 @anchor{Definition of minor-mode-map-alist}
-This variable is an alist describing keymaps that may or may not be active
-according to the values of certain variables.  Its elements look like this:
+この変数はアクティブかどうかに関わらず、特定の変数の値にたいするキーマップを示すalistである。要素は以下のようになる:
 
 @example
 (@var{variable} . @var{keymap})
 @end example
 
-The keymap @var{keymap} is active whenever @var{variable} has a
-non-@code{nil} value.  Typically @var{variable} is the variable that enables
-or disables a minor mode.  @xref{Keymaps and Minor Modes}.
+キーマップ@var{keymap}は
+@var{variable}が非@code{nil}値をもつときはアクティブである。@var{variable}は通常はメジャーモードを有効か無効にする変数である。@ref{Keymaps
+and Minor Modes}を参照のこと。
 
-Note that elements of @code{minor-mode-map-alist} do not have the same
-structure as elements of @code{minor-mode-alist}.  The map must be the
-@sc{cdr} of the element; a list with the map as the second element will not
-do.  The @sc{cdr} can be either a keymap (a list) or a symbol whose function
-definition is a keymap.
+@code{minor-mode-map-alist}の要素が@code{minor-mode-alist}の要素と異なる構造をもつことに注意。マップは要素の@sc{cdr}でなければならず、そうでなければ2つ目の要素にマップリストは用いられないだろう。@sc{cdr}はキーマップ(リスト)、または関数定義がキーマップであるようなシンボルである。
 
-When more than one minor mode keymap is active, the earlier one in
-@code{minor-mode-map-alist} takes priority.  But you should design minor
-modes so that they don't interfere with each other.  If you do this
-properly, the order will not matter.
+1つ以上のマイナーモードキーマップがアクティブなとき、@code{minor-mode-map-alist}内で前のキーマップが優先される。しかし互いが干渉しないようにマイナーモードをデザインすること。これを正しく行えば順序は問題にならない。
 
-See @ref{Keymaps and Minor Modes}, for more information about minor modes.
-See also @code{minor-mode-key-binding} (@pxref{Functions for Key Lookup}).
+マイナーモードについての詳細な情報は、@ref{Keymaps and Minor
+Modes}を参照のこと。@code{minor-mode-key-binding} (@ref{Functions for Key
+Lookup}を参照)も確認されたい。
 @end defvar
 
 @defvar minor-mode-overriding-map-alist
-This variable allows major modes to override the key bindings for particular
-minor modes.  The elements of this alist look like the elements of
-@code{minor-mode-map-alist}: @code{(@var{variable} . @var{keymap})}.
+この変数はメジャーモードによる特定のマイナーモードにたいするキーバインディングのオーバーライドを可能にする。このalistの要素は@code{minor-mode-map-alist}の要素のような@code{(@var{variable}
+. @var{keymap})}という形式である。
 
-If a variable appears as an element of
-@code{minor-mode-overriding-map-alist}, the map specified by that element
-totally replaces any map specified for the same variable in
-@code{minor-mode-map-alist}.
+ある変数が@code{minor-mode-overriding-map-alist}の要素として出現するなら、その要素によって指定されるマップは@code{minor-mode-map-alist}内の同じ変数にたいして指定されるすべてのマップを完全に置き換える。
 
-@code{minor-mode-overriding-map-alist} is automatically buffer-local in all
-buffers.
+すべてのバッファーにおいて@code{minor-mode-overriding-map-alist}は自動的にバッファーローカルである。
 @end defvar
 
 @defvar overriding-local-map
-If non-@code{nil}, this variable holds a keymap to use instead of the
-buffer's local keymap, any text property or overlay keymaps, and any minor
-mode keymaps.  This keymap, if specified, overrides all other maps that
-would have been active, except for the current global map.
+この変数が非@code{nil}ならバッファーのローカルキーマップ、テキストプロパティまたはoverlayによるキーマップ、マイナーモードキーマップのかわりに使用されるするキーマップを保持する。このキーマップが指定されると、カレントグローバルキーマップ以外のアクティブだった他のすべてのマップがオーバーライドされる。
 @end defvar
 
 @defvar overriding-terminal-local-map
-If non-@code{nil}, this variable holds a keymap to use instead of
-@code{overriding-local-map}, the buffer's local keymap, text property or
-overlay keymaps, and all the minor mode keymaps.
+この変数が非@code{nil}なら@code{overriding-local-map}、バッファーのローカルキーマップ、テキストプロパティまたはoverlayによるキーマップ、およびすべてのマイナーモードキーマップのかわりに使用されるキーマップを保持する。
 
-This variable is always local to the current terminal and cannot be
-buffer-local.  @xref{Multiple Terminals}.  It is used to implement
-incremental search mode.
+この変数はカレント端末にたいして常にローカルでありバッファーローカルにできない。@ref{Multiple
+Terminals}を参照のこと。これはインクリメンタル検索モードの実装に使用される。
 @end defvar
 
 @defvar overriding-local-map-menu-flag
-If this variable is non-@code{nil}, the value of @code{overriding-local-map}
-or @code{overriding-terminal-local-map} can affect the display of the menu
-bar.  The default value is @code{nil}, so those map variables have no effect
-on the menu bar.
+この変数が非@code{nil}なら、@code{overriding-local-map}と@code{overriding-terminal-local-map}の値がメニューバーの表示に影響し得る。デフォルト値は@code{nil}なので、これらのマップ変数なメニューバーに影響をもたない。
 
-Note that these two map variables do affect the execution of key sequences
-entered using the menu bar, even if they do not affect the menu bar
-display.  So if a menu bar key sequence comes in, you should clear the
-variables before looking up and executing that key sequence.  Modes that use
-the variables would typically do this anyway; normally they respond to
-events that they do not handle by ``unreading'' them and exiting.
+これら2つのマップ変数は、たとえこれらの変数がメニューバー表示に影響し得るを与えない場合でも、メニューバーを使用してエンターされたキーシーケンスの実行には影響を与えることに注意。したがってもしメニューバーキーシーケンスが到着したら、そのキーシーケンスをルックアップして実行する前に変数をクリアーすること。この変数を使用するモードは通常は何らかの手段でこれを行っている。これらのモードは通常は``読み戻し(unread)''とexitによって処理されないイベントに応答する。
 @end defvar
 
 @defvar special-event-map
-This variable holds a keymap for special events.  If an event type has a
-binding in this keymap, then it is special, and the binding for the event is
-run directly by @code{read-event}.  @xref{Special Events}.
+この変数はスペシャルイベントにたいするキーマップを保持する。あるイベント型がこのキーマップ内でバインディングをもつなら、それはスペシャルイベントであり、そのイベントにたいするバインディングは@code{read-event}によって直接実行される。@ref{Special
+Events}を参照のこと。
 @end defvar
 
 @defvar emulation-mode-map-alists
-This variable holds a list of keymap alists to use for emulation modes.  It
-is intended for modes or packages using multiple minor-mode keymaps.  Each
-element is a keymap alist which has the same format and meaning as
-@code{minor-mode-map-alist}, or a symbol with a variable binding which is
-such an alist.  The active keymaps in each alist are used before
-@code{minor-mode-map-alist} and @code{minor-mode-overriding-map-alist}.
+この変数はエミュレーションモードにたいして使用するキーマップのalistのリストを保持する。この変数は複数マイナーモードキーマップを使用するモードとパッケージを意図している。リストの各要素は@code{minor-mode-map-alist}と同じフォーマットと意味をもつキーマップのalistか、そのようなalist形式の変数バインディングをもつシンボルである。それぞれのalist内のアクティブなキーマップは@code{minor-mode-map-alist}と@code{minor-mode-overriding-map-alist}の前に使用される。
 @end defvar
 
 @cindex transient keymap
 @defun set-transient-map keymap &optional keep-pred on-exit
-This function adds @var{keymap} as a @dfn{transient} keymap, which takes
-precedence over other keymaps for one (or more) subsequent keys.
+この関数は@dfn{一時的(transient)}なキーマップとして@var{keymap}を追加する。一時的なキーマップは1つ以上の後続するキーにたいして、他のキーマップより優先される。
 
-Normally, @var{keymap} is used just once, to look up the very next key.  If
-the optional argument @var{keep-pred} is @code{t}, the map stays active as
-long as the user types keys defined in @var{keymap}; when the user types a
-key that is not in @var{keymap}, the transient keymap is deactivated and
-normal key lookup continues for that key.
+@var{keymap}は通常は直後のキーをルックアップするために1回だけ使用される。しかし、オプション引数@var{keep-pred}が@code{t}なら、そのマップはユーザーが@var{keymap}内で定義されたキーをタイプするまでアクティブのままとなる。@var{keymap}内にないキーをユーザーがタイプしたとき一時的キーマップは非アクティブとなり、そのキーにたいして通常のキールックアップが継続される。
 
-The @var{keep-pred} argument can also be a function.  In that case, the
-function is called with no arguments, prior to running each command, while
-@var{keymap} is active; it should return non-@code{nil} if @var{keymap}
-should stay active.
+@var{keep-pred}には関数も指定できる。この場合には@var{keymap}がアクティブの間は、各コマンドの実行に優先してその関数が引数なしで呼び出される。@var{keymap}がアクティブの間、関数は非@code{nil}をリターンすること。
 
-The optional argument @var{on-exit}, if non-@code{nil}, specifies a function
-that is called, with no arguments, after @var{keymap} is deactivated.
+オプション引数@var{on-exit}が非@code{nil}なら、それは@var{keymap}が非アクティブになった後に引数なしで呼び出される関数を指定する。
 
-The optional argument @var{message} specifies the message to display after
-activating the transient map.  If @var{message} is a string, it is the
-format string for the message, and any @samp{%k} specifier in that string is
-replaced with the list of keys from the transient map.  Any other
-non-@code{nil} value of @var{message} stands for the default message format
-@samp{Repeat with %k}.
+オプション引数@var{message}には一時的なマップをアクティブ化後に表示するメッセージを指定する。@var{message}が文字列ならメッセージ用のフォーマット文字列であり、文字列中のすべての@samp{%k}指定子は一時的マップのキーのリストに置き換えられる。@var{message}の値としては、それ以外の非@code{nil}値はデフォルトのメッセージフォーマット@samp{Repeat
+with %k}を意味する。
 
 @vindex set-transient-map-timeout
-If the optional argument @var{timeout} is non-@code{nil}, it should be a
-number that specifies how many seconds of idle time to wait before
-deactivating @var{keymap}.  The value of the variable
-@code{set-transient-map-timeout}, if non-@code{nil}, overrides the value of
-this argument.
+オプション引数@var{timeout}が非@code{nil}なら、それは@var{keymap}を非アクティブにするまでに待機するアイドル時間を秒数で指定する数値であること。変数@code{set-transient-map-timeout}の値が非@code{nil}なら、この引数の値をオーバーライドする。
 
-This function works by adding and removing @var{keymap} from the variable
-@code{overriding-terminal-local-map}, which takes precedence over all other
-active keymaps (@pxref{Searching Keymaps}).
+この関数は他のすべてのアクティブなキーマップに優先される変数@code{overriding-terminal-local-map}にたいして、@var{keymap}を追加または削除することによって機能する(@ref{Searching
+Keymaps}を参照)。
 @end defun
 
 @node Key Lookup
@@ -1115,119 +816,76 @@ active keymaps (@pxref{Searching Keymaps}).
 @cindex key lookup
 @cindex keymap entry
 
-  @dfn{Key lookup} is the process of finding the binding of a key sequence
-from a given keymap.  The execution or use of the binding is not part of key
-lookup.
+  @dfn{キールックアップ(key lookup:
+キー照合)}とは与えられたキーマップからキーシーケンスのバインディングを見つけ出すことです。そのバインディングの使用や実行はキールックアップの一部ではありません。
 
-  Key lookup uses just the event type of each event in the key sequence; the
-rest of the event is ignored.  In fact, a key sequence used for key lookup
-may designate a mouse event with just its types (a symbol)  instead of the
-entire event (a list).  @xref{Input Events}.  Such a key sequence is
-insufficient for @code{command-execute} to run, but it is sufficient for
-looking up or rebinding a key.
+  キールックアップはキーシーケンス内の各イベントのイベント型だけを使用して、そのイベントの残りは無視します。実際のところキールックアップに使用されるキーシーケンスは、マウスイベントをイベント全体(リスト)のかわりにイベント型のみ(シンボル)を用いるでしょう。@ref{Input
+Events}を参照してください。そのようなキーシーケンスは@code{command-execute}による実行には不十分ですが、キーのルックアップやリバインドには十分です。
 
-  When the key sequence consists of multiple events, key lookup processes the
-events sequentially: the binding of the first event is found, and must be a
-keymap; then the second event's binding is found in that keymap, and so on
-until all the events in the key sequence are used up.  (The binding thus
-found for the last event may or may not be a keymap.)  Thus, the process of
-key lookup is defined in terms of a simpler process for looking up a single
-event in a keymap.  How that is done depends on the type of object
-associated with the event in that keymap.
+  キーシーケンスが複数イベントから構成されるとき、キールックアップはイベントを順に処理します。最初のイベントのバインディングが見つかったとき、それはキーマップでなければなりません。そのキーマップ内で2つ目のイベントを見つけ出して、そのキーシーケンス内のすべてのイベントが消費されるまで、このプロセスを続けます(故に最後のイベントにたいして見つかったイベントはキーマップかどうかはわからない)。したがってキールックアッププロセスはキーマップ内で単一イベントを見つけ出す、よりシンプルなプロセスで定義されます。これが行なわれる方法はキーマップ内でそのイベントに関連するオブジェクトの型に依存します。
 
-  Let's use the term @dfn{keymap entry} to describe the value found by looking
-up an event type in a keymap.  (This doesn't include the item string and
-other extra elements in a keymap element for a menu item, because
-@code{keymap-lookup} and other key lookup functions don't include them in
-the returned value.)  While any Lisp object may be stored in a keymap as a
-keymap entry, not all make sense for key lookup.  Here is a table of the
-meaningful types of keymap entries:
+  キーマップ内のイベント型ルックアップによる値の発見を説明するために、@dfn{キーマップエントリー(keymap
+entry)}という用語を導入しましょう(これにはメニューアイテムにたいするキーマップ内のアイテム文字列や他の余計な要素は含まれない。なぜなら@code{keymap-lookup}や他のキーマップルックアップ関数がリターン値にそれらを含まないから)。任意のLispオブジェクトがキーマップエントリーとしてキーマップに格納されるかもしれませんが、すべてがキールックアップに意味をもつわけではありません。以下のテーブルはキーマップエントリーで重要な型です:
 
 @table @asis
 @item @code{nil}
 @cindex @code{nil} in keymap
-@code{nil} means that the events used so far in the lookup form an undefined
-key.  When a keymap fails to mention an event type at all, and has no
-default binding, that is equivalent to a binding of @code{nil} for that
-event type.
+@code{nil}はそれまでにルックアップに使用されたイベントが未定義キーを形成することを意味する。最終的にキーマップがイベント型を調べるのに失敗してデフォルトバインディングも存在しないときは、そのイベント型のバインディングが@code{nil}であるのと同じである。
 
 @item @var{command}
 @cindex command in keymap
-The events used so far in the lookup form a complete key, and @var{command}
-is its binding.  @xref{What Is a Function}.
+それまでにルックアップに使用されたイベントがコンプリートキーを形成して、@var{command}がそのバインディングである。@ref{What Is
+a Function}を参照のこと。
 
 @item @var{array}
 @cindex string in keymap
-The array (either a string or a vector) is a keyboard macro.  The events
-used so far in the lookup form a complete key, and the array is its
-binding.  See @ref{Keyboard Macros}, for more information.
+array(文字列かベクター)はキーボードマクロである。それまでにルックアップに使用されたイベントはコンプリートキーを形成して、arrayがそのバインディングである。詳細は@ref{Keyboard
+Macros}を参照のこと。
 
 @item @var{keymap}
 @cindex keymap in keymap
-The events used so far in the lookup form a prefix key.  The next event of
-the key sequence is looked up in @var{keymap}.
+それまでにルックアップに使用されたイベントはプレフィクスキーを形成する。そのキーシーケンスの次のイベントは@var{keymap}内でルックアップされる。
 
 @item @var{list}
 @cindex list in keymap
-The meaning of a list depends on what it contains:
+listの意味はそのリストが何を含んでいるかに依存する:
 
 @itemize @bullet
 @item
-If the @sc{car} of @var{list} is the symbol @code{keymap}, then the list is
-a keymap, and is treated as a keymap (see above).
+@var{list}の@sc{car}がシンボル@code{keymap}なら、そのリストはキーマップでありキーマップとして扱われる(上記参照)。
 
 @item
 @cindex @code{lambda} in keymap
-If the @sc{car} of @var{list} is @code{lambda}, then the list is a lambda
-expression.  This is presumed to be a function, and is treated as such (see
-above).  In order to execute properly as a key binding, this function must
-be a command---it must have an @code{interactive} specification.
-@xref{Defining Commands}.
+@var{list}の@sc{car}が@code{lambda}なら、そのリストはラムダ式である。これは関数とみなされてそのように扱われる(上記参照)。キーバインディングとして正しく実行されるために、この関数はコマンドでなければならず@code{interactive}指定をもたなければならない。@ref{Defining
+Commands}を参照のこと。
 @end itemize
 
 @item @var{symbol}
 @cindex symbol in keymap
-The function definition of @var{symbol} is used in place of @var{symbol}.
-If that too is a symbol, then this process is repeated, any number of
-times.  Ultimately this should lead to an object that is a keymap, a
-command, or a keyboard macro.
+@var{symbol}の関数定義が@var{symbol}のかわりに使用される。もし関数定義もシンボルなら、任意の回数このプロセスが繰り返される。これは最終的にキーマップであるようなオブジェクト、コマンド、またはキーボードマクロに行き着くはずである。
 
-Note that keymaps and keyboard macros (strings and vectors) are not valid
-functions, so a symbol with a keymap, string, or vector as its function
-definition is invalid as a function.  It is, however, valid as a key
-binding.  If the definition is a keyboard macro, then the symbol is also
-valid as an argument to @code{command-execute} (@pxref{Interactive Call}).
+キーマップとキーボードマクロ(文字列かベクター)は有効な関数ではないので関数定義にキーマップ、文字列、ベクターをもつシンボルは関数としては無効であることに注意。しかしキーバインディングとしては有効である。その定義がキーボードマクロなら、そのシンボルは@code{command-execute}(@ref{Interactive
+Call}を参照)の引数としても有効である。
 
 @cindex @code{undefined} in keymap
-The symbol @code{undefined} is worth special mention: it means to treat the
-key as undefined.  Strictly speaking, the key is defined, and its binding is
-the command @code{undefined}; but that command does the same thing that is
-done automatically for an undefined key: it rings the bell (by calling
-@code{ding}) but does not signal an error.
+シンボル@code{undefined}は特記するに値する。これはそのキーを未定義として扱うことを意味する。厳密に言うとそのキーは定義されているが、そのバインディングがコマンド@code{undefined}なのである。しかしこのコマンドは未定義キーにたいして自動的に行われるのと同じことを行う。これは(@code{ding}を呼び出して)bellを鳴らすがエラーはシグナルしない。
 
 @cindex preventing prefix key
-@code{undefined} is used in local keymaps to override a global key binding
-and make the key undefined locally.  A local binding of @code{nil} would
-fail to do this because it would not override the global binding.
+@code{undefined}はグローバルキーバインディングをオーバーライドして、そのキーをローカルに未定義とするために使用される。@code{nil}にローカルにバインドしてもグローバルバインディングをオーバーライドしないであろうから、これを行うのに失敗するだろう。
 
 @item @var{anything else}
-If any other type of object is found, the events used so far in the lookup
-form a complete key, and the object is its binding, but the binding is not
-executable as a command.
+オブジェクトの他の型が見つかったら、それまでにルックアップで使用されたイベントはコンプリートキーを形成してそのオブジェクトがバインディングになるが、そのバインディングはコマンドとして実行不可能である。
 @end table
 
-  In short, a keymap entry may be a keymap, a command, a keyboard macro, a
-symbol that leads to one of them, or @code{nil}.
+  要約するとキーマップエントリーはキーマップ、コマンド、キーボードマクロ、あるいはそれらに導出されるシンボル、あるいは@code{nil}のいずれかです。
 
 @node Functions for Key Lookup
 @section キー照合のための関数
 
-  Here are the functions and variables pertaining to key lookup.
+  以下はキールックアップに関連する関数および変数です。
 
 @defun keymap-lookup keymap key &optional accept-defaults no-remap position
-This function returns the definition of @var{key} in @var{keymap}.  All the
-other functions described in this chapter that look up keys use
-@code{keymap-lookup}.  Here are examples:
+この関数は@var{keymap}内の@var{key}の定義をリターンする。このチャプターで説明されているキーをルックアップする他のすべての関数が@code{keymap-lookup}を使用する。以下は例:
 
 @example
 @group
@@ -1240,24 +898,12 @@ other functions described in this chapter that look up keys use
 @end group
 @end example
 
-If the string or vector @var{key} is not a valid key sequence according to
-the prefix keys specified in @var{keymap}, it must be too long and have
-extra events at the end that do not fit into a single key sequence.  Then
-the value is a number, the number of events at the front of @var{key} that
-compose a complete key.
+文字列かベクターの@var{key}が@var{keymap}内で指定されるプレフィクスキーとして有効なキーシーケンスでなければ、それは最後に余計なイベントをもった、単一のキーシーケンスに適合しない長過ぎるキーのはずである。その場合のリターン値は数となり、この数はコンプリートキーを構成する@var{key}の前にあるイベントの数である。
 
-If @var{accept-defaults} is non-@code{nil}, then @code{keymap-lookup}
-considers default bindings as well as bindings for the specific events in
-@var{key}.  Otherwise, @code{keymap-lookup} reports only bindings for the
-specific sequence @var{key}, ignoring default bindings except when you
-explicitly ask about them.  (To do this, supply @code{t} as an element of
-@var{key}; see @ref{Format of Keymaps}.)
+@var{accept-defaults}が非@code{nil}なら、@code{keymap-lookup}は@var{key}内の特定のイベントにたいするバインディングと同様にデフォルトバインディングも考慮する。それ以外では@code{keymap-lookup}は特定の@var{key}のシーケンスにたいするバインディングだけを報告して、明示的に指定したとき以外はデフォルトバインディングを無視する(これを行うには@var{key}の要素として@code{t}を与える。@ref{Format
+of Keymaps}を参照)。
 
-If @var{key} contains a meta character (not a function key), that character
-is implicitly replaced by a two-character sequence: the value of
-@code{meta-prefix-char}, followed by the corresponding non-meta character.
-Thus, the first example below is handled by conversion into the second
-example.
+@var{key}がメタ文字(ファンクションキーではない)を含むなら、その文字は暗黙に@code{meta-prefix-char}の値と対応する非メタ文字からなる2文字シーケンスに置き換えられる。したがって以下の1つ目の例は2つ目の例に変換されて処理される。
 
 @example
 @group
@@ -1270,86 +916,56 @@ example.
 @end group
 @end example
 
-The @var{keymap} argument can be @code{nil}, meaning to look up @var{key} in
-the current keymaps (as returned by @code{current-active-maps},
-@pxref{Active Keymaps}); or it can be a keymap or a list of keymaps, meaning
-to look up @var{key} only in the specified keymaps.
+@var{keymap}引数は@code{nil}でもよい。これはカレントキーマップ(@code{current-active-maps}によってリターンされるキーマップ;
+@ref{Active
+Keymaps}を参照)で@var{key}を探すことを意味する。またはキーマップやキーマップのリストでもよく、この場合には指定されたキーマップからのみキーを探すことを意味する。
 
-Unlike @code{read-key-sequence}, this function does not modify the specified
-events in ways that discard information (@pxref{Key Sequence Input}).  In
-particular, it does not convert letters to lower case and it does not change
-drag events to clicks.
+@code{read-key-sequence}とは異なり、この関数は指定されたイベントの情報を破棄する変更(@ref{Key Sequence
+Input}を参照)を行わない。特にこの関数はアルファベット文字を小文字に変更せず、ドラッグイベントをクリックイベントに変更しない。
 
-Like the normal command loop, @code{keymap-lookup} will remap the command
-resulting from looking up @var{key} by looking up the command in the current
-keymaps.  However, if the optional third argument @var{no-remap} is
-non-@code{nil}, @code{keymap-lookup} returns the command without remapping.
+@code{keymap-lookup}は通常のコマンドループが行うように、カレントキーマップ内のコマンドを調べることによって@var{key}を見つけ出し、その結果によってコマンドのリマップを行う。ただしオプションの第3引数@var{no-remap}が非@code{nil}なら。@code{keymap-lookup}はリマップをせずにそのコマンドをリターンする。
 
-If the optional argument @var{position} is non-@code{nil}, it specifies a
-mouse position as returned by @code{event-start} and @code{event-end}, and
-the lookup occurs in the keymaps associated with that position, instead of
-in @var{keymap}.  @var{position} can also be a number or a marker, in which
-case it is interpreted as a buffer position, and the function uses the
-keymap properties at that position instead of at point.
+オプション引数@var{position}が非@code{nil}なら、それは@code{event-start}や@code{event-end}がリターンするようなマウス位置を指定する。そしてルックアップは@var{keymap}ではなく、その位置に関連付けられているキーマップにたいして行われる。@var{position}は数値かマーカーでもよく、その場合にはバッファー位置として解釈されて、この関数はポイント位置ではなく指定した位置のキーマッププロパティを使用する。
 @end defun
 
 @deffn Command undefined
-Used in keymaps to undefine keys.  It calls @code{ding}, but does not cause
-an error.
+キーを未定義にするためにキーマップ内で使用される。これは@code{ding}を呼び出すがエラーを発生ささない。
 @end deffn
 
 @defun keymap-local-lookup key &optional accept-defaults
-This function returns the binding for @var{key} in the current local keymap,
-or @code{nil} if it is undefined there.
+この関数はカレントのローカルキーマップ内の@var{key}にたいするバインディングをリターンする。カレントのローカルキーマップ内で未定義なら@code{nil}をリターンする。
 
-The argument @var{accept-defaults} controls checking for default bindings,
-as in @code{keymap-lookup} (above).
+引数@var{accept-defaults}は@code{keymap-lookup}(上記)と同じようにデフォルトバインディングのチェックを制御する。
 @end defun
 
 @defun keymap-global-lookup key &optional accept-defaults
-This function returns the binding for command @var{key} in the current
-global keymap, or @code{nil} if it is undefined there.
+この関数はカレントのグローバルキーマップ内でコマンド@var{key}にたいするバインディングをリターンする。カレントのグローバルキーマップ内で未定義なら@code{nil}をリターンする。
 
-The argument @var{accept-defaults} controls checking for default bindings,
-as in @code{keymap-lookup} (above).
+引数@var{accept-defaults}は@code{keymap-lookup}(上記)と同じようにデフォルトバインディングのチェックを制御する。
 @end defun
 
 @defun minor-mode-key-binding key &optional accept-defaults
-This function returns a list of all the active minor mode bindings of
-@var{key}.  More precisely, it returns an alist of pairs
-@code{(@var{modename} . @var{binding})}, where @var{modename} is the
-variable that enables the minor mode, and @var{binding} is @var{key}'s
-binding in that mode.  If @var{key} has no minor-mode bindings, the value is
-@code{nil}.
+この関数はアクティブなマイナーモードの@var{key}のバインディングをリストでリターンする。より正確にはこの関数は@code{(@var{modename}
+.
+@var{binding})}のようなペアのalistをリターンする。ここで@var{modename}なそのマイナーモードを有効にする変数、@var{binding}はそのモードでの@var{key}のバインディングである。@var{key}がマイナーモードバインディングをもたなければ値は@code{nil}。
 
-If the first binding found is not a prefix definition (a keymap or a symbol
-defined as a keymap), all subsequent bindings from other minor modes are
-omitted, since they would be completely shadowed.  Similarly, the list omits
-non-prefix bindings that follow prefix bindings.
+最初に見つかったバインディングがプレフィクス定義(キーマップ、またはキーマップとして定義されたシンボル)でなければ、他のマイナーモードに由来するすべての後続するバインディングは完全にshadowされて省略される。同様にこのリストはプレフィクスバインディングに後続する非プレフィクスバインディングは省略される。
 
-The argument @var{accept-defaults} controls checking for default bindings,
-as in @code{keymap-lookup} (above).
+引数@var{accept-defaults}は@code{keymap-lookup}(上記)と同じようにデフォルトバインディングのチェックを制御する。
 @end defun
 
 @defopt meta-prefix-char
 @cindex @key{ESC}
-This variable is the meta-prefix character code.  It is used for translating
-a meta character to a two-character sequence so it can be looked up in a
-keymap.  For useful results, the value should be a prefix event
-(@pxref{Prefix Keys}).  The default value is 27, which is the
-@acronym{ASCII} code for @key{ESC}.
+この変数はメタ/プレフィクス文字コードである。これはメタ文字をキーマップ内でルックアップできるように2文字シーケンスに変換する。有用な結果を得るために値はプレフィクスイベント(@ref{Prefix
+Keys}を参照)であること。デフォルト値は27で、これは@key{ESC}にたいする@acronym{ASCII}コード。
 
-As long as the value of @code{meta-prefix-char} remains 27, key lookup
-translates @kbd{M-b} into @kbd{@key{ESC} b}, which is normally defined as
-the @code{backward-word} command.  However, if you were to set
-@code{meta-prefix-char} to 24, the code for @kbd{C-x}, then Emacs will
-translate @kbd{M-b} into @kbd{C-x b}, whose standard binding is the
-@code{switch-to-buffer} command.  (Don't actually do this!)  Here is an
-illustration of what would happen:
+@code{meta-prefix-char}の値が27であるような限り、キールックアップは通常は@code{backward-word}コマンドとして定義される@kbd{M-b}を@kbd{@key{ESC}
+b}に変換する。しかし@code{meta-prefix-char}を24(@kbd{C-x}のコード)にセットすると、Emacsは@kbd{M-b}を@kbd{C-x
+b}に変換するだろうが、これの標準のバインディングは@code{switch-to-buffer}コマンドである。以下に何が起こるかを示す(実際にこれを行ってはならない!):
 
 @smallexample
 @group
-meta-prefix-char                    ; @r{The default value.}
+meta-prefix-char                    ; @r{デフォルト値}
      @result{} 27
 @end group
 @group
@@ -1357,8 +973,8 @@ meta-prefix-char                    ; @r{The default value.}
      @result{} backward-word
 @end group
 @group
-?\C-x                               ; @r{The print representation}
-     @result{} 24                          ;   @r{of a character.}
+?\C-x                               ; @r{文字.の}
+     @result{} 24                          ; @r{プリント表現}
 @end group
 @group
 (setq meta-prefix-char 24)
@@ -1366,17 +982,16 @@ meta-prefix-char                    ; @r{The default value.}
 @end group
 @group
 (key-binding "\M-b")
-     @result{} switch-to-buffer            ; @r{Now, typing @kbd{M-b} is}
-                                    ;   @r{like typing @kbd{C-x b}.}
+     @result{} switch-to-buffer            ; @r{今や@kbd{M-b}をタイプすると}
+                                    ;   @r{@kbd{C-x b}をタイプしたようになる}
 
-(setq meta-prefix-char 27)          ; @r{Avoid confusion!}
-     @result{} 27                          ; @r{Restore the default value!}
+(setq meta-prefix-char 27)          ; @r{混乱を避けよう!}
+     @result{} 27                          ; @r{デフォルト値をリストア!}
 @end group
 @end smallexample
 
-This translation of one event into two happens only for characters, not for
-other kinds of input events.  Thus, @kbd{M-@key{F1}}, a function key, is not
-converted into @kbd{@key{ESC} @key{F1}}.
+この単一イベントから2イベントへの変換は文字にたいしてのみ発生し、他の種類の入力イベントには発生しない。したがってファンクションキー@kbd{M-@key{F1}}は@kbd{@key{ESC}
+@key{F1}}に変換されない。
 @end defopt
 
 @node Changing Key Bindings
@@ -1384,102 +999,69 @@ converted into @kbd{@key{ESC} @key{F1}}.
 @cindex changing key bindings
 @cindex rebinding
 
-  The way to rebind a key is to change its entry in a keymap.  If you change a
-binding in the global keymap, the change is effective in all buffers (though
-it has no direct effect in buffers that shadow the global binding with a
-local one).  If you change the current buffer's local map, that usually
-affects all buffers using the same major mode.  The @code{keymap-global-set}
-and @code{keymap-local-set} functions are convenient interfaces for these
-operations (@pxref{Key Binding Commands}).  You can also use
-@code{keymap-set}, a more general function; then you must explicitly specify
-the map to change.
+  キーのリバインド(rebind:
+再バインド、再束縛)は、キーマップ内でそのキーのバインディングエントリーを変更することによって行われます。グローバルキーマップ内のバインディングを変更すると、その変更は(たとえローカルバインディングによりグローバルバインディングをshadowしているバッファーでは直接影響しないとしても)すべてのバッファーに影響します。カレントバッファーのローカルマップを変更すると、通常は同じメジャーモードを使用するすべてのバッファーに影響します。関数@code{keymap-global-set}と@code{keymap-local-set}は、これらの操作のための使いやすいインターフェイスです(@ref{Key
+Binding
+Commands}を参照)。より汎用的な関数@code{keymap-set}を使用することもできます。その場合には変更するマップを明示的に指定しなければなりません。
 
-  When choosing the key sequences for Lisp programs to rebind, please follow
-the Emacs conventions for use of various keys (@pxref{Key Binding
-Conventions}).
+  Lispプログラムでリバインドするキーシーケンスを選択するときは、さまざまなキーの使用についてのEmacsの慣習にしたがってください(@ref{Key
+Binding Conventions}を参照)。
 
-  The functions below signal an error if @var{keymap} is not a keymap, or if
-@var{key} is not a valid key.
+  以下の関数は@var{keymap}がキーマップではない、あるいは@var{key}が有効なキーでなければエラーをシグナルします。
 
-@var{key} is a string representing a single key or a series of key strokes,
-and must satisfy @code{key-valid-p}.  Key strokes are separated by a single
-space character.
+@var{key}は単一のキーを表す文字列、あるいは一連のキーストロークであり、@code{key-valid-p}を満足しなければなりません。キーストロークは1つのスペース文字によって区切られています。
 
-Each key stroke is either a single character, or the name of an event,
-surrounded by angle brackets.  In addition, any key stroke may be preceded
-by one or more modifier keys.  Finally, a limited number of characters have
-a special shorthand syntax.  Here's some example key sequences:
+キーストロークはそれぞれ単一の文字、あるいは山カッコ(angle
+brackets)で括られたイベント名です。更にすべてのキーストロークにたいして1つ以上の修飾キーが前置されているかもしれません。最後に数は限られますが特別な短縮構文をもつ文字があります。以下に例としてキーシーケンスの例を示します:
 
 @table @kbd
 @item f
-The key @kbd{f}.
+キーの@kbd{f}。
 
 @item S o m
-A three key sequence of the keys @kbd{S}, @kbd{o} and @kbd{m}.
+@kbd{S}、@kbd{o}、@kbd{m}の3文字からなるキーシーケンス。
 
 @item C-c o
-A two key sequence of the keys @kbd{c} with the control modifier and then
-the key @kbd{o}
+controlで修飾されたキー@kbd{c}、その後にキー@kbd{o}。
 
 @item H-<left>
-The key named @kbd{left} with the hyper modifier.
+hyperで修飾された@kbd{left}という名前のキー。
 
 @item M-RET
-The @kbd{return} key with a meta modifier.
+metaで修飾された@kbd{return}キー。
 
 @item C-M-<space>
-The @kbd{space} key with both the control and meta modifiers.
+controlとmetaで修飾された@kbd{space}キー。
 @end table
 
-The only keys that have a special shorthand syntax are @kbd{NUL}, @kbd{RET},
-@kbd{TAB}, @kbd{LFD}, @kbd{ESC}, @kbd{SPC} and @kbd{DEL}.
+特別な短縮構文をもつキーは@kbd{NUL}、@kbd{RET}、@kbd{TAB}、@kbd{LFD}、@kbd{ESC}、@kbd{SPC}、@kbd{DEL}だけです。
 
-The modifiers have to be specified in alphabetical order:
-@samp{A-C-H-M-S-s}, which is @samp{Alt-Control-Hyper-Meta-Shift-super}.
+修飾キーは@samp{Alt-Control-Hyper-Meta-Shift-super}、すなわち@samp{A-C-H-M-S-s}のアルファベット順に指定する必要があります。
 
 @findex keymap-set
 @defun keymap-set keymap key binding
-This function sets the binding for @var{key} in @var{keymap}.  (If @var{key}
-is more than one event long, the change is actually made in another keymap
-reached from @var{keymap}.)  The argument @var{binding} can be any Lisp
-object, but only certain types are meaningful.  (For a list of meaningful
-types, see @ref{Key Lookup}.)  The value returned by @code{keymap-set} is
-@var{binding}.
+この関数は@var{keymap}内で@var{key}にたいするバインディングをセットする(@var{key}が長さ2以上のイベントなら、その変更は実際は@var{keymap}から辿られる他のキーマップで行なわれる)。引数@var{binding}には任意のLispオブジェクトを指定できるが、意味があるのは特定のオブジェクトだけである(意味のある型のリストは@ref{Key
+Lookup}を参照)。@code{keymap-set}のリターン値は@var{binding}である。
 
-If @var{key} is @kbd{<t>}, this sets the default binding in @var{keymap}.
-When an event has no binding of its own, the Emacs command loop uses the
-keymap's default binding, if there is one.
+@var{key}が@kbd{<t>}なら、それは@var{keymap}内でデフォルトバインディングをセットする。イベントが自身のバインディングをもたないとき、そのキーマップ内にデフォルトバインディングが存在すればEmacsコマンドループはそれを使用する。
 
 @cindex invalid prefix key error
 @cindex key sequence error
-Every prefix of @var{key} must be a prefix key (i.e., bound to a keymap)  or
-undefined; otherwise an error is signaled.  If some prefix of @var{key} is
-undefined, then @code{keymap-set} defines it as a prefix key so that the
-rest of @var{key} can be defined as specified.
+@var{key}のすべてのプレフィクスはプレフィクスキー(キーマップにバインドされる)か未定義のいずれかでなけらばならず、それ以外ならエラーがシグナルされる。@var{key}のいくつかのプレフィクスが未定義なら@code{keymap-set}はそれをプレフィクスキーとして定義するので、残りの@var{key}は指定されたように定義できる。
 
-If there was previously no binding for @var{key} in @var{keymap}, the new
-binding is added at the beginning of @var{keymap}.  The order of bindings in
-a keymap makes no difference for keyboard input, but it does matter for menu
-keymaps (@pxref{Menu Keymaps}).
+前に@var{keymap}内で@var{key}にたいするバインディングが存在しなければ、新たなバインディングが@var{keymap}の先頭に追加される。キーマップ内のバインディングの順序はキーボード入力にたいし影響を与えないが、メニューキーマップにたいしては問題となる(@ref{Menu
+Keymaps}を参照)。
 @end defun
 
 @findex keymap-unset
 @defun keymap-unset keymap key &optional remove
-This function is the inverse of @code{keymap-set}, it unsets the binding for
-@var{key} in @var{keymap}, which is the same as setting the binding to
-@code{nil}.  In order to instead remove the binding completely, specify
-@var{remove} as non-@code{nil}.  This only makes a difference if
-@var{keymap} has a parent keymap: if you just unset a key in a child map, it
-will still shadow the same key in the parent keymap; using @var{remove}
-instead will allow the key in the parent keymap to be used.
+これは@code{keymap-set}の逆バージョンの関数。@var{keymap}内の@var{key}のバインディングを解除(unset)する(@code{nil}にセットするのと同じ)。バインディングを完全に削除する場合には、@var{remove}に非@code{nil}を指定すればよい。これに違いが生じるのは、@var{keymap}に親キーマップがある場合のみ。子マップでキーのバインディングを解除しただけでは、依然としてそれが親マップの同じキーをシャドーし続けるだろう。@var{remove}を使うことによって、親キーマップのキーが用いられることになる。
 @end defun
 
-Note: using @code{keymap-unset} with @var{remove} non-@code{nil} is intended
-for users to put in their init file; Emacs packages should avoid using it if
-possible, since they have complete control over their own keymaps anyway,
-and they should not be altering other packages' keymaps.
+注意:
+@var{remove}に非@code{nil}を指定しての@code{keymap-unset}の使用は、ユーザーがinitファイルに記述する場合を想定したものです。Emacsパッケージは他のパッケージのキーマップを変更するべきではなく、いずれにせよ自身のキーマップにたいして完全な制御を有しているので、可能であれば使用を避けてください。
 
-  This example creates a sparse keymap and makes a number of bindings in it:
+  以下はsparseキーマップを作成してその中にバインディングをいくつか作成する例:
 
 @smallexample
 @group
@@ -1496,7 +1078,8 @@ map
 @end group
 
 @group
-;; @r{Build sparse submap for @kbd{C-x} and bind @kbd{f} in that.}
+;; @r{@kbd{C-x}にたいしsparseサブマップを作成して
+;; その中で@kbd{f}をバインドする}
 (keymap-set map "C-x f" 'forward-word)
     @result{} forward-word
 @end group
@@ -1509,20 +1092,20 @@ map
 @end group
 
 @group
-;; @r{Bind @kbd{C-p} to the @code{ctl-x-map}.}
+;; @r{@kbd{C-p}を@code{ctl-x-map}にバインド}
 (keymap-set map "C-p" ctl-x-map)
 ;; @code{ctl-x-map}
 @result{} [nil @dots{} find-file @dots{} backward-kill-sentence]
 @end group
 
 @group
-;; @r{Bind @kbd{C-f} to @code{foo} in the @code{ctl-x-map}.}
+;; @r{@code{ctl-x-map}内で@kbd{C-f}を@code{foo}にバインド}
 (keymap-set map "C-p C-f" 'foo)
 @result{} 'foo
 @end group
 @group
 map
-@result{} (keymap     ; @r{Note @code{foo} in @code{ctl-x-map}.}
+@result{} (keymap     ; @r{@code{ctl-x-map}内の@code{foo}に注目}
     (16 keymap [nil @dots{} foo @dots{} backward-kill-sentence])
     (24 keymap
         (102 . forward-word))
@@ -1531,30 +1114,21 @@ map
 @end smallexample
 
 @noindent
-Note that storing a new binding for @kbd{C-p C-f} actually works by changing
-an entry in @code{ctl-x-map}, and this has the effect of changing the
-bindings of both @kbd{C-p C-f} and @kbd{C-x C-f} in the default global map.
+@kbd{C-p
+C-f}にたいする新たなバインディングの格納は、実際には@code{ctl-x-map}内のエントリーを変更することによって機能し、これはデフォルトグローバルマップ内の@kbd{C-p
+C-f}と@kbd{C-x C-f}の両方のバインディングを変更する効果をもつことに注意。
 
-@code{keymap-set} is the general work horse for defining a key in a keymap.
-When writing modes, however, you frequently have to bind a large number of
-keys at once, and using @code{keymap-set} on them all can be tedious and
-error-prone.  Instead you can use @code{define-keymap}, which creates a
-keymap and binds a number of keys.  @xref{Creating Keymaps}, for details.
+一般的にキーマップ内でキーを定義する際に主に作業を担うのが@code{keymap-set}です。ただしモードを記述する際には一度に大量のキーのバインドを要することが多々あり、それらすべてにたいして@code{keymap-set}を使うのは煩雑ですし、エラーも起こりやすくなります。かわりに@code{define-keymap}を使えばキーマップを作成して複数のキーのバインドを行うことができます。詳細についてはは@ref{Creating
+Keymaps}を参照してください。
 
-The function @code{substitute-key-definition} scans a keymap for keys that
-have a certain binding and rebinds them with a different binding.  Another
-feature which is cleaner and can often produce the same results is to remap
-one command into another (@pxref{Remapping Commands}).
+関数@code{substitute-key-definition}はキーマップから特定のバインディングをもつキーをスキャンして、それらを異なるバインディングにリバインドする。より明快かつ多くの場合には同じ結果を生成できる他の機能として、あるコマンドから別のコマンドへのリマップがある(@ref{Remapping
+Commands}を参照)。
 
 @defun substitute-key-definition olddef newdef keymap &optional oldmap
 @cindex replace bindings
-This function replaces @var{olddef} with @var{newdef} for any keys in
-@var{keymap} that were bound to @var{olddef}.  In other words, @var{olddef}
-is replaced with @var{newdef} wherever it appears.  The function returns
-@code{nil}.
+この関数は@var{keymap}内で@var{olddef}にバインドされるすべてのキーについて@var{olddef}を@var{newdef}に置き換える。言い換えると@var{olddef}が出現する箇所のすべてを@var{newdef}に置き換える。この関数は@code{nil}をリターンする。
 
-For example, this redefines @kbd{C-x C-f}, if you do it in an Emacs with
-standard bindings:
+たとえば以下をEmacsの標準バインディングで行うと@kbd{C-x C-f}を再定義する:
 
 @smallexample
 @group
@@ -1563,11 +1137,7 @@ standard bindings:
 @end group
 @end smallexample
 
-If @var{oldmap} is non-@code{nil}, that changes the behavior of
-@code{substitute-key-definition}: the bindings in @var{oldmap} determine
-which keys to rebind.  The rebindings still happen in @var{keymap}, not in
-@var{oldmap}.  Thus, you can change one map under the control of the
-bindings in another.  For example,
+@var{oldmap}が非@code{nil}なら、どのキーをリバインドするかを@var{oldmap}内のバインディングが決定するように@code{substitute-key-definition}の動作を変更する。リバインディングは依然として@var{oldmap}ではなく@var{keymap}で発生する。したがって他のマップ内のバインディングの制御下でマップを変更することができる。たとえば、
 
 @smallexample
 (substitute-key-definition
@@ -1576,10 +1146,9 @@ bindings in another.  For example,
 @end smallexample
 
 @noindent
-puts the special deletion command in @code{my-map} for whichever keys are
-globally bound to the standard deletion command.
+これは標準的な削除コマンドにグローバルにバインドされたキーにたいして@code{my-map}内の特別な削除コマンドを設定する。
 
-Here is an example showing a keymap before and after substitution:
+以下はキーマップの置き換え(substitution)の前後を示した例:
 
 @smallexample
 @group
@@ -1603,33 +1172,21 @@ map
 
 @defun suppress-keymap keymap &optional nodigits
 @cindex @code{self-insert-command} override
-This function changes the contents of the full keymap @var{keymap} by
-remapping @code{self-insert-command} to the command @code{undefined}
-(@pxref{Remapping Commands}).  This has the effect of undefining all
-printing characters, thus making ordinary insertion of text impossible.
-@code{suppress-keymap} returns @code{nil}.
+この関数は@code{self-insert-command}をコマンド@code{undefined}にリマップ(@ref{Remapping
+Commands}を参照)することによってfullキーマップのコンテンツを変更する。これはすべてのプリント文字を未定義にする効果をもつので、通常のテキスト挿入は不可能になる。@code{suppress-keymap}は@code{nil}をリターンする。
 
-If @var{nodigits} is @code{nil}, then @code{suppress-keymap} defines digits
-to run @code{digit-argument}, and @kbd{-} to run @code{negative-argument}.
-Otherwise it makes them undefined like the rest of the printing characters.
+@var{nodigits}が@code{nil}なら、@code{suppress-keymap}は数字が@code{digit-argument}、@kbd{-}が@code{negative-argument}を実行するように定義する。それ以外は残りのプリント文字と同じように、それらの文字も未定義にする。
 
 @cindex yank suppression
 @cindex @code{quoted-insert} suppression
-The @code{suppress-keymap} function does not make it impossible to modify a
-buffer, as it does not suppress commands such as @code{yank} and
-@code{quoted-insert}.  To prevent any modification of a buffer, make it
-read-only (@pxref{Read Only Buffers}).
+@code{suppress-keymap}関数は@code{yank}や@code{quoted-insert}のようなコマンドを抑制(suppress)しないのでバッファーの変更は可能。バッファーの変更を防ぐには、バッファーを読み取り専用(read-only)にすること(@ref{Read
+Only Buffers}を参照)。
 
-Since this function modifies @var{keymap}, you would normally use it on a
-newly created keymap.  Operating on an existing keymap that is used for some
-other purpose is likely to cause trouble; for example, suppressing
-@code{global-map} would make it impossible to use most of Emacs.
+この関数は@var{keymap}を変更するので、通常は新たに作成したキーマップにたいして使用するだろう。他の目的のために使用されている既存のキーマップに操作を行うと恐らくトラブルの原因となる。たとえば@code{global-map}の抑制はEmacsをほとんど使用不可能にするだろう。
 
-This function can be used to initialize the local keymap of a major mode for
-which insertion of text is not desirable.  But usually such a mode should be
-derived from @code{special-mode} (@pxref{Basic Major Modes}); then its
-keymap will automatically inherit from @code{special-mode-map}, which is
-already suppressed.  Here is how @code{special-mode-map} is defined:
+この関数はテキストの挿入が望ましくないメジャーモードの、ローカルキーマップ初期化に使用され得る。しかしそのようなモードは通常は@code{special-mode}
+(@ref{Basic Major
+Modes}を参照)から継承される。この場合にはそのモードのキーマップは既に抑制済みの@code{special-mode-map}から自動的に受け継がれる。以下に@code{special-mode-map}が定義される方法を示す:
 
 @smallexample
 @group
@@ -1647,155 +1204,98 @@ already suppressed.  Here is how @code{special-mode-map} is defined:
 @section 低レベルのキーバインディング
 @cindex low-level key bindings
 
-  Historically, Emacs has supported a number of different syntaxes for
-defining keys.  The documented way to bind a key today is to use the syntax
-supported by @code{key-valid-p}, which is what all the functions like
-@code{keymap-set} and @code{keymap-lookup} supports.  This section documents
-the old-style syntax and interface functions; they should not be used in new
-code.
+  歴史的にEmacsはキーを定義するために、異なる複数の構文を複数サポートしてきました。現時点ではキーをバインドする方法として文書化されているのは、@code{key-valid-p}がサポートしている構文を使用する方法です。これは@code{keymap-set}や@code{keymap-lookup}のような関数がサポートするすべてのことを行うことができます。このセクションでは旧スタイルの構文とインターフェイス関数について記述しました。これらを新しいコードで使用するべきではありません。
 
 @cindex meta character key constants
 @cindex control character key constants
-  @code{define-key} (and other low-level functions that are used to rebind
-keys) understand a number of different syntaxes for the keys.
+  @code{define-key} (およびキーのリバインドに用いられるその他の低レベル関数)は、キーにたいして複数の異なる構文を理解します。
 
 @table @asis
-@item A vector containing lists of keys.
-You can use a list containing modifier names plus one base event (a
-character or function key name).  For example, @code{[(control ?a)  (meta
-b)]} is equivalent to @kbd{C-a M-b} and @code{[(hyper control left)]} is
-equivalent to @kbd{C-H-left}.
+@item キーのリストを含むベクター
+修飾名に基本イベント(文字かファンクションキー名)を1つを加えたものをリストに含めることができる。たとえば@code{[(control ?a)
+(meta b)]}は@kbd{C-a M-b}、@code{[(hyper control left)]}は@kbd{C-H-left}と等価。
 
-@item A string of characters with modifiers
-Internally, key sequences are often represented as strings using the special
-escape sequences for shift, control and meta modifiers (@pxref{String
-Type}), but this representation can also be used by users when rebinding
-keys.  A string like @code{"\M-x"} is read as containing a single @kbd{M-x},
-@code{"\C-f"} is read as containing a single @kbd{C-f}, and @code{"\M-\C-x"}
-and @code{"\C-\M-x"} are both read as containing a single @kbd{C-M-x}.
+@item 修飾された文字列
+キーシーケンスは内部的にはshift、control、metaといった修飾キー用の特別なエスケープシーケンス(@ref{String
+Type}を参照)を用いた文字列として表現されていることがよくあるが、この表現はユーザーがキーのリバインドを行う際にも使うことができる。@code{"\M-x"}や@code{"\C-f"}のような文字列はそれぞれ単一の@kbd{M-x}や@kbd{C-f}、@code{"\M-\C-x"}と@code{"\C-\M-x"}はいずれも単一の@kbd{C-M-x}を含んだキーシーケンスとして読み取られる。
 
-@item A vector of characters and key symbols
-This is the other internal representation of key sequences.  It supports a
-fuller range of modifiers than the string representation, and also support
-function keys.  An example is @w{@samp{[?\C-\H-x home]}}, which represents
-the @w{@kbd{C-H-x @key{home}}} key sequence.  @xref{Character Type}.
+@item 文字とキーシンボルのベクター
+これはキーシーケンスを表す別の内部表現である。文字列表現よりも幅広い範囲の修飾をサポートしており、ファンクションキーもサポートしている。@w{@samp{[?\C-\H-x
+home]}}を例とすると、これは@w{@kbd{C-H-x @key{home}}}というキーシーケンスを表している。@ref{Character
+Type}を参照のこと。
 @end table
 
 @defun define-key keymap key binding &optional remove
-This function is like @code{keymap-set} (@pxref{Changing Key Bindings}, but
-understands only the legacy key syntaxes.
+これは@code{keymap-set} (@ref{Changing Key Bindings}を参照)と似ているが、旧来のキー構文だけを理解する。
 
-In addition, this function also has a @var{remove} argument.  If it is
-non-@code{nil}, the definition will be removed.  This is almost the same as
-setting the definition to @code{nil}, but makes a difference if the
-@var{keymap} has a parent, and @var{key} is shadowing the same binding in
-the parent.  With @var{remove}, subsequent lookups will return the binding
-in the parent, whereas with a @code{nil} definition the lookups will return
-@code{nil}.
+この関数には更に@var{remove}引数もある。これが非@code{nil}だと、その定義は削除される。これは概ね定義に@code{nil}をセットするのと同義だが、@var{keymap}に親があって@var{key}が親の同一バインディングをシャドーしている場合に違いが生じる。@var{remove}の場合にはそれ以降のルックアップで親のバインディングがリターンされるが、@code{nil}の定義ではルックアップにたいして@code{nil}がリターンされるだろう。
 @end defun
 
-Here are other legacy key definition functions and commands, with the
-equivalent modern function to use instead in new code.
+他にも以下のような旧来のキー定義関数とコマンドがありますが、新しいコードでは等価な新式の関数を使用してください。
 
 @deffn Command global-set-key key binding
-This function sets the binding of @var{key} in the current global map to
-@var{binding}.  Use @code{keymap-global-set} instead.
+この関数はカレントグローバルマップ内で@var{key}のバインディングを@var{binding}にセットする。かわりに@code{keymap-global-set}を使うこと。
 @end deffn
 
 @deffn Command global-unset-key key
-This function removes the binding of @var{key} from the current global map.
-Use @code{keymap-global-unset} instead.
+この関数はカレントグローバルマップから@var{key}のバインディングを削除する。かわりに@code{keymap-global-unset}を使うこと。
 @end deffn
 
 @deffn Command local-set-key key binding
-This function sets the binding of @var{key} in the current local keymap to
-@var{binding}.  Use @code{keymap-local-set} instead.
+この関数はカレントローカルキーマップ内の@var{key}のバインディングを@var{binding}にセットする。かわりに@code{keymap-local-set}を使うこと。
 @end deffn
 
 @deffn Command local-unset-key key
-This function removes the binding of @var{key} from the current local map.
-Use @code{keymap-local-unset} instead.
+この関数はカレントローカルキーマップから@var{key}のバインディングを削除する。かわりに@code{keymap-local-unset}を使うこと。
 @end deffn
 
 @defun substitute-key-definition olddef newdef keymap &optional oldmap
-This function replaces @var{olddef} with @var{newdef} for any keys in
-@var{keymap} that were bound to @var{olddef}.  In other words, @var{olddef}
-is replaced with @var{newdef} wherever it appears.  The function returns
-@code{nil}.  Use @code{keymap-substitute} instead.
+この関数は@var{keymap}内で@var{olddef}にバインドされるすべてのキーについて@var{olddef}を@var{newdef}に置き換える。言い換えると@var{olddef}が出現する箇所のすべてを@var{newdef}に置き換える。この関数は@code{nil}をリターンする。かわりに@code{keymap-substitute}を使うこと。
 @end defun
 
 @defun define-key-after map key binding &optional after
-Define a binding in @var{map} for @var{key}, with value @var{binding}, just
-like @code{define-key}, but position the binding in @var{map} after the
-binding for the event @var{after}.  The argument @var{key} should be of
-length one---a vector or string with just one element.  But @var{after}
-should be a single event type---a symbol or a character, not a sequence.
-The new binding goes after the binding for @var{after}.  If @var{after} is
-@code{t} or is omitted, then the new binding goes last, at the end of the
-keymap.  However, new bindings are added before any inherited keymap.  Use
-@code{keymap-set-after} instead of this function.
+@code{define-key}と同じように@var{map}内に@var{key}にたいする値@var{binding}のバインディングを定義するが、@var{map}内でのバインディング位置はイベント@var{after}のバインディングの後になる。引数@var{key}は長さ1
+--- 1要素だけのベクターか文字列にすること。しかし@var{after}は単一のイベント型 ---
+シーケンスではないシンボルか文字にすること。新たなバインディングは@var{after}のバインディングの後に追加される。@var{after}が@code{t}または省略された場合には、新たなバインディングはそのキーマップの最後に追加される。しかし新たなバインディングは継承されたすべてのキーマップの前に追加される。この関数ではなく@code{keymap-set-after}を使うこと。
 @end defun
 
 @defun keyboard-translate from to
-This function modifies @code{keyboard-translate-table} to translate
-character code @var{from} into character code @var{to}.  It creates the
-keyboard translate table if necessary.  Use @code{key-translate} instead.
+この関数は文字コードを@var{from}から@var{to}に変換することによって@code{keyboard-translate-table}話変更する。かわりに@code{key-translate}を使うこと。
 @end defun
 
 @defun key-binding key &optional accept-defaults no-remap position
-This function returns the binding for @var{key} according to the current
-active keymaps.  The result is @code{nil} if @var{key} is undefined in the
-keymaps.  The argument @var{accept-defaults} controls checking for default
-bindings, as in @code{lookup-key} (@pxref{Functions for Key Lookup}).  If
-@var{no-remap} is non-@code{nil}, @code{key-binding} ignores command
-remappings (@pxref{Remapping Commands}) and returns the binding directly
-specified for @var{key}.  The optional argument @var{position} should be
-either a buffer position or an event position like the value of
-@code{event-start}; it tells the function to consult the maps determined
-based on that @var{position}.
+この関数はカレントでアクティブなキーマップに応じて、@var{key}にたいするバインディングをリターンする。そのキーマップで@var{key}が未定義なら結果は@code{nil}になる。引数@var{accept-defaults}は@code{lookup-key}
+(@ref{Functions for Key
+Lookup}を参照)の場合と同じように、デフォルトのバインディングのチェックを行うかどうかを制御する。@var{no-remap}が非@code{nil}なら@code{key-binding}はコマンドのリマップ(@ref{Remapping
+Commands}を参照)を無視して、@var{key}に直接指定されているバインディングをリターンする。オプション引数@var{position}はバッファー位置、あるいは@code{event-start}の値のようなイベント位置のいずれかであること。これにより@var{position}にもとづいて照会するマップを判断するように告げる。
 
-Emacs signals an error if @var{key} is not a string or a vector.
+@var{key}が文字列とベクターのいずれでもなければEmacsはエラーをシグナルする。
 
-Use @code{keymap-lookup} instead of this function.
+この関数ではなくかわりに@code{keymap-lookup}を使うこと。
 @end defun
 
 @defun lookup-key keymap key &optional accept-defaults
-This function returns the definition of @var{key} in @var{keymap}.  If the
-string or vector @var{key} is not a valid key sequence according to the
-prefix keys specified in @var{keymap}, it must be too long and have extra
-events at the end that do not fit into a single key sequence.  Then the
-value is a number, the number of events at the front of @var{key} that
-compose a complete key.
+この関数は@var{keymap}から@var{key}の定義をリターンする。文字列かベクターの@var{key}が@var{keymap}内で指定されるプレフィクスキーとして有効なキーシーケンスでなければ、それは最後に余計なイベントをもった、単一のキーシーケンスに適合しない長過ぎるキーのはずである。その場合のリターン値は数となり、この数はコンプリートキーを構成する@var{key}の前にあるイベントの数である。
 
-If @var{accept-defaults} is non-@code{nil}, then @code{lookup-key} considers
-default bindings as well as bindings for the specific events in @var{key}.
-Otherwise, @code{lookup-key} reports only bindings for the specific sequence
-@var{key}, ignoring default bindings except when you explicitly ask about
-them.
+@var{accept-defaults}が非@code{nil}なら、@code{lookup-key}は@var{key}内の特定のイベントにたいするバインディングと同様にデフォルトバインディングも考慮する。それ以外では@code{lookup-key}は特定の@var{key}のシーケンスにたいするバインディングだけを報告して、明示的に指定したとき以外はデフォルトバインディングを無視する。
 
-Use @code{keymap-lookup} instead of this function.
+この関数ではなくかわりに@code{keymap-lookup}を使うこと。
 @end defun
 
 @defun local-key-binding key &optional accept-defaults
-This function returns the binding for @var{key} in the current local keymap,
-or @code{nil} if it is undefined there.
+この関数はカレントのローカルキーマップ内の@var{key}にたいするバインディングをリターンする。カレントのローカルキーマップ内で未定義なら@code{nil}をリターンする。
 
-The argument @var{accept-defaults} controls checking for default bindings,
-as in @code{lookup-key} (above).
+引数@var{accept-defaults}は@code{lookup-key}(上記)と同じようにデフォルトバインディングのチェックを制御する。
 @end defun
 
 @defun global-key-binding key &optional accept-defaults
-This function returns the binding for command @var{key} in the current
-global keymap, or @code{nil} if it is undefined there.
+この関数はカレントのグローバルキーマップ内でコマンド@var{key}にたいするバインディングをリターンする。カレントのグローバルキーマップ内で未定義なら@code{nil}をリターンする。
 
-The argument @var{accept-defaults} controls checking for default bindings,
-as in @code{lookup-key} (above).
+引数@var{accept-defaults}は@code{lookup-key}(上記)と同じようにデフォルトバインディングのチェックを制御する。
 @end defun
 
 @defun event-convert-list list
-This function converts a list of modifier names and a basic event type to an
-event type which specifies all of them.  The basic event type must be the
-last element of the list.  For example,
+この修飾名のリストと基本的なイベントタイプを、それらすべてを指定するイベントタイプに変換する。基本的なイベントタイプはリストの最後の要素でなければならない。たとえば、
 
 @example
 (event-convert-list '(control ?a))
@@ -1811,31 +1311,19 @@ last element of the list.  For example,
 @section コマンドのリマップ
 @cindex remapping commands
 
-  A special kind of key binding can be used to @dfn{remap} one command to
-another, without having to refer to the key sequence(s) bound to the
-original command.  To use this feature, make a key binding for a key
-sequence that starts with the dummy event @code{remap}, followed by the
-command name you want to remap; for the binding, specify the new definition
-(usually a command name, but possibly any other valid definition for a key
-binding).
+  あるコマンドから他のコマンドへの@dfn{リマップ(remap)}には、特別な種類のキーバインディングが使用できます。この機能を使用するためには、ダミーイベント@code{remap}で始まり、その後にリマップしたいコマンド名が続くようなキーシーケンスにたいするキーバインディングを作成します。そしてそのバインディングにたいしては、新たな定義(通常はコマンド名だがキーバインディングにたいして有効な他の任意の定義を指定可能)を指定します。
 
-  For example, suppose My mode provides a special command @code{my-kill-line},
-which should be invoked instead of @code{kill-line}.  To establish this, its
-mode keymap should contain the following remapping:
+  たとえばMyモードというモードが、@code{kill-line}のかわりに呼び出される@code{my-kill-line}という特別なコマンドを提供するとします。これを設定するには、このモードのキーマップに以下のようなリマッピングが含まれるはずです:
 
 @smallexample
 (keymap-set my-mode-map "<remap> <kill-line>" 'my-kill-line)
 @end smallexample
 
 @noindent
-Then, whenever @code{my-mode-map} is active, if the user types @kbd{C-k}
-(the default global key sequence for @code{kill-line}) Emacs will instead
-run @code{my-kill-line}.
+その後は@code{my-mode-map}がアクティブなときは常に、ユーザーが@kbd{C-k}
+(@code{kill-line}にたいするデフォルトのグローバルキーシーケンス)をタイプするとEmacsはかわりに@code{my-kill-line}を実行するでしょう。
 
-  Note that remapping only takes place through active keymaps; for example,
-putting a remapping in a prefix keymap like @code{ctl-x-map} typically has
-no effect, as such keymaps are not themselves active.  In addition,
-remapping only works through a single level; in the following example,
+  リマップはアクティブなキーマップでのみ行なわれることに注意してください。たとえば@code{ctl-x-map}のようなプレフィクスキーマップ内にリマッピングを置いても、そのようなキーマップはそれ自体がアクティブでないので通常は効果がありません。それに加えてリマップは1レベルを通じてのみ機能します。以下の例では、
 
 @smallexample
 (keymap-set my-mode-map "<remap> <kill-line>" 'my-kill-line)
@@ -1843,27 +1331,18 @@ remapping only works through a single level; in the following example,
 @end smallexample
 
 @noindent
-@code{kill-line} is @emph{not} remapped to @code{my-other-kill-line}.
-Instead, if an ordinary key binding specifies @code{kill-line}, it is
-remapped to @code{my-kill-line}; if an ordinary binding specifies
-@code{my-kill-line}, it is remapped to @code{my-other-kill-line}.
+これは@code{kill-line}を@code{my-other-kill-line}にリマップ@emph{しません}。かわりに通常のキーバインディングが@code{kill-line}を指定する場合には、それが@code{my-kill-line}にリマップされます。通常のバインディングが@code{my-kill-line}を指定すると、@code{my-other-kill-line}にリマップされます。
 
-To undo the remapping of a command, remap it to @code{nil}; e.g.,
+コマンドのリマップをアンドゥするには、以下のようにそれを@code{nil}にリマップします：
 
 @smallexample
 (keymap-set my-mode-map "<remap> <kill-line>" nil)
 @end smallexample
 
 @defun command-remapping command &optional position keymaps
-This function returns the remapping for @var{command} (a symbol), given the
-current active keymaps.  If @var{command} is not remapped (which is the
-usual situation), or not a symbol, the function returns @code{nil}.
-@code{position} can optionally specify a buffer position or an event
-position to determine the keymaps to use, as in @code{key-binding}.
+この関数はカレントアクティブキーマップによって与えられる@var{command}(シンボル)にたいするリマッピングをリターンする。@var{command}がリマップされていない(これは普通の状況である)、あるいはシンボル以外なら、この関数は@code{nil}をリターンする。@code{position}は@code{key-binding}の場合と同様、使用するキーマップを決定するためにバッファー位置かイベント位置をオプションで指定できる。
 
-If the optional argument @code{keymaps} is non-@code{nil}, it specifies a
-list of keymaps to search in.  This argument is ignored if @code{position}
-is non-@code{nil}.
+オプション引数@code{keymaps}が非@code{nil}なら、それは検索するキーマップのリストを指定する。この引数は@code{position}が非@code{nil}なら無視される。
 @end defun
 
 @node Translation Keymaps
@@ -1871,96 +1350,53 @@ is non-@code{nil}.
 @cindex translation keymap
 @cindex keymaps for translating events
 
-  When the @code{read-key-sequence} function reads a key sequence (@pxref{Key
-Sequence Input}), it uses @dfn{translation keymaps} to translate certain
-event sequences into others.  The translation keymaps are
-@code{input-decode-map}, @code{local-function-key-map}, and
-@code{key-translation-map} (in order of priority).
+  @code{read-key-sequence}関数がキーシーケンス(@ref{Key Sequence
+Input}を参照)を読み取るときには、特定のイベントシーケンスを他のものに変換(translate)するために@dfn{変換キーマップ(translation
+keymaps)}を使用します。@code{input-decode-map}、@code{local-function-key-map}、@code{key-translation-map}(優先順)は変換キーマップです。
 
-  Translation keymaps have the same structure as other keymaps, but are used
-differently: they specify translations to make while reading key sequences,
-rather than bindings for complete key sequences.  As each key sequence is
-read, it is checked against each translation keymap.  If one of the
-translation keymaps binds @var{k} to a vector @var{v}, then whenever @var{k}
-appears as a sub-sequence @emph{anywhere} in a key sequence, that
-sub-sequence is replaced with the events in @var{v}.
+  変換キーマップは他のキーマップと同じ構造をもちますが使い方は異なります。変換キーマップはキーシーケンスを読み取るときに、コンプリートキーシーケンスにたいするバインディングではなくキーシーケンスに行う変換を指定します。キーシーケンスが読み取られると、それらのキーシーケンスは変換キーマップにたいしてチェックされます。ある変換キーマップが@var{k}をベクター@var{v}にバインドするなら、キーシーケンス内の@emph{どこか}にサブシーケンスとして@var{k}が出現すると、それは@var{v}内のイベントに置き換えられます。
 
-  For example, VT100 terminals send @kbd{@key{ESC} O P} when the keypad key
-@key{PF1} is pressed.  On such terminals, Emacs must translate that sequence
-of events into a single event @code{pf1}.  This is done by binding
-@kbd{@key{ESC} O P} to @code{[pf1]} in @code{input-decode-map}.  Thus, when
-you type @kbd{C-c @key{PF1}} on the terminal, the terminal emits the
-character sequence @kbd{C-c @key{ESC} O P}, and @code{read-key-sequence}
-translates this back into @kbd{C-c @key{PF1}} and returns it as the vector
-@code{[?\C-c pf1]}.
+  たとえばキーパッドキー@key{PF1}が押下されたとき、VT100端末は@kbd{@key{ESC} O
+P}を送信します。そのような端末ではEmacsはそのイベントシーケンスを単一イベント@code{pf1}に変換しなければなりません。これは@code{input-decode-map}内で@kbd{@key{ESC}
+O P}を@code{[pf1]}にバインドすることにより行われます。したがってその端末上で@kbd{C-c
+@key{PF1}}をタイプしたとき、端末は文字シーケンス@kbd{C-c @key{ESC} O
+P}を発行して、@code{read-key-sequence}がそれを@kbd{C-c @key{PF1}}に変換、ベクター@code{[?\C-c
+pf1]}としてリターンします。
 
-  Translation keymaps take effect only after Emacs has decoded the keyboard
-input (via the input coding system specified by
-@code{keyboard-coding-system}).  @xref{Terminal I/O Encoding}.
+  変換キーマップは、(@code{keyboard-coding-system}で指定された入力コーディングシステムを通じて)Emacsがキーボード入力をデコードした直後だけ効果をもちます。@ref{Terminal
+I/O Encoding}を参照してください。
 
 @defvar input-decode-map
-This variable holds a keymap that describes the character sequences sent by
-function keys on an ordinary character terminal.
+この変数は通常の文字端末上のファンクションキーから送信された文字シーケンスを記述するキーマップを保持する。
 
-The value of @code{input-decode-map} is usually set up automatically
-according to the terminal's Terminfo or Termcap entry, but sometimes those
-need help from terminal-specific Lisp files.  Emacs comes with
-terminal-specific files for many common terminals; their main purpose is to
-make entries in @code{input-decode-map} beyond those that can be deduced
-from Termcap and Terminfo.  @xref{Terminal-Specific}.
+@code{input-decode-map}の値は、通常はその端末のTerminfoかTermcapのエントリーに応じて自動的にセットアップされるが、Lispの端末仕様ファイルの助けが必要なときもある。Emacsには一般的な多くの端末の端末仕様ファイルが同梱されている。これらのファイルの主な目的はTermcapやTerminfoから推定できないエントリーを@code{input-decode-map}内に作成することである。@ref{Terminal-Specific}を参照のこと。
 @end defvar
 
 @cindex function-key-map
 @defvar local-function-key-map
-This variable holds a keymap similar to @code{input-decode-map} except that
-it describes key sequences which should be translated to alternative
-interpretations that are usually preferred.  It applies after
-@code{input-decode-map} and before @code{key-translation-map}.
+この変数は@code{input-decode-map}と同じようにキーマップを保持するが、通常は優先される解釈選択肢(alternative
+interpretation)に変換されるべきキーシーケンスを記述するキーマップを保持する。このキーマップは@code{input-decode-map}の後、@code{key-translation-map}の前に適用される。
 
-Entries in @code{local-function-key-map} are ignored if they conflict with
-bindings made in the minor mode, local, or global keymaps.  I.e., the
-remapping only applies if the original key sequence would otherwise not have
-any binding.
+@code{local-function-key-map}内のエントリーはマイナーモード、ローカルキーマップ、グローバルキーマップによるバインディングと衝突する場合には無視される。つまり元のキーシーケンスが他にバインディングをもたない場合だけリマッピングが適用される。
 
-@code{local-function-key-map} inherits from @code{function-key-map}.  The
-latter should only be altered if you want the binding to apply in all
-terminals, so using the former is almost always preferred.
+@code{local-function-key-map}は@code{function-key-map}を継承する。後者はすべての端末にバインディングを適用したい場合のみ修正するべきなので、ほとんど常に前者の使用が望ましい。
 @end defvar
 
 @defvar key-translation-map
-This variable is another keymap used just like @code{input-decode-map} to
-translate input events into other events.  It differs from
-@code{input-decode-map} in that it goes to work after
-@code{local-function-key-map} is finished rather than before; it receives
-the results of translation by @code{local-function-key-map}.
+この変数は入力イベントを他のイベントに変換するために、@code{input-decode-map}と同じように使用される別のキーマップを保持する。@code{input-decode-map}との違いは、@code{local-function-key-map}の前ではなく後に機能する点である。このキーマップは@code{local-function-key-map}による変換結果を受け取る。
 
-Just like @code{input-decode-map}, but unlike @code{local-function-key-map},
-this keymap is applied regardless of whether the input key-sequence has a
-normal binding.  Note however that actual key bindings can have an effect on
-@code{key-translation-map}, even though they are overridden by it.  Indeed,
-actual key bindings override @code{local-function-key-map} and thus may
-alter the key sequence that @code{key-translation-map} receives.  Clearly,
-it is better to avoid this type of situation.
+@code{input-decode-map}と同様だが@code{local-function-key-map}とは異なり、このキーマップは入力キーシーケンスが通常のバインディングをもつかどうかかに関わらず適用される。しかしこのキーマップによりキーバインディングがオーバーライドされても、@code{key-translation-map}では実際のキーバインディングが効果をもち得ることに注意。確かに実際のキーバインディングは@code{local-function-key-map}をオーバーライドし、したがって@code{key-translation-map}が受け取るキーシーケンスは変更されるだろう。明確にするためにはこのような類の状況は避けたほうがよい。
 
-The intent of @code{key-translation-map} is for users to map one character
-set to another, including ordinary characters normally bound to
-@code{self-insert-command}.
+@code{key-translation-map}は通常は@code{self-insert-command}にバインディングされるような通常文字を含めて、ユーザーがある文字を他の文字にマップすることを意図している。
 @end defvar
 
 @cindex key translation function
-You can use @code{input-decode-map}, @code{local-function-key-map}, and
-@code{key-translation-map} for more than simple aliases, by using a
-function, instead of a key sequence, as the translation of a key.  Then this
-function is called to compute the translation of that key.
+キーシーケンスのかわりにキーの変換として関数を使用することにより、シンプルなエイリアスより多くのことに@code{input-decode-map}、@code{local-function-key-map}、@code{key-translation-map}を使用できます。その場合にはこの関数はそのキーの変換を計算するために呼び出されます。
 
-The key translation function receives one argument, which is the prompt that
-was specified in @code{read-key-sequence}---or @code{nil} if the key
-sequence is being read by the editor command loop.  In most cases you can
-ignore the prompt value.
+キー変換関数は引数を1つ受け取ります。この引数は@code{read-key-sequence}内で指定されるプロンプトです。キーシーケンスがエディターコマンドループに読み取られる場合は@code{nil}です。ほとんどの場合にはプロンプト値は無視できます。
 
-If the function reads input itself, it can have the effect of altering the
-event that follows.  For example, here's how to define @kbd{C-c h} to turn
-the character that follows into a Hyper character:
+関数が自身で入力を読み取る場合、その関数は後続のイベントを変更する効果をもつことができます。たとえば以下は@kbd{C-c
+h}をハイパー文字に後続する文字とするために定義する方法の例です:
 
 @example
 @group
@@ -1986,88 +1422,64 @@ the character that follows into a Hyper character:
 
 @cindex accessing events within a key translation function
 @vindex current-key-remap-sequence
-A key translation function might want to adjust its behavior based on
-parameters to events within a key sequence containing non-key events
-(@pxref{Input Events}.)  This information is available from the variable
-@code{current-key-remap-sequence}, which is bound to the key sub-sequence
-being translated around calls to key translation functions.
+キー変換関数は、非キーイベントを含んだキーシーケンス内のイベントにたいして、パラメーターにもとづいた調整を行いたいと考えるかもしれません。この情報は変数@code{current-key-remap-sequence}から利用できます。この変数にはキー変換関数の呼び出し前後で変換されるキーのサブシーケンスがバインドされています。
 
 @subsection 通常のキーマップとの対話
 
-The end of a key sequence is detected when that key sequence either is bound
-to a command, or when Emacs determines that no additional event can lead to
-a sequence that is bound to a command.
+そのキーシーケンスがコマンドにバインドされたとき、またはさらにイベントを追加してもコマンドにバインドされるシーケンスにすることができないとEmacsが判断したときにキーシーケンスの終わりが検出されます。
 
-This means that, while @code{input-decode-map} and
-@code{key-translation-map} apply regardless of whether the original key
-sequence would have a binding, the presence of such a binding can still
-prevent translation from taking place.  For example, let us return to our
-VT100 example above and add a binding for @kbd{C-c @key{ESC}} to the global
-map; now when the user hits @kbd{C-c @key{PF1}} Emacs will fail to decode
-@kbd{C-c @key{ESC} O P} into @kbd{C-c @key{PF1}} because it will stop
-reading keys right after @kbd{C-c @key{ESC}}, leaving @kbd{O P} for later.
-This is in case the user really hit @kbd{C-c @key{ESC}}, in which case Emacs
-should not sit there waiting for the next key to decide whether the user
-really pressed @kbd{@key{ESC}} or @kbd{@key{PF1}}.
+これは元のキーシーケンスがバインディングをもつかどうかに関わらず、@code{input-decode-map}や@code{key-translation-map}を適用するときに、そのようなバインディングが変換の開始を妨げることを意味します。たとえば前述のVT100の例に戻って、グローバルマップに@kbd{C-c
+@key{ESC}}を追加してみましょう。するとユーザーが@kbd{C-c @key{PF1}}をタイプしたとき、Emacsは@kbd{C-c
+@key{ESC} O P}を@kbd{C-c @key{PF1}}に変換するのに失敗するでしょう。これはEmacsが@kbd{C-c
+@key{ESC}}の直後に読み取りを停止して、@kbd{O P}が読み取られずに残るからです。この場合にはユーザーが実際に@kbd{C-c
+@key{ESC}}をタイプすると、ユーザーが実際に@kbd{@key{ESC}}を押下したのか、あるいは@kbd{@key{PF1}}を押下したのか判断するためにEmacsが待つべきではないのです。
 
-For that reason, it is better to avoid binding commands to key sequences
-where the end of the key sequence is a prefix of a key translation.  The
-main such problematic suffixes/prefixes are @kbd{@key{ESC}}, @kbd{M-O}
-(which is really @kbd{@key{ESC} O}) and @kbd{M-[} (which is really
-@kbd{@key{ESC} [}).
+この理由によりキーシーケンスの終わりがキー変換のプレフィクスであるようなキーシーケンスをコマンドにバインドするのは、避けたほうがよいでしょう。そのような問題を起こす主なサフィックス、およびプレフィクスは@kbd{@key{ESC}}、@kbd{M-O}
+(実際は@kbd{@key{ESC} O})、@kbd{M-[} (実際は@kbd{@key{ESC} [})です。
 
 @node Key Binding Commands
 @section キーのバインドのためのコマンド
 
-  This section describes some convenient interactive interfaces for changing
-key bindings.  They work by calling @code{keymap-set} (@pxref{Changing Key
-Bindings}).  In interactive use, these commands prompt for the argument
-@var{key} and expect the user to type a valid key sequence; they also prompt
-for the @var{binding} of the key sequence, and expect the name of a command
-(i.e., a symbol that satisfies @code{commandp}, @pxref{Interactive Call}).
-When called from Lisp, these commands expect @var{key} to be a string that
-satisfies @code{key-valid-p} (@pxref{Key Sequences}), and @var{binding} to
-be any Lisp object that is meaningful in a keymap (@pxref{Key Lookup}).
+  このセクションではキーバインディングを変更するために役に立つ、インタラクティブなインターフェイスをいくつか説明します。これらのインターフェイスは@code{keymap-set}
+(@ref{Changing Key
+Bindings}を参照)を呼び出すことによって機能します。これらのコマンドはインタラクティブに使用すると引数@var{key}の入力を求めて、ユーザーが有効なキーシーケンスをタイプすることを期待します。更にそのキーシーケンスにたいする@var{binding}の入力も求めて、ユーザーがコマンド名(@code{commandp}を満足するシンボル;
+@ref{Interactive
+Call}を参照)を入力することを期待します。これらのコマンドはLispから呼び出されると@var{key}には@code{key-valid-p}
+(@pxref{Key
+Sequences})を満足するような文字列、@var{binding}にはキーマップにおいて意味をもつ任意のLispオブジェクト(@ref{Key
+Lookup}を参照)を期待します。
 
-  People often use @code{keymap-global-set} in their init files (@pxref{Init
-File}) for simple customization.  For example,
+  ユーザーはinitファイルにたいしてシンプルなカスタマイズを行うとき、しばしば@code{keymap-global-set}を使用します。たとえば、
 
 @smallexample
 (keymap-global-set "C-x C-\\" 'next-line)
 @end smallexample
 
 @noindent
-redefines @kbd{C-x C-\} to move down a line.
+は、次の行に移動するように@kbd{C-x C-\}を再定義します。
 
 @smallexample
 (keymap-global-set "M-<mouse-1>" 'mouse-set-point)
 @end smallexample
 
 @noindent
-redefines the first (leftmost) mouse button, entered with the Meta key, to
-set point where you click.
+は、メタキーを押してマウスの第一ボタン(左ボタン)をクリックすると、クリックした箇所にポイントをセットするように再定義します。
 
 @cindex non-@acronym{ASCII} text in key bindings
-  Be careful when using non-@acronym{ASCII} text characters in Lisp
-specifications of keys to bind.  If these are read as multibyte text, as
-they usually will be in a Lisp file (@pxref{Loading Non-ASCII}), you must
-type the keys as multibyte too.  For instance, if you use this:
+  バインドするキーのLisp指定に非@acronym{ASCII}文字のテキストを使用するときには注意してください。マルチバイトとして読み取られたテキストがあるなら、Lispファイル内でマルチバイトテキストが読み取られるときのように(@ref{Loading
+Non-ASCII}を参照)、マルチバイトとしてキーをタイプしなければなりません。たとえば、
 
 @smallexample
 (keymap-global-set "ö" 'my-function) ; bind o-umlaut
 @end smallexample
 
 @noindent
-and your language environment is multibyte Latin-1, these commands actually
-bind the multibyte character with code 246, not the byte code 246
-(@kbd{M-v}) sent by a Latin-1 terminal.  In order to use this binding, you
-need to teach Emacs how to decode the keyboard by using an appropriate input
-method (@pxref{Input Methods, , Input Methods, emacs, The GNU Emacs
-Manual}).
+をLatin-1のマルチバイト環境で使用すると、これらのコマンドはLatin-1端末から送信されたバイトコード246(@kbd{M-v})ではなく、コード246のマルチバイト文字に実際にはバインドされます。このバインディングを使用するためには適切な入力メソッド(@ref{Input
+Methods, , Input Methods, emacs, The GNU Emacs
+Manual}を参照)を使用して、キーボードをデコードする方法をEmacsに教える必要があります。
 
 @deffn Command keymap-global-set key binding
-This function sets the binding of @var{key} in the current global map to
-@var{binding}.
+この関数はカレントグローバルマップ内で@var{key}のバインディングを@var{binding}にセットする。
 
 @smallexample
 @group
@@ -2080,11 +1492,9 @@ This function sets the binding of @var{key} in the current global map to
 
 @deffn Command keymap-global-unset key
 @cindex unbinding keys
-This function removes the binding of @var{key} from the current global map.
+この関数はカレントグローバルマップから@var{key}のバインディングを削除する。
 
-One use of this function is in preparation for defining a longer key that
-uses @var{key} as a prefix---which would not be allowed if @var{key} has a
-non-prefix binding.  For example:
+プレフィクスとして@var{key}を使用する長いキーの定義の準備に使用するのもこの関数の1つの用途である。@var{key}が非プレフィクスのようなバインディングをもつならこの使い方は許容されないだろう。たとえば、
 
 @smallexample
 @group
@@ -2099,8 +1509,7 @@ non-prefix binding.  For example:
 @end deffn
 
 @deffn Command keymap-local-set key binding
-This function sets the binding of @var{key} in the current local keymap to
-@var{binding}.
+この関数はカレントローカルキーマップ内の@var{key}のバインディングを@var{binding}にセットする。
 
 @smallexample
 @group
@@ -2112,7 +1521,7 @@ This function sets the binding of @var{key} in the current local keymap to
 @end deffn
 
 @deffn Command keymap-local-unset key
-This function removes the binding of @var{key} from the current local map.
+この関数はカレントローカルキーマップから@var{key}のバインディングを削除する。
 @end deffn
 
 @node Scanning Keymaps
@@ -2120,36 +1529,27 @@ This function removes the binding of @var{key} from the current local map.
 @cindex scanning keymaps
 @cindex keymaps, scanning
 
-  This section describes functions used to scan all the current keymaps for
-the sake of printing help information.  To display the bindings in a
-particular keymap, you can use the @code{describe-keymap} command
-(@pxref{Misc Help, , Other Help Commands, emacs, The GNU Emacs Manual})
+  このセクションではヘルプ情報のプリントのために、すべてのカレントキーマップのスキャンに使用される関数を説明します。特定のキーマップのバインディングを表示するには@code{describe-keymap}コマンドを使用してください(@ref{Misc
+Help, , Other Help Commands, emacs, The GNU Emacs Manual}を参照)。
 
 @defun accessible-keymaps keymap &optional prefix
-This function returns a list of all the keymaps that can be reached (via
-zero or more prefix keys) from @var{keymap}.  The value is an association
-list with elements of the form @code{(@var{key} .@: @var{map})}, where
-@var{key} is a prefix key whose definition in @var{keymap} is @var{map}.
+この関数は、(0個以上のプレフィクスキーを通じて)@var{keymap}から到達可能なすべてのキーマップのリストをリターンする。リターン値は@code{(@var{key}
+.@:
+@var{map})}のような形式の要素をもつ連想リスト(alist)である。ここで@var{key}は@var{keymap}内での定義が@var{map}であるようなプレフィクスキーである。
 
-The elements of the alist are ordered so that the @var{key} increases in
-length.  The first element is always @code{([] .@: @var{keymap})}, because
-the specified keymap is accessible from itself with a prefix of no events.
+alistの要素は@var{key}の長さにたいして昇順にソートされている。1つ目の要素は常に@code{([] .@:
+@var{keymap})}。これは指定されたキーマップがイベントなしのプレフィクスによって、自分自身からアクセス可能だからである。
 
-If @var{prefix} is given, it should be a prefix key sequence; then
-@code{accessible-keymaps} includes only the submaps whose prefixes start
-with @var{prefix}.  These elements look just as they do in the value of
-@code{(accessible-keymaps)}; the only difference is that some elements are
-omitted.
+@var{prefix}が与えられたら、それはプレフィクスキーシーケンスである。その場合には@var{prefix}で始まるプレフィクスキーをもつサブマップだけが@code{accessible-keymaps}に含まれる。これらの要素の意味は@code{(accessible-keymaps)}の値の場合と同様であり、いくつかの要素が省略されている点だけが異なる。
 
-In the example below, the returned alist indicates that the key @key{ESC},
-which is displayed as @samp{^[}, is a prefix key whose definition is the
-sparse keymap @code{(keymap (83 .@: center-paragraph)  (115 .@: foo))}.
+以下の例ではリターンされるalistにより@samp{^[}と表示されるキー@key{ESC}がプレフィクスキーであり、その定義がsparseキーマップ@code{(keymap
+(83 .@: center-paragraph)  (115 .@: foo))}であることが示される。
 
 @smallexample
 @group
 (accessible-keymaps (current-local-map))
 @result{}(([] keymap
-      (27 keymap   ; @r{Note this keymap for @key{ESC} is repeated below.}
+      (27 keymap   ; @r{以降@key{ESC}にたいするこのキーマップが繰り返されることに注意}
           (83 . center-paragraph)
           (115 . center-line))
       (9 . tab-to-tab-stop))
@@ -2162,12 +1562,10 @@ sparse keymap @code{(keymap (83 .@: center-paragraph)  (115 .@: foo))}.
 @end group
 @end smallexample
 
-In the following example, @kbd{C-h} is a prefix key that uses a sparse
-keymap starting with @code{(keymap (118 . describe-variable)@dots{})}.
-Another prefix, @kbd{C-x 4}, uses a keymap which is also the value of the
-variable @code{ctl-x-4-map}.  The event @code{mode-line} is one of several
-dummy events used as prefixes for mouse actions in special parts of a
-window.
+また以下の例では@kbd{C-h}は@code{(keymap (118
+.
+describe-variable)@dots{})}で始まるsparseキーマップを使用するプレフィクスキーである。他のプレフィクス@kbd{C-x
+4}は変数@code{ctl-x-4-map}の値でもあるキーマップを使用する。イベント@code{mode-line}はウィンドウの特別な箇所でのマウスイベントにたいするプレフィクスとして使用される、いくつかのダミーイベントのうちの1つである。
 
 @smallexample
 @group
@@ -2195,116 +1593,71 @@ window.
 @end smallexample
 
 @noindent
-These are not all the keymaps you would see in actuality.
+これらが実際に目にするであろうキーマップのすべてではない。
 @end defun
 
 @defun map-keymap function keymap
-The function @code{map-keymap} calls @var{function} once for each binding in
-@var{keymap}.  It passes two arguments, the event type and the value of the
-binding.  If @var{keymap} has a parent, the parent's bindings are included
-as well.  This works recursively: if the parent has itself a parent, then
-the grandparent's bindings are also included and so on.
+関数@code{map-keymap}は@var{keymap}内のバインディングそれぞれにたいして1回@var{function}を呼び出す。呼び出す際の引数はイベント型と、そのバインディングの値の2つ。@var{keymap}に親キーマップがあれば、その親キーマップのバインディングも含まれる。これは再帰的に機能する。つまりその親キーマップ自身が親キーマップをもてば、それのバインディングも含まれる、といった具合である。
 
-This function is the cleanest way to examine all the bindings in a keymap.
+これはキーマップ内のすべてのバインディングを検証するもっとも明快な方法である。
 @end defun
 
 @defun where-is-internal command &optional keymap firstonly noindirect no-remap
-This function is a subroutine used by the @code{where-is} command
-(@pxref{Help, , Help, emacs,The GNU Emacs Manual}).  It returns a list of
-all key sequences (of any length) that are bound to @var{command} in a set
-of keymaps.
+この関数は@code{where-is}コマンド(@ref{Help, , Help, emacs,The GNU Emacs
+Manual}を参照)により使用されるサブルーチンである。これはキーマップのセット内で@var{command}にバインドされる、(任意の長さの)キーシーケンスすべてのリストをリターンする。
 
-The argument @var{command} can be any object; it is compared with all keymap
-entries using @code{eq}.
+引数@var{command}には任意のオブジェクトを指定できる。このオブジェクトはすべてのキーマップエントリーにたいして、@code{eq}を使用して比較される。
 
-If @var{keymap} is @code{nil}, then the maps used are the current active
-keymaps, disregarding @code{overriding-local-map} (that is, pretending its
-value is @code{nil}).  If @var{keymap} is a keymap, then the maps searched
-are @var{keymap} and the global keymap.  If @var{keymap} is a list of
-keymaps, only those keymaps are searched.
+@var{keymap}が@code{nil}なら、@code{overriding-local-map}の値とは無関係に(@code{overriding-local-map}の値が@code{nil}であると装って)、カレントアクティブキーマップをマップとして使用する。@var{keymap}がキーマップなら@var{keymap}とグローバルキーマップが検索されるマップとなる。@var{keymap}がキーマップのリストなら、それらのキーマップだけが検索される。
 
-Usually it's best to use @code{overriding-local-map} as the expression for
-@var{keymap}.  Then @code{where-is-internal} searches precisely the keymaps
-that are active.  To search only the global map, pass the value
-@code{(keymap)} (an empty keymap) as @var{keymap}.
+@var{keymap}にたいする式としては、通常は@code{overriding-local-map}を使用するのが最善である。その場合には@code{where-is-internal}は正にアクティブなキーマップを検索する。グローバルマップだけを検索するには@var{keymap}の値に@code{(keymap)}(空のキーマップ)を渡せばよい。
 
-If @var{firstonly} is @code{non-ascii}, then the value is a single vector
-representing the first key sequence found, rather than a list of all
-possible key sequences.  If @var{firstonly} is @code{t}, then the value is
-the first key sequence, except that key sequences consisting entirely of
-@acronym{ASCII} characters (or meta variants of @acronym{ASCII} characters)
-are preferred to all other key sequences and that the return value can never
-be a menu binding.
+@var{firstonly}が@code{non-ascii}なら、値はすべての可能なキーシーケンスのリストではなく最初に見つかったキーシーケンスを表す単一のベクターとなる。@var{firstonly}が@code{t}なら、値は最初のキーシーケンスだが全体が@acronym{ASCII}文字(またはメタ修飾された@acronym{ASCII}文字)で構成されるキーシーケンスが他のすべてのキーシーケンスに優先されて、リターン値がメニューバインディングになることは決してない。
 
-If @var{noindirect} is non-@code{nil}, @code{where-is-internal} doesn't look
-inside menu-items to find their commands.  This makes it possible to search
-for a menu-item itself.
+@var{noindirect}が非@code{nil}なら@code{where-is-internal}は自身のコマンドを探すためにメニューアイテムの内部を調べない。これによりメニューアイテム自体の検索が可能になる。
 
-The fifth argument, @var{no-remap}, determines how this function treats
-command remappings (@pxref{Remapping Commands}).  There are two cases of
-interest:
+5つ目の引数@var{no-remap}はこの関数がコマンドリマッピング(@ref{Remapping
+Commands}を参照)を扱う方法を決定する。興味深いケースが2つある:
 
 @table @asis
-@item If a command @var{other-command} is remapped to @var{command}:
-If @var{no-remap} is @code{nil}, find the bindings for @var{other-command}
-and treat them as though they are also bindings for @var{command}.  If
-@var{no-remap} is non-@code{nil}, include the vector @code{[remap
-@var{other-command}]} in the list of possible key sequences, instead of
-finding those bindings.
+@item コマンド@var{other-command}が@var{command}にリマップされる場合:
+@var{no-remap}が@code{nil}なら@var{other-command}にたいするバインディングを探して、@var{command}にたいするバインディングであるかのようにそれらを扱う。@var{no-remap}が非@code{nil}ならそれらのバインディングを探すかわりに、利用可能なキーシーケンスリストにベクター@code{[remap
+@var{other-command}]}を含める。
 
-@item If @var{command} is remapped to @var{other-command}:
-If @var{no-remap} is @code{nil}, return the bindings for @var{other-command}
-rather than @var{command}.  If @var{no-remap} is non-@code{nil}, return the
-bindings for @var{command}, ignoring the fact that it is remapped.
+@item @var{command}が@var{other-command}にリマップされる場合:
+@var{no-remap}が@code{nil}なら、@var{command}ではなく@var{other-command}にたいするバインディングをリターンする。@var{no-remap}が非@code{nil}なら、リマップされていることを無視して@var{command}にたいするバインディングをリターンする。
 @end table
 
-If a command maps to a key binding like @code{[some-event]}, and
-@code{some-event} has a symbol plist containing a non-@code{nil}
-@code{non-key-event} property, then that binding is ignored by
-@code{where-is-internal}.
+@code{[some-event]}のようなキーバインディングをマップするコマンドがあり、@code{some-event}には非@code{nil}の@code{non-key-event}プロパティを含んだシンボルplistがある場合には、そのバインディングは@code{where-is-internal}によって無視される。
 @end defun
 
 @deffn Command describe-bindings &optional prefix buffer-or-name
-This function creates a listing of all current key bindings, and displays it
-in a buffer named @file{*Help*}.  The text is grouped by modes---minor modes
-first, then the major mode, then global bindings.
+この関数はすべてのカレントキーバインディングのリストを作成して、@file{*Help*}という名前のバッファーにそれを表示する。テキストはモードごとにグループ化されて順番はマイナーモード、メジャーモード、グローバルバインディングの順である。
 
-If @var{prefix} is non-@code{nil}, it should be a prefix key; then the
-listing includes only keys that start with @var{prefix}.
+@var{prefix}が非@code{nil}なら、それはプレフィクスキーである。その場合にはリストに含まれるのは@var{prefix}で始まるキーだけになる。
 
-When several characters with consecutive @acronym{ASCII} codes have the same
-definition, they are shown together, as
-@samp{@var{firstchar}..@var{lastchar}}.  In this instance, you need to know
-the @acronym{ASCII} codes to understand which characters this means.  For
-example, in the default global map, the characters @samp{@key{SPC} ..@: ~}
-are described by a single line.  @key{SPC} is @acronym{ASCII} 32, @kbd{~} is
-@acronym{ASCII} 126, and the characters between them include all the normal
-printing characters, (e.g., letters, digits, punctuation, etc.@:); all these
-characters are bound to @code{self-insert-command}.
+複数の連続する@acronym{ASCII}コードが同じ定義をもつとき、それらは@samp{@var{firstchar}..@var{lastchar}}のようにまとめて表示される。この場合にはそれがどの文字に該当するかを理解するには、その@acronym{ASCII}コードを知っている必要がある。たとえばデフォルトグローバルマップでは文字@samp{@key{SPC}
+..@:
+~}は1行で記述される。@key{SPC}は@acronym{ASCII}の32，@kbd{~}は@acronym{ASCII}の126で、その間のすべての文字には通常のプリント文字(アルファベット文字や数字、区切り文字等)が含まれる。これらの文字はすべて@code{self-insert-command}にバインドされる。
 
-If @var{buffer-or-name} is non-@code{nil}, it should be a buffer or a buffer
-name.  Then @code{describe-bindings} lists that buffer's bindings, instead
-of the current buffer's.
+@var{buffer-or-name}が非@code{nil}のならそれはバッファーかバッファー名である。その場合は@code{describe-bindings}はカレントバッファーのかわりに、そのバッファーのバインディングをリストする。
 @end deffn
 
 @node Menu Keymaps
 @section メニューキーアップ
 @cindex menu keymaps
 
-A keymap can operate as a menu as well as defining bindings for keyboard
-keys and mouse buttons.  Menus are usually actuated with the mouse, but they
-can function with the keyboard also.  If a menu keymap is active for the
-next input event, that activates the keyboard menu feature.
+キーマップはキーボードキーやマウスボタンにたいするバインディング定義と同様に、メニューとして操作することができます。メニューは通常はマウスにより操作されますが、キーボードでも機能させことができます。次の入力イベントにたいしてメニューキーマップがアクティブならキーボードメニュー機能がアクティブになります。
 
 @menu
-* Defining Menus::           How to make a keymap that defines a menu.
-* Mouse Menus::              How users actuate the menu with the mouse.
-* Keyboard Menus::           How users actuate the menu with the keyboard.
-* Menu Example::             Making a simple menu.
-* Menu Bar::                 How to customize the menu bar.
-* Tool Bar::                 A tool bar is a row of images.
-* Modifying Menus::          How to add new items to a menu.
-* Easy Menu::                A convenience macro for making menus.
+* Defining Menus::           メニューを定義するキーマップを作成する方法。
+* Mouse Menus::              ユーザーがマウスでメニューを操作する方法。
+* Keyboard Menus::           ユーザーがキーボードでメニューを操作する方法。
+* Menu Example::             シンプルなメニューの作成。
+* Menu Bar::                 メニューバーのカスタマイズ方法。
+* Tool Bar::                 イメージ行のツールバー。
+* Modifying Menus::          メニューへ新たなアイテムを追加する方法。
+* Easy Menu::                メニュー作成のための便利なマクロ。
 @end menu
 
 @node Defining Menus
@@ -2314,115 +1667,77 @@ next input event, that activates the keyboard menu feature.
 @cindex prompt string (of menu)
 @cindex menu item
 
-A keymap acts as a menu if it has an @dfn{overall prompt string}, which is a
-string that appears as an element of the keymap.  (@xref{Format of
-Keymaps}.)  The string should describe the purpose of the menu's commands.
-Emacs displays the overall prompt string as the menu title in some cases,
-depending on the toolkit (if any) used for displaying menus.@footnote{It is
-required for menus which do not use a toolkit, e.g., on a text terminal.}
-Keyboard menus also display the overall prompt string.
+キーマップが@dfn{overallプロンプト文字列(overall prompt
+string)}をもつ場合には、そのキーマップはメニューとして動作します。overallプロンプト文字列はキーマップの要素として表される文字列です(@ref{Format
+of
+Keymaps}を参照)。この文字列にはメニューコマンドの目的を記述します。(もしあれば)Emacsはメニュー表示に使用されるツールキットに応じて、メニュータイトルにoverallメニュー文字列を表示します@footnote{これはテキスト端末のようなツールキットを使用しないメニューにたいして要求されます。}。キーボードメニューもoverallプロンプト文字列を表示します。
 
-The easiest way to construct a keymap with a prompt string is to specify the
-string as an argument when you call @code{make-keymap},
-@code{make-sparse-keymap} (@pxref{Creating Keymaps}), or
-@code{define-prefix-command} (@pxref{Definition of define-prefix-command}).
-If you do not want the keymap to operate as a menu, don't specify a prompt
-string for it.
+プロンプト文字列をもつキーマップを構築するもっとも簡単な方法は@code{make-keymap}、@code{make-sparse-keymap}
+(@ref{Creating Keymaps}を参照)、@code{define-prefix-command} (@ref{Definition of
+define-prefix-command}を参照)を呼び出すときに引数として文字列を指定する方法です。キーマップをメニューとして操作したくなければ、これらの関数にたいしてプロンプト文字列を指定しないでください。
 
 @defun keymap-prompt keymap
-This function returns the overall prompt string of @var{keymap}, or
-@code{nil} if it has none.
+この関数は@var{keymap}のoverallプロンプト文字列、もしなければ@code{nil}をリターンする。
 @end defun
 
-The menu's items are the bindings in the keymap.  Each binding associates an
-event type to a definition, but the event types have no significance for the
-menu appearance.  (Usually we use pseudo-events, symbols that the keyboard
-cannot generate, as the event types for menu item bindings.)  The menu is
-generated entirely from the bindings that correspond in the keymap to these
-events.
+メニューのアイテムは、そのキーマップ内のバインディングです。各バインディングはイベント型と定義を関連付けますが、イベント型はメニューの外見には何の意味ももっていません(通常はイベント型としてキーボードが生成できない擬似イベントのシンボルをメニューアイテムのバインディングに使用する)。メニュー全体はこれらのイベントにたいするキーマップ内のバインディングから生成されます。
 
-The order of items in the menu is the same as the order of bindings in the
-keymap.  Since @code{define-key} puts new bindings at the front, you should
-define the menu items starting at the bottom of the menu and moving to the
-top, if you care about the order.  When you add an item to an existing menu,
-you can specify its position in the menu using @code{keymap-set-after}
-(@pxref{Modifying Menus}).
+メニュー内のアイテムの順序はキーマップ内のバインディングの順序と同じです。@code{define-key}は新たなバインディングを先頭に配置するので、メニューアイテムの順序が重要ならメニューの最後から先頭へメニューアイテムを定義する必要があります。既存のメニューにアイテムを追加するときには、@code{keymap-set-after}を使用してメニュー内の位置を指定できます(@ref{Modifying
+Menus}を参照)。
 
 @menu
-* Simple Menu Items::        A simple kind of menu key binding.
-* Extended Menu Items::      More complex menu item definitions.
-* Menu Separators::          Drawing a horizontal line through a menu.
-* Alias Menu Items::         Using command aliases in menu items.
+* Simple Menu Items::        単純なメニューのキーバインディング。
+* Extended Menu Items::      複雑なメニューアイテムの定義。
+* Menu Separators::          メニューに水平ラインを描画する。
+* Alias Menu Items::         メニューアイテムにコマンドエイリアスを使用する。
 @end menu
 
 @node Simple Menu Items
 @subsubsection 単純なメニューアイテム
 
-  The simpler (and original) way to define a menu item is to bind some event
-type (it doesn't matter what event type) to a binding like this:
+  メニューアイテムを定義するシンプル(かつ初歩的)な方法は、何らかのイベント型(何のイベント型かは問題ではない)を以下のようにバインドすることです:
 
 @example
 (@var{item-string} . @var{real-binding})
 @end example
 
 @noindent
-The @sc{car}, @var{item-string}, is the string to be displayed in the menu.
-It should be short---preferably one to three words.  It should describe the
-action of the command it corresponds to.  Note that not all graphical
-toolkits can display non-@acronym{ASCII} text in menus (it will work for
-keyboard menus and will work to a large extent with the GTK+ toolkit).
+@sc{car}の@var{item-string}はメニュー内で表示される文字列です。これは短いほうが望ましく、1個から3個の単語が望ましいでしょう。この文字列は対応するコマンドの動作を記述します。すべてのグラフィカルツールキットが非@acronym{ASCII}テキストを表示できる訳ではないことに注意してください(キーボードメニューとGTK+ツールキットの大部分では機能するだろう)。
 
-  You can also supply a second string, called the help string, as follows:
+  以下のようにヘルプ文字列と呼ばれる2つ目の文字列を与えることもできます:
 
 @example
 (@var{item-string} @var{help} . @var{real-binding})
 @end example
 
 @noindent
-@var{help} specifies a help-echo string to display while the mouse is on
-that item in the same way as @code{help-echo} text properties (@pxref{Help
-display}).
+@var{help}はマウスがそのアイテム上にあるときに、@code{help-echo}テキストプロパティ(@ref{Help
+display}を参照)と同じ方法で表示されるhelp-echo文字列を指定します。
 
-  As far as @code{define-key} is concerned, @var{item-string} and
-@var{help-string} are part of the event's binding.  However,
-@code{lookup-key} returns just @var{real-binding}, and only
-@var{real-binding} is used for executing the key.
+  @code{define-key}に関する限り、@var{item-string}と@var{help-string}はそのイベントのバインディングの一部です。しかし@code{lookup-key}は単に@var{real-binding}だけをリターンし、そのキーの実行には@var{real-binding}だけが使用されます。
 
-  If @var{real-binding} is @code{nil}, then @var{item-string} appears in the
-menu but cannot be selected.
+  @var{real-binding}が@code{nil}なら@var{item-string}はメニューに表示されますが選択できません。
 
-  If @var{real-binding} is a symbol and has a non-@code{nil}
-@code{menu-enable} property, that property is an expression that controls
-whether the menu item is enabled.  Every time the keymap is used to display
-a menu, Emacs evaluates the expression, and it enables the menu item only if
-the expression's value is non-@code{nil}.  When a menu item is disabled, it
-is displayed in a fuzzy fashion, and cannot be selected.
+  @var{real-binding}がシンボルで@code{menu-enable}プロパティが非@code{nil}なら、そのプロパティはメニューアイテムが有効か無効かを制御する式です。メニュー表示にキーマップが使用されるたびにEmacsはその式を評価して、式の値が非@code{nil}の場合のみそのメニューのメニューアイテムを有効にします。メニューアイテム無効なときには、そのアイテムはfuzzy形式で表示されて選択できなくなります。
 
-  The menu bar does not recalculate which items are enabled every time you
-look at a menu.  This is because the X toolkit requires the whole tree of
-menus in advance.  To force recalculation of the menu bar, call
-@code{force-mode-line-update} (@pxref{Mode Line Format}).
+  メニューバーはメニューを調べる際にどのアイテムが有効かを再計算しません。これはXツールキットが事前にメニュー全体を要求するからです。メニューバーの再計算を強制するには@code{force-mode-line-update}を呼び出してください(@ref{Mode
+Line Format}を参照)。
 
 @node Extended Menu Items
 @subsubsection 拡張メニューアイテム
 @kindex menu-item
 @cindex extended menu item
 
-  An extended-format menu item is a more flexible and also cleaner alternative
-to the simple format.  You define an event type with a binding that's a list
-starting with the symbol @code{menu-item}.  For a non-selectable string, the
-binding looks like this:
+  メニューアイテムの拡張フォーマットは、単純なフォーマットに比べてより柔軟かつ明快です。拡張フォーマットではシンボル@code{menu-item}で始まるリストでイベント型を定義します。選択できない文字列にたいしては以下のようなバインディングになります:
 
 @example
 (menu-item @var{item-name})
 @end example
 
 @noindent
-A string starting with two or more dashes specifies a separator line; see
-@ref{Menu Separators}.
+2つ以上のダッシュで始まる文字列はリストのセパレーターを指定します。@ref{Menu Separators}を参照してください。
 
-  To define a real menu item which can be selected, the extended format
-binding looks like this:
+  選択可能な実際のメニューアイテムを定義するには以下のような拡張フォーマットでバインドします:
 
 @example
 (menu-item @var{item-name} @var{real-binding}
@@ -2430,51 +1745,30 @@ binding looks like this:
 @end example
 
 @noindent
-Here, @var{item-name} is an expression which evaluates to the menu item
-string.  Thus, the string need not be a constant.
+ここで@var{item-name}はメニューアイテム文字列に評価される式。つまり文字列は定数である必要はない。
 
-The third element, @var{real-binding}, can be the command to execute (in
-which case you get a normal menu item).  It can also be a keymap, which will
-result in a submenu, and @var{item-name} is used as the submenu name.
-Finally, it can be @code{nil}, in which case you will get a non-selectable
-menu item.  This is mostly useful when creating separator lines and the
-like.
+3つ目の引数@var{real-binding}は実行するコマンドでもよい(この場合には通常のメニューアイテムを取得する)。キーマップでもよく、この場合には結果はサブメニューとなり、@var{item-name}はサブメニュー名として使用される。最後に@code{nil}でもよく、この場合には選択不可なメニューアイテ厶を取得する。これは主に区切り線のようなものの作成時に有用。
 
-The tail of the list, @var{item-property-list}, has the form of a property
-list (@pxref{Property Lists}) which contains other information.
+リスト末尾@var{item-property-list}はその他の情報を含むプロパティリスト(@ref{Property
+Lists}を参照)の形式をもつ。
 
-  Here is a table of the properties that are supported:
+  以下はサポートされるプロパティのテーブルです:
 
 @table @code
 @item :enable @var{form}
-The result of evaluating @var{form} determines whether the item is enabled
-(non-@code{nil} means yes).  If the item is not enabled, you can't really
-click on it.
+@var{form}の評価結果はそのアイテムを有効にするかどうかを決定する(非@code{nil}なら有効)。アイテムが無効なら▽まったくクリックできない。
 
 @item :visible @var{form}
-The result of evaluating @var{form} determines whether the item should
-actually appear in the menu (non-@code{nil} means yes).  If the item does
-not appear, then the menu is displayed as if this item were not defined at
-all.
+@var{form}の評価結果はそのアイテムを実際にメニューに表示するかどうかを決定する(非@code{nil}なら表示)。アイテムが非表示ならそのアイテムが定義されていないかのようにメニューが表示される。
 
 @item :help @var{help}
-The value of this property, @var{help}, specifies a help-echo string to
-display while the mouse is on that item.  This is displayed in the same way
-as @code{help-echo} text properties (@pxref{Help display}).  Note that this
-must be a constant string, unlike the @code{help-echo} property for text and
-overlays.
+このプロパティ@var{help}の値はそのアイテム上にマウスがある間に表示するhelp-echo文字列を指定する。この文字列は@code{help-echo}テキストプロパティ(@ref{Help
+display}を参照)と同じ方法で表示される。これはテキストやoverlayにたいする@code{help-echo}プロパティとは異なり、文字列定数でなければならないことに注意。
 
 @item :button (@var{type} . @var{selected})
-This property provides a way to define radio buttons and toggle buttons.
-The @sc{car}, @var{type}, says which: it should be @code{:toggle} or
-@code{:radio}.  The @sc{cdr}, @var{selected}, should be a form; the result
-of evaluating it says whether this button is currently selected.
+このプロパティはラジオボタンとトグルボタンを定義する手段を提供する。@sc{car}の@var{type}には、@code{:toggle}か@code{:radio}のいずれかを指定する。@sc{cdr}の@var{selected}はフォームで、評価結果によってそのボタンがカレントで選択されているかどうかを指定する。
 
-A @dfn{toggle} is a menu item which is labeled as either on or off according
-to the value of @var{selected}.  The command itself should toggle
-@var{selected}, setting it to @code{t} if it is @code{nil}, and to
-@code{nil} if it is @code{t}.  Here is how the menu item to toggle the
-@code{debug-on-error} flag is defined:
+@dfn{トグル(toggle)}は@var{selected}の値に応じてonかoffのいずれかがラベルされるメニューアイテムである。コマンド自身は@var{selected}が@code{nil}なら@code{t}、@code{t}なら@code{nil}に@var{selected}を切り替える(toggleする)こと。以下は@code{debug-on-error}フラグが定義されているときにメニューアイテムをトグルする方法の例:
 
 @example
 (menu-item "Debug on Error" toggle-debug-on-error
@@ -2484,44 +1778,22 @@ to the value of @var{selected}.  The command itself should toggle
 @end example
 
 @noindent
-This works because @code{toggle-debug-on-error} is defined as a command
-which toggles the variable @code{debug-on-error}.
+これは@code{toggle-debug-on-error}が変数@code{debug-on-error}をトグルするコマンドとして定義されていることによって機能する。
 
-@dfn{Radio buttons} are a group of menu items, in which at any time one and
-only one is selected.  There should be a variable whose value says which one
-is selected at any time.  The @var{selected} form for each radio button in
-the group should check whether the variable has the right value for
-selecting that button.  Clicking on the button should set the variable so
-that the button you clicked on becomes selected.
+@dfn{ラジオボタン}とはメニューアイテムのグループであり、常にただ1つのメニューアイテムだけが選択される(selected)。そのためにはどのメニューアイテムが選択されているかを示す変数が存在する必要がある。グループ内の各ラジオボタンにたいする@var{selected}フォームは、そのボタンを選択するためにその変数が正しい値をもつかどうかをチェックする。そしてボタンのクリックにより変数をセットして、クリックされたボタンが選択される。
 
 @item :key-sequence @var{key-sequence}
-This property specifies which key sequence to display as keyboard
-equivalent.  Before Emacs displays @var{key-sequence} in the menu, it
-verifies that @var{key-sequence} is really equivalent to this menu item, so
-it only has an effect if you specify a correct key sequence.  Specifying
-@code{nil} for @var{key-sequence} is equivalent to the @code{:key-sequence}
-attribute being absent.
+このプロパティは等価なキーボード入力として表示するキーシーケンスを指定する。Emacsはメニューに@var{key-sequence}を表示する前に、真に@var{key-sequence}がそのメニューアイテムと等価か検証するので、これは正しいキーシーケンスを指定した場合のみ効果をもつ。@var{key-sequence}にたいする@code{nil}の指定は@code{:key-sequence}属性が存在しないことに等しい。
 
 @item :keys @var{string}
-This property specifies that @var{string} is the string to display as the
-keyboard equivalent for this menu item.  You can use the @samp{\\[...]}
-documentation construct in @var{string}.
+このプロパティはそのメニューにたいする等価なキーボード入力として表示される文字列@var{string}を指定する。@var{string}内ではドキュメント構文@samp{\\[...]}を使用できる。
 
-This property can also be a function (which will be called with no
-arguments).  This function should return a string.  This function will be
-called every time the menu is computed, so using a function that takes a lot
-of time to compute is not a good idea, and it should expect to be called
-from any context.
+このプロパティは(引数なしで呼び出される)関数でもよい。その関数は文字列をリターンすること。この関数はメニュー算出時に毎回呼び出されるので、計算に時間を要する関数を使用するのはお勧めできないし、他のコンテキストからの呼び出しも想定しておくこと。
 
 @item :filter @var{filter-fn}
-This property provides a way to compute the menu item dynamically.  The
-property value @var{filter-fn} should be a function of one argument; when it
-is called, its argument will be @var{real-binding}.  The function should
-return the binding to use instead.
+このプロパティはメニューアイテムを直接計算する手段を提供する。このプロパティの値@var{filter-fn}は引数が1つの関数で、呼び出し時の引数は@var{real-binding}。この関数はかわりに使用するバインディングをリターンすること。
 
-Emacs can call this function at any time that it does redisplay or operates
-on menu data structures, so you should write it so it can safely be called
-at any time.
+Emacs、メニューデータ構造の再表示や操作を行うすべてのタイミングでこの関数を呼び出すかもしれないので、いつ呼び出されても安全なように関数を記述すること。
 
 @item :wrap @var{wrap-p}
 If @var{wrap-p} is non-@code{nil} inside a tool bar, the menu item is not
@@ -2533,96 +1805,81 @@ line.  This is not supported when Emacs uses the GTK+ or Nextstep toolkits.
 @subsubsection メニューセパレーター
 @cindex menu separators
 
-  A menu separator is a kind of menu item that doesn't display any
-text---instead, it divides the menu into subparts with a horizontal line.  A
-separator looks like this in the menu keymap:
+  メニューセパレーターはテキストを表示するかわりに、水平ラインでメニューをサブパーツに分割するメニューアイテムの一種です。メニューキーマップ内でセパレーターは以下のように見えるでしょう:
 
 @example
 (menu-item @var{separator-type})
 @end example
 
 @noindent
-where @var{separator-type} is a string starting with two or more dashes.
+ここで@var{separator-type}は2つ以上のダッシュで始まる文字列です。
 
-  In the simplest case, @var{separator-type} consists of only dashes.  That
-specifies the default kind of separator.  (For compatibility, @code{""} and
-@code{-} also count as separators.)
+  もっとも単純なケースではダッシュだけで@var{separator-type}が構成されます。これはデフォルトのセパレーターを指定します(互換性のため@code{""}と@code{-}もセパレーターとみなされる)。
 
-  Certain other values of @var{separator-type} specify a different style of
-separator.  Here is a table of them:
+  @var{separator-type}にたいする他の特定の値は、異なるスタイルのセパレーターを指定します。以下はそれらのテーブルです:
 
 @table @code
 @item "--no-line"
 @itemx "--space"
-An extra vertical space, with no actual line.
+実際のラインではない余分な垂直スペース。
 
 @item "--single-line"
-A single line in the menu's foreground color.
+メニューのforegroundカラーの一重ライン。
 
 @item "--double-line"
-A double line in the menu's foreground color.
+メニューのforegroundカラーの二重ライン。
 
 @item "--single-dashed-line"
-A single dashed line in the menu's foreground color.
+メニューのforegroundカラーの一重ダッシュライン。
 
 @item "--double-dashed-line"
-A double dashed line in the menu's foreground color.
+メニューのforegroundカラーの二重ダッシュライン。
 
 @item "--shadow-etched-in"
-A single line with a 3D sunken appearance.  This is the default, used
-separators consisting of dashes only.
+3Dの窪んだ外観(3D sunken appearance)をもつ一重ライン。これはダッシュだけで構成されるセパレーターに使用されるデフォルト。
 
 @item "--shadow-etched-out"
-A single line with a 3D raised appearance.
+3Dの浮き上がった外観(3D raised appearance)をもつ一重ライン。
 
 @item "--shadow-etched-in-dash"
-A single dashed line with a 3D sunken appearance.
+3Dの窪んだ外観(3D sunken appearance)をもつ一重ダッシュライン。
 
 @item "--shadow-etched-out-dash"
-A single dashed line with a 3D raised appearance.
+3Dの浮き上がった外観(3D raised appearance)をもつ一重ダッシュライン。
 
 @item "--shadow-double-etched-in"
-Two lines with a 3D sunken appearance.
+3Dの窪んだ外観をもつ二重ライン。
 
 @item "--shadow-double-etched-out"
-Two lines with a 3D raised appearance.
+3Dの浮き上がった外観をもつ二重ライン。
 
 @item "--shadow-double-etched-in-dash"
-Two dashed lines with a 3D sunken appearance.
+3Dの窪んだ外観をもつ二重ダッシュライン。
 
 @item "--shadow-double-etched-out-dash"
-Two dashed lines with a 3D raised appearance.
+3Dの浮き上がった外観をもつ二重ダッシュライン。
 @end table
 
-  You can also give these names in another style, adding a colon after the
-double-dash and replacing each single dash with capitalization of the
-following word.  Thus, @code{"--:singleLine"}, is equivalent to
-@code{"--single-line"}.
+  2連ダッシュの後にコロンを追加して1連ダッシュの後の単語の先頭の文字を大文字にすることによって、別のスタイルで名前を与えることもできます。つまり@code{"--:singleLine"}は@code{"--single-line"}と等価です。
 
-  You can use a longer form to specify keywords such as @code{:enable} and
-@code{:visible} for a menu separator:
+  メニューセパレーターにたいして@code{:enable}や@code{:visible}のようなキーワードを指定するために長い形式を使用できます。
 
 @code{(menu-item @var{separator-type} nil . @var{item-property-list})}
 
-For example:
+たとえば:
 
 @example
 (menu-item "--" nil :visible (boundp 'foo))
 @end example
 
-  Some systems and display toolkits don't really handle all of these separator
-types.  If you use a type that isn't supported, the menu displays a similar
-kind of separator that is supported.
+  いくつかのシステムとディスプレイツールキットは、これらすべてのセパレータータイプを実際に処理しません。サポートされていないタイプのセパレーターを使用すると、メニューはサポートされている似た種別のセパレーターを表示します。
 
 @node Alias Menu Items
 @subsubsection メニューアイテムのエイリアス
 
-  Sometimes it is useful to make menu items that use the same command but with
-different enable conditions.  The best way to do this in Emacs now is with
-extended menu items; before that feature existed, it could be done by
-defining alias commands and using them in menu items.  Here's an example
-that makes two aliases for @code{read-only-mode} and gives them different
-enable conditions:
+  同じコマンドを使用するものの有効条件が異なるメニューアイテムを作成できれば便利な場合が時折あります。Emacsでこれを行う最善の方法は拡張メニューアイテム(extended
+menu
+item)です。この機能が存在する以前にはエイリアスコマンドを定義して、それらをメニューアイテムで使用することによってこれを行っていました。以下は@code{read-only-mode}にたいして2つのエイリアスを作成して、それらに異なる有効条件を与える例です:
 
 @example
 (defalias 'make-read-only 'read-only-mode)
@@ -2631,10 +1888,7 @@ enable conditions:
 (put 'make-writable 'menu-enable 'buffer-read-only)
 @end example
 
-When using aliases in menus, often it is useful to display the equivalent
-key bindings for the real command name, not the aliases (which typically
-don't have any key bindings except for the menu itself).  To request this,
-give the alias symbol a non-@code{nil} @code{menu-alias} property.  Thus,
+メニュー内でエイリアスを使用するときには、エイリアスではなく実際のコマンド名にたいする等価なキーバインディングを表示する方が便利な場合が多々あります(エイリアスは通常はメニュー自身を除いてキーバインディングをもたない)。これを要求するにはエイリアスシンボルの@code{menu-alias}プロパティに非@code{nil}を与えます。したがって、
 
 @example
 (put 'make-read-only 'menu-alias t)
@@ -2642,86 +1896,50 @@ give the alias symbol a non-@code{nil} @code{menu-alias} property.  Thus,
 @end example
 
 @noindent
-causes menu items for @code{make-read-only} and @code{make-writable} to show
-the keyboard bindings for @code{read-only-mode}.
+は@code{make-read-only}と@code{make-writable}にたいするメニューアイテムに@code{read-only-mode}のキーバインディングを表示します。
 
 @node Mouse Menus
 @subsection メニューとマウス
 
-  The usual way to make a menu keymap produce a menu is to make it the
-definition of a prefix key.  (A Lisp program can explicitly pop up a menu
-and receive the user's choice---see @ref{Pop-Up Menus}.)
+  メニューキーマップがメニューを生成する通常の方法は、それをプレフィクスキーの定義とすることです(Lispプログラムは明示的にメニューをポップアップしてユーザーの選択を受け取ることができる。@ref{Pop-Up
+Menus}を参照)。
 
-  If the prefix key ends with a mouse event, Emacs handles the menu keymap by
-popping up a visible menu, so that the user can select a choice with the
-mouse.  When the user clicks on a menu item, the event generated is whatever
-character or symbol has the binding that brought about that menu item.  (A
-menu item may generate a series of events if the menu has multiple levels or
-comes from the menu bar.)
+  プレフィクスキーがマウスイベントで終わる場合には、Emacsはユーザーがマウスで選択できるように可視なメニューをポップアップすることによってメニューキーマップを処理します。ユーザーがメニューアイテムをクリックしたときは、そのメニューアイテムによりもたらされるバインディングの文字やシンボルが何であれイベントが生成されます(メニューが複数レベルをもつ場合やメニューバー由来ならメニューアイテムは1連のイベントを生成するかもしれない)。
 
-  It's often best to use a button-down event to trigger the menu.  Then the
-user can select a menu item by releasing the button.
+  メニューのトリガーにbutton-downイベントを使用するのが最善な場合もしばしばあります。その場合にはユーザーはマウスボタンをリリースすることによってメニューアイテムを選択できます。
 
 @cindex submenu
-  If the menu keymap contains a binding to a nested keymap, the nested keymap
-specifies a @dfn{submenu}.  There will be a menu item, labeled by the nested
-keymap's item string, and clicking on this item automatically pops up the
-specified submenu.  As a special exception, if the menu keymap contains a
-single nested keymap and no other menu items, the menu shows the contents of
-the nested keymap directly, not as a submenu.
+  メニューキーマップがネストされたキーマップにたいするバインディングを含む場合、そのネストされたキーマップは@dfn{サブメニュー(submenu)}を指定します。それはネストされたキーマップのアイテム文字列によってラベル付けされれメニューアイテムをもち、そのアイテムをクリックすることによって指定されたサブメニューが自動的にポップアップされます。特別な例外としてメニューキーマップが単一のネストされたキーマップを含み、それ以外のメニューアイテムを含まなければ、そのメニューはネストされたキーマップの内容をサブメニューとしてではなく直接メニューに表示します。
 
-  However, if Emacs is compiled without X toolkit support, or on text
-terminals, submenus are not supported.  Each nested keymap is shown as a
-menu item, but clicking on it does not automatically pop up the submenu.  If
-you wish to imitate the effect of submenus, you can do that by giving a
-nested keymap an item string which starts with @samp{@@}.  This causes Emacs
-to display the nested keymap using a separate @dfn{menu pane}; the rest of
-the item string after the @samp{@@} is the pane label.  If Emacs is compiled
-without X toolkit support, or if a menu is displayed on a text terminal,
-menu panes are not used; in that case, a @samp{@@} at the beginning of an
-item string is omitted when the menu label is displayed, and has no other
-effect.
+  しかしXツールキットのサポートなしでEmacsをコンパイルした場合、またはテキスト端末の場合にはサブメニューはサポートされません。ネストされたキーマップはメニューアイテムとして表示されますが、それをクリックしてもサブメニューは自動的にポップアップされません。サブメニューの効果を模倣したければ、ネストされたキーマップに@samp{@@}で始まるアイテム文字列を与えることによってこれを行うことができます。これによりEmacsは別個の@dfn{メニューペイン(menu
+pane)}を使用してネストされたキーマップを表示します。@samp{@@}の後の残りのアイテム文字列はそのペインのラベルです。XツールキットのサポートなしでEmacsをコンパイルした場合、またはメニューがテキスト端末で表示されている場合にはメニューペインは使用されません。この場合はアイテム文字列の先頭の@samp{@@}は、メニューラベル表示時には省略されて他に効果はありません。
 
 @node Keyboard Menus
 @subsection メニューとキーボード
 
-  When a prefix key ending with a keyboard event (a character or function key)
-has a definition that is a menu keymap, the keymap operates as a keyboard
-menu; the user specifies the next event by choosing a menu item with the
-keyboard.
+  キーボードイベント(文字かファンクションキー)で終わるプレフィクスキーがメニューキーマップであるような定義をもつときには、そのキーマップはキーボードメニューのように動作します。ユーザーはキーボードでメニューアイテムを選択して次のイベントを指定します。
 
-  Emacs displays the keyboard menu with the map's overall prompt string,
-followed by the alternatives (the item strings of the map's bindings), in
-the echo area.  If the bindings don't all fit at once, the user can type
-@key{SPC} to see the next line of alternatives.  Successive uses of
-@key{SPC} eventually get to the end of the menu and then cycle around to the
-beginning.  (The variable @code{menu-prompt-more-char} specifies which
-character is used for this; @key{SPC} is the default.)
+  Emacsはエコーエリアにキーボードメニュー、そのマップのoverallプロンプト文字列、その後に選択肢(そのマップのバインディングのアイテム文字列)を表示します。そのバインディングを一度に全部表示できない場合、ユーザーは@key{SPC}をタイプして候補の次の行を確認できます。連続して@key{SPC}を使用するとメニューの最後に達して、その後は先頭へ巡回します(変数@code{menu-prompt-more-char}はこのために使用する文字を指定する。デフォルトは@key{SPC})。
 
-  When the user has found the desired alternative from the menu, he or she
-should type the corresponding character---the one whose binding is that
-alternative.
+  ユーザーがメニューから望ましい候補を見つけたら、バインディングがその候補であるような対応する文字をタイプする必要があります。
 
 @defvar menu-prompt-more-char
-This variable specifies the character to use to ask to see the next line of
-a menu.  Its initial value is 32, the code for @key{SPC}.
+この変数はメニューの次の行を確認するために使用する文字を指定する。初期値は32でこれは@key{SPC}のコード。
 @end defvar
 
 @node Menu Example
 @subsection メニューの例
 @cindex menu definition example
 
-  Here is a complete example of defining a menu keymap.  It is the definition
-of the @samp{Replace} submenu in the @samp{Edit} menu in the menu bar, and
-it uses the extended menu item format (@pxref{Extended Menu Items}).  First
-we create the keymap, and give it a name:
+  以下はメニューキーマップを定義する完全な例です。これはメニューバー内の@samp{Edit}メニューにサブメニュー@samp{Replace}を定義して、その定義内で拡張メニューフォーマット(@ref{Extended
+Menu Items}を参照)を使用します。例ではまずキーマップを作成してそれに名前をつけています:
 
 @smallexample
 (defvar menu-bar-replace-menu (make-sparse-keymap "Replace"))
 @end smallexample
 
 @noindent
-Next we define the menu items:
+次にメニューアイテムを定義します:
 
 @smallexample
 (define-key menu-bar-replace-menu [tags-repl-continue]
@@ -2736,25 +1954,13 @@ Next we define the menu items:
 @end smallexample
 
 @noindent
-Note the symbols which the bindings are made for; these appear inside square
-brackets, in the key sequence being defined.  In some cases, this symbol is
-the same as the command name; sometimes it is different.  These symbols are
-treated as function keys, but they are not real function keys on the
-keyboard.  They do not affect the functioning of the menu itself, but they
-are echoed in the echo area when the user selects from the menu, and they
-appear in the output of @code{where-is} and @code{apropos}.
+バインディングがそのシンボルのために作成されることに注意してください。これらのシンボルは定義されるキーシーケンス内の角カッコ内に記述されます。このシンボルはコマンド名と同じときもあれば異なることもあります。これらのシンボルはファンクションキーとして扱われますが、これらはキーボード上の実際のファンクションキーではありません。これらはメニュー自体の機能に影響しませんが、ユーザーがメニューから選択したときにエコーエリアにエコーされて、@code{where-is}と@code{apropos}の出力に現れます。
 
-  The menu in this example is intended for use with the mouse.  If a menu is
-intended for use with the keyboard, that is, if it is bound to a key
-sequence ending with a keyboard event, then the menu items should be bound
-to characters or real function keys, that can be typed with the keyboard.
+  この例のメニューはマウスによる使用を意図しています。もしキーボードの使用を意図したメニュー、つまりキーボードイベントで終了するキーシーケンスにバインドされたメニューの場合には、メニューアイテムはキーボードでタイプできる文字、または本当のファンクションキーにバインドされるべきです。
 
-  The binding whose definition is @code{("--")} is a separator line.  Like a
-real menu item, the separator has a key symbol, in this case
-@code{separator-replace-tags}.  If one menu has two separators, they must
-have two different key symbols.
+  定義が@code{("--")}のバインディングはセパレーターラインです。実際のメニューアイテムと同様にセパレーターはキーシンボルをもち、この例では@code{separator-replace-tags}です。1つのメニューが2つのセパレーターをもつ場合には、それらは2つの異なるキーシンボルをもたなければなりません。
 
-  Here is how we make this menu appear as an item in the parent menu:
+  以下では親メニュー内のアイテムとしてこのメニューがどのように表示されるかを記述しています:
 
 @example
 (define-key menu-bar-edit-menu [replace]
@@ -2762,14 +1968,9 @@ have two different key symbols.
 @end example
 
 @noindent
-Note that this incorporates the submenu keymap, which is the value of the
-variable @code{menu-bar-replace-menu}, rather than the symbol
-@code{menu-bar-replace-menu} itself.  Using that symbol in the parent menu
-item would be meaningless because @code{menu-bar-replace-menu} is not a
-command.
+これはシンボル@code{menu-bar-replace-menu}自体ではなく、変数@code{menu-bar-replace-menu}の値であるサブメニューキーマップを組み込むことに注意してください。@code{menu-bar-replace-menu}はコマンドではないので親メニューアイテムにそのシンボルを使用するのは無意味です。
 
-  If you wanted to attach the same replace menu to a mouse click, you can do
-it this way:
+  同じreplaceメニューをマウスクリックに割り当てたければ以下のようにしてこれを行うことができます:
 
 @example
 (define-key global-map [C-S-down-mouse-1]
@@ -2780,38 +1981,30 @@ it this way:
 @subsection メニューバー
 @cindex menu bar
 
-  Emacs usually shows a @dfn{menu bar} at the top of each frame.  @xref{Menu
-Bars,,,emacs, The GNU Emacs Manual}.  Menu bar items are subcommands of the
-fake function key @key{MENU-BAR}, as defined in the active keymaps.
+  Emacsは通常は各フレームの最上部に@dfn{メニューバー(menu bar)}を表示します。@ref{Menu Bars,,,emacs, The
+GNU Emacs
+Manual}を参照してください。メニューバーのアイテムはアクティブキーマップ内で定義される偽りのファンクションキー@key{MENU-BAR}のサブコマンドです。
 
-  To add an item to the menu bar, invent a fake function key of your own
-(let's call it @var{key}), and make a binding for the key sequence
-@code{[menu-bar @var{key}]}.  Most often, the binding is a menu keymap, so
-that pressing a button on the menu bar item leads to another menu.
+  メニューバーにアイテムを追加するには、自分で偽りのファンクションキー(これを@var{key}と呼ぶこととする)を創作して、キーシーケンス@code{[menu-bar
+@var{key}]}にたいするキーバインディングを作成します。ほとんどの場合において、そのバインディングはメニューキーマップなので、メニューバーアイテム上でボタンを押下すると他のメニューに導かれます。
 
-  When more than one active keymap defines the same function key for the menu
-bar, the item appears just once.  If the user clicks on that menu bar item,
-it brings up a single, combined menu containing all the subcommands of that
-item---the global subcommands, the local subcommands, and the minor mode
-subcommands.
+  メニューバーにたいして同じファンクションキーを定義するアクティブなキーマップが1つ以上存在するとき、そのアイテムは一度だけ出現します。ユーザーがメニューバーのそのアイテムをクリックすると、そのアイテムのすべてのサブコマンド、すなわちグローバルサブコマンド、ローカルサブコマンド、マイナーモードサブコマンドが組み合わされた単一のメニューを表示します。
 
-  The variable @code{overriding-local-map} is normally ignored when
-determining the menu bar contents.  That is, the menu bar is computed from
-the keymaps that would be active if @code{overriding-local-map} were
-@code{nil}.  @xref{Active Keymaps}.
+  変数@code{overriding-local-map}は通常はメニューバーのコンテンツを決定する際は無視されます。つまりメニューバーは@code{overriding-local-map}が@code{nil}の場合にアクティブになるであろうキーマップから計算されます。@ref{Active
+Keymaps}を参照してください。
 
-  Here's an example of setting up a menu bar item:
+  以下はメニューバーのアイテムをセットアップする例です:
 
 @example
 @group
-;; @r{Make a menu keymap (with a prompt string)}
-;; @r{and make it the menu bar item's definition.}
+;; @r{(プロンプト文字列とともに)メニューキーマップを作成して}
+;; @r{それをメニューバーアイテムの定義にする}
 (define-key global-map [menu-bar words]
   (cons "Words" (make-sparse-keymap "Words")))
 @end group
 
 @group
-;; @r{Define specific subcommands in this menu.}
+;; @r{メニュー内に具体的なサブコマンドを定義する}
 (define-key global-map
   [menu-bar words forward]
   '("Forward word" . forward-word))
@@ -2823,137 +2016,93 @@ the keymaps that would be active if @code{overriding-local-map} were
 @end group
 @end example
 
-  A local keymap can cancel a menu bar item made by the global keymap by
-rebinding the same fake function key with @code{undefined} as the binding.
-For example, this is how Dired suppresses the @samp{Edit} menu bar item:
+  ローカルキーマップはグローバルキーマップにより作成されたメニューバーアイテムにたいして、同じ偽ファンクションキーを@code{undefined}にリバインドしてキャンセルすることができます。たとえば以下はDiredが@samp{Edit}メニューバーアイテムを抑制する方法です:
 
 @example
 (define-key dired-mode-map [menu-bar edit] 'undefined)
 @end example
 
 @noindent
-Here, @code{edit} is the symbol produced by a fake function key, it is used
-by the global map for the @samp{Edit} menu bar item.  The main reason to
-suppress a global menu bar item is to regain space for mode-specific items.
+ここで@code{edit}はメニューバーアイテム@samp{Edit}にたいしてグローバルキーマップが使用する偽ファンクションキーが生成するシンボルです。グローバルメニューバーアイテムを抑制する主な理由は、モード特有のアイテムのためのスペースを確保するためです。
 
 @defvar menu-bar-final-items
-Normally the menu bar shows global items followed by items defined by the
-local maps.
+メニューバーは通常はローカルマップで定義されるアイテムを終端にもつグローバルアイテムを表示する。
 
-This variable holds a list of fake function keys for items to display at the
-end of the menu bar rather than in normal sequence.  The default value is
-@code{(help-menu)}; thus, the @samp{Help} menu item normally appears at the
-end of the menu bar, following local menu items.
+この変数は通常の順番による位置ではなく、メニューの最後に表示するアイテムのための偽ファンクションキーのリストを保持する。デフォルト値は@code{(help-menu)}。したがって@samp{Help}メニューアイテムはメニューバーの最後、ローカルメニューアイテムの後に表示される。
 @end defvar
 
 @defvar menu-bar-update-hook
-This normal hook is run by redisplay to update the menu bar contents, before
-redisplaying the menu bar.  You can use it to update menus whose contents
-should vary.  Since this hook is run frequently, we advise you to ensure
-that the functions it calls do not take much time in the usual case.
+このノーマルフックはメニューバーの再表示の前に、メニューバーのコンテンツ更新のための再表示によって実行される。コンテンツを変化させる必要があるメニューの更新に使用できる。このフックは頻繁に実行されるので、フックが呼び出す関数は通常は長い時間を要さないことを確実にするよう助言する。
 @end defvar
 
-Next to every menu bar item, Emacs displays a key binding that runs the same
-command (if such a key binding exists).  This serves as a convenient hint
-for users who do not know the key binding.  If a command has multiple
-bindings, Emacs normally displays the first one it finds.  You can specify
-one particular key binding by assigning an @code{:advertised-binding} symbol
-property to the command.  @xref{Keys in Documentation}.
+Emacsはすべてのメニューバーアイテムの隣に、(もしそのようなキーバインディングが存在するなら)同じコマンドを実行するキーバインディングを表示します。これはキーバインディングを知らないユーザーにたいして有用なヒントを与える役目をもちます。コマンドが複数のバインディングをもつ場合、Emacsは通常は最初に見つけたバインディングを表示します。コマンドのシンボルプロパティ@code{:advertised-binding}に割り当てることによって特定のキーバインディングを指定できます。@ref{Keys
+in Documentation}を参照してください。
 
 @node Tool Bar
 @subsection ツールバー
 @cindex tool bar
 
-  A @dfn{tool bar} is a row of clickable icons at the top of a frame, just
-below the menu bar.  @xref{Tool Bars,,,emacs, The GNU Emacs Manual}.  Emacs
-normally shows a tool bar on graphical displays.
+  @dfn{ツールバー(tool bar)}とはフレームの最上部、メニューバー直下にあるクリック可能なアイコンの行のことです。@ref{Tool
+Bars,,,emacs, The GNU Emacs
+Manual}を参照してください。Emacsは通常はグラフィカルなディスプレイ上でツールバーを表示します。
 
-  On each frame, the frame parameter @code{tool-bar-lines} controls how many
-lines' worth of height to reserve for the tool bar.  A zero value suppresses
-the tool bar.  If the value is nonzero, and @code{auto-resize-tool-bars} is
-non-@code{nil}, the tool bar expands and contracts automatically as needed
-to hold the specified contents.  If the value is @code{grow-only}, the tool
-bar expands automatically, but does not contract automatically.
+  各フレームではツールバーに何行分の高さを割り当てるかをフレームパラメーター@code{tool-bar-lines}で制御します。値0はツールバーを抑制します。値が非0で@code{auto-resize-tool-bars}が非@code{nil}なら、指定されたコンテンツを維持するのに必要な分、ツールバーは拡大縮小されます。値が@code{grow-only}ならツールバーは自動的に拡大されますが、自動的に縮小はされません。
 
-  The tool bar contents are controlled by a menu keymap attached to a fake
-function key called @key{TOOL-BAR} (much like the way the menu bar is
-controlled).  So you define a tool bar item using @code{define-key}, like
-this:
+  ツールバーのコンテンツは、(メニューバーが制御されるのと似た方法により)
+@key{TOOL-BAR}と呼ばれる偽りのファンクションキーに割り当てられたメニューキーマップにより制御されます。したがって以下のように@code{define-key}を使用してツールバーアイテムを定義します。
 
 @example
 (define-key global-map [tool-bar @var{key}] @var{item})
 @end example
 
 @noindent
-where @var{key} is a fake function key to distinguish this item from other
-items, and @var{item} is a menu item key binding (@pxref{Extended Menu
-Items}), which says how to display this item and how it behaves.
+ここで@var{key}はそのアイテムを他のアイテムと区別する偽ファンクションキー、@var{item}はそのアイテムを表示する方法とアイテムの振る舞いを示すメニューアイテムキーバインディングです(@ref{Extended
+Menu Items}を参照)。
 
-  The usual menu keymap item properties, @code{:visible}, @code{:enable},
-@code{:button}, and @code{:filter}, are useful in tool bar bindings and have
-their normal meanings.  The @var{real-binding} in the item must be a
-command, not a keymap; in other words, it does not work to define a tool bar
-icon as a prefix key.
+  メニューキーマップの通常のプロパティ@code{:visible}、@code{:enable}、@code{:button}、@code{:filter}はツールバーバインディングでも有用で、いずれのプロパティも通常通りの意味をもちます。アイテム内の@var{real-binding}はキーマップではなくコマンドでなければなりません。言い換えるとこれはツールバーアイコンをプレフィクスキーとして定義するようには機能しないということです。
 
-  The @code{:help} property specifies a help-echo string to display while the
-mouse is on that item.  This is displayed in the same way as
-@code{help-echo} text properties (@pxref{Help display}).
+  @code{:help}プロパティは、そのアイテム上にマウスがある間表示するhelp-echo文字列を指定します。これはテキストプロパティ@code{help-echo}と同じ方法で表示されます(@ref{Help
+display}を参照)。
 
-  In addition, you should use the @code{:image} property; this is how you
-specify the image to display in the tool bar:
+  これらに加えて@code{:image}プロパティも使用するべきでしょう。ツールバー内にイメージを表示するにはこのプロパティを使用します。
 
 @table @code
 @item :image @var{image}
-@var{image} is either a single image specification (@pxref{Images}) or a
-vector of four image specifications.  If you use a vector of four, one of
-them is used, depending on circumstances:
+@var{image}は単一イメージ様式(single image specification)か4ベクターイメージ様式(vector of four
+image
+specifications)で指定する(@ref{Images}を参照)。4ベクターを使用する場合には状況に応じて以下のいずれかが使用される:
 
 @table @asis
 @item item 0
-Used when the item is enabled and selected.
+アイテムが有効かつ選択されているときに使用。
 @item item 1
-Used when the item is enabled and deselected.
+アイテムが有効かつ未選択のときに使用。
 @item item 2
-Used when the item is disabled and selected.
+アイテムが無効かつ選択されているときに使用。
 @item item 3
-Used when the item is disabled and deselected.
+アイテムが無効かつ未選択のときに使用。
 @end table
 @end table
 
-The GTK+ and NS versions of Emacs ignores items 1 to 3, because disabled
-and/or deselected images are autocomputed from item 0.
+GTK+バージョンとNSバージョンのEmacsは、無効および/または未選択のイメージをitem0から自動的に計算するので、item1からitem3は無視されます。
 
-If @var{image} is a single image specification, Emacs draws the tool bar
-button in disabled state by applying an edge-detection algorithm to the
-image.
+@var{image}が単一イメージ様式なあ、Emacsはそのイメージにエッジ検出アルゴリズム(edge-detection
+algorithm)を適用することによってツールバーの無効な状態のボタンを描画します。
 
-The @code{:rtl} property specifies an alternative image to use for
-right-to-left languages.  Only the GTK+ version of Emacs supports this at
-present.
+@code{:rtl}プロパティには右から左に記述する言語のためのイメージ候補を指定します。これをサポートするのは現在のところGTK+バージョンのEmacsだけです。
 
-Some toolkits display both an image and a text in the toolbar.  If you want
-to force using only the image, use a @code{:vert-only} non-@code{nil}
-property.
+一部のツールキットにおいては、イメージとテキストの両方がツールバーに表示されます。イメージの使用だけを強制したければ、非@code{nil}の@code{:vert-only}プロパティを使用してください。
 
-Like the menu bar, the tool bar can display separators (@pxref{Menu
-Separators}).  Tool bar separators are vertical rather than horizontal,
-though, and only a single style is supported.  They are represented in the
-tool bar keymap by @code{(menu-item "--")} entries; properties like
-@code{:visible} are not supported for tool bar separators.  Separators are
-rendered natively in GTK+ and Nextstep tool bars; in the other cases, they
-are rendered using an image of a vertical line.
+メニューバーと同様、ツールバーはセパレーター(@ref{Menu
+Separators}を参照)を表示できます。ツールバーのセパレーターは水平ラインではなく垂直ラインであり、1つのスタイルだけがサポートされます。これらはツールバーキーマップ内では@code{(menu-item
+"--")}エントリーで表されます。ツールバーのセパレーターでは、@code{:visible}のようなプロパティはサポートされません。GTK+とNextstepのツールバーでは、セパレーターはネイティブに描画されます。それ以外ではセパレーターは垂直ラインイメージを使用して描画されます。
 
-The default tool bar is defined so that items specific to editing do not
-appear for major modes whose command symbol has a @code{mode-class} property
-of @code{special} (@pxref{Major Mode Conventions}).  Major modes may add
-items to the global bar by binding @code{[tool-bar @var{foo}]} in their
-local map.  It makes sense for some major modes to replace the default tool
-bar items completely, since not many can be accommodated conveniently, and
-the default bindings make this easy by using an indirection through
-@code{tool-bar-map}.
+デフォルトツールバーはコマンドシンボルの@code{mode-class}プロパティに@code{special}をもつメジャーモードにたいしては、編集に特化したアイテムは表示しないよう定義されています(@ref{Major
+Mode Conventions}を参照)。メジャーモードは、ローカルマップ内でバインディング@code{[tool-bar
+@var{foo}]}によって、グローバルバーにアイテムを追加するかもしれません。デフォルトツールバーの多くを適宜流用するのができないかもしれないので、デフォルトツールバーを完全に置き換えることは、いくつかのメジャーモードにとっては有意義です。デフォルトバインディングで@code{tool-bar-map}を通じてインダイレクトすることにより、これを簡単に行うことができます。
 
 @defvar tool-bar-map
-By default, the global map binds @code{[tool-bar]} as follows:
+デフォルトではグローバルマップは@code{[tool-bar]}を以下のようにバインドする:
 
 @example
 (keymap-global-set "<tool-bar>"
@@ -2962,30 +2111,15 @@ By default, the global map binds @code{[tool-bar]} as follows:
 @end example
 
 @noindent
-The function @code{tool-bar-make-keymap}, in turn, derives the actual tool
-bar map dynamically from the value of the variable @code{tool-bar-map}.
-Hence, you should normally adjust the default (global) tool bar by changing
-that map.  Some major modes, such as Info mode, completely replace the
-global tool bar by making @code{tool-bar-map} buffer-local and setting it to
-a different keymap.
+関数@code{tool-bar-make-keymap}は、変数@code{tool-bar-map}の値より順番に実際のツールバーマップをダイナミックに継承する。したがって通常はそのマップを変更することにより、デフォルト(グローバル)ツールバーを調整すること。Infoモードのようないくつかのメジャーモードは、@code{tool-bar-map}をバッファーローカルにして、それに異なるキーマップをセットすることによりグローバルツールバーを完全に置き換える。
 @end defvar
 
-There are two convenience functions for defining tool bar items, as follows.
+以下のようなツールバーアイテムを定義するのに便利な関数があります。
 
 @defun tool-bar-add-item icon def key &rest props
-This function adds an item to the tool bar by modifying
-@code{tool-bar-map}.  The image to use is defined by @var{icon}, which is
-the base name of an XPM, XBM or PBM image file to be located by
-@code{find-image}.  Given a value @samp{"exit"}, say, @file{exit.xpm},
-@file{exit.pbm} and @file{exit.xbm} would be searched for in that order on a
-color display.  On a monochrome display, the search order is @samp{.pbm},
-@samp{.xbm} and @samp{.xpm}.  The binding to use is the command @var{def},
-and @var{key} is the fake function key symbol in the prefix keymap.  The
-remaining arguments @var{props} are additional property list elements to add
-to the menu item specification.
+この関数は@code{tool-bar-map}を変更することにより、ツールバーにアイテムを追加する。使用するイメージは@var{icon}により定義され、これは@code{find-image}に配置されたXPM、XBM、PBMのイメージファイルの拡張子を除いたファイル名(basename)である。たとえばカラーディスプレイ上では、値に@samp{"exit"}を与えると@file{exit.xpm}、@file{exit.pbm}、@file{exit.xbm}の順に検索されるだろう。モノクロディスプレイでは検索は@samp{.pbm}、@samp{.xbm}、@samp{.xpm}の順になる。使用するバインディングはコマンド@var{def}で、@var{key}はプレフィクスキーマップ内の偽ファンクションキーである。残りの引数@var{props}はメニューアイテム仕様に追加する追加のプロパティリスト要素である。
 
-To define items in some local map, bind @code{tool-bar-map} with @code{let}
-around calls of this function:
+あるローカルマップ内にアイテムを定義するためには、この関数呼び出しの周囲の@code{let}で@code{tool-bar-map}をバインドする:
 @example
 (defvar foo-tool-bar-map
   (let ((tool-bar-map (make-sparse-keymap)))
@@ -2996,78 +2130,48 @@ around calls of this function:
 @end defun
 
 @defun tool-bar-add-item-from-menu command icon &optional map &rest props
-This function is a convenience for defining tool bar items which are
-consistent with existing menu bar bindings.  The binding of @var{command} is
-looked up in the menu bar in @var{map} (default @code{global-map}) and
-modified to add an image specification for @var{icon}, which is found in the
-same way as by @code{tool-bar-add-item}.  The resulting binding is then
-placed in @code{tool-bar-map}, so use this function only for global tool bar
-items.
+この関数は既存のメニューバインディングと矛盾しないツールバーアイテムの定義に有用。@var{command}のバインディングは@var{map}(デフォルトは@code{global-map})内よりルックアップ(lookup:
+照合)され、@var{icon}にたいするイメージ仕様は@code{tool-bar-add-item}と同じ方法で見つけ出される。結果のバインディングは@code{tool-bar-map}に配置されるので、この関数の使用はグローバルツールバーアイテムに限定される。
 
-@var{map} must contain an appropriate keymap bound to @code{[menu-bar]}.
-The remaining arguments @var{props} are additional property list elements to
-add to the menu item specification.
+@var{map}には@code{[menu-bar]}にバインドされた適切なキーマップが含まれていなければならない。残りの引数@var{props}はメニューアイテム仕様に追加する追加のプロパティリスト要素。
 @end defun
 
 @defun tool-bar-local-item-from-menu command icon in-map &optional from-map &rest props
-This function is used for making non-global tool bar items.  Use it like
-@code{tool-bar-add-item-from-menu} except that @var{in-map} specifies the
-local map to make the definition in.  The argument @var{from-map} is like
-the @var{map} argument of @code{tool-bar-add-item-from-menu}.
+この関数は非グローバルツールバーアイテムの作成に使用される。@var{in-map}に定義を作成するローカルマップを指定する以外は@code{tool-bar-add-item-from-menu}と同じように使用する。引数@var{from-map}は@code{tool-bar-add-item-from-menu}の@var{map}と同様。
 @end defun
 
 @vindex secondary-tool-bar-map
-In addition to the tool bar items defined in @code{tool-bar-map}, Emacs also
-supports displaying an additional row of ``secondary'' tool bar items
-specified in the keymap @code{secondary-tool-bar-map}.  These items are
-normally displayed below those defined within @code{tool-bar-map} if the
-tool bar is positioned at the top of its frame, but are displayed above them
-if the tool bar is positioned at the bottom (@pxref{Layout Parameters}.)
-They are not displayed if the tool bar is positioned at the left or right of
-a frame.
+@code{tool-bar-map}で定義されたツールバーアイテムに加えて、Emacsは追加の行へのキーマップ@code{secondary-tool-bar-map}で指定された``セカンダリー(secondaryl:
+第2の)''ツールバーのアイテムの表示もサポートしています。これらのアイテムは通常だとフレームの最上部にツールバーが配置されていれば@code{tool-bar-map}で定義されたツールバーの下に表示されますが、ツールバーが最下部(@ref{Layout
+Parameters}を参照)に配置されているとその上に表示されます。ツールバーがフレームの左側や右側に配置されている場合には表示されません。
 
 @defvar auto-resize-tool-bars
-If this variable is non-@code{nil}, the tool bar automatically resizes to
-show all defined tool bar items---but not larger than a quarter of the
-frame's height.
+この変数が非@code{nil}なら定義されたすべてのツールバーアイテムを表示するためにツールバーは自動的にリサイズされるが、そのフレーム高さの1/4を超えてリサイズされることはない。
 
-If the value is @code{grow-only}, the tool bar expands automatically, but
-does not contract automatically.  To contract the tool bar, the user has to
-redraw the frame by entering @kbd{C-l}.
+値が@code{grow-only}ならツールバーは自動的に拡張されるが縮小はされない。ツールバーを縮小するためにユーザーは@kbd{C-l}をエンターしてフレームを再描画する必要がある。
 
-If Emacs is built with GTK+ or Nextstep, the tool bar can only show one
-line, so this variable has no effect.
+GTK+やNextstepとともにEmacsがビルドされた場合には、ツールバーが表示できるのは1行だけであり、この変数は効果がない。
 @end defvar
 
 @defvar auto-raise-tool-bar-buttons
-If this variable is non-@code{nil}, tool bar items display in raised form
-when the mouse moves over them.
+この変数が非@code{nil}ならツールバーアイテム上をマウスが通過したとき、浮き上がった形式(raised form)で表示される。
 @end defvar
 
 @defvar tool-bar-button-margin
-This variable specifies an extra margin to add around tool bar items.  The
-value is an integer, a number of pixels.  The default is 4.
+この変数はツールバーアイテムの周囲に追加する余白(extra margin)を指定する。値はピクセル数を整数で指定する。デフォルトは4。
 @end defvar
 
 @defvar tool-bar-button-relief
-This variable specifies the shadow width for tool bar items.  The value is
-an integer, a number of pixels.  The default is 1.
+この変数はツールバーアイテムの影(shadow)を指定する。値はピクセル数を整数で指定する。デフォルトは1。
 @end defvar
 
 @defvar tool-bar-border
-This variable specifies the height of the border drawn below the tool bar
-area.  An integer specifies height as a number of pixels.  If the value is
-one of @code{internal-border-width} (the default) or @code{border-width},
-the tool bar border height corresponds to the corresponding frame parameter.
+この変数はツールバーエリアの下に描画するボーダー高さを指定する。値が整数なら高さのピクセル数。値が@code{internal-border-width}(デフォルト)か@code{border-width}のいずれかなら、ツールバーのボーダー高さはそのフレームの対応するパラメーターとなる。
 @end defvar
 
-  You can define a special meaning for clicking on a tool bar item with the
-shift, control, meta, etc., modifiers.  You do this by setting up additional
-items that relate to the original item through the fake function keys.
-Specifically, the additional items should use the modified versions of the
-same fake function key used to name the original item.
+  シフトやメタ等の修飾キーを押下した状態でのツールバーアイテムのクリックに特別な意味を付与できます。偽りのファンクションキーを通じて元のアイテムに関連する追加アイテムをセットアップすることによって、これを行うことができます。より具体的には追加アイテムは、元のアイテムの命名に使用されたのと同じ偽ファンクションキーの修飾されたバージョンを使用するべきです。
 
-  Thus, if the original item was defined this way,
+  つまり元のアイテムが以下のように定義されていれば、
 
 @example
 (define-key global-map [tool-bar shell]
@@ -3076,42 +2180,30 @@ same fake function key used to name the original item.
 @end example
 
 @noindent
-then here is how you can define clicking on the same tool bar image with the
-shift modifier:
+シフト修飾とともに同じツールバーイメージをクリックしたときを以下のような方法で定義することができます:
 
 @example
 (define-key global-map [tool-bar S-shell] 'some-command)
 @end example
 
-@xref{Function Keys}, for more information about how to add modifiers to
-function keys.
+ファンクションキーに修飾を追加する方法についての詳細な情報は、@ref{Function Keys}を参照してください。
 
-If you have functions that change whether a tool bar item is enabled or not,
-this status is not necessarily updated visually immediately.  To force
-recalculation of the tool bar, call @code{force-mode-line-update}
-(@pxref{Mode Line Format}).
+ツールバーアイテムを有効または無効に変更する関数があるとしても、その状態を必ずしも視覚的に即座に更新される訳ではありません。ツールバーの再計算を強制するには@code{force-mode-line-update}を呼び出してください(@ref{Mode
+Line Format}を参照)。
 
 @node Modifying Menus
 @subsection メニューの変更
 @cindex menu modification
 
-  When you insert a new item in an existing menu, you probably want to put it
-in a particular place among the menu's existing items.  If you use
-@code{define-key} to add the item, it normally goes at the front of the
-menu.  To put it elsewhere in the menu, use @code{keymap-set-after}:
+  既存のメニューに新たなアイテムを挿入するときは、そのメニューの既存のアイテムの中の特定の位置にアイテムを追加したいと思うかもしれません。@code{define-key}を使用してアイテムを追加すると、そのアイテムは通常はメニューの先頭に追加されます。メニュー内の他の位置にアイテムを追加するには@code{keymap-set-after}を使用します:
 
 @defun keymap-set-after map key binding &optional after
-Define a binding in @var{map} for @var{key}, with value @var{binding}, just
-like @code{keymap-set} (@pxref{Changing Key Bindings}), but position the
-binding in @var{map} after the binding for the event @var{after}.  The
-argument @var{key} should represent a single menu item or key, and should
-satisfy @code{key-valid-p} (@pxref{Key Sequences}).  @var{after} should be a
-single event type---a symbol or a character, not a sequence.  The new
-binding goes after the binding for @var{after}.  If @var{after} is @code{t}
-or is omitted, then the new binding goes last, at the end of the keymap.
-However, new bindings are added before any inherited keymap.
+@code{keymap-set} (@ref{Changing Key
+Bindings}を参照)と同じように@var{map}において@var{key}の値として@var{binding}を定義するが、バインディングの位置はイベント@var{after}にたいするバインディングの後になる。引数@var{key}は単一のメニューアイテムかキーを表し、@code{key-valid-p}
+(@ref{Key
+Sequences}を参照)を満足すること。@var{after}は単一のイベントタイプ(シンボルか文字、シーケンスではない)であること。新たなバインディングは@var{after}のバインディングの後に追加される。@var{after}が@code{t}または省略された場合には、新たなバインディングはそのキーマップの最後に追加される。しかし新たなバインディングは継承されたすべてのキーマップの前に追加される。
 
-Here is an example:
+以下は例:
 
 @example
 (keymap-set-after my-menu "<drink>"
@@ -3119,11 +2211,9 @@ Here is an example:
 @end example
 
 @noindent
-makes a binding for the fake function key @key{DRINK} and puts it right
-after the binding for @key{EAT}.
+これは偽ファンクションキー@key{DRINK}のバインディングを作成して、@key{EAT}のバインディングの直後に追加する。
 
-Here is how to insert an item called @samp{Work} in the @samp{Signals} menu
-of Shell mode, after the item @code{break}:
+以下はShellモードの@samp{Signals}メニュー内のアイテム@code{break}の後に@samp{Work}と呼ばれるアイテムを追加する方法:
 
 @example
 (keymap-set-after shell-mode-map "<menu-bar> <signals> <work>"
@@ -3134,116 +2224,85 @@ of Shell mode, after the item @code{break}:
 @node Easy Menu
 @subsection easy-menu
 
-  The following macro provides a convenient way to define pop-up menus and/or
-menu bar menus.
+  以下のマクロはポップアップメニューおよび/またはメニューバーメニューを定義する便利な方法を提供します。
 
 @defmac easy-menu-define symbol maps doc menu
-This macro defines a pop-up menu and/or menu bar submenu, whose contents are
-given by @var{menu}.
+このマクロは@var{menu}により与えるコンテンツのポップアップメニューおよび/またはメニューバーサブメニューを定義する。
 
-If @var{symbol} is non-@code{nil}, it should be a symbol; then this macro
-defines @var{symbol} as a function for popping up the menu (@pxref{Pop-Up
-Menus}), with @var{doc} as its documentation string.  @var{symbol} should
-not be quoted.
+@var{symbol}が非@code{nil}なら、それはシンボルである。その場合、このマクロはドキュメント文字列@var{doc}をもつ、メニューをポップアップ(@ref{Pop-Up
+Menus}を参照)する関数として@var{symbol}を定義する。@var{symbol}はクォートしないこと。
 
-Regardless of the value of @var{symbol}, if @var{maps} is a keymap, the menu
-is added to that keymap, as a top-level menu for the menu bar (@pxref{Menu
-Bar}).  It can also be a list of keymaps, in which case the menu is added
-separately to each of those keymaps.
+@var{symbol}の値とは関係なく、@var{maps}がキーマップならメニューはメニューバーのトップレベルのメニュー(@ref{Menu
+Bar}を参照)として@var{maps}に追加される。これにはキーマップのリストも指定でき、その場合メニューはそれらのキーマップに個別に追加される。
 
-The first element of @var{menu} must be a string, which serves as the menu
-label.  It may be followed by any number of the following keyword-argument
-pairs:
+@var{menu}の最初の要素は文字列でなければならず、それはメニューラベルの役割をもつ。値には以下のキーワード/引数ペアーが任意の個数続くかもしれない:
 
 @table @code
 @item :filter @var{function}
-@var{function} must be a function which, if called with one argument---the
-list of the other menu items---returns the actual items to be displayed in
-the menu.
+@var{function}は1つの引数(他のメニューアイテムのリスト)で呼び出される関数でなければならず、メニュー内に表示される実際のアイテムをリターンする。
 
 @item :visible @var{include}
-@var{include} is an expression; if it evaluates to @code{nil}, the menu is
-made invisible.  @code{:included} is an alias for @code{:visible}.
+@var{include}には式を指定する。その式が@code{nil}に評価されるとメニューは不可視になる。@code{:included}は@code{:visible}にたいするエイリアス。
 
 @item :active @var{enable}
-@var{enable} is an expression; if it evaluates to @code{nil}, the menu is
-not selectable.  @code{:enable} is an alias for @code{:active}.
+@var{enable}は式を指定する。その式が@code{nil}に評価されるとメニューは選択不可になる。@code{:enable}は@code{:active}にたいするエイリアス。
 @end table
 
-The remaining elements in @var{menu} are menu items.
+@var{menu}内の残りの要素はメニューアイテム。
 
-A menu item can be a vector of three elements, @code{[@var{name}
-@var{callback} @var{enable}]}.  @var{name} is the menu item name (a
-string).  @var{callback} is a command to run, or an expression to evaluate,
-when the item is chosen.  @var{enable} is an expression; if it evaluates to
-@code{nil}, the item is disabled for selection.
+メニューアイテムには3要素のベクター@code{[@var{name} @var{callback}
+@var{enable}]}を指定できる。ここで@var{name}はメニューアイテム名(文字列)、@var{callback}はアイテム選択時に実行するコマンドか評価される式。@var{enable}が式で@code{nil}に評価されると、そのアイテムの選択は無効になる。
 
-Alternatively, a menu item may have the form:
+かわりにメニューアイテムは以下の形式をもつことができる:
 
 @smallexample
    [ @var{name} @var{callback} [ @var{keyword} @var{arg} ]... ]
 @end smallexample
 
 @noindent
-where @var{name} and @var{callback} have the same meanings as above, and
-each optional @var{keyword} and @var{arg} pair should be one of the
-following:
+ここで@var{name}と@var{callback}は上記と同じ意味をもち、オプションの@var{keyword}と@var{arg}の各ペアーは以下のいずれかである:
 
 @table @code
 @item :keys @var{keys}
-@var{keys} is a string to display as keyboard equivalent to the menu item.
-This is normally not needed, as keyboard equivalents are computed
-automatically.  @var{keys} is expanded with @code{substitute-command-keys}
-before it is displayed (@pxref{Keys in Documentation}).
+@var{keys}はメニューアイテムにたいする等価なキーボード入力として表示する文字列。等価なキーボード入力は自動的に計算されるので通常は必要ない。@var{keys}は表示前に@code{substitute-command-keys}により展開される(@ref{Keys
+in Documentation}を参照)。
 
 @item :key-sequence @var{keys}
-@var{keys} is a hint indicating which key sequence to display as keyboard
-equivalent, in case the command is bound to several key sequences.  It has
-no effect if @var{keys} is not bound to same command as this menu item.
+@var{keys}はコナドが複数のキーシーケンスにバインドされている場合に、等価なキーボード入力としてどのキーシーケンスを表示するかを示すためのヒント。このメニューアイテムとして@var{keys}が同じコマンドがバインドされていなければ効果はない。
 
 @item :active @var{enable}
-@var{enable} is an expression; if it evaluates to @code{nil}, the item is
-made unselectable.  @code{:enable} is an alias for @code{:active}.
+@var{enable}には式を指定する。その式が@code{nil}に評価されるとアイテムは選択不可になる。@var{enable}は@code{:active}にたいするエイリアス。
 
 @item :visible @var{include}
-@var{include} is an expression; if it evaluates to @code{nil}, the item is
-made invisible.  @code{:included} is an alias for @code{:visible}.
+@var{include}には式を指定する。その式が@code{nil}に評価されるとアイテムは不可視になる。@code{:included}は@code{:visible}にたいするエイリアス。
 
 @item :label @var{form}
-@var{form} is an expression that is evaluated to obtain a value which serves
-as the menu item's label (the default is @var{name}).
+@var{form}はメニューアイテムのラベル(デフォルトは@var{name})の役目をもつ値を取得するために表示される式である。
 
 @item :suffix @var{form}
-@var{form} is an expression that is dynamically evaluated and whose value is
-concatenated with the menu entry's label.
+@var{form}は動的に評価される式であり、値はメニューエントリーのラベルに結合される。
 
 @item :style @var{style}
-@var{style} is a symbol describing the type of menu item; it should be
-@code{toggle} (a checkbox), or @code{radio} (a radio button), or anything
-else (meaning an ordinary menu item).
+@var{style}はメニューアイテムの型を記述するシンボルであり、@code{toggle}(チェックボックス)、@code{radio}(ラジオボタン)、またはそれ以外(通常のメニューアイテムであることを意味する)のいずれかである。
 
 @item :selected @var{selected}
-@var{selected} is an expression; the checkbox or radio button is selected
-whenever the expression's value is non-@code{nil}.
+@var{selected}には式を指定し、その式の値が非@code{nil}のときはチェックボックスまたはラジオボタンが選択状態になる。
 
 @item :help @var{help}
-@var{help} is a string describing the menu item.
+@var{help}はメニューアイテムを説明する文字列。
 @end table
 
-Alternatively, a menu item can be a string.  Then that string appears in the
-menu as unselectable text.  A string consisting of dashes is displayed as a
-separator (@pxref{Menu Separators}).
+かわりにメニューアイテムに文字列を指定できる。その場合には文字列は選択不可なテキストとしてメニューに表示される。ダッシュから構成される文字列はセパレーターとして表示される(@ref{Menu
+Separators}を参照)
 
-Alternatively, a menu item can be a list with the same format as
-@var{menu}.  This is a submenu.
+かわりにメニューアイテムに@var{menu}と同じフォーマットのリストを指定できる。これはサブメニューとなる。
 @end defmac
 
-Here is an example of using @code{easy-menu-define} to define a menu similar
-to the one defined in the example in @ref{Menu Bar}:
+以下は@code{easy-menu-define}を使用して@ref{Menu Bar}内で定義したメニューと同等なメニューを定義する例:
 
 @example
 (easy-menu-define words-menu global-map
-  "Menu for word navigation commands."
+  "単語単位コマンドにたいするメニュー"
   '("Words"
      ["Forward word" forward-word]
      ["Backward word" backward-word]))
