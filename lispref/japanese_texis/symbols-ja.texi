@@ -10,75 +10,109 @@
 @c Foundation, Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node Symbols
-@chapter シンボル
+@chapter Symbols
 @cindex symbol
 
-  @dfn{シンボル(symbol)}は一意な名前をもつオブジェクトです。このチャプターではシンボル、シンボルの構成要素とプロパティリスト、およびシンボルの作成とインターンする方法を説明します。別のチャプターではシンボルを変数として使用したり、関数名として使用する方法が説明されています。@ref{Variables}と@ref{Functions}を参照してください。シンボルの正確な入力構文については、@ref{Symbol
-Type}を参照してください。
+  A @dfn{symbol} is an object with a unique name.  This chapter describes
+symbols, their components, their property lists, and how they are created
+and interned.  Separate chapters describe the use of symbols as variables
+and as function names; see @ref{Variables}, and @ref{Functions}.  For the
+precise read syntax for symbols, see @ref{Symbol Type}.
 
-  @code{symbolp}を使用して、任意のLispオブジェクトがシンボルかどうかをテストできます:
+  You can test whether an arbitrary Lisp object is a symbol with
+@code{symbolp}:
 
 @defun symbolp object
-この関数は@var{object}がシンボルなら@code{t}、それ以外は@code{nil}をリターンする。
+This function returns @code{t} if @var{object} is a symbol, @code{nil}
+otherwise.
 @end defun
 
 @menu
-* Symbol Components::        シンボルは名前、値、関数定義、プロパティリストをもつ。
-* Definitions::              定義はシンボルが使用される方法を示す。
-* Creating Symbols::         シンボルが一意に保たれる方法。
-* Symbol Properties::        さまざまな情報を記録するために各シンボルはプロパティリストをもつ。
-* Shorthands::               シンボル名のタイプ量を少なくしつつ正しく組織化するには。
-* Symbols with Position::    整数の位置を含んだシンボルの変種
+* Symbol Components::        Symbols have names, values, function 
+                               definitions and property lists.
+* Definitions::              A definition says how a symbol will be used.
+* Creating Symbols::         How symbols are kept unique.
+* Symbol Properties::        Each symbol has a property list for recording 
+                               miscellaneous information.
+* Shorthands::               Properly organize your symbol names but type 
+                               less of them.
+* Symbols with Position::    Symbol variants containing integer positions
 @end menu
 
 @node Symbol Components
-@section シンボルの構成要素
+@section Symbol Components
 @cindex symbol components
 
-  各シンボルは4つの構成要素(もしくは``セル'')をもち、構成要素はそれぞれ別のオブジェクトを参照します:
+  Each symbol has four components (or ``cells''), each of which references
+another object:
 
 @table @asis
-@item プリント名(print name)
+@item Print name
 @cindex print name cell
-そのシンボルの名前。
+The symbol's name.
 
-@item 値(value)
+@item Value
 @cindex value cell
-変数としてのそのシンボルの現在値。
+The symbol's current value as a variable.
 
-@item 関数(function)
+@item Function
 @cindex function cell
-そのシンボルの関数定義。シンボル、キーマップ、キーボードマクロも保持できる。
+The symbol's function definition.  It can also hold a symbol, a keymap, or a
+keyboard macro.
 
-@item プロパティリスト(property list)
+@item Property list
 @cindex property list cell
-そのシンボルのプロパティリスト。
+The symbol's property list.
 @end table
 
 @noindent
-プリント名のセルは常に文字列を保持し、それを変更することはできません。他の3つのセルには、任意のLispオブジェクトをセットすることができます。
+The print name cell always holds a string, and cannot be changed.  Each of
+the other three cells can be set to any Lisp object.
 
-  プリント名のセルはシンボルの名前となる文字列を保持します。シンボルはシンボル名によりテキストとして表されるので、2つのシンボルが同じ名前をもたないことが重要です。Lispリーダーはシンボルを読み取るごとに、それを新規作成する前に、指定されたシンボルがすでに存在するかを調べます。シンボルの名前を得るには関数@code{symbol-name}(@ref{Creating
-Symbols}を参照)を使用します。しかしシンボルがそれぞれ一意な@emph{プリント名(print
-name)}を1つだけもつとしても、``ショートハンド(shorthand)''と呼ばれる違うエイリアス名を通じて同じシンボルを参照することは可能です(@ref{Shorthands}を参照)。
+  The print name cell holds the string that is the name of a symbol.  Since
+symbols are represented textually by their names, it is important not to
+have two symbols with the same name.  The Lisp reader ensures this: every
+time it reads a symbol, it looks for an existing symbol with the specified
+name before it creates a new one.  To get a symbol's name, use the function
+@code{symbol-name} (@pxref{Creating Symbols}).  However, although each
+symbol has only one unique @emph{print name}, it is nevertheless possible to
+refer to that same symbol via different alias names called ``shorthands''
+(@pxref{Shorthands}).
 
-  値セルは変数としてのシンボルの値(そのシンボル自身がLisp式として評価されたときに得る値)を保持します。@dfn{ローカルバインディング(local
-binding)}や@dfn{スコーピングルール(scoping
-rules)}等のような複雑なものを含めて、変数のセットや取得方法については@ref{Variables}を参照してください。ほとんどのシンボルは値として任意のLispオブジェクトをもつことができますが、一部の特別なシンボルは変更できない値をもちます。これらには@code{nil}、@code{t}、および名前が@samp{:}で始まるすべてのシンボル(@dfn{キーワード(keyword)}と呼ばれる)が含まれます。@ref{Constant
-Variables}を参照してください。
+  The value cell holds a symbol's value as a variable, which is what you get
+if the symbol itself is evaluated as a Lisp expression.  @xref{Variables},
+for details about how values are set and retrieved, including complications
+such as @dfn{local bindings} and @dfn{scoping rules}.  Most symbols can have
+any Lisp object as a value, but certain special symbols have values that
+cannot be changed; these include @code{nil} and @code{t}, and any symbol
+whose name starts with @samp{:} (those are called @dfn{keywords}).
+@xref{Constant Variables}.
 
-  関数セルはシンボルの関数定義を保持します。実際はには@code{foo}の関数セルの中に保管されている関数を意味するときに、``関数@code{foo}''といってそれを参照することがよくあります。わたしたちは必要なときだけ、これを明確に区別することにします。関数セルは通常は関数(@ref{Functions}を参照)か、マクロ(@ref{Macros}を参照)を保持するために使用されます。しかし関数セルはシンボル(@ref{Function
-Indirection}を参照)、キーボードマクロ(@ref{Keyboard
-Macros}を参照)、キーマップ(@ref{Keymaps}を参照)、またはオートロードオブジェクト(@ref{Autoloading}を参照)を保持するためにも使用できます。シンボルの関数セルの内容を得るには、関数@code{symbol-function}
-(@ref{Function Cells}を参照)を使用します。
+  The function cell holds a symbol's function definition.  Often, we refer to
+``the function @code{foo}'' when we really mean the function stored in the
+function cell of @code{foo}; we make the distinction explicit only when
+necessary.  Typically, the function cell is used to hold a function
+(@pxref{Functions}) or a macro (@pxref{Macros}).  However, it can also be
+used to hold a symbol (@pxref{Function Indirection}), keyboard macro
+(@pxref{Keyboard Macros}), keymap (@pxref{Keymaps}), or autoload object
+(@pxref{Autoloading}).  To get the contents of a symbol's function cell, use
+the function @code{symbol-function} (@pxref{Function Cells}).
 
-  プロパティリストのセルは、通常は正しくフォーマットされたプロパティリストを保持するべきです。シンボルのプロパティリストを得るには関数@code{symbol-plist}を使用します。@ref{Symbol
-Properties}を参照してください。
+  The property list cell normally should hold a correctly formatted property
+list.  To get a symbol's property list, use the function
+@code{symbol-plist}.  @xref{Symbol Properties}.
 
-  マクロセルと値セルが@dfn{void(空)}のときもあります。voidとはそのセルがどのオブジェクトも参照していないことを意味します(これはシンボル@code{void}を保持するのともシンボル@code{nil}を保持するのとも異なる)。voidの関数セルまたは値セルを調べようとすると結果は@samp{Symbol's
-value as variable is void}のようなエラーとなります。
+  The function cell or the value cell may be @dfn{void}, which means that the
+cell does not reference any object.  (This is not the same thing as holding
+the symbol @code{void}, nor the same as holding the symbol @code{nil}.)
+Examining a function or value cell that is void results in an error, such as
+@samp{Symbol's value as variable is void}.
 
-  各シンボルは値セルと関数セルを別個にもつので、変数名と関数名が衝突することはありません。たとえばシンボル@code{buffer-file-name}が値(カレントバッファーでvisitされているファイルの名前)をもつと同様に、関数定義(ファイルの名前をリターンするプリミティブ関数)をもつことができます:
+  Because each symbol has separate value and function cells, variables names
+and function names do not conflict.  For example, the symbol
+@code{buffer-file-name} has a value (the name of the file being visited in
+the current buffer) as well as a function definition (a primitive function
+that returns the name of the file):
 
 @example
 buffer-file-name
@@ -88,76 +122,127 @@ buffer-file-name
 @end example
 
 @node Definitions
-@section シンボルの定義
+@section Defining Symbols
 @cindex definitions of symbols
 
-  @dfn{定義(definition)}とは、特別な方法での使用の意図を宣言する特別な種類のLisp式です。定義とは通常はシンボルにたいする値を指定するか、シンボルにたいする1つの種類の使用についての意味とその方法で使用する際のシンボルの意味のドキュメントを指定します。したがってシンボルを変数として定義すると、その変数の初期値に加えてその変数のドキュメントを提供できます。
+  A @dfn{definition} is a special kind of Lisp expression that announces your
+intention to use a symbol in a particular way.  It typically specifies a
+value or meaning for the symbol for one kind of use, plus documentation for
+its meaning when used in this way.  Thus, when you define a symbol as a
+variable, you can supply an initial value for the variable, plus
+documentation for the variable.
 
-  @code{defvar}と@code{defconst}は@dfn{グローバル変数(global variable)} ---
-Lispプログラムの任意の箇所からアクセスできる変数 ---
-として定義するためのスペシャルフォームです。変数についての詳細は@ref{Variables}を参照してください。カスタマイズ可能な変数を定義するには@code{defcustom}
-(サブルーチンとして@code{defvar}も呼び出す)を使用します(@ref{Customization}を参照)。
+  @code{defvar} and @code{defconst} are special forms that define a symbol as
+a @dfn{global variable}---a variable that can be accessed at any point in a
+Lisp program.  @xref{Variables}, for details about variables.  To define a
+customizable variable, use the @code{defcustom} macro, which also calls
+@code{defvar} as a subroutine (@pxref{Customization}).
 
-  最初にシンボルが変数として定義されているかどうかに関わらず、原則として@code{setq}で任意のシンボルに値を割り当てることができます。しかし使用したいグローバル変数それぞれにたいして変数定義を記述するべきです。さもないとレキシカルスコープ(@ref{Variable
-Scoping}を参照)が有効なときに変数が評価されると、Lispプログラムが正しく動作しないかもしれません。
+  In principle, you can assign a variable value to any symbol with
+@code{setq}, whether or not it has first been defined as a variable.
+However, you ought to write a variable definition for each global variable
+that you want to use; otherwise, your Lisp program may not act correctly if
+it is evaluated with lexical scoping enabled (@pxref{Variable Scoping}).
 
-  @code{defun}はラムダ式(lambda
-expression)を生成して、そのシンボルの関数セルに格納することにより、そのシンボルを関数として定義します。したがってこのシンボルの関数定義は、そのラムダ式になります(関数セルの内容を意味する用語``関数定義(function
-definition)''は、@code{defun}がシンボルに関数としての定義を与えるというアイデアに由来する)。@ref{Functions}を参照してください。
+  @code{defun} defines a symbol as a function, creating a lambda expression
+and storing it in the function cell of the symbol.  This lambda expression
+thus becomes the function definition of the symbol.  (The term ``function
+definition'', meaning the contents of the function cell, is derived from the
+idea that @code{defun} gives the symbol its definition as a function.)
+@code{defsubst} and @code{defalias} are two other ways of defining a
+function.  @xref{Functions}.
 
-  @code{defmacro}はシンボルをマクロとして定義します。これはマクロオブジェクトを作成してシンボルの関数セルにそれを格納します。シンボルにはマクロと関数を与えることができますが、マクロと関数定義はどちらも関数セルに保持されるのにたいし、関数セルに保持できるのは常にただ1つのLispオブジェクトなので、一度に両方を行なうことはできないことに注意してください。@ref{Macros}を参照してください。
+  @code{defmacro} defines a symbol as a macro.  It creates a macro object and
+stores it in the function cell of the symbol.  Note that a given symbol can
+be a macro or a function, but not both at once, because both macro and
+function definitions are kept in the function cell, and that cell can hold
+only one Lisp object at any given time.  @xref{Macros}.
 
-  前に注記したようにEmacs
-Lispではシンボルを(たとえば@code{defvar}で)変数として定義して、同じシンボルを(たとえば@code{defun}で)関数やマクロとして両方定義することができます。このような定義は衝突しません。
+  As previously noted, Emacs Lisp allows the same symbol to be defined both as
+a variable (e.g., with @code{defvar}) and as a function or macro (e.g., with
+@code{defun}).  Such definitions do not conflict.
 
-  これらの定義は、プログラミングツールのガイドを果たすこともできます。たとえば、@kbd{C-h f}および@kbd{C-h
-v}コマンドは、関係ある変数、関数、マクロ定義へのリンクを含むヘルプバッファーを作成します。@ref{Name Help,,, emacs, The
-GNU Emacs Manual}を参照してください。
+  These definitions also act as guides for programming tools.  For example,
+the @kbd{C-h f} and @kbd{C-h v} commands create help buffers containing
+links to the relevant variable, function, or macro definitions.  @xref{Name
+Help,,, emacs, The GNU Emacs Manual}.
 
 @node Creating Symbols
-@section シンボルの作成とintern
+@section Creating and Interning Symbols
 @cindex reading symbols
 
-  GNU Emacs
-Lispでシンボルが作成される方法を理解するには、Lispがシンボルを読み取る方法を理解しなければなりません。Lispは同じコンテキストで同じ文字シーケンスを読み取ったら、毎回同じシンボルを見つけることを保証しなければなりません。これに失敗すると、完全な混乱を招くでしょう。
+  To understand how symbols are created in GNU Emacs Lisp, you must know how
+Lisp reads them.  Lisp must ensure that it finds the same symbol every time
+it reads the same sequence of characters in the same context.  Failure to do
+so would cause complete confusion.
 
 @cindex obarray
-  Lispリーダーがソースコード中にシンボルを参照する名前を発見した際には、プログラマーが意図したシンボルを見つけるために@dfn{obarray}と呼ばれるテーブルを調べます。obarrayとは名前でインデックス付けされた順序付けされていないシンボルのコンテナのことです。
+  When the Lisp reader encounters a name that references a symbol in the
+source code, it looks up that name in a table called an @dfn{obarray} to
+find the symbol that the programmer meant.  An obarray is an unordered
+container of symbols, indexed by name.
 
-Lispリーダーは``ショートハンド''も考慮します。プログラマーがショートハンドを提供している場合には、完全な形式でソースコード中に出現しないシンボルであっても、リーダーはシンボルを見つけることができます。
+The Lisp reader also considers ``shorthands''.  If the programmer supplied
+them, this allows the reader to find a symbol even if its name isn't present
+in its full form in the source code.  @xref{Shorthands}.
 
 @cindex interning
-  探している名前のシンボルが見つかったら、リーダーはそのシンボルを使用します。obarrayにその名前のシンボルが含まれなければ、リーダーは新しいシンボルを作成してそれをobarrayに追加します。特定の名前のシンボルを探して追加することを@dfn{インターン(intern)}と言い、これが行なわれた後はそのシンボルは@dfn{インターンされたシンボル(interned
-symbol)}と呼ばれます。
+  If a symbol with the desired name is found, the reader uses that symbol.  If
+the obarray does not contain a symbol with that name, the reader makes a new
+symbol and adds it to the obarray.  Finding or adding a symbol with a
+certain name is called @dfn{interning} it, and the symbol is then called an
+@dfn{interned symbol}.
 
-  インターンすることによりある特定の名前のシンボルは、各obarrayに1つだけであることが保証されます。同じ名前のシンボルが他に存在するかもしれませんが、同じobarrayには存在しません。したがってリーダーは、(同じobarrayを読みつづける限り)同じ名前にたいして同じシンボルを取得します。
+  Interning ensures that each obarray has just one symbol with any particular
+name.  Other like-named symbols may exist, but not in the same obarray.
+Thus, the reader gets the same symbols for the same names, as long as you
+keep reading with the same obarray.
 
-  インターンは通常はリーダー内で自動的に発生しますが、他のプログラムがこれを行ないたい場合もあるかもしれません。たとえば@kbd{M-x}コマンドはその後にミニバッファーを使用してコマンド名を文字列として取得して、その文字列をインターンしてからインターンされたその名前のシンボルを得ます。別の例として、照合する人名それぞれをシンボル名としてインターンする架空の電話帳プログラムは、たとえそれがobarrayに含まれていなくても、誰かが最後にそれを照合した際に情報をアタッチできるようにする場合などです。
+  Interning usually happens automatically in the reader, but sometimes other
+programs may want to do it.  For example, after the @kbd{M-x} command
+obtains the command name as a string using the minibuffer, it then interns
+the string, to get the interned symbol with that name.  As another example,
+a hypothetical telephone book program could intern the name of each looked
+up person's name as a symbol, even if the obarray did not contain it, so
+that it could attach information to that new symbol, such as the last time
+someone looked it up.
 
 @cindex symbol equality
 @cindex uninterned symbol
-  すべてのシンボルを含むobarrayはありません。実際にどのobarrayにも含まれないシンボルがいくつかあります。これらは@dfn{インターンされていないシンボル(uninterned
-symbols)}と呼ばれます。インターンされていないシンボルも、他のシンボルと同じく4つのセルをもちます。しかしインターンされていないシンボルへのアクセスを得る唯一の方法は、他の何らかのオブジェクトとして探すか、変数の値として探す方法だけです。インターンされていないシンボルはLispコード生成時に有用な場合があります。以下を参照してください。
+  No obarray contains all symbols; in fact, some symbols are not in any
+obarray.  They are called @dfn{uninterned symbols}.  An uninterned symbol
+has the same four cells as other symbols; however, the only way to gain
+access to it is by finding it in some other object or as the value of a
+variable.  Uninterned symbols are sometimes useful in generating Lisp code,
+see below.
 
 @cindex CL note---symbol in obarrays
 @quotation
-@b{Common Lispに関する注意:} Common Lispとは異なりEmacs
-Lispでは複数の異なる``パッケージ''における同一の名前のインターンは提供されていないので、異なるパッケージごとに同じ名前のシンボルが複数作成される。Emacs
-Lispは``ショートハンド''と呼ばれる別の名前空間システムを提供する(@ref{Shorthands}を参照)。
+@b{Common Lisp note:} Unlike Common Lisp, Emacs Lisp does not provide for
+interning the same name in several different ``packages'', thus creating
+multiple symbols with the same name but different packages.  Emacs Lisp
+provides a different namespacing system called ``shorthands''
+(@pxref{Shorthands}).
 @end quotation
 
 @defun obarray-make &optional size
-この関数はobarrayを新たに作成してリターンする。オプションの@var{size}は保持できるシンボルの個数を指定するが、obarrayは必要に応じて拡張されるので何らかのメリットが得られるのは稀であろう。
+This function creates and returns a new obarray.  The optional @var{size}
+may be used to specify the number of symbols that it is expected to hold,
+but since obarrays grow automatically as needed, this rarely provides any
+benefit.
 @end defun
 
 @defun obarrayp object
-この関数は@var{object}がobarrayなら@code{t}、それ以外は@code{nil}をリターンする。
+This function returns @code{t} if @var{object} is an obarray, @code{nil}
+otherwise.
 @end defun
 
-  以下の関数のほとんどは、引数に名前とobarrayをとります。名前が文字列以外、またはobarrayがobarrayオブジェクト以外なら@code{wrong-type-argument}エラーがシグナルされます。
+  Most of the functions below take a name and sometimes an obarray as
+arguments.  A @code{wrong-type-argument} error is signaled if the name is
+not a string, or if the obarray is not an obarray object.
 
 @defun symbol-name symbol
-この関数は@var{symbol}の名前を文字列としてリターンする。たとえば:
+This function returns the string that is @var{symbol}'s name.  For example:
 
 @example
 @group
@@ -166,15 +251,21 @@ Lispは``ショートハンド''と呼ばれる別の名前空間システムを
 @end group
 @end example
 
-@strong{警告:}
-この関数がリターンした文字列は絶対変更してはならない。これを行うことによってEmacsの機能が損なわれるかもしれず、Emacsのクラッシュすら招きかねない。
+@strong{Warning:} Never alter the string returned by that function.  Doing
+that might make Emacs dysfunctional, and might even crash Emacs.
 @end defun
 
 @cindex uninterned symbol, and generating Lisp code
-インターンされていないシンボルの作成は、Lispコードを生成するとき有用です。なぜなら作成されたコード内で変数として使用されているインターンされていないシンボルは、他のLispプログラムで使用されている任意の変数と競合することはありえないからです。
+Creating an uninterned symbol is useful in generating Lisp code, because an
+uninterned symbol used as a variable in the code you generate cannot clash
+with any variables used in other Lisp programs.
 
 @defun make-symbol name
-この関数は新たに割り当てられた、名前が@var{name}(文字列でなければならない)であるような、インターンされていないシンボルをリターンする。このシンボルの値と関数はvoidで、プロパティリストは@code{nil}。以下の例では@code{sym}の値は@code{foo}と@code{eq}ではない。なぜならこれは名前が@samp{foo}という、インターンされていないシンボルだからである。
+This function returns a newly-allocated, uninterned symbol whose name is
+@var{name} (which must be a string).  Its value and function definition are
+void, and its property list is @code{nil}.  In the example below, the value
+of @code{sym} is not @code{eq} to @code{foo} because it is a distinct
+uninterned symbol whose name is also @samp{foo}.
 
 @example
 (setq sym (make-symbol "foo"))
@@ -185,14 +276,21 @@ Lispは``ショートハンド''と呼ばれる別の名前空間システムを
 @end defun
 
 @defun gensym &optional prefix
-この関数は@code{make-symbol}を使用して@var{prefix}に@code{gensym-counter}を付加した名前のシンボルをリターンする。更にこの関数を複数回呼び出しても同一名のシンボルが生成されないことを保証するためにカウンターを増加する。プレフィックスのデフォルトは@code{"g"}。
+This function returns a symbol using @code{make-symbol}, whose name is made
+by appending @code{gensym-counter} to @var{prefix} and incrementing that
+counter, guaranteeing that no two calls to this function will generate a
+symbol with the same name.  The prefix defaults to @code{"g"}.
 @end defun
 
-意図せず生成したコードのプリント表現をインターンした際の問題を避けるために、@code{make-symbol}ではなく@code{gensym}の使用をお勧めします。(@ref{Printed
-Representation}を参照)。
+To avoid problems when accidentally interning printed representation of
+generated code (@pxref{Printed Representation}), it is recommended to use
+@code{gensym} instead of @code{make-symbol}.
 
 @defun intern name &optional obarray
-この関数は名前が@var{name}であるような、インターンされたシンボルをリターンする。オブジェクト配列@var{obarray}の中にそのようなシンボルが存在しなければ、@code{intern}は新たにシンボルを作成してobarrayに追加してそれをリターンする。@var{obarray}が省略されると、グローバル変数@code{obarray}の値が使用される。
+This function returns the interned symbol whose name is @var{name}.  If
+there is no such symbol in the obarray @var{obarray}, @code{intern} creates
+a new one, adds it to the obarray, and returns it.  If @var{obarray} is
+omitted, the value of the global variable @code{obarray} is used.
 
 @example
 (setq sym (intern "foo"))
@@ -209,46 +307,57 @@ Representation}を参照)。
 
 @cindex CL note---interning existing symbol
 @quotation
-@b{Common Lispに関する注意: }Common Lispでは既存のシンボルをobarrayにインターンできる。Emacs
-Lispでは@code{intern}の引数はシンボルではなく文字列なのでこれを行なうことはできない。
+@b{Common Lisp note:} In Common Lisp, you can intern an existing symbol in
+an obarray.  In Emacs Lisp, you cannot do this, because the argument to
+@code{intern} must be a string, not a symbol.
 @end quotation
 
 @defun intern-soft name &optional obarray
-この関数は@var{obarray}内の名前が@var{name}のシンボル、@var{obarray}にその名前のシンボルが存在しなければ@code{nil}をリターンする。したがって与えられた名前のシンボルがすでにインターンされているかテストするために、@code{intern-soft}を使用することができる。@var{obarray}が省略されるとグローバル変数@code{obarray}の値が使用される。
+This function returns the symbol in @var{obarray} whose name is @var{name},
+or @code{nil} if @var{obarray} has no symbol with that name.  Therefore, you
+can use @code{intern-soft} to test whether a symbol with a given name is
+already interned.  If @var{obarray} is omitted, the value of the global
+variable @code{obarray} is used.
 
-引数@var{name}にはシンボルも使用できる。この場合、指定されたobarrayに@var{name}がインターンされていれば@var{name}、それ以外なら@code{nil}をリターンする。
+The argument @var{name} may also be a symbol; in that case, the function
+returns @var{name} if @var{name} is interned in the specified obarray, and
+otherwise @code{nil}.
 
 @example
-(intern-soft "frazzle")        ; @r{そのようなシンボルは存在しない}
+(intern-soft "frazzle")        ; @r{No such symbol exists.}
      @result{} nil
-(make-symbol "frazzle")        ; @r{インターンされていないシンボルを作成する}
+(make-symbol "frazzle")        ; @r{Create an uninterned one.}
      @result{} frazzle
 @group
-(intern-soft "frazzle")        ; @r{そのようなシンボルは見つからない}
+(intern-soft "frazzle")        ; @r{That one cannot be found.}
      @result{} nil
 @end group
 @group
-(setq sym (intern "frazzle"))  ; @r{インターンされたシンボルを作成する}
+(setq sym (intern "frazzle"))  ; @r{Create an interned one.}
      @result{} frazzle
 @end group
 @group
-(intern-soft "frazzle")        ; @r{シンボルが見つかった!}
+(intern-soft "frazzle")        ; @r{That one can be found!}
      @result{} frazzle
 @end group
 @group
-(eq sym 'frazzle)              ; @r{そしてそれは同じシンボル}
+(eq sym 'frazzle)              ; @r{And it is the same one.}
      @result{} t
 @end group
 @end example
 @end defun
 
 @defvar obarray
-この変数は@code{intern}と@code{read}が使用する標準のobarrayである。
+This variable is the standard obarray for use by @code{intern} and
+@code{read}.
 @end defvar
 
 @defun mapatoms function &optional obarray
 @anchor{Definition of mapatoms}
-この関数はオブジェクト配列@var{obarray}の中の各シンボルにたいして、@var{function}を一度呼び出しその後@code{nil}をリターンする。@var{obarray}が省略されると、通常のシンボルにたいする標準のオブジェクト配列@code{obarray}の値がデフォルトになる。
+This function calls @var{function} once with each symbol in the obarray
+@var{obarray}.  Then it returns @code{nil}.  If @var{obarray} is omitted, it
+defaults to the value of @code{obarray}, the standard obarray for ordinary
+symbols.
 
 @example
 (setq count 0)
@@ -262,53 +371,68 @@ count
      @result{} 1871
 @end example
 
-@code{mapatoms}を使用する他の例については、@ref{Accessing
-Documentation}の@code{documentation}を参照のこと。
+See @code{documentation} in @ref{Accessing Documentation}, for another
+example using @code{mapatoms}.
 @end defun
 
 @defun unintern symbol obarray
-この関数はオブジェクト配列@var{obarray}から@var{symbol}を削除する。obarrayの中に@code{symbol}が存在しなければ、@code{unintern}は何も行なわない。@var{obarray}が@code{nil}なら現在のobarrayが使用される。
+This function deletes @var{symbol} from the obarray @var{obarray}.  If
+@code{symbol} is not actually in the obarray, @code{unintern} does nothing.
+If @var{obarray} is @code{nil}, the current obarray is used.
 
-@var{symbol}にシンボルではなく文字列を与えると、それはシンボルの名前を意味する。この場合、@code{unintern}は(もしあれば)obarrayからその名前のシンボルを削除する。そのようなシンボルが存在するなら@code{unintern}は何も行なわない。
+If you provide a string instead of a symbol as @var{symbol}, it stands for a
+symbol name.  Then @code{unintern} deletes the symbol (if any) in the
+obarray which has that name.  If there is no such symbol, @code{unintern}
+does nothing.
 
-@code{unintern}がシンボルを削除したら@code{t}、それ以外は@code{nil}をリターンする。
+If @code{unintern} does delete a symbol, it returns @code{t}.  Otherwise it
+returns @code{nil}.
 @end defun
 
 @defun obarray-clear obarray
-この関数は@var{obarray}からすべてのシンボルを削除する。
+This function removes all symbols from @var{obarray}.
 @end defun
 
 @node Symbol Properties
-@section シンボルのプロパティ
+@section Symbol Properties
 @cindex symbol property
 
-  シンボルはそのシンボルについての様々な情報を記録するために使用される、任意の数の@dfn{シンボルプロパティ(symbol
-properties)}をもつことができます。たとえばシンボルの@code{risky-local-variable}プロパティが@code{nil}なら、その変数の名前が危険なファイルローカル変数(@ref{File
-Local Variables}を参照)であることを意味します。
+  A symbol may possess any number of @dfn{symbol properties}, which can be
+used to record miscellaneous information about the symbol.  For example,
+when a symbol has a @code{risky-local-variable} property with a
+non-@code{nil} value, that means the variable which the symbol names is a
+risky file-local variable (@pxref{File Local Variables}).
 
-  シンボルのプロパティとプロパティ値はそれぞれ、シンボルのプロパティリストセル(@ref{Symbol
-Components}を参照)に、プロパティリスト形式(@ref{Property Lists}を参照)で格納されます。
+  Each symbol's properties and property values are stored in the symbol's
+property list cell (@pxref{Symbol Components}), in the form of a property
+list (@pxref{Property Lists}).
 
 @menu
-* Symbol Plists::            シンボルプロパティへのアクセス。
-* Standard Properties::      シンボルプロパティの標準的な意味。
+* Symbol Plists::            Accessing symbol properties.
+* Standard Properties::      Standard meanings of symbol properties.
 @end menu
 
 @node Symbol Plists
-@subsection シンボルのプロパティへのアクセス
+@subsection Accessing Symbol Properties
 
-  以下の関数を使用してシンボルプロパティにアクセスできます。
+  The following functions can be used to access symbol properties.
 
 @defun get symbol property
-この関数は@var{symbol}のプロパティリスト内の、名前が@var{property}というプロパティの値をリターンする。そのようなプロパティが存在しなければ@code{nil}をリターンする。したがって値が@code{nil}のときとプロパティが存在しないときの違いはない。
+This function returns the value of the property named @var{property} in
+@var{symbol}'s property list.  If there is no such property, it returns
+@code{nil}.  Thus, there is no distinction between a value of @code{nil} and
+the absence of the property.
 
-名前@var{property}は@code{eq}を使用して既存のプロパティと比較されるので、すべてのオブジェクトがプロパティとして適正である。
+The name @var{property} is compared with the existing property names using
+@code{eq}, so any object is a legitimate property.
 
-@code{put}の例を参照のこと。
+See @code{put} for an example.
 @end defun
 
 @defun put symbol property value
-この関数は@var{symbol}のプロパティリストの、プロパティ名@var{property}に@var{value}をputして、前のプロパティ値を置き換える。@code{put}関数は@var{value}をリターンする。
+This function puts @var{value} onto @var{symbol}'s property list under the
+property name @var{property}, replacing any previous property value.  The
+@code{put} function returns @var{value}.
 
 @example
 (put 'fly 'verb 'transitive)
@@ -323,11 +447,13 @@ Components}を参照)に、プロパティリスト形式(@ref{Property Lists}�
 @end defun
 
 @defun symbol-plist symbol
-この関数は@var{symbol}のプロパティリストをリターンする。
+This function returns the property list of @var{symbol}.
 @end defun
 
 @defun setplist symbol plist
-この関数は@var{symbol}のプロパティリストを@var{plist}にセットする。@var{plist}は通常は適正なプロパティリストであるべきだが、これは強制ではない。リターン値は@var{plist}です。
+This function sets @var{symbol}'s property list to @var{plist}.  Normally,
+@var{plist} should be a well-formed property list, but this is not
+enforced.  The return value is @var{plist}.
 
 @example
 (setplist 'foo '(a 1 b (2 3) c nil))
@@ -336,9 +462,12 @@ Components}を参照)に、プロパティリスト形式(@ref{Property Lists}�
      @result{} (a 1 b (2 3) c nil)
 @end example
 
-通常の用途には使用されない特別なobarray内のシンボルでは、非標準的な方法でプロパティリストセルを使用することに意味があるかもしれない。実際にabbrev(@ref{Abbrevs}を参照)のメカニズムでこれを行なっている。
+For symbols in special obarrays, which are not used for ordinary purposes,
+it may make sense to use the property list cell in a nonstandard fashion; in
+fact, the abbrev mechanism does so (@pxref{Abbrevs}).
 
-以下のように@code{setplist}と@code{plist-put}で@code{put}を定義できる:
+You could define @code{put} in terms of @code{setplist} and
+@code{plist-put}, as follows:
 
 @example
 (defun put (symbol prop value)
@@ -348,169 +477,222 @@ Components}を参照)に、プロパティリスト形式(@ref{Property Lists}�
 @end defun
 
 @defun function-get symbol property &optional autoload
-この関数は@code{get}と等価だが@var{symbol}が関数のエイリアス名なら。実際の関数を命名するシンボルのプロパティリストを照合する点が異なる。@ref{Defining
-Functions}を参照のこと。オプション引数@var{autoload}が非@code{nil}で、@var{symbol}が自動ロードされていれば、その自動ロードにより@var{symbol}の@var{property}がセットされるかもしれないので、この関数はそれの自動ロードを試みるだろう。@var{autoload}がシンボル@code{macro}なら、@var{symbol}が自動ロードされたマクロのときだけ自動ロードを試みる。
+This function is identical to @code{get}, except that if @var{symbol} is the
+name of a function alias, it looks in the property list of the symbol naming
+the actual function.  @xref{Defining Functions}.  If the optional argument
+@var{autoload} is non-@code{nil}, and @var{symbol} is auto-loaded, this
+function will try to autoload it, since autoloading might set @var{property}
+of @var{symbol}.  If @var{autoload} is the symbol @code{macro}, only try
+autoloading if @var{symbol} is an auto-loaded macro.
 @end defun
 
 @defun function-put function property value
-この関数は@var{function}の@var{property}に@var{value}をセットする。@var{function}はシンボルであること。関数のプロパティのセットには、@code{put}よりこの関数を呼び出すほうがよい。この関数を使用すれば、いつか古いプロパティから新しいプロパティへのリマップを実装することができるからである。
+This function sets @var{property} of @var{function} to @var{value}.
+@var{function} should be a symbol.  This function is preferred to calling
+@code{put} for setting properties of a function, because it will allow us
+some day to implement remapping of old properties to new ones.
 @end defun
 
 @node Standard Properties
-@subsection シンボルの標準的なプロパティ
+@subsection Standard Symbol Properties
 
-  Emacsで特別な目的のために使用されるシンボルプロパティを以下に一覧します。以下のテーブルで、``命名される関数(the named
-function)''と言うときは、関数名がそのシンボルであるような関数を意味します。``命名される変数(the named
-variable)''等の場合も同様です。
+  Here, we list the symbol properties which are used for special purposes in
+Emacs.  In the following table, whenever we say ``the named function'', that
+means the function whose name is the relevant symbol; similarly for ``the
+named variable'' etc.
 
 @table @code
 @item :advertised-binding
-このプロパティリストは、命名される関数のドキュメントを表示する際に優先されるキーバインディングを指定する。@ref{Keys in
-Documentation}を参照のこと。
+This property value specifies the preferred key binding, when showing
+documentation, for the named function.  @xref{Keys in Documentation}.
 
 @item char-table-extra-slots
-値が非@code{nil}なら、それは命名される文字テーブル型の追加スロットの数を指定する。@ref{Char-Tables}を参照のこと。
+The value, if non-@code{nil}, specifies the number of extra slots in the
+named char-table type.  @xref{Char-Tables}.
 
 @item customized-face
 @itemx face-defface-spec
 @itemx saved-face
 @itemx theme-face
-これらのプロパティはフェイスの標準のフェイス仕様(face
-specs)と、フォント仕様のsaved-face、customized-face、themed-faceを記録するために使用される。これらのプロパティを直接セットしないこと。これらのプロパティは@code{defface}と関連する関数により管理される。@ref{Defining
-Faces}を参照のこと。
+These properties are used to record a face's standard, saved, customized,
+and themed face specs.  Do not set them directly; they are managed by
+@code{defface} and related functions.  @xref{Defining Faces}.
 
 @item customized-value
 @itemx saved-value
 @itemx standard-value
 @itemx theme-value
-これらのプロパティは、カスタマイズ可能な変数のstandard-value、saved-value、customized-value(しかし保存はされない)、themed-valueを記録するために使用される。これらのプロパティを直接セットしないこと。これらは@code{defcustom}と関連する関数により管理される。@ref{Variable
-Definitions}を参照のこと。
+These properties are used to record a customizable variable's standard
+value, saved value, customized-but-unsaved value, and themed values.  Do not
+set them directly; they are managed by @code{defcustom} and related
+functions.  @xref{Variable Definitions}.
 
 @item definition-name
-このプロパティはソースファイルのテキスト検索ではシンボルの定義を見つけるのが困難な際に、ソースコードから定義を見つけるために使用される。たとえば@code{define-derived-mode}
-(@ref{Derived
-Modes}を参照)によってモード固有の関数や変数が暗黙裡に定義されたのかもしれないし、Lispプログラム実行時に@code{defun}を呼び出して関数を定義したのかもしれない(@ref{Defining
-Functions}を参照)。このようなケースや類似したケースにおいては、そのシンボルの@code{definition-name}プロパティはテキスト検索によって検索可能な定義をもち、そのコードによって元のシンボルを定義するような別のシンボルであることが必要になる。@code{define-derived-mode}の例では、定義される関数および変数にたいするこのプロパティの値がモードシンボルであることが必要になる。@kbd{C-h
-f} (@ref{Help,,, emacs, The GNU Emacs
-Manual}を参照)のようなEmacsのヘルプコマンドでは、そのシンボルのドキュメントを表示する@file{*Help*}バッファーのボタンを通じてシンボルの定義を表示するためにこのプロパティが使用されている。
+This property is used to find the definition of a symbol in the source code,
+when it might be hard to find the definition by textual search of the source
+file.  For example, a @code{define-derived-mode} (@pxref{Derived Modes})
+might define a mode-specific function or a variable implicitly; or your Lisp
+program might generate a run-time call to @code{defun} to define a function
+(@pxref{Defining Functions}).  In these and similar cases, the
+@code{definition-name} property of the symbol should be another symbol whose
+definition can be found by textual search and whose code defines the
+original symbol.  In the example with @code{define-derived-mode}, the value
+of this property of the functions and variables it defines should be the
+mode symbol.  The Emacs Help commands such as @kbd{C-h f} (@pxref{Help,,,
+emacs, The GNU Emacs Manual}) use this property to show the definition of a
+symbol via a button in the @file{*Help*} buffer where the symbol's
+documentation is shown.
 
 @item disabled
-値が非@code{nil}なら命名される関数はコマンドとして無効になる。@ref{Disabling Commands}を参照のこと。
+If the value is non-@code{nil}, the named function is disabled as a
+command.  @xref{Disabling Commands}.
 
 @item face-documentation
-値には命名されるフェイスのドキュメント文字列が格納される。これは@code{defface}により自動的にセットされる。@ref{Defining
-Faces}を参照のこと。
+The value stores the documentation string of the named face.  This is set
+automatically by @code{defface}.  @xref{Defining Faces}.
 
 @item history-length
-値が非@code{nil}なら、命名されるヒストリーリスト変数のミニバッファーヒストリーの最大長を指定する。@ref{Minibuffer
-History}を参照のこと。
+The value, if non-@code{nil}, specifies the maximum minibuffer history
+length for the named history list variable.  @xref{Minibuffer History}.
 
 @item interactive-form
-この値は命名される関数のインタラクティブ形式である。通常はこれを直接セットするべきではない。かわりにスペシャルフォーム@code{interactive}を使用すること。@ref{Interactive
-Call}を参照されたい。
+The value is an interactive form for the named function.  Normally, you
+should not set this directly; use the @code{interactive} special form
+instead.  @xref{Interactive Call}.
 
 @item menu-enable
-この値は命名されるメニューアイテムが、メニュー内で有効であるべきか否かを決定するための式である。@ref{Simple Menu
-Items}を参照のこと。
+The value is an expression for determining whether the named menu item
+should be enabled in menus.  @xref{Simple Menu Items}.
 
 @item mode-class
-値が@code{special}なら命名されるメジャーモードはspecial(特別)である。@ref{Major Mode
-Conventions}を参照のこと。
+If the value is @code{special}, the named major mode is special.
+@xref{Major Mode Conventions}.
 
 @item permanent-local
-値が非@code{nil}なら命名される変数はバッファーローカル変数となり、メジャーモードの変更によって変数の値はリセットされない。@ref{Creating
-Buffer-Local}を参照のこと。
+If the value is non-@code{nil}, the named variable is a buffer-local
+variable whose value should not be reset when changing major modes.
+@xref{Creating Buffer-Local}.
 
 @item permanent-local-hook
-値が非@code{nil}なら、命名される関数はメジャーモード変更時にフック変数のローカル値から削除されない。@ref{Setting
-Hooks}を参照のこと。
+If the value is non-@code{nil}, the named function should not be deleted
+from the local value of a hook variable when changing major modes.
+@xref{Setting Hooks}.
 
 @item pure
 @cindex @code{pure} property
-値が非@code{nil}の場合には、名づけられた関数は純粋(pure)だとみなされる。定数の引数で呼び出された場合には、コンパイル時に評価することができる。これは実行時のエラーをコンパイル時へとシフトする。純粋ストレージ(pure
-storage)と混同しないこと(@ref{Pure Storage}を参照)。
+If the value is non-@code{nil}, the named function is considered to be pure
+(@pxref{What Is a Function}).  Calls with constant arguments can be
+evaluated at compile time.  This may shift run time errors to compile time.
+Not to be confused with pure storage (@pxref{Pure Storage}).
 
 @item risky-local-variable
-値が非@code{nil}なら、命名される変数はファイルローカル変数としては危険だとみなされる。@ref{File Local
-Variables}を参照のこと。
+If the value is non-@code{nil}, the named variable is considered risky as a
+file-local variable.  @xref{File Local Variables}.
 
 @item safe-function
-値が非@code{nil}なら、命名される関数は評価において一般的に安全だとみなされます。@ref{Function Safety}を参照のこと。
+If the value is non-@code{nil}, the named function is considered generally
+safe for evaluation.  @xref{Function Safety}.
 
 @item safe-local-eval-function
-値が非@code{nil}なら、命名される関数はファイルローカルの評価フォーム内で安全に呼び出すことができる。@ref{File Local
-Variables}を参照のこと。
+If the value is non-@code{nil}, the named function is safe to call in
+file-local evaluation forms.  @xref{File Local Variables}.
 
 @item safe-local-variable
-この値は命名される変数にたいして、ファイルローカル値が安全かを判断する関数を指定する。@ref{File Local
-Variables}を参照のこと。この値はファイルのロード時に参照されるので、指定する関数は効率的かつ安全性判断のために理想的にはライブラリーを何もロードしない(autoload関数にしない)ようにする必要がある。
+The value specifies a function for determining safe file-local values for
+the named variable.  @xref{File Local Variables}.  Since this value is
+consulted when loading files, the function should be efficient and should
+ideally not lead to loading any libraries to determine the safeness (e.g.,
+it should not be an autoloaded function).
 
 @item side-effect-free
 @cindex @code{side-effect-free} property
-非@code{nil}値は命名される関数が副作用(@ref{What Is a
-Function}を参照)をもたないことを示すので、バイトコンパイラーは値が使用されない呼び出しを無視する。このプロパティの値が@code{error-free}なら、バイトコンパイラーはそのような呼び出しの削除すら行うかもしれない。バイトコンパイラーの最適化に加えて、このプロパティは関数の安全性を判断するためにも使用される(@ref{Function
-Safety}を参照)。
+A non-@code{nil} value indicates that the named function is free of side
+effects (@pxref{What Is a Function}), so the byte compiler may ignore a call
+whose value is unused.  If the property's value is @code{error-free}, the
+byte compiler may even delete such unused calls.  In addition to byte
+compiler optimizations, this property is also used for determining function
+safety (@pxref{Function Safety}).
 
 @item important-return-value
 @cindex @code{important-return-value} property
-非@code{nil}値は命名される関数のリターン値を呼び出し側のコードが使用しないことに関して、バイトコンパイラーが警告を出すようにする。これはリターン値が使用されないのはおそらく間違いだとだと考えられるような関数にたいして役に立つ。
+A non-@code{nil} value makes the byte compiler warn about code that calls
+the named function without using its returned value.  This is useful for
+functions where doing so is likely to be a mistake.
 
 @item undo-inhibit-region
-非@code{nil}の場合には、命名される関数の直後に@code{undo}が呼び出されると、@code{undo}操作をアクティブなリージョンに限定することを抑止する。@ref{Undo}を参照のこと。
+If non-@code{nil}, the named function prevents the @code{undo} operation
+from being restricted to the active region, if @code{undo} is invoked
+immediately after the function.  @xref{Undo}.
 
 @item variable-documentation
-非@code{nil}なら、それは命名される変数のドキュメント文字列を指定する。ドキュメント文字列は@code{defvar}と関連する関数により自動的にセットされる。@ref{Defining
-Faces}を参照のこと。
+If non-@code{nil}, this specifies the named variable's documentation
+string.  This is set automatically by @code{defvar} and related functions.
+@xref{Defining Faces}.
 @end table
 
 @node Shorthands
-@section ショートハンド
+@section Shorthands
 @cindex shorthands
 @cindex symbolic shorthands
 @cindex namespacing
 @cindex namespaces
 
-  ``名前変更シンボル(renamed symbols)''と呼ばれることもあるシンボルの@dfn{ショートハンド(shorthands:
-速記、簡略表記)}とは、Lispソースで目にする抽象形式です。これらは正規の抽象形式と類似していますが、Lispリーダーがそれらに遭遇した際に別の通常はもっと長い@dfn{プリント名(print
-name)}を生成する点が異なリます(@ref{Symbol Components}を参照)。
+  The symbol @dfn{shorthands}, sometimes known as ``renamed symbols'', are
+symbolic forms found in Lisp source.  They're just like regular symbolic
+forms, except that when the Lisp reader encounters them, it produces symbols
+which have a different and usually longer @dfn{print name} (@pxref{Symbol
+Components}).
 
-ショートハンドを意図するシンボルの完全名にたいする@emph{略語(abbreviating)}と考えることは有益です。その点を除けばAbbrevシステム(@ref{Abbrevs}を参照)とショートハンドを混同しないでください。
+It is useful to think of shorthands as @emph{abbreviating} the full names of
+intended symbols.  Despite this, do not confuse shorthands with the Abbrev
+system (@pxref{Abbrevs}).
 
 @cindex namespace etiquette
-ショートハンドによりEmacs Lispの@dfn{ネームスペース作法(namespacing
-etiquette)}にしたがうことが容易になります。すべてのシンボルは単一のobarray (@ref{Creating
-Symbols}を参照)に格納されるので、一般的にプログラマーはシンボル名それぞれにたいして出自ライブラリー名をプレフィクスとして付加します。たとえば関数@code{text-property-search-forward}と@code{text-property-search-backward}はどちらも@file{text-property-search.el}ライブラリーに属しています(@ref{Loading}を参照)。シンボル名に正しくプレフィクスを付加することによって、異なるライブラリーに属する別のことを行う同一名シンボル間でのクラッシュを効果的に回避できます。しかしこれを実践してしばらくすると、一般的にはタイプしにくく読み難い、非常に長いシンボル名となります。これらの問題をショートハンドは明快な方法により解決します。
+Shorthands make Emacs Lisp's @dfn{namespacing etiquette} easier to work
+with.  Since all symbols are stored in a single obarray (@pxref{Creating
+Symbols}), programmers commonly prefix each symbol name with the name of the
+library where it originates.  For example, the functions
+@code{text-property-search-forward} and @code{text-property-search-backward}
+both belong to the @file{text-property-search.el} library
+(@pxref{Loading}).  By properly prefixing symbol names, one effectively
+prevents clashes between similarly named symbols which belong to different
+libraries and thus do different things.  However, this practice commonly
+originates very long symbols names, which are inconvenient to type and read
+after a while.  Shorthands solve these issues in a clean way.
 
 @defvar read-symbol-shorthands
-この変数の値は要素が@code{(@var{shorthand-prefix}
-.
-@var{longhand-prefix})}という形式であるようなalist。それぞれの要素はLispリーダーにたいして、@var{shorthand-prefix}で始まるすべてのシンボルを、@var{longhand-prefix}で始まるシンボルとして読み取るよう指示する。
+This variable's value is an alist whose elements have the form
+@code{(@var{shorthand-prefix} . @var{longhand-prefix})}.  Each element
+instructs the Lisp reader to read every symbol form which starts with
+@var{shorthand-prefix} as if it started with @var{longhand-prefix} instead.
 
-この変数はファイルローカル変数としてのみセットできる(@ref{File Variables, , Local Variables in Files,
-emacs, The GNU Emacs Manual}を参照)。
+This variable may only be set in file-local variables (@pxref{File
+Variables, , Local Variables in Files, emacs, The GNU Emacs Manual}).
 @end defvar
 
-以下は架空の文字列操作ライブラリー@file{some-nice-string-utils.el}でショートハンドを使用する例です。
+Here's an example of shorthands usage in a hypothetical string manipulating
+library @file{some-nice-string-utils.el}.
 
 @smalllisp
 (defun some-nice-string-utils-split (separator s &optional omit-nulls)
-  "match-dataを保存する`split-string'の変種"
+  "A match-data saving variant of `split-string'."
   (save-match-data (split-string s separator omit-nulls)))
 
 (defun some-nice-string-utils-lines (s)
-  "文字列Sを改行文字で分割して文字列リストにする"
+  "Split string S at newline characters into a list of strings."
   (some-nice-string-utils-split "\\(\r\n\\|[\n\r]\\)" s))
 @end smalllisp
 
-見ての通りタイプするシンボル名が非常に長いので、このコードを読んだり開発するのはとても退屈です。これの緩和にショートハンドが使用できます。
+As can be seen, it's quite tedious to read or develop this code since the
+symbol names to type are so long.  We can use shorthands to alleviate that.
 
 @lisp
 (defun snu-split (separator s &optional omit-nulls)
-  "match-dataを保存する`split-string'の変種"
+  "A match-data saving variation on `split-string'."
   (save-match-data (split-string s separator omit-nulls)))
 
 (defun snu-lines (s)
-  "文字列Sを改行文字で分割して文字列リストにする"
+  "Split string S into a list of strings on newline characters."
   (snu-split "\\(\r\n\\|[\n\r]\\)" s))
 
 ;; Local Variables:
@@ -518,12 +700,23 @@ emacs, The GNU Emacs Manual}を参照)。
 ;; End:
 @end lisp
 
-この2つの例が異なるように見えても、これらをLispリーダーが処理した後はまったく同じです。どちらもインターン(@ref{Creating
-Symbols}を参照)される同一のシンボルへと導かれます。したがって2つのファイルのどちらをバイトコンパイルしても、同じ結果が得られます。2つ目のバージョンのショートハンド@code{snu-split}と@code{snu-lines}はobarrayに@emph{インターンされません}。これはショートハンド使用箇所にポイントを移動して、ポイント位置のシンボルの真のシンボル名のヒントをElDoc
-(@ref{Programming Language Doc, , Local Variables in Files, emacs, The GNU
-Emacs Manual}を参照)がエコーエリアに表示するのを待つことで容易に確認できます。
+Even though the two excerpts look different, they are quite identical after
+the Lisp reader processes them.  Both will lead to the very same symbols
+being interned (@pxref{Creating Symbols}).  Thus loading or byte-compiling
+any of the two files has equivalent results.  The shorthands
+@code{snu-split} and @code{snu-lines} used in the second version are
+@emph{not} interned in the obarray.  This is easily seen by moving point to
+the location where the shorthands are used and waiting for ElDoc
+(@pxref{Programming Language Doc, , Local Variables in Files, emacs, The GNU
+Emacs Manual}) to hint at the true full name of the symbol under point in
+the echo area.
 
-@code{read-symbol-shorthands}はファイルローカル変数なので、@file{some-nice-string-utils-lines.el}に依存する複数のライブラリーが同一のシンボルを@emph{異なる}ショートハンドで参照したり、あるいはショートハンドをまったく使用せずに参照することが可能になります。次の例では@file{my-tricks.el}ライブラリーが@code{snu-}ではなく、@code{sns-}というプレフィクスを使用してシンボル@code{some-nice-string-utils-lines}を参照しています。
+Since @code{read-symbol-shorthands} is a file-local variable, it is possible
+that multiple libraries depending on @file{some-nice-string-utils-lines.el}
+refer to the same symbols under @emph{different} shorthands, or not using
+shorthands at all.  In the next example, the @file{my-tricks.el} library
+refers to the symbol @code{some-nice-string-utils-lines} using the
+@code{sns-} prefix instead of @code{snu-}.
 
 @example
 (defun t-reverse-lines (s) (string-join (reverse (sns-lines s)) "\n")
@@ -534,7 +727,10 @@ Emacs Manual}を参照)がエコーエリアに表示するのを待つことで
 ;; End:
 @end example
 
-同じファイル内で一方がもう一方のプレフィクスであるようなショートハンドが2つある場合には、最初に長いほうのショートハンドが試されることに注意してください。これはファイルのローカル変数セクションにおけるショートハンドの指定順序とは無関係に行われます。
+Note that if you have two shorthands in the same file where one is the
+prefix of the other, the longer shorthand will be attempted first.  This
+happens regardless of the order you specify shorthands in the local
+variables section of your file.
 
 @example
 '(
@@ -548,67 +744,104 @@ Emacs Manual}を参照)がエコーエリアに表示するのを待つことで
 ;; End:
 @end example
 
-@subsection 例外
+@subsection Exceptions
 
-ショートハンド変換適用を管理するにあたって2つの例外があります:
+There are two exceptions to rules governing Shorthand transformations:
 
 @itemize @bullet
 @item
-Emacs Lispシンボル構成クラス(@ref{Syntax Class
-Table}を参照)の文字だけでシンボルフォーム全体が形成される場合には変換されない。たとえば@code{-}や@code{/=}をショートハンドプレフィクスとして使用するのは可能だが、それらの名前は算術の@emph{関数}をシャドーしない。
+Symbol forms comprised entirely of characters in the Emacs Lisp symbol
+constituent class (@pxref{Syntax Class Table}) are not transformed.  For
+example, it's possible to use @code{-} or @code{/=} as shorthand prefixes,
+but that won't shadow the arithmetic @emph{functions} of those names.
 
 @item
-名前が@samp{#_}で始まるシンボルフォームは変換されない。
+Symbol forms whose names start with @samp{#_} are not transformed.
 @end itemize
 
 @node Symbols with Position
-@section 位置つきシンボル
+@section Symbols with Position
 @cindex symbol with position
 
 @cindex bare symbol
-@dfn{位置つきシンボル(symbol with position)}とは@dfn{bareシンボル(bare symbol:
-裸のシンボル)}と@dfn{位置(position)}と呼ばれる非負のfixnumを合わせたシンボルのことです。位置つきシンボルが多くの場合はbareシンボルと同様に振る舞うとしても、これはシンボルではなくbareシンボルであり位置でもあるようなオブジェクトなのです。位置つきシンボルはシンボルではないので、そのbareシンボルが通常はobarrayにあったとしても(@ref{Creating
-Symbols}を参照)、位置つきシンボルのエントリーはありません。
+A @dfn{symbol with position} is a symbol, called the @dfn{bare symbol},
+together with a nonnegative fixnum called the @dfn{position}.  Even though a
+symbol with position often acts like its bare symbol, it is not a symbol:
+instead, it is an object that has both a bare symbol and a position.
+Because symbols with position are not symbols, they don't have entries in
+the obarray, though their bare symbols typically do (@pxref{Creating
+Symbols}).
 
-バイトコンパイラーは位置つきシンボルを使用してシンボルそれぞれの出現位置を記録、その位置を警告メッセージやエラーメッセージで使用します。通常はこれらを他の用途に用いるべきではありません。これを行うことにより@code{eq}や@code{equal}のようなEmacsの基本関数で予期せぬ結果が生じるかもしれません。
+The byte compiler uses symbols with position, records in them the position
+of each symbol occurrence, and uses those positions in warning and error
+messages.  They shouldn't normally be used otherwise.  Doing so can cause
+unexpected results with basic Emacs functions such as @code{eq} and
+@code{equal}.
 
-位置つきシンボルのプリント表現には、@ref{Printed
-Representation}で概説したハッシュ表記が使用されます。@samp{#<symbol foo at
-12345>}のようなプリント表現であり、入力構文はありません。プリント操作の前後で変数@code{print-symbols-bare}を非@code{nil}にバインドすれば、bareシンボルだけをプリントさせることができます。バイトコンパイラーはコンパイル済みLispファイルへ書き込む前にこれを行っています。
+The printed representation of a symbol with position uses the hash notation
+outlined in @ref{Printed Representation}.  It looks like @samp{#<symbol foo
+at 12345>}.  It has no read syntax.  You can cause just the bare symbol to
+be printed by binding the variable @code{print-symbols-bare} to
+non-@code{nil} around the print operation.  The byte compiler does this
+before writing its output to the compiled Lisp file.
 
-フラグ変数@code{symbols-with-pos-enabled}が非@code{nil}の場合には、位置つきシンボルは通常はそのbareシンボルのように振る舞います。たとえば@samp{(eq
-(position-symbol 'foo 12345)
-'foo)}は@code{t}となり、@code{equal}は位置つきシンボルをそのbareシンボルのように扱うのです。
+When the flag variable @code{symbols-with-pos-enabled} is non-@code{nil}, a
+symbol with position ordinarily behaves like its bare symbol.  For example,
+@samp{(eq (position-symbol 'foo 12345) 'foo)} yields @code{t}, and
+@code{equal} likewise treats a symbol with position as its bare symbol.
 
-@code{symbols-with-pos-enabled}が@code{nil}の場合には位置つきシンボルはシンボルではなく本来のように振る舞います。たとえば@samp{(eq
-(position-symbol 'foo 12345)
-'foo)}は@code{nil}となり、@code{equal}は位置つきシンボルとそのbareシンボルは異なるものとして扱います。
+When @code{symbols-with-pos-enabled} is @code{nil}, symbols with position
+behave as themselves, not as symbols.  For example, @samp{(eq
+(position-symbol 'foo 12345) 'foo)} yields @code{nil}, and @code{equal}
+likewise treats a symbol with position as not equal to its bare symbol.
 
-Emacsでは@code{symbols-with-pos-enabled}はほとんどの場合には@code{nil}ですが、バイトコンパイラーやネイティブコンパイラーは実行中にこれを@code{t}にバインドします。この間はEmacsの実行が少し低速になります。
+Most of the time in Emacs @code{symbols-with-pos-enabled} is @code{nil}, but
+the byte compiler and the native compiler bind it to @code{t} when they run
+and Emacs runs a little more slowly in this case.
 
-位置つきシンボルは通常はバイトコンパイラーがリーダー関数@code{read-positioning-symbols}を呼び出すことによって作成されます(@ref{Input
-Functions}を参照)が、関数@code{position-symbol}によって作成することもできます。
+Typically, symbols with position are created by the byte compiler calling
+the reader function @code{read-positioning-symbols} (@pxref{Input
+Functions}).  One can also be created with the function
+@code{position-symbol}.
 
 @defvar symbols-with-pos-enabled
-この変数は位置つきシンボルをプリントするとき以外、およびこのセクションで後述するいずれの関数の引数ではない場合における位置つきシンボルの振る舞いに影響を与える。この変数が@code{nil}なら、位置つきシンボルはそのbareシンボルと同じように振る舞い、それ以外の場合にはシンボルではなく本来のように振る舞う。
+This variable affects the behavior of symbols with position when they are
+not being printed and are not arguments to one of the functions defined
+later in this section.  When this variable is non-@code{nil}, such a symbol
+with position behaves like its bare symbol; otherwise it behaves as itself,
+not as a symbol.
 @end defvar
 
 @defvar print-symbols-bare
-非@code{nil}にバインドされていると、Lispプリンターは位置つきシンボルの位置は無視してbareシンボルだけをプリントする。それ以外の場合にはシンボルではなく位置つきシンボル自体をプリントする。
+When bound to non-@code{nil}, the Lisp printer prints only the bare symbol
+of a symbol with position, ignoring the position.  Otherwise a symbol with
+position prints as itself, not as a symbol.
 @end defvar
 
 @defun symbol-with-pos-p object
-この関数は@var{object}が位置つきシンボルなら@code{t}、それ以外は@code{nil}をリターンする。@code{symbolp}とは異なり、この関数は@code{symbols-with-pos-enabled}を無視する。
+This function returns @code{t} if @var{object} is a symbol with position,
+@code{nil} otherwise.  Unlike @code{symbolp}, this function ignores
+@code{symbols-with-pos-enabled}.
 @end defun
 
 @defun bare-symbol sym
-この関数は位置つきシンボル@var{sym}のbareシンボル、@var{sym}がすでにシンボルならそれ自体をリターンする。それ以外のタイプのすべてのオブジェクトにたいしてはエラーをシグナルする。この関数は@code{symbols-with-pos-enabled}を無視する。
+This function returns the bare symbol of the symbol with position @var{sym},
+or @var{sym} itself if it is already a symbol.  For any other type of
+object, it signals an error.  This function ignores
+@code{symbols-with-pos-enabled}.
 @end defun
 
 @defun symbol-with-pos-pos sympos
-この関数は位置つきシンボル@var{sympos}の位置(非負のfixnum)をリターンする。それ以外のタイプのオブジェクトの場合にはエラーをシグナルする。この関数は@code{symbols-with-pos-enabled}を無視する。
+This function returns the position, a nonnegative fixnum, from the symbol
+with position @var{sympos}.  For any other type of object, it signals an
+error.  This function ignores @code{symbols-with-pos-enabled}.
 @end defun
 
 @defun position-symbol sym pos
-新たな位置つきシンボルを作成する。新たなオブジェクトのbareシンボルは@var{sym}から取得される。@var{sym}はシンボル、あるいは位置つきシンボルを指定でき、位置つきシンボルの場合にはそのbareシンボルが使用される。新たなオブジェクトの位置は@var{pos}から取得される。@var{pos}は非負のfixnum、あるいは位置つきシンボルを指定でき、位置つきシンボルの場合にはその位置が使用される。いずれに無効な引数が指定された場合には、Emacsはエラーをシグナルする。この関数は@code{symbols-with-pos-enabled}を無視する。
+Make a new symbol with position.  The new object's bare symbol is taken from
+@var{sym}, which is either a symbol, or a symbol with position whose bare
+symbol is used.  The new object's position is taken from @var{pos}, which is
+either a nonnegative fixnum, or a symbol with position whose position is
+used.  Emacs signals an error if either argument is invalid.  This function
+ignores @code{symbols-with-pos-enabled}.
 @end defun

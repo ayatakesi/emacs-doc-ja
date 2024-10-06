@@ -10,65 +10,101 @@
 @c Foundation, Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node Buffers
-@chapter バッファー
+@chapter Buffers
 @cindex buffer
 
-  @dfn{バッファー(buffer)}とは編集されるテキストを含んだLispオブジェクトのことです。バッファーはvisitされるファイルのコンテンツを保持するために使用されます。しかしファイルをvisitしないバッファーも存在します。一度に複数のバッファーが存在するかもしれませんが、@dfn{カレントバッファー(current
-buffer)}に指定できるのは常に1つのバッファーだけです。ほとんどの編集コマンドはカレントバッファーのコンテンツにたいして作用します。カレントバッファーを含むすべてのバッファーは任意のウィンドウ内に表示されるときもあれば、表示されない場合もあります。
+  A @dfn{buffer} is a Lisp object containing text to be edited.  Buffers are
+used to hold the contents of files that are being visited; there may also be
+buffers that are not visiting files.  While several buffers may exist at one
+time, only one buffer is designated the @dfn{current buffer} at any time.
+Most editing commands act on the contents of the current buffer.  Each
+buffer, including the current buffer, may or may not be displayed in any
+windows.
 
 @menu
-* Buffer Basics::            バッファーとは?
-* Current Buffer::           バッファーをカレントに指定することにより、プリミティブはバッファーのコンテンツにアクセスする。
-* Buffer Names::             バッファー名にたいするアクセスと変更。
-* Buffer File Name::         バッファーファイル名は、どのファイルをvisitしているかを示す。
-* Buffer Modification::      保存が必要ならバッファーは@dfn{変更されている(modified)}。
-* Modification Time::        Emacsの背後でvisitされているファイルが変更されたかどうかを判断する。
-* Read Only Buffers::        読み取り専用バッファーでのテキスト変更は許されない。
-* Buffer List::              すべての既存バッファーを閲覧する方法。
-* Creating Buffers::         バッファーを作成する関数。
-* Killing Buffers::          明示的にkillされるまで、バッファーは存在する。
-* Indirect Buffers::         インダイレクトバッファーは他のバッファーとテキストを共有する。
-* Swapping Text::            2つのバッファー間でのテキストの交換。
-* Buffer Gap::               バッファー内のギャップ。
+* Buffer Basics::            What is a buffer?
+* Current Buffer::           Designating a buffer as current so that 
+                               primitives will access its contents.
+* Buffer Names::             Accessing and changing buffer names.
+* Buffer File Name::         The buffer file name indicates which file is 
+                               visited.
+* Buffer Modification::      A buffer is @dfn{modified} if it needs to be 
+                               saved.
+* Modification Time::        Determining whether the visited file was 
+                               changed behind Emacs's back.
+* Read Only Buffers::        Modifying text is not allowed in a read-only 
+                               buffer.
+* Buffer List::              How to look at all the existing buffers.
+* Creating Buffers::         Functions that create buffers.
+* Killing Buffers::          Buffers exist until explicitly killed.
+* Indirect Buffers::         An indirect buffer shares text with some other 
+                               buffer.
+* Swapping Text::            Swapping text between two buffers.
+* Buffer Gap::               The gap in the buffer.
 @end menu
 
 @node Buffer Basics
-@section バッファーの基礎
+@section Buffer Basics
 
 @ifnottex
-  @dfn{バッファー(buffer)}とは編集されるテキストを含むLispオブジェクトのことです。バッファーはvisitされるファイルのコンテンツを保持するために使用されます。しかしファイルをvisitしないバッファーも存在します。一度に複数のバッファーが存在するかもしれませんが、@dfn{カレントバッファー(current
-buffer)}に指定できるのは常に1つのバッファーだけです。ほとんどの編集コマンドはカレントバッファーのコンテンツにたいして作用します。カレントバッファーを含むすべてのバッファーは、いずれかのウィンドウ内に表示されるときもあるし、表示されない場合もあります。
+  A @dfn{buffer} is a Lisp object containing text to be edited.  Buffers are
+used to hold the contents of files that are being visited; there may also be
+buffers that are not visiting files.  Although several buffers normally
+exist, only one buffer is designated the @dfn{current buffer} at any time.
+Most editing commands act on the contents of the current buffer.  Each
+buffer, including the current buffer, may or may not be displayed in any
+windows.
 @end ifnottex
 
-  Emacs編集におけるバッファーとは個別に名前をもち、編集可能なテキストを保持するオブジェクトです。Lispプログラムにおけるバッファーはスペシャルデータ型として表されます。バッファーのコンテンツを拡張可能な文字列と考えることができます。挿入と削除はバッファー内の任意の箇所で発生し得ます。@ref{Text}を参照してください。
+  Buffers in Emacs editing are objects that have distinct names and hold text
+that can be edited.  Buffers appear to Lisp programs as a special data
+type.  You can think of the contents of a buffer as a string that you can
+extend; insertions and deletions may occur in any part of the buffer.
+@xref{Text}.
 
-  Lispのバッファーオブジェクトは多くの情報要素を含んでいます。これらの情報のいくつかは変数を通じてプログラマーが直接アクセスできるのにたいして、その他の情報は特殊な目的のための関数を通じてのみアクセスすることができます。たとえばvisitされているファイルの名前は変数を通じて直接アクセスできますが、ポイント値はプリミティブ関数からのみアクセスできます。
+  A Lisp buffer object contains numerous pieces of information.  Some of this
+information is directly accessible to the programmer through variables,
+while other information is accessible only through special-purpose
+functions.  For example, the visited file name is directly accessible
+through a variable, while the value of point is accessible only through a
+primitive function.
 
-  直接アクセス可能なバッファー固有の情報は、@dfn{バッファーローカル(buffer-local)}な変数バインディング内に格納されます。これは特定のバッファー内だけで効力のある変数値のことです。この機能により、それぞれのバッファーは特定の変数の値をオーバーライドすることができます。ほとんどのメジャーモードはこの方法で@code{fill-column}や@code{comment-column}のような変数をオーバーライドしています。バッファーローカルな変数、およびそれらに関連する関数についての詳細は@ref{Buffer-Local
-Variables}を参照してください。
+  Buffer-specific information that is directly accessible is stored in
+@dfn{buffer-local} variable bindings, which are variable values that are
+effective only in a particular buffer.  This feature allows each buffer to
+override the values of certain variables.  Most major modes override
+variables such as @code{fill-column} or @code{comment-column} in this way.
+For more information about buffer-local variables and functions related to
+them, see @ref{Buffer-Local Variables}.
 
-  バッファーからファイルをvisitする関数および変数については@ref{Visiting Files}と@ref{Saving
-Buffers}を参照してください。ウィンドウ内へのバッファー表示に関連する関数および変数については@ref{Buffers and
-Windows}を参照してください。
+  For functions and variables related to visiting files in buffers, see
+@ref{Visiting Files} and @ref{Saving Buffers}.  For functions and variables
+related to the display of buffers in windows, see @ref{Buffers and Windows}.
 
 @defun bufferp object
-この関数は@var{object}がバッファーなら@code{t}、それ以外は@code{nil}をリターンする。
+This function returns @code{t} if @var{object} is a buffer, @code{nil}
+otherwise.
 @end defun
 
 @node Current Buffer
-@section カレントバッファー
+@section The Current Buffer
 @cindex selecting a buffer
 @cindex changing to another buffer
 @cindex current buffer
 
-  一般的に1つのEmacsセッション内には多くのバッファーが存在します。常にそれらのうちの1つが@dfn{カレントバッファー(current
-buffer)}に指定されます。カレントバッファーとは、ほとんどの編集が行われるバッファーのことです。テキストを調べたり変更するプリミティブのほとんどは暗黙にカレントバッファーにたいして処理を行います(@ref{Text}を参照)。
+  There are, in general, many buffers in an Emacs session.  At any time, one
+of them is designated the @dfn{current buffer}---the buffer in which most
+editing takes place.  Most of the primitives for examining or changing text
+operate implicitly on the current buffer (@pxref{Text}).
 
-  通常は選択されたウィンドウ(@ref{Selecting
-Windows}を参照)の中に表示されるバッファーがカレントバッファーですが、常にそうであるとは言えません。Lispプログラムはバッファーのコンテンツを処理するために、スクリーン上に表示されているものを変更することなく任意のバッファーを一時的にカレントに指定できます。カレントバッファーの指定にたいするもっとも基本的な関数は@code{set-buffer}です。
+  Normally, the buffer displayed in the selected window (@pxref{Selecting
+Windows}) is the current buffer, but this is not always so: a Lisp program
+can temporarily designate any buffer as current in order to operate on its
+contents, without changing what is displayed on the screen.  The most basic
+function for designating a current buffer is @code{set-buffer}.
 
 @defun current-buffer
-この関数はカレントバッファーをリターンする。
+This function returns the current buffer.
 
 @example
 @group
@@ -79,24 +115,37 @@ Windows}を参照)の中に表示されるバッファーがカレントバッ�
 @end defun
 
 @defun set-buffer buffer-or-name
-この関数は@var{buffer-or-name}をカレントバッファーにする。@var{buffer-or-name}は既存のバッファー、または既存のバッファーの名前でなければならない。リターン値はカレントになったバッファー。
+This function makes @var{buffer-or-name} the current buffer.
+@var{buffer-or-name} must be an existing buffer or the name of an existing
+buffer.  The return value is the buffer made current.
 
-この関数はそのバッファーをどのウィンドウにも表示しないので、必然的にユーザーはそのバッファーを見ることはできない。しかしLispプログラムはその後に、そのバッファーにたいして処理を行うことになるだろう。
+This function does not display the buffer in any window, so the user cannot
+necessarily see the buffer.  But Lisp programs will now operate on it.
 @end defun
 
-  編集コマンドがエディターコマンドループにリターンする際、Emacsは選択されたウィンドウ(@ref{Selecting
-Windows}を参照)の中に表示されているバッファーにたいして、自動的に@code{set-buffer}を呼び出します。これは混乱を防ぐためであり、これによりEmacsがコマンドを読み取るときにカーソルのあるバッファーが、コマンドを適用されるバッファーになることが保証されます(@ref{Command
-Loop}を参照)。したがって異なるバッファーを指示して切り替える場合には@code{set-buffer}を使用するべきではありません。これを行うためには@ref{Switching
-Buffers}で説明されている関数を使用してください。
+  When an editing command returns to the editor command loop, Emacs
+automatically calls @code{set-buffer} on the buffer shown in the selected
+window (@pxref{Selecting Windows}).  This is to prevent confusion: it
+ensures that the buffer that the cursor is in, when Emacs reads a command,
+is the buffer to which that command applies (@pxref{Command Loop}).  Thus,
+you should not use @code{set-buffer} to switch visibly to a different
+buffer; for that, use the functions described in @ref{Switching Buffers}.
 
-  Lisp関数を記述する際は、処理後にカレントバッファーをリストアするためにコマンドループのこの振る舞いに@emph{依存しないでください}。編集コマンドはコマンドループだけではなく、他のプログラムからLisp関数としても呼び出されます。呼び出し側にとっては、そのサブルーチンがカレントだったバッファーを変更しないほうが便利です(もちろんそれがサブルーチンの目的でない場合)。
+  When writing a Lisp function, do @emph{not} rely on this behavior of the
+command loop to restore the current buffer after an operation.  Editing
+commands can also be called as Lisp functions by other programs, not just
+from the command loop; it is convenient for the caller if the subroutine
+does not change which buffer is current (unless, of course, that is the
+subroutine's purpose).
 
-  他のバッファーにたいして一時的に処理を行うには、@code{save-current-buffer}フォーム内に@code{set-buffer}を配置します。以下の例はコマンド@code{append-to-buffer}の簡略版です:
+  To operate temporarily on another buffer, put the @code{set-buffer} within a
+@code{save-current-buffer} form.  Here, as an example, is a simplified
+version of the command @code{append-to-buffer}:
 
 @example
 @group
 (defun append-to-buffer (buffer start end)
-  "リージョンのテキストをBUFFERに追加する"
+  "Append the text of the region to BUFFER."
   (interactive "BAppend to buffer: \nr")
   (let ((oldbuf (current-buffer)))
     (save-current-buffer
@@ -106,14 +155,18 @@ Buffers}で説明されている関数を使用してください。
 @end example
 
 @noindent
-ここではカレントバッファーを記録するためにローカル変数にバインドしてから、後で@code{save-current-buffer}がそれを再びカレントにするようにアレンジしています。次に@code{set-buffer}が指定されたバッファーをカレントにして、@code{insert-buffer-substring}が元のバッファーの文字列を指定された(今はカレントの)バッファーにコピーします。
+Here, we bind a local variable to record the current buffer, and then
+@code{save-current-buffer} arranges to make it current again later.  Next,
+@code{set-buffer} makes the specified buffer current, and
+@code{insert-buffer-substring} copies the string from the original buffer to
+the specified (and now current) buffer.
 
-  かわりに@code{with-current-buffer}マクロを使用することもできます:
+  Alternatively, we can use the @code{with-current-buffer} macro:
 
 @example
 @group
 (defun append-to-buffer (buffer start end)
-  "BUFFERにリージョンのテキストを追加する"
+  "Append the text of the region to BUFFER."
   (interactive "BAppend to buffer: \nr")
   (let ((oldbuf (current-buffer)))
     (with-current-buffer (get-buffer-create buffer)
@@ -121,11 +174,21 @@ Buffers}で説明されている関数を使用してください。
 @end group
 @end example
 
-  いずれのケースでも、追加されるバッファーが偶然他のウィンドウに表示されていると、次回の再表示でそのテキストがどのように変更されたか表示されるでしょう。どのウィンドウにも表示されていなければスクリーン上で即座に変更を目にすることはありません。コマンドはバッファーを一時的にカレントにしますが、そのことがバッファーの表示を誘発する訳ではありません。
+  In either case, if the buffer appended to happens to be displayed in some
+window, the next redisplay will show how its text has changed.  If it is not
+displayed in any window, you will not see the change immediately on the
+screen.  The command causes the buffer to become current temporarily, but
+does not cause it to be displayed.
 
-  バッファーローカルなバインディングをもつ変数にたいして、(@code{let}や関数引数などで)ローカルバインディングを作成する場合には、そのローカルバインディングのスコープの最初と最後で同じバッファーがカレントとなることを確認してください。そうしないと、あるバッファーではバインドして他のバッファーではバインドされないことになるかもしれません!
+  If you make local bindings (with @code{let} or function arguments)  for a
+variable that may also have buffer-local bindings, make sure that the same
+buffer is current at the beginning and at the end of the local binding's
+scope.  Otherwise you might bind it in one buffer and unbind it in another!
 
-  @code{set-buffer}の使用において、カレントバッファーが戻ることに依存しないでください。なぜなら間違ったバッファーがカレントのときにquitが発生した場合には、その処理は行われないでしょう。たとえば上記の例に倣うと以下は間違ったやり方です:
+  Do not rely on using @code{set-buffer} to change the current buffer back,
+because that won't do the job if a quit happens while the wrong buffer is
+current.  For instance, in the previous example, it would have been wrong to
+do this:
 
 @example
 @group
@@ -137,57 +200,87 @@ Buffers}で説明されている関数を使用してください。
 @end example
 
 @noindent
-例で示したように@code{save-current-buffer}や@code{with-current-buffer}を使用すれば、quitや@code{throw}を通常の評価と同様に処理できます。
+Using @code{save-current-buffer} or @code{with-current-buffer}, as we did,
+correctly handles quitting, errors, and @code{throw}, as well as ordinary
+evaluation.
 
 @defspec save-current-buffer body@dots{}
-スペシャルフォーム@code{save-current-buffer}はカレントバッファーの識別を保存して@var{body}フォームを評価し、最後にそのバッファーをカレントにリストアする。リターン値は@var{body}内の最後のフォームの値。@code{throw}やエラーを通じた異常exitの場合にもカレントバッファーはリストアされる(@ref{Nonlocal
-Exits}を参照)。
+The @code{save-current-buffer} special form saves the identity of the
+current buffer, evaluates the @var{body} forms, and finally restores that
+buffer as current.  The return value is the value of the last form in
+@var{body}.  The current buffer is restored even in case of an abnormal exit
+via @code{throw} or error (@pxref{Nonlocal Exits}).
 
-カレントとして使用されていたバッファーが@code{save-current-buffer}によるexit時にkillされていたら、当然それが再びカレントとなることはない。かわりにexit直前にカレントバッファーが何であれ、それがカレントになる。
+If the buffer that used to be current has been killed by the time of exit
+from @code{save-current-buffer}, then it is not made current again, of
+course.  Instead, whichever buffer was current just before exit remains
+current.
 @end defspec
 
 @defmac with-current-buffer buffer-or-name body@dots{}
-@code{with-current-buffer}マクロはカレントバッファーの識別を保存して@var{buffer-or-name}をカレントにし、@var{body}フォームを評価してから最後にカレントバッファーをリストアする。@var{buffer-or-name}には既存のバッファー、または既存のバッファー名を指定しなければならない。
+The @code{with-current-buffer} macro saves the identity of the current
+buffer, makes @var{buffer-or-name} current, evaluates the @var{body} forms,
+and finally restores the current buffer.  @var{buffer-or-name} must specify
+an existing buffer or the name of an existing buffer.
 
-リターン値は@var{body}内の最後のフォームの値。@code{throw}やエラーを通じた異常exitの場合にも、カレントバッファーはリストアされる(@ref{Nonlocal
-Exits}を参照)。
+The return value is the value of the last form in @var{body}.  The current
+buffer is restored even in case of an abnormal exit via @code{throw} or
+error (@pxref{Nonlocal Exits}).
 @end defmac
 
 @defmac with-temp-buffer body@dots{}
 @anchor{Definition of with-temp-buffer}
-@code{with-temp-buffer}マクロは一時的なバッファーをカレントバッファーとして@var{body}フォームを評価する。これはカレントバッファーの識別を保存して一時的なバッファーを作成、それをカレントとして@var{body}フォームを評価して、一時バッファーをkillする間に以前のカレントバッファーをリストアする。
+The @code{with-temp-buffer} macro evaluates the @var{body} forms with a
+temporary buffer as the current buffer.  It saves the identity of the
+current buffer, creates a temporary buffer and makes it current, evaluates
+the @var{body} forms, and finally restores the previous current buffer while
+killing the temporary buffer.
 
 @cindex undo in temporary buffers
 @cindex @code{kill-buffer-hook} in temporary buffers
 @cindex @code{kill-buffer-query-functions} in temporary buffers
 @cindex @code{buffer-list-update-hook} in temporary buffers
-このマクロが作成したバッファーでは、デフォルトではアンドゥ情報(@ref{Undo}を参照)は記録されない(が必要なら@var{body}で有効にできる)。また一時バッファーは@code{kill-buffer-hook}、@code{kill-buffer-query-functions}
-(@ref{Killing Buffers}を参照)、@code{buffer-list-update-hook} (@ref{Buffer
-List}を参照)のフックも実行しない。
+By default, undo information (@pxref{Undo}) is not recorded in the buffer
+created by this macro (but @var{body} can enable that, if needed).  The
+temporary buffer also does not run the hooks @code{kill-buffer-hook},
+@code{kill-buffer-query-functions} (@pxref{Killing Buffers}), and
+@code{buffer-list-update-hook} (@pxref{Buffer List}).
 
-リターン値は@var{body}内の最後のフォームの値。最後のフォームとして@code{(buffer-string)}を使用することにより、一時バッファーのコンテンツをリターンできる。
+The return value is the value of the last form in @var{body}.  You can
+return the contents of the temporary buffer by using @code{(buffer-string)}
+as the last form.
 
-@code{throw}やエラーを通じた異常exitの場合にも、カレントバッファーはリストアされる(@ref{Nonlocal Exits}を参照)。
+The current buffer is restored even in case of an abnormal exit via
+@code{throw} or error (@pxref{Nonlocal Exits}).
 
-@ref{Definition of with-temp-file,, Writing to
-Files}の@code{with-temp-file}も参照のこと。
+See also @code{with-temp-file} in @ref{Definition of with-temp-file,,
+Writing to Files}.
 @end defmac
 
 @node Buffer Names
-@section バッファーの名前
+@section Buffer Names
 @cindex buffer names
 
-  それぞれのバッファーは文字列で表される一意な名前をもちます。バッファーにたいして機能する関数の多くは、引数としてバッファーとバッファー名の両方を受け入れます。@var{buffer-or-name}という名前の引数がこのタイプであり、それが文字列でもバッファーでもなければエラーがシグナルされます。@var{buffer}という名前の引数は名前ではなく実際のバッファーオブジェクトでなければなりません。
+  Each buffer has a unique name, which is a string.  Many of the functions
+that work on buffers accept either a buffer or a buffer name as an
+argument.  Any argument called @var{buffer-or-name} is of this sort, and an
+error is signaled if it is neither a string nor a buffer.  Any argument
+called @var{buffer} must be an actual buffer object, not a name.
 
 @cindex hidden buffers
 @cindex buffers without undo information
-  短命でユーザーが関心をもたないようなバッファーは名前がスペースで始まり、それらについては@code{list-buffers}と@code{buffer-menu}コマンドは無視します(がファイルをvisitしているようなバッファーは@strong{無視されない})。スペースで始まる名前は初期状態ではアンドゥ情報の記録も無効になっています。@ref{Undo}を参照してください。
+  Buffers that are ephemeral and generally uninteresting to the user have
+names starting with a space, so that the @code{list-buffers} and
+@code{buffer-menu} commands don't mention them (but if such a buffer visits
+a file, it @strong{is} mentioned).  A name starting with space also
+initially disables recording undo information; see @ref{Undo}.
 
 @defun buffer-name &optional buffer
-この関数は@var{buffer}の名前を文字列としてリターンする。@var{buffer}のデフォルトはカレントバッファー。
+This function returns the name of @var{buffer} as a string.  @var{buffer}
+defaults to the current buffer.
 
-@code{buffer-name}が@code{nil}をリターンした場合、それは@var{buffer}がkillされていることを意味する。@ref{Killing
-Buffers}を参照のこと。
+If @code{buffer-name} returns @code{nil}, it means that @var{buffer} has
+been killed.  @xref{Killing Buffers}.
 
 @example
 @group
@@ -215,15 +308,24 @@ foo
 @end defun
 
 @deffn Command rename-buffer newname &optional unique
-この関数はカレントバッファーを@var{newname}にリネームする。@var{newname}が文字列でなければエラーをシグナルする。
+This function renames the current buffer to @var{newname}.  An error is
+signaled if @var{newname} is not a string.
 
-@var{newname}がすでに使用済みなら、@code{rename-buffer}は通常はエラーをシグナルする。しかし@var{unique}が非@code{nil}なら、未使用の名前となるように@var{newname}を変更する。interactiveに呼び出した場合は、プレフィックス数引数により@var{unique}に非@code{nil}を指定できる(この方法によってコマンド@code{rename-uniquely}は実装される)。
+Ordinarily, @code{rename-buffer} signals an error if @var{newname} is
+already in use.  However, if @var{unique} is non-@code{nil}, it modifies
+@var{newname} to make a name that is not in use.  Interactively, you can
+make @var{unique} non-@code{nil} with a numeric prefix argument.  (This is
+how the command @code{rename-uniquely} is implemented.)
 
-この関数は実際にバッファーに与えられた名前をリターンする。
+This function returns the name actually given to the buffer.
 @end deffn
 
 @defun get-buffer buffer-or-name
-この関数は@var{buffer-or-name}で指定されたバッファーをリターンする。@var{buffer-or-name}が文字列で、かつそのような名前のバッファーが存在しなければ値は@code{nil}。@var{buffer-or-name}がバッファーなら与えられたバッファーをリターンする。これは有用とは言い難く、引数は通常は名前である。たとえば:
+This function returns the buffer specified by @var{buffer-or-name}.  If
+@var{buffer-or-name} is a string and there is no buffer with that name, the
+value is @code{nil}.  If @var{buffer-or-name} is a buffer, it is returned as
+given; that is not very useful, so the argument is usually a name.  For
+example:
 
 @example
 @group
@@ -240,14 +342,21 @@ foo
 @end group
 @end example
 
-@ref{Creating Buffers}の関数@code{get-buffer-create}も参照のこと。
+See also the function @code{get-buffer-create} in @ref{Creating Buffers}.
 @end defun
 
 @defun generate-new-buffer-name starting-name &optional ignore
-この関数は新たなバッファーにたいして一意となるような名前をリターンする ---
-がバッファーは作成しない。この名前は@var{starting-name}で始まり内部が数字であるような@samp{<@dots{}>}を追加することにより、すべてのバッファーでカレントで使用されていない名前を生成する。この数字は2で始まり、既存バッファーの名前でないような名前になる数字まで増加される。
+This function returns a name that would be unique for a new buffer---but
+does not create the buffer.  It starts with @var{starting-name}, and
+produces a name not currently in use for any buffer by appending a number
+inside of @samp{<@dots{}>}.  It starts at 2 and keeps incrementing the
+number until it is not the name of an existing buffer.
 
-オプション引数@var{ignore}が非@code{nil}なら、それは潜在的にバッファー名であるような文字列であること。これは、たとえそれが(通常は拒絶されるであろう)既存バッファーの名前であっても、試みられた場合には潜在的に受容可能なバッファーとして考慮することを意味する。つまり@samp{foo}、@samp{foo<2>}、@samp{foo<3>}、@samp{foo<4>}という名前のバッファーが存在する場合には、
+If the optional second argument @var{ignore} is non-@code{nil}, it should be
+a string, a potential buffer name.  It means to consider that potential
+buffer acceptable, if it is tried, even if it is the name of an existing
+buffer (which would normally be rejected).  Thus, if buffers named
+@samp{foo}, @samp{foo<2>}, @samp{foo<3>} and @samp{foo<4>} exist,
 
 @example
 (generate-new-buffer-name "foo")
@@ -258,26 +367,34 @@ foo
      @result{} "foo<5>"
 @end example
 
-@ref{Creating Buffers}の関連する関数@code{generate-new-buffer}も参照のこと。
+See the related function @code{generate-new-buffer} in @ref{Creating
+Buffers}.
 @end defun
 
 @defun buffer-last-name &optional buffer
-この関数は前の@var{buffer}
-(killされた、あるいは最後以降に改名されたバッファー)の名前をリターンする。nilか省略の場合の@var{buffer}のデフォルトはカレントバッファー。
+This function returns the previous name of @var{buffer}, before it was
+killed or before the last time it was renamed.  If nil or omitted,
+@var{buffer} defaults to the current buffer.
 @end defun
 
 @node Buffer File Name
-@section バッファーのファイル名
+@section Buffer File Name
 @cindex visited file
 @cindex buffer file name
 @cindex file name of buffer
 
-  @dfn{バッファーファイル名(buffer file
-name)}とは、そのバッファーにvisitされているファイルの名前です。バッファーがファイルをvisitしていなければ、バッファーファイル名は@code{nil}です。バッファー名は大抵はバッファーファイル名の非ディレクトリーパートと同じですが、バッファーファイル名とバッファー名は別物であり個別にセットすることができます。@ref{Visiting
-Files}を参照してください。
+  The @dfn{buffer file name} is the name of the file that is visited in that
+buffer.  When a buffer is not visiting a file, its buffer file name is
+@code{nil}.  Most of the time, the buffer name is the same as the
+nondirectory part of the buffer file name, but the buffer file name and the
+buffer name are distinct and can be set independently.  @xref{Visiting
+Files}.
 
 @defun buffer-file-name &optional buffer
-この関数は@var{buffer}がvisitしているファイルの絶対ファイル名をリターンする。@var{buffer}がファイルをvisitしていなければ、@code{buffer-file-name}は@code{nil}をリターンする。@var{buffer}が与えられない場合のデフォルトはカレントバッファー。
+This function returns the absolute file name of the file that @var{buffer}
+is visiting.  If @var{buffer} is not visiting any file,
+@code{buffer-file-name} returns @code{nil}.  If @var{buffer} is not
+supplied, it defaults to the current buffer.
 
 @example
 @group
@@ -288,7 +405,9 @@ Files}を参照してください。
 @end defun
 
 @defvar buffer-file-name
-このバッファーローカル変数はカレントバッファーにvisitされているファイルの名前、ファイルをvisitしていなければ@code{nil}。これは永続的なローカル変数であり@code{kill-all-local-variables}の影響を受けない。
+This buffer-local variable contains the name of the file being visited in
+the current buffer, or @code{nil} if it is not visiting a file.  It is a
+permanent local variable, unaffected by @code{kill-all-local-variables}.
 
 @example
 @group
@@ -297,27 +416,41 @@ buffer-file-name
 @end group
 @end example
 
-他のさまざまな事項を変更せずにこの変数を変更するのは危険である。通常は@code{set-visited-file-name}を使用するほうがよい(以下参照)。バッファー名の変更などのような、そこで行われることのいくつかは絶対必要という訳ではないが、その他の事項はEmacsが混乱するのを防ぐために必要不可欠である。
+It is risky to change this variable's value without doing various other
+things.  Normally it is better to use @code{set-visited-file-name} (see
+below); some of the things done there, such as changing the buffer name, are
+not strictly necessary, but others are essential to avoid confusing Emacs.
 @end defvar
 
 @defvar buffer-file-truename
-このバッファーローカル変数はカレントバッファーにvisitされているファイルの省略された形式の実名(truename)、ファイルをvisitしていなければ@code{nil}を保持する。これは永続的にローカルであり@code{kill-all-local-variables}の影響を受けない。@xref{Truenames}と@ref{abbreviate-file-name}を参照のこと。
+This buffer-local variable holds the abbreviated truename of the file
+visited in the current buffer, or @code{nil} if no file is visited.  It is a
+permanent local, unaffected by @code{kill-all-local-variables}.
+@xref{Truenames}, and @ref{abbreviate-file-name}.
 @end defvar
 
 @defvar buffer-file-number
-このバッファーローカル変数はカレントバッファーにvisitされているファイルのinode番号とディレクトリーデバイス識別子、ファイルをvisitしていなければ@code{nil}を保持する。これは永続的にローカルであり@code{kill-all-local-variables}の影響を受けない。
+This buffer-local variable holds the inode number and device identifier of
+the file visited in the current buffer, or @code{nil} if no file or a
+nonexistent file is visited.  It is a permanent local, unaffected by
+@code{kill-all-local-variables}.
 
-値は通常は@code{(@var{inodenum} @var{device})}のような形式のリスト。このタプル(tuple:
-組)はシステム上でアクセス可能なすべてのファイルの中からファイルを一意に識別する。より詳細な情報は@ref{File
-Attributes}の@code{file-attributes}を参照のこと。
+The value is normally a list of the form @code{(@var{inodenum}
+@var{device})}.  This tuple uniquely identifies the file among all files
+accessible on the system.  See the function @code{file-attributes}, in
+@ref{File Attributes}, for more information about them.
 
-@code{buffer-file-name}がシンボリックリンク名なら、@var{inodenum}と@var{device}の両方がリンクのターゲットを再帰的に参照する。
+If @code{buffer-file-name} is the name of a symbolic link, then both
+@var{inodenum} and @var{device} refer to the recursive target of the link.
 @end defvar
 
 @defun get-file-buffer filename
-この関数はファイル@var{filename}をvisitしているバッファーをリターンする。そのようなバッファーが存在しなければ@code{nil}をリターンする。引数@var{filename}は文字列でなければならず、展開(@ref{File
-Name
-Expansion}を参照)された後に、killされていないすべてのバッファーがvisitしているファイル名と比較される。バッファーの@code{buffer-file-name}は@var{filename}の展開形と正確にマッチしなければならないことに注意。この関数は同じファイルにたいする他の名前は認識しないだろう。
+This function returns the buffer visiting file @var{filename}.  If there is
+no such buffer, it returns @code{nil}.  The argument @var{filename}, which
+must be a string, is expanded (@pxref{File Name Expansion}), then compared
+against the visited file names of all live buffers.  Note that the buffer's
+@code{buffer-file-name} must match the expansion of @var{filename} exactly.
+This function will not recognize other names for the same file.
 
 @example
 @group
@@ -326,55 +459,99 @@ Expansion}を参照)された後に、killされていないすべてのバッ�
 @end group
 @end example
 
-特殊な状況下では、複数のバッファーが同じファイル名をvisitすることがあり得る。そのような場合には、この関数はバッファーリスト内の最初に該当するバッファーをリターンする。
+In unusual circumstances, there can be more than one buffer visiting the
+same file name.  In such cases, this function returns the first such buffer
+in the buffer list.
 @end defun
 
 @defun find-buffer-visiting filename &optional predicate
-これは@code{get-file-buffer}と似ているが、そのファイルを@emph{違う名前}でvisitしているかもしれないすべてのバッファーをリターンする。つまりバッファーの@code{buffer-file-name}は@var{filename}の展開形式と正確にマッチする必要はなく、同じファイルを参照することだけが要求される。@var{predicate}が非@code{nil}なら、それは@var{filename}をvisitしているバッファーを1つの引数とする関数であること。そのバッファーにたいして@var{predicate}が非@code{nil}をリターンした場合のみ適切なリターン値と判断される。リターンすべき適切なバッファーが見つからなければ、@code{find-buffer-visiting}は@code{nil}をリターンする。
+This is like @code{get-file-buffer}, except that it can return any buffer
+visiting the file @emph{possibly under a different name}.  That is, the
+buffer's @code{buffer-file-name} does not need to match the expansion of
+@var{filename} exactly, it only needs to refer to the same file.  If
+@var{predicate} is non-@code{nil}, it should be a function of one argument,
+a buffer visiting @var{filename}.  The buffer is only considered a suitable
+return value if @var{predicate} returns non-@code{nil}.  If it can not find
+a suitable buffer to return, @code{find-buffer-visiting} returns @code{nil}.
 @end defun
 
 @deffn Command set-visited-file-name filename &optional no-query along-with-file
-@var{filename}が非空文字列なら、この関数はカレントバッファーにvisitされているファイルの名前を@var{filename}に変更する(バッファーがファイルをvisitしていなければvisitするファイルとして@var{filename}を与える)。そのバッファーにたいする@emph{次回}の保存では、新たに指定されたファイルに保存されるだろう。
+If @var{filename} is a non-empty string, this function changes the name of
+the file visited in the current buffer to @var{filename}.  (If the buffer
+had no visited file, this gives it one.)  The @emph{next time} the buffer is
+saved it will go in the newly-specified file.
 
-このコマンドは、たとえそのバッファーのコンテンツがその前にvisitされていたファイルとマッチしていても、(Emacsが関知するかぎり)
-@var{filename}のコンテンツとはマッチしないのでバッファーが変更されている(modified)とマークする。これはその名前がすでに使用されていなければ、新たなファイル名に対応してバッファーをリネームする。
+This command marks the buffer as modified, since it does not (as far as
+Emacs knows) match the contents of @var{filename}, even if it matched the
+former visited file.  It also renames the buffer to correspond to the new
+file name, unless the new name is already in use.
 
-@var{filename}が@code{nil}か空文字列なら、それは``visitされているファイルがない''ことを意味する。この場合には@code{set-visited-file-name}はバッファーの変更フラグを変更することなく、そのバッファーがファイルをvisitしていないとマークする。
+If @var{filename} is @code{nil} or the empty string, that stands for ``no
+visited file''.  In this case, @code{set-visited-file-name} marks the buffer
+as having no visited file, without changing the buffer's modified flag.
 
-この関数は@var{filename}をvisitしているバッファーがすでに存在する場合は、通常はユーザーに確認を求める。しかし@var{no-query}が非@code{nil}ならこの質問を行わない。@var{filename}をvisitしているバッファーがすでに存在し、かつユーザーが承認するか@var{no-query}が非@code{nil}なら、この関数は中に数字が入った@samp{<@dots{}>}を@var{filename}に追加して新たなバッファーの名前を一意にする。
+Normally, this function asks the user for confirmation if there already is a
+buffer visiting @var{filename}.  If @var{no-query} is non-@code{nil}, that
+prevents asking this question.  If there already is a buffer visiting
+@var{filename}, and the user confirms or @var{no-query} is non-@code{nil},
+this function makes the new buffer name unique by appending a number inside
+of @samp{<@dots{}>} to @var{filename}.
 
-@var{along-with-file}が非@code{nil}なら、それは前にvisitされていたファイルが@var{filename}にリネームされたと想定することを意味する。この場合、コマンドはバッファーの修正フラグを変更せず、そのバッファーの記録されている最終ファイル変更時刻を@code{visited-file-modtime}が報告する時刻(@ref{Modification
-Time}を参照)で変更することもしない。@var{along-with-file}が@code{nil}なら、この関数は@code{visited-file-modtime}が0をリターンした後に、記録済みの最終ファイル変更時刻をクリアーする。
+If @var{along-with-file} is non-@code{nil}, that means to assume that the
+former visited file has been renamed to @var{filename}.  In this case, the
+command does not change the buffer's modified flag, nor the buffer's
+recorded last file modification time as reported by
+@code{visited-file-modtime} (@pxref{Modification Time}).  If
+@var{along-with-file} is @code{nil}, this function clears the recorded last
+file modification time, after which @code{visited-file-modtime} returns
+zero.
 
-関数@code{set-visited-file-name}がinteractiveに呼び出されたときはミニバッファー内で@var{filename}の入力を求める。
+When the function @code{set-visited-file-name} is called interactively, it
+prompts for @var{filename} in the minibuffer.
 @end deffn
 
 @defvar list-buffers-directory
-このバッファーローカル変数はvisitしているファイル名をもたないバッファーにたいして、バッファーリスト中のvisitしているファイル名を表示する場所に表示する文字列を指定する。Diredバッファーはこの変数を使用する。
+This buffer-local variable specifies a string to display in a buffer listing
+where the visited file name would go, for buffers that don't have a visited
+file name.  Dired buffers use this variable.
 @end defvar
 
 @node Buffer Modification
-@section バッファーの変更
+@section Buffer Modification
 @cindex buffer modification
 @cindex modification flag (of buffer)
 
-  Emacsは各バッファーにたいしてバッファーのテキストを変更したかどうかを記録するために、@dfn{変更フラグ(modified
-flag)}と呼ばれるフラグを管理しています。このフラグはバッファーのコンテンツを変更すると常に@code{t}にセットされ、バッファーを保存したとき@code{nil}にクリアーされます。したがってこのフラグは保存されていない変更があるかどうかを表します。フラグの値は通常はモードライン内(@ref{Mode
-Line Variables}を参照)に表示され、保存(@ref{Saving
-Buffers}を参照)と自動保存(@ref{Auto-Saving}を参照)を制御します。
+  Emacs keeps a flag called the @dfn{modified flag} for each buffer, to record
+whether you have changed the text of the buffer.  This flag is set to
+@code{t} whenever you alter the contents of the buffer, and cleared to
+@code{nil} when you save it.  Thus, the flag shows whether there are unsaved
+changes.  The flag value is normally shown in the mode line (@pxref{Mode
+Line Variables}), and controls saving (@pxref{Saving Buffers}) and
+auto-saving (@pxref{Auto-Saving}).
 
-  いくつかのLispプログラムは、このフラグを明示的にセットします。たとえば、関数@code{set-visited-file-name}は、このフラグを@code{t}にセットします。なぜなら、たとえその前にvisitしていたファイルが変更されていなくても、テキストは新たにvisitされたファイルとマッチしないからです。
+  Some Lisp programs set the flag explicitly.  For example, the function
+@code{set-visited-file-name} sets the flag to @code{t}, because the text
+does not match the newly-visited file, even if it is unchanged from the file
+formerly visited.
 
-  バッファーのコンテンツを変更する関数は@ref{Text}で説明されています。
+  The functions that modify the contents of buffers are described in
+@ref{Text}.
 
 @defun buffer-modified-p &optional buffer
-この関数は@var{buffer}が最後に読み込まれた、あるいは保存されて以降に変更されていれば非@code{nil}、そうでなければ@code{nil}をリターンする。@var{buffer}が最後に変更されて以降に自動保存されていれば、この関数はシンボル@code{autosaved}をリターンする。@var{buffer}が@var{buffer}か省略の際のデフォルトはカレントバッファー。
+This function returns non-@code{nil} if @var{buffer} has been modified since
+it was last read in from a file or saved, or @code{nil} otherwise.  If
+@var{buffer} has been auto-saved since the time it was last modified, this
+function returns the symbol @code{autosaved}.  If @var{buffer} is @code{nil}
+or omitted, it defaults to the current buffer.
 @end defun
 
 @defun set-buffer-modified-p flag
-この関数は@var{flag}が非@code{nil}ならカレントバッファーを変更済みとして、@code{nil}なら未変更としてマークする。
+This function marks the current buffer as modified if @var{flag} is
+non-@code{nil}, or as unmodified if the flag is @code{nil}.
 
-この関数を呼び出すことによる別の効果は、それがカレントバッファーのモードラインの無条件な再表示を引き起こすことである。実際のところ関数@code{force-mode-line-update}は以下を行うことにより機能する:
+Another effect of calling this function is to cause unconditional redisplay
+of the mode line for the current buffer.  In fact, the function
+@code{force-mode-line-update} works by doing this:
 
 @example
 @group
@@ -384,163 +561,259 @@ Buffers}を参照)と自動保存(@ref{Auto-Saving}を参照)を制御します�
 @end defun
 
 @defun restore-buffer-modified-p flag
-@code{set-buffer-modified-p}と同様だがモードラインの再表示を強制しない。この関数の@var{flag}の値にシンボル@code{autosaved}も指定できる。これによりバッファーは変更されていること、そして最後に変更された後にauto-saveされているものとしてマークされる。
+Like @code{set-buffer-modified-p}, but does not force redisplay of mode
+lines.  This function also allows @var{flag}'s value to be the symbol
+@code{autosaved}, which marks the buffer as modified and auto-saved after
+the last modification.
 @end defun
 
 @deffn Command not-modified &optional arg
-このコマンドはカレントバッファーが変更されておらず保存する必要がないとマークする。@var{arg}が非@code{nil}なら変更されているとマークするので、次回の適切なタイミングでバッファーは保存されるだろう。interactiveに呼び出された場合には、@var{arg}はプレフィックス引数。
+This command marks the current buffer as unmodified, and not needing to be
+saved.  If @var{arg} is non-@code{nil}, it marks the buffer as modified, so
+that it will be saved at the next suitable occasion.  Interactively,
+@var{arg} is the prefix argument.
 
-この関数はエコーエリア内にメッセージをプリントするのでプログラム内で使用してはならない。かわりに@code{set-buffer-modified-p}
-(上述)を使用すること。
+Don't use this function in programs, since it prints a message in the echo
+area; use @code{set-buffer-modified-p} (above) instead.
 @end deffn
 
 @defun buffer-modified-tick &optional buffer
-この関数は@var{buffer}の変更カウント(modification-count)をリターンする。これはバッファーが変更されるたびに増加されるカウンター。@var{buffer}が@code{nil}
-(または省略)ならカレントバッファーが使用される。
+This function returns @var{buffer}'s modification-count.  This is a counter
+that increments every time the buffer is modified.  If @var{buffer} is
+@code{nil} (or omitted), the current buffer is used.
 @end defun
 
 @defun buffer-chars-modified-tick &optional buffer
-この関数は@var{buffer}の文字変更に関わる変更カウントをリターンする。テキストプロパティを変更してもこのカウンターは変化しない。しかしそのバッファーにテキストが挿入または削除されるたびに、このカウンターは@code{buffer-modified-tick}によりリターンされるであろう値にリセットされる。@code{buffer-chars-modified-tick}を2回呼び出してリターンされる値を比較することにより、その呼び出しの間にバッファー内で文字変更があったかどうかを知ることができる。@var{buffer}が@code{nil}
-(または省略)ならカレントバッファーが使用される。
+This function returns @var{buffer}'s character-change modification-count.
+Changes to text properties leave this counter unchanged; however, each time
+text is inserted or removed from the buffer, the counter is reset to the
+value that would be returned by @code{buffer-modified-tick}.  By comparing
+the values returned by two @code{buffer-chars-modified-tick} calls, you can
+tell whether a character change occurred in that buffer in between the
+calls.  If @var{buffer} is @code{nil} (or omitted), the current buffer is
+used.
 @end defun
 
-テキストプロパティの変更の等、バッファーのテキストを実際には変更しない方法でバッファーを変更することを要する場合があります。プログラムがフックやバッファー変更にたいするリアクションを何もトリガーせずにバッファーを変更する必要がある場合には、@code{with-silent-modifications}マクロを使用します。
+Sometimes there's a need for modifying buffer in a way that doesn't really
+change its text, like if only its text properties are changed.  If your
+program needs to modify a buffer without triggering any hooks and features
+that react to buffer modifications, use the @code{with-silent-modifications}
+macro.
 
 @defmac with-silent-modifications body@dots{}
-バッファーを変更しないように装って@var{body}を実行する。これにはバッファーのファイルがロックされているかどうかのチェック(@ref{File
-Locks}を参照)、バッファーの変更フック(@ref{Change
-Hooks}を参照)等が含まれる。(バッファーのテキストプロパティとは対照的に)@var{body}が実際にバッファーテキストを変更する場合にはアンドゥするデータが破損するかもしれないことに注意。
+Execute @var{body} pretending it does not modify the buffer.  This includes
+checking whether the buffer's file is locked (@pxref{File Locks}), running
+buffer modification hooks (@pxref{Change Hooks}), etc.  Note that if
+@var{body} actually modifies the buffer text (as opposed to its text
+properties), its undo data may become corrupted.
 @end defmac
 
 @node Modification Time
-@section バッファーの変更 Time
+@section Buffer Modification Time
 @cindex comparing file modification time
 @cindex modification time of buffer
 
-  あるファイルをvisitしてそのバッファー内で変更を行い、その一方ではディスク上でファイル自身が変更されたとします。この時点でバッファーを保存するとファイル内の変更は上書きされるでしょう。これが正に望んでいる動作のときもありますが、通常は有用な情報が失われてしまいます。したがってEmacsはファイルを保存する前に、以下で説明する関数を使用してファイルの変更時刻をチェックします(ファイルの変更時刻を調べる方法は@ref{File
-Attributes}を参照)。
+  Suppose that you visit a file and make changes in its buffer, and meanwhile
+the file itself is changed on disk.  At this point, saving the buffer would
+overwrite the changes in the file.  Occasionally this may be what you want,
+but usually it would lose valuable information.  Emacs therefore checks the
+file's modification time using the functions described below before saving
+the file.  (@xref{File Attributes}, for how to examine a file's modification
+time.)
 
 @defun verify-visited-file-modtime &optional buffer
-この関数は@var{buffer}(デフォルトはカレントバッファー)にvisitされているファイルにたいして記録されている変更時刻と、オペレーティングシステムにより記録された実際の変更時刻を比較する。これら2つの時刻はEmacsがそのファイルをvisitか保存して以降、他のプロセスにより書き込みがされていなければ等しくなるはずである。
+This function compares what @var{buffer} (by default, the current-buffer)
+has recorded for the modification time of its visited file against the
+actual modification time of the file as recorded by the operating system.
+The two should be the same unless some other process has written the file
+since Emacs visited or saved it.
 
-この関数は実際の最終変更時刻とEmacsが記録した変更時刻が同じなら@code{t}、それ以外は@code{nil}をリターンする。そのバッファーが記録済みの最終変更時刻をもたない、すなわち@code{visited-file-modtime}が0をリターンするような場合にも@code{t}をリターンする。
+The function returns @code{t} if the last actual modification time and
+Emacs's recorded modification time are the same, @code{nil} otherwise.  It
+also returns @code{t} if the buffer has no recorded last modification time,
+that is if @code{visited-file-modtime} would return zero.
 
-これはたとえ@code{visited-file-modtime}が非0の値をリターンしたとしても、ファイルをvisitしていないバッファーにたいしては常に@code{t}をリターンする。たとえばDiredバッファーにたいして、この関数は常に@code{t}をリターンする。また存在せず、
-以前に存在したこともなかったファイルをvisitするバッファーにたいして@code{t}をリターンするが、visitしているファイルが削除されたバッファーにたいしては@code{nil}をリターンする。
+It always returns @code{t} for buffers that are not visiting a file, even if
+@code{visited-file-modtime} returns a non-zero value.  For instance, it
+always returns @code{t} for dired buffers.  It returns @code{t} for buffers
+that are visiting a file that does not exist and never existed, but
+@code{nil} for file-visiting buffers whose file has been deleted.
 @end defun
 
 @defun clear-visited-file-modtime
-この関数はカレントバッファーによりvisitされているファイルの最終変更時刻の記録をクリアーする。結果としてこのバッファーにを次回の保存ではファイルの変更時刻の食い違いは報告されなくなる。
+This function clears out the record of the last modification time of the
+file being visited by the current buffer.  As a result, the next attempt to
+save this buffer will not complain of a discrepancy in file modification
+times.
 
-この関数は@code{set-visited-file-name}、および変更済みファイルの上書きを防ぐための通常テストを行わない例外的な箇所で呼び出される。
+This function is called in @code{set-visited-file-name} and other
+exceptional places where the usual test to avoid overwriting a changed file
+should not be done.
 @end defun
 
 @defun visited-file-modtime
-この関数はカレントバッファーにたいして記録された最終ファイル変更時刻をLispタイムスタンプ(@ref{Time of
-Day}を参照)としてリターンする。
+This function returns the current buffer's recorded last file modification
+time, as a Lisp timestamp (@pxref{Time of Day}).
 
-バッファーが最終変更時刻の記録をもたなければこの関数は0をリターンする。これが発生するのは、たとえばバッファーがファイルをvisitしていなかったり、@code{clear-visited-file-modtime}で最終変更時刻が明示的にクリアーされた場合。しかし@code{visited-file-modtime}は、いくつかの非ファイルバッファーにたいするタイムスタンプをリターンすることに注意。たとえばディレクトリーをリストするDiredバッファーでは、Diredが記録するそのディレクトリーの最終変更時刻がリターンされる。
+If the buffer has no recorded last modification time, this function returns
+zero.  This case occurs, for instance, if the buffer is not visiting a file
+or if the time has been explicitly cleared by
+@code{clear-visited-file-modtime}.  Note, however, that
+@code{visited-file-modtime} returns a timestamp for some non-file buffers
+too.  For instance, in a Dired buffer listing a directory, it returns the
+last modification time of that directory, as recorded by Dired.
 
-バッファーが存在しないファイルをvisitしている場合には、この関数は@minus{}1をリターンする。
+If the buffer is visiting a file that doesn't exist, this function returns
+@minus{}1.
 @end defun
 
 @defun set-visited-file-modtime &optional time
-この関数はバッファーがvisitしているファイルの最終変更時刻の記録を、@var{time}が非@code{nil}なら@var{time}、それ以外はvisitしているファイルの最終変更時刻に更新する。
+This function updates the buffer's record of the last modification time of
+the visited file, to the value specified by @var{time} if @var{time} is not
+@code{nil}, and otherwise to the last modification time of the visited file.
 
-@var{time}が@code{nil}や@code{visited-file-modtime}がリターンする整数フラグでなければ、それはLispのtime値であること(@ref{Time
-of Day}を参照)。
+If @var{time} is neither @code{nil} nor an integer flag returned by
+@code{visited-file-modtime}, it should be a Lisp time value (@pxref{Time of
+Day}).
 
-この関数はバッファーが通常のようにファイルから読み取られたものでない場合や、ファイル自身が害のない既知の理由により変更されている場合に有用。
+This function is useful if the buffer was not read from the file normally,
+or if the file itself has been changed for some known benign reason.
 @end defun
 
 @defun ask-user-about-supersession-threat filename
-これはvisitしているファイル@var{filename}がバッファーのテキストより新しいときにバッファーの変更を試みた後に、ユーザーに処理方法を尋ねるために使用する関数。Emacsはディスク上のファイルの変更時刻がバッファーを最後に保存した時刻新しいかどうか、バッファーのコンテンツが変更されているかによりこれを検知する。これはおそらく他のプログラムがファイルを変更したことを意味する。
+This function is used to ask a user how to proceed after an attempt to
+modify a buffer visiting file @var{filename} when the file is newer than the
+buffer text.  Emacs detects this because the modification time of the file
+on disk is newer than the last save-time and its contents have changed.
+This means some other program has probably altered the file.
 
 @kindex file-supersession
-この関数が正常にリターンするかどうかは、ユーザーの応答に依存する。関数はバッファーの変更が処理された場合は正常にリターンし、バッファーの変更が許可されなかった場合はデータ@code{(@var{filename})}とともにエラー@code{file-supersession}をシグナルする。
+Depending on the user's answer, the function may return normally, in which
+case the modification of the buffer proceeds, or it may signal a
+@code{file-supersession} error with data @code{(@var{filename})}, in which
+case the proposed buffer modification is not allowed.
 
-この関数は適切なタイミングでEmacsにより自動的に呼び出される。これは再定義することによりEmacsをカスタマイズ可能にするために存在する。標準的な定義はファイル@file{userlock.el}を参照のこと。
+This function is called automatically by Emacs on the proper occasions.  It
+exists so you can customize Emacs by redefining it.  See the file
+@file{userlock.el} for the standard definition.
 
-@ref{File Locks}のファイルロックのメカニズムも参照されたい。
+See also the file locking mechanism in @ref{File Locks}.
 @end defun
 
 @node Read Only Buffers
-@section 読み取り専用のバッファー
+@section Read-Only Buffers
 @cindex read-only buffer
 @cindex buffer, read-only
 
-  あるバッファーが@dfn{読み取り専用(read-only)}の場合には、たとえスクロールやナローイングによってファイルのコンテンツのビューを変更しても、そのコンテンツを変更することはできません。
+  If a buffer is @dfn{read-only}, then you cannot change its contents,
+although you may change your view of the contents by scrolling and
+narrowing.
 
-  読み取り専用バッファーは、2つのタイプの状況において使用されます:
+  Read-only buffers are used in two kinds of situations:
 
 @itemize @bullet
 @item
-書き込み保護されたファイルをvisitするバッファーは、通常は読み取り専用になる。
+A buffer visiting a write-protected file is normally read-only.
 
-ここでの目的はユーザーにたいしてそのファイルへの保存を意図したバッファーの編集が無益、または望ましくないかもしれないことを伝えることである。それにも関わらずバッファーのテキストの変更を望むユーザーは、@kbd{C-x
-C-q}で読み取り専用フラグをクリアーした後にこれを行うことができる。
+Here, the purpose is to inform the user that editing the buffer with the aim
+of saving it in the file may be futile or undesirable.  The user who wants
+to change the buffer text despite this can do so after clearing the
+read-only flag with @kbd{C-x C-q}.
 
 @item
-DiredやRmailのようなモードは、通常の編集コマンドによるコンテンツの変更がおそらく間違いであるようなときにバッファーを読み取り専用にする。
+Modes such as Dired and Rmail make buffers read-only when altering the
+contents with the usual editing commands would probably be a mistake.
 
-このようなモードのスペシャルコマンドは、@code{buffer-read-only}を(@code{let}によって)@code{nil}にバインドしたり、テキストを変更する箇所では@code{inhibit-read-only}を@code{t}にバインドする。
+The special commands of these modes bind @code{buffer-read-only} to
+@code{nil} (with @code{let}) or bind @code{inhibit-read-only} to @code{t}
+around the places where they themselves change the text.
 @end itemize
 
 @defvar buffer-read-only
-このバッファーローカル変数は、そのバッファーが読み取り専用かどうかを指定する。この変数が非@code{nil}ならそのバッファーは読み取り専用。しかしテキストプロパティ@code{inhibit-read-only}をもつ文字は依然として編集可能。@ref{Special
-Properties, inhibit-read-only}を参照のこと。
+This buffer-local variable specifies whether the buffer is read-only.  The
+buffer is read-only if this variable is non-@code{nil}.  However, characters
+that have the @code{inhibit-read-only} text property can still be modified.
+@xref{Special Properties, inhibit-read-only}.
 @end defvar
 
 @defvar inhibit-read-only
-この変数が非@code{nil}なら、読み取り専用バッファー、およびその実際の値に依存して、一部もしくはすべての読み取り専用文字が変更されている。バッファー内の読み取り専用文字とはテキストプロパティ@code{read-only}が非@code{nil}の文字。テキストプロパティについての詳細は@ref{Special
-Properties}を参照のこと。
+If this variable is non-@code{nil}, then read-only buffers and, depending on
+the actual value, some or all read-only characters may be modified.
+Read-only characters in a buffer are those that have a non-@code{nil}
+@code{read-only} text property.  @xref{Special Properties}, for more
+information about text properties.
 
-@code{inhibit-read-only}が@code{t}なら、すべての@code{read-only}文字プロパティは効果がなくなる。@code{inhibit-read-only}がリストの場合には、@code{read-only}文字プロパティがリストのメンバーなら効果がなくなる(比較は@code{eq}で行われる)。
+If @code{inhibit-read-only} is @code{t}, all @code{read-only} character
+properties have no effect.  If @code{inhibit-read-only} is a list, then
+@code{read-only} character properties have no effect if they are members of
+the list (comparison is done with @code{eq}).
 @end defvar
 
 @deffn Command read-only-mode &optional arg
-これはバッファーローカルなマイナーモードRead
-Onlyモードにたいするモードコマンド。このモードが有効なときは、そのバッファーの@code{buffer-read-only}は非@code{nil}。無効なときは、そのバッファーの@code{buffer-read-only}は@code{nil}。呼び出す際の慣習は、他のマイナーモードコマンドの慣習と同じ(@ref{Minor
-Mode Conventions}を参照)。
+This is the mode command for Read Only minor mode, a buffer-local minor
+mode.  When the mode is enabled, @code{buffer-read-only} is non-@code{nil}
+in the buffer; when disabled, @code{buffer-read-only} is @code{nil} in the
+buffer.  The calling convention is the same as for other minor mode commands
+(@pxref{Minor Mode Conventions}).
 
-このマイナーモードは他のマイナーモードとは異なり、主に@code{buffer-read-only}にたいするラッパーの役目を果たし、別個に@code{read-only-mode}変数は存在しない。Read
-Onlyモードが無効なときでも、@code{read-only}テキストプロパティが非@code{nil}の文字は読み取り専用のままである。一時的にすべての読み取り専用ステータスを無視するには上述の@code{inhibit-read-only}をバインドすること。
+This minor mode mainly serves as a wrapper for @code{buffer-read-only};
+unlike most minor modes, there is no separate @code{read-only-mode}
+variable.  Even when Read Only mode is disabled, characters with
+non-@code{nil} @code{read-only} text properties remain read-only.  To
+temporarily ignore all read-only states, bind @code{inhibit-read-only}, as
+described above.
 
-Read
-Onlyモードを有効にする際、このモードコマンドはオプション@code{view-read-only}が非@code{nil}ならViewモードも有効にする。@ref{Misc
-Buffer,,Miscellaneous Buffer Operations, emacs, The GNU Emacs
-Manual}を参照のこと。Read Onlyモードを無効にする際に、もしもViewモードが有効ならViewモードも無効にする。
+When enabling Read Only mode, this mode command also enables View mode if
+the option @code{view-read-only} is non-@code{nil}.  @xref{Misc
+Buffer,,Miscellaneous Buffer Operations, emacs, The GNU Emacs Manual}.  When
+disabling Read Only mode, it disables View mode if View mode was enabled.
 @end deffn
 
 @defun barf-if-buffer-read-only &optional position
-この関数はカレントバッファーが読み取り専用なら@code{buffer-read-only}エラーをシグナルする。@var{position}
-(デフォルトはポイント位置)のテキストのテキストプロパティ@code{inhibit-read-only}がセットされていればエラーは発生しないだろう。
+This function signals a @code{buffer-read-only} error if the current buffer
+is read-only.  If the text at @var{position} (which defaults to point) has
+the @code{inhibit-read-only} text property set, the error will not be
+raised.
 
-カレントバッファーが読み取り専用の場合にエラーをシグナルする他の方法については、@ref{Using Interactive}を参照のこと。
+@xref{Using Interactive}, for another way to signal an error if the current
+buffer is read-only.
 @end defun
 
 @node Buffer List
-@section バッファーリスト
+@section The Buffer List
 @cindex buffer list
 @cindex listing all buffers
 
-  @dfn{バッファーリスト(buffer
-list)}とは、すべての生きた(killされていない)バッファーのリストです。このリスト内のバッファーの順序は主に、それぞれのバッファーがウィンドウに表示されたのがどれほど最近なのかにもとづきます。いくつかの関数、特に@code{other-buffer}はこの順序を使用します。ユーザーに表示されるバッファーリストもこの順序にしたがいます。
+  The @dfn{buffer list} is a list of all live buffers.  The order of the
+buffers in this list is based primarily on how recently each buffer has been
+displayed in a window.  Several functions, notably @code{other-buffer}, use
+this ordering.  A buffer list displayed for the user also follows this
+order.
 
-  バッファーを作成するとそれはバッファーリストの最後に追加され
-バッファーをkillすることによってそのリストから削除されます。ウィンドウに表示するためにバッファーが選択されたとき(@ref{Switching
-Buffers}を参照)、あるいはバッファーを表示するウィンドウが選択されたとき(@ref{Selecting
-Windows}を参照)、そのバッファーは常にこのリストの先頭に移動します。バッファーがバリー(以下の@code{bury-buffer}を参照)されたときは、このリストの最後に移動します。バッファーリストを直接操作するために利用できるLispプログラマー向けの関数は存在しません。
+  Creating a buffer adds it to the end of the buffer list, and killing a
+buffer removes it from that list.  A buffer moves to the front of this list
+whenever it is chosen for display in a window (@pxref{Switching Buffers}) or
+a window displaying it is selected (@pxref{Selecting Windows}).  A buffer
+moves to the end of the list when it is buried (see @code{bury-buffer},
+below).  There are no functions available to the Lisp programmer which
+directly manipulate the buffer list.
 
-  説明した基本バッファーリスト(fundamental buffer
-list)に加えて、Emacsはそれぞれのフレームにたいしてローカルバッファーリスト(local buffer
-list)を保守します。ローカルバッファーリストでは、そのフレーム内で表示されていた(または選択されたウィンドウの)バッファーが先頭になります(この順序はそのフレームのフレームパラメーター@code{buffer-list}に記録される。@ref{Buffer
-Parameters}を参照)。並び順は基本バッファーリストにならい、そのフレームでは表示されていないフレームは後になになります。。
+  In addition to the fundamental buffer list just described, Emacs maintains a
+local buffer list for each frame, in which the buffers that have been
+displayed (or had their windows selected) in that frame come first.  (This
+order is recorded in the frame's @code{buffer-list} frame parameter; see
+@ref{Buffer Parameters}.)  Buffers never displayed in that frame come
+afterward, ordered according to the fundamental buffer list.
 
 @defun buffer-list &optional frame
-この関数はすべてのバッファーを含むバッファーリストをリターンする(名前がスペースで始まるバッファーも含む)。リストの要素はバッファーの名前ではなく実際のバッファー。
+This function returns the buffer list, including all buffers, even those
+whose names begin with a space.  The elements are actual buffers, not their
+names.
 
-@var{frame}がフレームなら、@var{frame}のローカルバッファーリストをリターンする。@var{frame}が@code{nil}か省略された場合は、基本バッファーリストが使用される。その場合には、そのバッファーを表示するフレームがどれかとは無関係に、もっとも最近に表示または選択されたバッファーの順になる。
+If @var{frame} is a frame, this returns @var{frame}'s local buffer list.  If
+@var{frame} is @code{nil} or omitted, the fundamental buffer list is used:
+the buffers appear in order of most recent display or selection, regardless
+of which frames they were displayed on.
 
 @example
 @group
@@ -551,8 +824,8 @@ Parameters}を参照)。並び順は基本バッファーリストにならい�
 @end group
 
 @group
-;; @r{ミニバッファーの名前が}
-;;   @r{スペースで始まることに注意!}
+;; @r{Note that the name of the minibuffer}
+;;   @r{begins with a space!}
 (mapcar #'buffer-name (buffer-list))
     @result{} ("buffers-ja.texi" " *Minibuf-1*"
         "buffer.c" "*Help*" "TAGS")
@@ -560,7 +833,10 @@ Parameters}を参照)。並び順は基本バッファーリストにならい�
 @end example
 @end defun
 
-  @code{buffer-list}からリターンされるリストはそれ専用に構築されたリストであって、Emacsの内部的なデータ構造ではなく、それを変更してもバッファーの並び順に影響はありません。基本バッファーリスト内のバッファーの並び順を変更したい場合に簡単なのは以下の方法です:
+  The list returned by @code{buffer-list} is constructed specifically; it is
+not an internal Emacs data structure, and modifying it has no effect on the
+order of buffers.  If you want to change the order of buffers in the
+fundamental buffer list, here is an easy way:
 
 @example
 (defun reorder-buffer-list (new-list)
@@ -569,116 +845,186 @@ Parameters}を参照)。並び順は基本バッファーリストにならい�
     (setq new-list (cdr new-list))))
 @end example
 
-  この方法により、バッファーを失ったり有効な生きたバッファー以外の何かを追加する危険を犯さずにリストに任意の並び順を指定できます。
+  With this method, you can specify any order for the list, but there is no
+danger of losing a buffer or adding something that is not a valid live
+buffer.
 
-  特定のフレームのバッファーリストの並び順や値を変更するには、@code{modify-frame-parameters}でそのフレームの@code{buffer-list}パラメーターをセットしてください(@ref{Parameter
-Access}を参照)。
+  To change the order or value of a specific frame's buffer list, set that
+frame's @code{buffer-list} parameter with @code{modify-frame-parameters}
+(@pxref{Parameter Access}).
 
 @defun other-buffer &optional buffer visible-ok frame
-この関数はバッファーリスト中で@var{buffer}以外の最初のバッファーをリターンする。これは通常は選択されたウィンドウ(フレーム@var{frame}、または選択されたフレーム(@ref{Input
-Focus}を参照)にもっとも最近表示された@var{buffer}以外のバッファーである。名前がスペースで始まるバッファーは考慮されない。
+This function returns the first buffer in the buffer list other than
+@var{buffer}.  Usually, this is the buffer appearing in the most recently
+selected window (in frame @var{frame} or else the selected frame,
+@pxref{Input Focus}), aside from @var{buffer}.  Buffers whose names start
+with a space are not considered at all.
 
-@var{buffer}が与えられない(または生きたバッファーでない)場合には、@code{other-buffer}は選択されたフレームのローカルバッファーリスト内の最初のバッファーをリターンする(@var{frame}が非@code{nil}なら@var{frame}のローカルバッファーリスト内の最初のバッファーをリターンする)。
+If @var{buffer} is not supplied (or if it is not a live buffer), then
+@code{other-buffer} returns the first buffer in the selected frame's local
+buffer list.  (If @var{frame} is non-@code{nil}, it returns the first buffer
+in @var{frame}'s local buffer list instead.)
 
-@var{frame}が非@code{nil}の@code{buffer-predicate}パラメーターをもつ場合には、どのバッファーを考慮すべきかを決定するために@code{other-buffer}はその述語を使用する。これはそれぞれのバッファーごとにその述語を一度呼び出して、値が@code{nil}ならそのバッファーは無視される。@ref{Buffer
-Parameters}を参照のこと。
+If @var{frame} has a non-@code{nil} @code{buffer-predicate} parameter, then
+@code{other-buffer} uses that predicate to decide which buffers to
+consider.  It calls the predicate once for each buffer, and if the value is
+@code{nil}, that buffer is ignored.  @xref{Buffer Parameters}.
 
-@var{visible-ok}が@code{nil}なら@code{other-buffer}はやむを得ない場合を除き、任意の可視のフレーム上のウィンドウ内で可視のバッファーをリターンすることを避ける。@var{visible-ok}が非@code{nil}なら、バッファーがどこかで表示されているかどうかは問題にしない。
+If @var{visible-ok} is @code{nil}, @code{other-buffer} avoids returning a
+buffer visible in any window on any visible frame, except as a last resort.
+If @var{visible-ok} is non-@code{nil}, then it does not matter whether a
+buffer is displayed somewhere or not.
 
-適切なバッファーが存在しなければ、バッファー@file{*scratch*}を(必要なら作成して)リターンする。
+If no suitable buffer exists, the buffer @file{*scratch*} is returned (and
+created, if necessary).
 @end defun
 
 @defun last-buffer &optional buffer visible-ok frame
-この関数は@var{frame}のバッファーリスト内から@var{buffer}以外の最後のバッファーをリターンする。@var{frame}が省略または@code{nil}なら選択されたフレームのバッファーリストを使用する。
+This function returns the last buffer in @var{frame}'s buffer list other
+than @var{buffer}.  If @var{frame} is omitted or @code{nil}, it uses the
+selected frame's buffer list.
 
-引数@var{visible-ok}は上述した@code{other-buffer}と同様に扱われる。適切なバッファーを見つけられなければバッファー@file{*scratch*}がリターンされる。
+The argument @var{visible-ok} is handled as with @code{other-buffer}, see
+above.  If no suitable buffer can be found, the buffer @file{*scratch*} is
+returned.
 @end defun
 
 @deffn Command bury-buffer &optional buffer-or-name
-このコマンドはバッファーリスト内の他のバッファーの並び順を変更することなく、@var{buffer-or-name}をバッファーリストの最後に配置する。つまりこのバッファーは@code{other-buffer}がリターンする候補でもっとも期待度が低くなる。引数はバッファー自身かバッファーの名前を指定できる。
+This command puts @var{buffer-or-name} at the end of the buffer list,
+without changing the order of any of the other buffers on the list.  This
+buffer therefore becomes the least desirable candidate for
+@code{other-buffer} to return.  The argument can be either a buffer itself
+or the name of one.
 
-この関数は基本バッファーリストと同様に、それぞれのフレームの@code{buffer-list}パラメーターを操作する。したがってバリー(bury:
-埋める、隠す)したバッファーは@code{(buffer-list
-@var{frame})}と@code{(buffer-list)}の値の最後に置かれるだろう。さらにバッファーが選択されたウィンドウに表示されていれば、ウィンドウのバッファーリストの最後にバッファーを置くことも行う(@ref{Window
-History}を参照)。
+This function operates on each frame's @code{buffer-list} parameter as well
+as the fundamental buffer list; therefore, the buffer that you bury will
+come last in the value of @code{(buffer-list @var{frame})} and in the value
+of @code{(buffer-list)}.  In addition, it also puts the buffer at the end of
+the list of buffers of the selected window (@pxref{Window History}) provided
+it is shown in that window.
 
-@var{buffer-or-name}が@code{nil}または省略された場合には、カレントバッファーをバリーすることを意味する。加えてカレントバッファーが選択されたウィンドウ(@ref{Selecting
-Windows}を参照)に表示されていれば、そのウィンドウを削除するか他のバッファーを表示する。より正確には選択されたウィンドウが専用(dedicated)のウィンドウ(@pxref{Dedicated
-Windows})であり、かつそのフレーム上に他のウィンドウが存在する場合には専用ウィンドウは削除される。それがフレーム上で唯一のウィンドウであり、かつそのフレームが端末上で唯一のフレームでなければ、そのフレームは@code{frame-auto-hide-function}で指定される関数を呼び出すことにより開放される(@ref{Quitting
-Windows}を参照)。それ以外の場合はに、他のバッファーをそのウィンドウ内に表示するために@code{switch-to-prev-buffer}を呼び出す(@ref{Window
-History}を参照)。@var{buffer-or-name}が他のウィンドウで表示されていれば、そのまま表示され続ける。
+If @var{buffer-or-name} is @code{nil} or omitted, this means to bury the
+current buffer.  In addition, if the current buffer is displayed in the
+selected window (@pxref{Selecting Windows}), this makes sure that the window
+is either deleted or another buffer is shown in it.  More precisely, if the
+selected window is dedicated (@pxref{Dedicated Windows}) and there are other
+windows on its frame, the window is deleted.  If it is the only window on
+its frame and that frame is not the only frame on its terminal, the frame is
+dismissed by calling the function specified by
+@code{frame-auto-hide-function} (@pxref{Quitting Windows}).  Otherwise, it
+calls @code{switch-to-prev-buffer} (@pxref{Window History}) to show another
+buffer in that window.  If @var{buffer-or-name} is displayed in some other
+window, it remains displayed there.
 
-あるバッファーにたいして、それを表示するすべてのウィンドウでバッファーを置き換えるには@code{replace-buffer-in-windows}を使用する。@ref{Buffers
-and Windows}を参照のこと。
+To replace a buffer in all the windows that display it, use
+@code{replace-buffer-in-windows}, @xref{Buffers and Windows}.
 @end deffn
 
 @deffn Command unbury-buffer
-このコマンドは選択されたフレームのローカルバッファーリストの最後のバッファーに切り替える。より正確には選択されたウィンドウ内で、@code{last-buffer}
-(上記参照)がリターンするバッファーを表示するために関数@code{switch-to-buffer}を呼び出す(@ref{Switching
-Buffers}を参照)。
+This command switches to the last buffer in the local buffer list of the
+selected frame.  More precisely, it calls the function
+@code{switch-to-buffer} (@pxref{Switching Buffers}), to display the buffer
+returned by @code{last-buffer} (see above), in the selected window.
 @end deffn
 
 @defvar buffer-list-update-hook
-これはバッファーリストが変更されたときに常に実行されるノーマルフック。(暗黙に)このフックを実行する関数は@code{get-buffer-create}
-(@ref{Creating Buffers}を参照)、@code{rename-buffer} (@ref{Buffer
-Names}を参照)、@code{kill-buffer} (@ref{Killing Buffers}を参照)、@code{bury-buffer}
-(上記参照)、@code{select-window} (@ref{Selecting
-Windows}を参照)。このフックは@code{get-buffer-create}や@code{generate-new-buffer}で@var{inhibit-buffer-hooks}引数に非@code{nil}を指定して作成した内部バッファーや一時バッファーには実行されない。
+This is a normal hook run whenever the buffer list changes.  Functions
+(implicitly) running this hook are @code{get-buffer-create} (@pxref{Creating
+Buffers}), @code{rename-buffer} (@pxref{Buffer Names}), @code{kill-buffer}
+(@pxref{Killing Buffers}), @code{bury-buffer} (see above), and
+@code{select-window} (@pxref{Selecting Windows}).  This hook is not run for
+internal or temporary buffers created by @code{get-buffer-create} or
+@code{generate-new-buffer} with a non-@code{nil} argument
+@var{inhibit-buffer-hooks}.
 
-このフックが実行する関数は無限再帰を引き起こすので、@code{nil}の@var{norecord}引数による@code{select-window}の呼び出しは避けること。
+Functions run by this hook should avoid calling @code{select-window} with a
+@code{nil} @var{norecord} argument since this may lead to infinite
+recursion.
 @end defvar
 
 @defun buffer-match-p condition buffer-or-name &rest args
-この関数は@code{buffer-or-name}で指定されたバッファーが@var{condition}の指定を満足するかチェックする。オプション引数@var{args}は@var{condition}の述語関数に渡される。有効な@var{condition}は以下のいずれか:
+This function checks if a buffer designated by @code{buffer-or-name}
+satisfies the specified @var{condition}.  Optional arguments @var{args} are
+passed to the predicate function in @var{condition}.  A valid
+@var{condition} can be one of the following:
 @itemize @bullet{}
 @item
-文字列。正規表現として解釈される。この正規表現がファイル名にマッチすれば、そのバッファーは条件を満たす。
+A string, interpreted as a regular expression.  The buffer satisfies the
+condition if the regular expression matches the buffer name.
 @item
-述語関数。バッファーがマッチすれば非@code{nil}をリターンすること。この関数は1つ目の引数として@var{buffer-or-name}、その後に@var{args}を引数として呼び出される。
+A predicate function, which should return non-@code{nil} if the buffer
+matches.  It is called with @var{buffer-or-name} as the first argument
+followed by @var{args}.
 @item
-コンスセル@code{(@var{oper} . @var{expr})}。@var{oper}は以下のいずれか
+A cons-cell @code{(@var{oper} . @var{expr})} where @var{oper} is one of
 @table @code
 @item (not @var{cond})
-そのバッファーと@code{args}では@code{buffer-match-p}が偽となるような@var{cond}なら真。
+Satisfied if @var{cond} doesn't satisfy @code{buffer-match-p} with the same
+buffer and @code{args}.
 @item (or @var{conds}@dots{})
-@var{conds}内の@emph{いずれか}の条件にたいして、そのバッファーと@code{args}ならば@code{buffer-match-p}が真になれば真。
+Satisfied if @emph{any} condition in @var{conds} satisfies
+@code{buffer-match-p}, with the same buffer and @code{args}.
 @item (and @var{conds}@dots{})
-@var{conds}内の@emph{すべて}の条件にたいして、そのバッファーと@code{args}ならば@code{buffer-match-p}が真になれば真。
+Satisfied if @emph{all} the conditions in @var{conds} satisfy
+@code{buffer-match-p}, with the same buffer and @code{args}.
 @item derived-mode
-そのバッファーのメジャーモードが@var{expr}から派生していれば満たされる。この条件はバッファーにたいしてそのメジャーモードが設定される前に@code{buffer-match-p}が呼び出されている場合には、マッチの報告に失敗するかもしれないことに注意。
+Satisfied if the buffer's major mode derives from @var{expr}.  Note that
+this condition might fail to report a match if @code{buffer-match-p} is
+invoked before the major mode of the buffer has been established.
 @item major-mode
-そのバッファーのメジャーモードが@var{expr}なら真。どちらでも機能するのなら@code{derived-mode}の使用を推奨する。この条件はバッファーにたいしてそのメジャーモードが設定される前に@code{buffer-match-p}が呼び出されている場合には、マッチの報告に失敗するかもしれないことに注意。
+Satisfied if the buffer's major mode is equal to @var{expr}.  Prefer using
+@code{derived-mode} instead, when both can work.  Note that this condition
+might fail to report a match if @code{buffer-match-p} is invoked before the
+major mode of the buffer has been established.
 @end table
 @item t
-どのバッファーでも真。@code{""}(空文字列)、@code{(and)}(empty conjunction: 空論理積)を使いやすくした代替え。
+Satisfied by any buffer.  A convenient alternative to @code{""} (empty
+string) or @code{(and)} (empty conjunction).
 @end itemize
 @end defun
 
 @defun match-buffers condition &optional buffer-list &rest args
-この関数は@var{condition}を満たすすべてのバッファーのリスト、マッチするバッファーがなければ@code{nil}をリターンする。引数@var{condition}は上述の@code{buffer-match-p}と同様に定義される。デフォルトではすべてのバッファーを考慮するが、オプション引数@code{buffer-list}
-(考慮すべきバッファーのリスト)を通じて制限できる。残りの引数@var{args}は、@code{buffer-match-p}と同じ方法によって@var{condition}に渡される。
+This function returns a list of all buffers that satisfy the
+@var{condition}.  If no buffers match, the function returns @code{nil}.  The
+argument @var{condition} is as defined in @code{buffer-match-p} above.  By
+default, all the buffers are considered, but this can be restricted via the
+optional argument @code{buffer-list}, which should be a list of buffers to
+consider.  Remaining arguments @var{args} will be passed to @var{condition}
+in the same way as @code{buffer-match-p} does.
 @end defun
 
 @node Creating Buffers
-@section バッファーの作成
+@section Creating Buffers
 @cindex creating buffers
 @cindex buffers, creating
 
-  このセクションではバッファーを作成する2つのプリミティブについて説明します。@code{get-buffer-create}は指定された名前の既存バッファーが見つからなければ作成します。@code{generate-new-buffer}は常に新たにバッファーを作成してそれに一意な名前を与えます。
+  This section describes the two primitives for creating buffers.
+@code{get-buffer-create} creates a buffer if it finds no existing buffer
+with the specified name; @code{generate-new-buffer} always creates a new
+buffer and gives it a unique name.
 
-  どちらの関数もオプション引数@var{inhibit-buffer-hooks}を受け取ります。これが非@code{nil}なら、これらの関数が作成したバッファーは@code{kill-buffer-hook}、@code{kill-buffer-query-functions}
-(@ref{Killing Buffers}を参照)、@code{buffer-list-update-hook} (@ref{Buffer
-List}を参照)のフックを実行しません。これはユーザーに提示されたり他のアプリケーションに渡されることが決してない、内部バッファーや一時バッファーの速度低下を避けるためです。
+  Both functions accept an optional argument @var{inhibit-buffer-hooks}.  If
+it is non-@code{nil}, the buffer they create does not run the hooks
+@code{kill-buffer-hook}, @code{kill-buffer-query-functions} (@pxref{Killing
+Buffers}), and @code{buffer-list-update-hook} (@pxref{Buffer List}).  This
+avoids slowing down internal or temporary buffers that are never presented
+to users or passed on to other applications.
 
-  バッファーを作成するために使用できる他の関数には@code{with-output-to-temp-buffer} (@ref{Temporary
-Displays}を参照)、および@code{create-file-buffer} (@ref{Visiting
-Files}を参照)が含まれます。サブプロセスの開始によってもバッファーを作成することができます(@ref{Processes}を参照)。
+  Other functions you can use to create buffers include
+@code{with-output-to-temp-buffer} (@pxref{Temporary Displays}) and
+@code{create-file-buffer} (@pxref{Visiting Files}).  Starting a subprocess
+can also create a buffer (@pxref{Processes}).
 
 @defun get-buffer-create buffer-or-name &optional inhibit-buffer-hooks
-この関数は@var{buffer-or-name}という名前のバッファーをリターンする。リターンされたバッファーはカレントにならない ---
-この関数はカレントがどのバッファーであるかを変更しない。
+This function returns a buffer named @var{buffer-or-name}.  The buffer
+returned does not become the current buffer---this function does not change
+which buffer is current.
 
-@var{buffer-or-name}は文字列、または既存バッファーのいずれかでなければならない。これが文字列で、かつ既存の生きたバッファーの名前なら、@code{get-buffer-create}はそのバッファーをリターンする。そのようなバッファーが存在しなければ、新たにバッファーを作成する。@var{buffer-or-name}が文字列ではなくバッファーなら、たとえそのバッファーが生きていなくても与えられたバッファーをリターンする。
+@var{buffer-or-name} must be either a string or an existing buffer.  If it
+is a string and a live buffer with that name already exists,
+@code{get-buffer-create} returns that buffer.  If no such buffer exists, it
+creates a new buffer.  If @var{buffer-or-name} is a buffer instead of a
+string, it is returned as given, even if it is dead.
 
 @example
 @group
@@ -687,16 +1033,21 @@ Files}を参照)が含まれます。サブプロセスの開始によっても�
 @end group
 @end example
 
-新たに作成されたバッファーにたいするメジャーモードはFundamentalモードにセットされる(変数@code{major-mode}のデフォルト値はより高いレベルで処理される。@ref{Auto
-Major
-Mode}を参照)。名前がスペースで始まる場合には、そのバッファーのアンドゥ情報の記録は初期状態では無効である(@ref{Undo}を参照)。
+The major mode for a newly created buffer is set to Fundamental mode.  (The
+default value of the variable @code{major-mode} is handled at a higher
+level; see @ref{Auto Major Mode}.)  If the name begins with a space, the
+buffer initially disables undo information recording (@pxref{Undo}).
 @end defun
 
 @defun generate-new-buffer name &optional inhibit-buffer-hooks
-この関数は新たに空のバッファーを作成してリターンするが、それをカレントにはしない。バッファーの名前は関数@code{generate-new-buffer-name}に@var{name}を渡すことにより生成される(@ref{Buffer
-Names}を参照)。つまり@var{name}という名前のバッファーが存在しなければ、それが新たなバッファーの名前になり、その名前が使用されていたら@samp{<@var{n}>}という形式のサフィックスが@var{name}に追加される。ここで@var{n}は整数。
+This function returns a newly created, empty buffer, but does not make it
+current.  The name of the buffer is generated by passing @var{name} to the
+function @code{generate-new-buffer-name} (@pxref{Buffer Names}).  Thus, if
+there is no buffer named @var{name}, then that is the name of the new
+buffer; if that name is in use, a suffix of the form @samp{<@var{n}>}, where
+@var{n} is an integer, is appended to @var{name}.
 
-@var{name}が文字列でなければエラーがシグナルされる。
+An error is signaled if @var{name} is not a string.
 
 @example
 @group
@@ -713,49 +1064,70 @@ Names}を参照)。つまり@var{name}という名前のバッファーが存在
 @end group
 @end example
 
-新たなバッファーにたいするメジャーモードはFundamentalモードにセットされる。変数@code{major-mode}のデフォルト値は、より高いレベルで処理される。@ref{Auto
-Major Mode}を参照のこと。
+The major mode for the new buffer is set to Fundamental mode.  The default
+value of the variable @code{major-mode} is handled at a higher level.
+@xref{Auto Major Mode}.
 @end defun
 
 @node Killing Buffers
-@section バッファーのkill
+@section Killing Buffers
 @cindex killing buffers
 @cindex buffers, killing
 
-  @dfn{バッファーのkill(Killing a buffer)}により、
-そのバッファーの名前はEmacsにとって未知の名前となり、そのバッファーが占めていたメモリースペースは他の用途に使用できるようになります。
+  @dfn{Killing a buffer} makes its name unknown to Emacs and makes the memory
+space it occupied available for other use.
 
-  バッファーに対応するバッファーオブジェクトは、それを参照するものがあればkillされても存在し続けますが、それをカレントにしたり表示することができないように特別にマークされます。とはいえkillされたバッファーの同一性は保たれるので、2つの識別可能なバッファーをkillした場合には、たとえ両方死んだバッファーであっても@code{eq}による同一性は残ります。
+  The buffer object for the buffer that has been killed remains in existence
+as long as anything refers to it, but it is specially marked so that you
+cannot make it current or display it.  Killed buffers retain their identity,
+however; if you kill two distinct buffers, they remain distinct according to
+@code{eq} although both are dead.
 
-  あるウィンドウ内においてカレント、あるいは表示されているバッファーをkillした場合、Emacsはかわりに他の何らかのバッファーを自動的に選択または表示します。これはバッファーのkillによってカレントバッファーが変更されることを意味します。したがってバッファーをkillする際には、(killされるバッファーがカレントを偶然知っていた場合を除き)カレントバッファーの変更に関しても事前に注意を払うべきです。@ref{Current
-Buffer}を参照してください。
+  If you kill a buffer that is current or displayed in a window, Emacs
+automatically selects or displays some other buffer instead.  This means
+that killing a buffer can change the current buffer.  Therefore, when you
+kill a buffer, you should also take the precautions associated with changing
+the current buffer (unless you happen to know that the buffer being killed
+isn't current).  @xref{Current Buffer}.
 
-  1つ以上のインダイレクト
+  If you kill a buffer that is the base buffer of one or more indirect
 @iftex
-バッファー
+buffers,
 @end iftex
 @ifnottex
-バッファー(@ref{Indirect Buffers}を参照)
+buffers (@pxref{Indirect Buffers}),
 @end ifnottex
-のベースとなるバッファーをkillした場合には、同様にインダイレクトバッファーも自動的にkillされます。
+the indirect buffers are automatically killed as well.
 
 @cindex live buffer
-  バッファーの@code{buffer-name}が@code{nil}の場合のみバッファーはkillされます。killされていないバッファーは@dfn{生きた(live)}バッファーと呼ばれます。あるバッファーにたいして、そのバッファーが生きているか、またはkillされているかを確認するには@code{buffer-live-p}を使用します(下記参照)。
+  The @code{buffer-name} of a buffer is @code{nil} if, and only if, the buffer
+is killed.  A buffer that has not been killed is called a @dfn{live}
+buffer.  To test whether a buffer is live or killed, use the function
+@code{buffer-live-p} (see below).
 
 @deffn Command kill-buffer &optional buffer-or-name
-この関数はバッファー@var{buffer-or-name}をkillして、そのバッファーのメモリーを他の用途のために開放、またはオペレーティングシステムに返却する。@var{buffer-or-name}が@code{nil}または省略された場合にはカレントバッファーをkillする。
+This function kills the buffer @var{buffer-or-name}, freeing all its memory
+for other uses or to be returned to the operating system.  If
+@var{buffer-or-name} is @code{nil} or omitted, it kills the current buffer.
 
-そのバッファーを@code{process-buffer}として所有するすべてのプロセスには、通常はプロセスを終了させるシグナル@code{SIGHUP}
-(hangup)が送信される。@ref{Signals to Processes}を参照のこと。
+Any processes that have this buffer as the @code{process-buffer} are sent
+the @code{SIGHUP} (hangup) signal, which normally causes them to terminate.
+@xref{Signals to Processes}.
 
-バッファーがファイルをvisitしていて、かつ保存されていない変更が含まれる場合には、@code{kill-buffer}はバッファーをkillする前にユーザーにたいして確認を求める。これは@code{kill-buffer}がinteractiveに呼び出されていなくても行われる。この確認要求を抑制するには@code{kill-buffer}の呼び出し前に、変更フラグ(modified
-flag)をクリアーすればよい。@ref{Buffer Modification}を参照のこと。
+If the buffer is visiting a file and contains unsaved changes,
+@code{kill-buffer} asks the user to confirm before the buffer is killed.  It
+does this even if not called interactively.  To prevent the request for
+confirmation, clear the modified flag before calling @code{kill-buffer}.
+@xref{Buffer Modification}.
 
-killされるバッファーをカレントで表示しているすべてのバッファーをクリーンアップするために、この関数は@code{replace-buffer-in-windows}を呼び出す。
+This function calls @code{replace-buffer-in-windows} for cleaning up all
+windows currently displaying the buffer to be killed.
 
-すでに死んでいるバッファーをkillしても効果はない。
+Killing a buffer that is already dead has no effect.
 
-この関数は実際にバッファーをkillすると@code{t}をリターンする。ユーザーが確認で拒否を選択、または@var{buffer-or-name}がすでに死んでいる場合には@code{nil}をリターンする。
+This function returns @code{t} if it actually killed the buffer.  It returns
+@code{nil} if the user refuses to confirm or if @var{buffer-or-name} was
+already dead.
 
 @smallexample
 (kill-buffer "foo.unchanged")
@@ -771,108 +1143,189 @@ Buffer foo.changed modified; kill anyway? (yes or no) @kbd{yes}
 @end deffn
 
 @defvar kill-buffer-query-functions
-保存されていない変更について確認を求める前に、@code{kill-buffer}はリスト@code{kill-buffer-query-functions}内の関数を出現順に引数なしで呼び出す。それらが呼び出される際にはkillされるバッファーがカレントになる。この機能はこれらの関数がユーザーに確認を求めるというアイデアが元となっている。これらの関数のいずれかが@code{nil}をリターンしたら、@code{kill-buffer}はそのバッファーを殺さない。
+Before confirming unsaved changes, @code{kill-buffer} calls the functions in
+the list @code{kill-buffer-query-functions}, in order of appearance, with no
+arguments.  The buffer being killed is the current buffer when they are
+called.  The idea of this feature is that these functions will ask for
+confirmation from the user.  If any of them returns @code{nil},
+@code{kill-buffer} spares the buffer's life.
 
-このフックは非@code{nil}の@var{inhibit-buffer-hooks}引数の@code{get-buffer-create}または@code{generate-new-buffer}で作成された内部バッファーや一時バッファーにたいしては実行されない。
+This hook is not run for internal or temporary buffers created by
+@code{get-buffer-create} or @code{generate-new-buffer} with a non-@code{nil}
+argument @var{inhibit-buffer-hooks}.
 @end defvar
 
 @defvar kill-buffer-hook
-これは尋ねることになっている質問をすべて終えた後、実際にバッファーをkillする直前に@code{kill-buffer}により実行されるノーマルフック。この変数は永続的にローカルであり、メジャーモードの変更により、そのローカルバインディングはクリアーされない。
+This is a normal hook run by @code{kill-buffer} after asking all the
+questions it is going to ask, just before actually killing the buffer.  The
+buffer to be killed is current when the hook functions run.  @xref{Hooks}.
+This variable is a permanent local, so its local binding is not cleared by
+changing major modes.
 
-このフックは非@code{nil}の@var{inhibit-buffer-hooks}引数の@code{get-buffer-create}または@code{generate-new-buffer}で作成された内部バッファーや一時バッファーにたいしては実行されない。
+This hook is not run for internal or temporary buffers created by
+@code{get-buffer-create} or @code{generate-new-buffer} with a non-@code{nil}
+argument @var{inhibit-buffer-hooks}.
 @end defvar
 
 @defopt buffer-offer-save
-特定のバッファーにおいてこの変数が非@code{nil}なら、あたかもファイルをvisitするバッファーにたいして提案するときのように、バッファーの保存を提案するように@code{save-buffers-kill-emacs}に指示する。2つ目のオプション引数を@code{t}にセットして@code{save-some-buffers}を呼び出せばバッファーの保存も提案する。最後にこの変数をシンボル@code{always}にセットすると、@code{save-buffers-kill-emacs}と@code{save-some-buffers}は常に保存を提案する。@ref{Definition
-of
-save-some-buffers}を参照のこと。何らかの理由により変数@code{buffer-offer-save}がセットされると自動的にバッファーローカルになる。@ref{Buffer-Local
-Variables}を参照のこと。
+This variable, if non-@code{nil} in a particular buffer, tells
+@code{save-buffers-kill-emacs} to offer to save that buffer, just as it
+offers to save file-visiting buffers.  If @code{save-some-buffers} is called
+with the second optional argument set to @code{t}, it will also offer to
+save the buffer.  Lastly, if this variable is set to the symbol
+@code{always}, both @code{save-buffers-kill-emacs} and
+@code{save-some-buffers} will always offer to save.  @xref{Definition of
+save-some-buffers}.  The variable @code{buffer-offer-save} automatically
+becomes buffer-local when set for any reason.  @xref{Buffer-Local
+Variables}.
 @end defopt
 
 @defvar buffer-save-without-query
-特定のバッファーにおいてこの変数が非@code{nil}なら、@code{save-buffers-kill-emacs}と@code{save-some-buffers}は、(バッファーが変更されていれば)ユーザーに確認を求めることなくそのバッファーを保存する。何らかの理由によりこの変数をセットする際には自動的にバッファーローカルになる。
+This variable, if non-@code{nil} in a particular buffer, tells
+@code{save-buffers-kill-emacs} and @code{save-some-buffers} to save this
+buffer (if it's modified) without asking the user.  The variable
+automatically becomes buffer-local when set for any reason.
 @end defvar
 
 @defun buffer-live-p object
-この関数は@var{object}が生きたバッファー(killされていないバッファー)なら@code{t}、それ以外は@code{nil}をリターンする。
+This function returns @code{t} if @var{object} is a live buffer (a buffer
+which has not been killed), @code{nil} otherwise.
 @end defun
 
 @node Indirect Buffers
-@section インダイレクトバッファー
+@section Indirect Buffers
 @cindex indirect buffers
 @cindex base buffer
 
-  @dfn{インダイレクトバッファー(indirect buffer: 間接バッファー)}とは、@dfn{ベースバッファー(base
-buffer)}と呼ばれる他のバッファーとテキストを共有します。いくつかの点においてインダイレクトバッファーはファイル間でのシンボリックリンクに類似しています。ベースバッファー自身はインダイレクトバッファーではない可能性があります。
+  An @dfn{indirect buffer} shares the text of some other buffer, which is
+called the @dfn{base buffer} of the indirect buffer.  In some ways it is the
+analogue, for buffers, of a symbolic link among files.  The base buffer may
+not itself be an indirect buffer.
 
-  インダイレクトバッファーのテキストは、常にベースバッファーのテキストと同一です。編集により一方が変更されると、それは即座に他方のバッファーから可視になります。これには文字自体に加えてテキストプロパティも同様に含まれます。
+  The text of the indirect buffer is always identical to the text of its base
+buffer; changes made by editing either one are visible immediately in the
+other.  This includes the text properties as well as the characters
+themselves.
 
-  他のすべての観点において、インダイレクトバッファーとそのベースバッファーは完全に別物です。それらは別の名前、独自のポイント値、ナローイング、マーカー、オーバーレイ、メジャーモード、バッファーローカルな変数バインディングをもちます(ただしどちらかのバッファーでのテキストの挿入や削除を行うと両方のバッファーでマーカーとオーバーレイが再配置される)。
+  In all other respects, the indirect buffer and its base buffer are
+completely separate.  They have different names, independent values of
+point, independent narrowing, independent markers and overlays (though
+inserting or deleting text in either buffer relocates the markers and
+overlays for both), independent major modes, and independent buffer-local
+variable bindings.
 
-  インダイレクトバッファーはファイルをvisitできませんがベースバッファーには可能です。インダイレクトバッファーの保存を試みると、実際にはベースバッファーが保存されます。
+  An indirect buffer cannot visit a file, but its base buffer can.  If you try
+to save the indirect buffer, that actually saves the base buffer.
 
-  インダイレクトバッファーをkillしてもベースバッファーに影響はありません。ベースバッファーをkillするとインダイレクトバッファーはkillされて再びカレントバッファーにすることはできません。
+  Killing an indirect buffer has no effect on its base buffer.  Killing the
+base buffer effectively kills the indirect buffer in that it cannot ever
+again be the current buffer.
 
 @deffn Command make-indirect-buffer base-buffer name &optional clone inhibit-buffer-hooks
-これはベースバッファーが@var{base-buffer}であるような、@var{name}という名前のインダイレクトバッファーを作成してリターンする。引数@var{base-buffer}は生きたバッファー、または既存バッファーの名前(文字列)を指定できる。@var{name}が既存バッファーの名前ならエラーがシグナルされる。
+This creates and returns an indirect buffer named @var{name} whose base
+buffer is @var{base-buffer}.  The argument @var{base-buffer} may be a live
+buffer or the name (a string) of an existing buffer.  If @var{name} is the
+name of an existing buffer, an error is signaled.
 
-@var{clone}が非@code{nil}ならインダイレクトバッファーは最初は@var{base-buffer}のメジャーモード、マイナーモード、バッファーローカル変数等の状態を共有する。@var{clone}が省略または@code{nil}なら、インダイレクトバッファーの情報は新たなバッファーにたいするデフォルト状態にセットされる。
+If @var{clone} is non-@code{nil}, then the indirect buffer originally shares
+the state of @var{base-buffer} such as major mode, minor modes, buffer local
+variables and so on.  If @var{clone} is omitted or @code{nil} the indirect
+buffer's state is set to the default state for new buffers.
 
-@var{base-buffer}がインダイレクトバッファーなら、新たなバッファーのベースとしてそれのベースバッファーが使用される。さらに@var{clone}が非@code{nil}なら、初期状態は@var{base-buffer}ではなく実際のベースバッファーからコピーされる。
+If @var{base-buffer} is an indirect buffer, its base buffer is used as the
+base for the new buffer.  If, in addition, @var{clone} is non-@code{nil},
+the initial state is copied from the actual base buffer, not from
+@var{base-buffer}.
 
-@var{inhibit-buffer-hooks}の意味については@ref{Creating Buffers}を参照のこと。
+@xref{Creating Buffers}, for the meaning of @var{inhibit-buffer-hooks}.
 @end deffn
 
 @deffn Command clone-indirect-buffer newname display-flag &optional norecord
-この関数はカレントバッファーのベースバッファーを共有するインダイレクトバッファーを新たに作成して、カレントバッファーの残りの属性をコピーしてリターンする(カレントバッファーがインダイレクトバッファーでなければそれがベースバッファーとして使用される)。
+This function creates and returns a new indirect buffer that shares the
+current buffer's base buffer and copies the rest of the current buffer's
+attributes.  (If the current buffer is not indirect, it is used as the base
+buffer.)
 
-@var{display-flag}が非@code{nil}
-(インタラクティブな呼び出しでは常に非@code{nil})なら、それは@code{pop-to-buffer}を呼び出すことにより新しいバッファーを表示することを意味する。@var{norecord}が非@code{nil}なら、それは新しいバッファーをバッファーリストの先頭に置かないことを意味する。
+If @var{display-flag} is non-@code{nil}, as it always is in interactive
+calls, that means to display the new buffer by calling
+@code{pop-to-buffer}.  If @var{norecord} is non-@code{nil}, that means not
+to put the new buffer to the front of the buffer list.
 @end deffn
 
 @defun buffer-base-buffer &optional buffer
-この関数は@var{buffer}
-(デフォルトはカレントバッファー)のベースバッファーをリターンする。@var{buffer}がインダイレクトバッファーでなければ値は@code{nil}、それ以外では値は他のバッファーとなり、そのバッファーがインダイレクトバッファーであることは決してない。
+This function returns the base buffer of @var{buffer}, which defaults to the
+current buffer.  If @var{buffer} is not indirect, the value is @code{nil}.
+Otherwise, the value is another buffer, which is never an indirect buffer.
 @end defun
 
 @node Swapping Text
-@section 2つのバッファー間でのテキストの交換
+@section Swapping Text Between Two Buffers
 @cindex swap text between buffers
 @cindex virtual buffers
 
-  特別なモードでは、ユーザーが同一のバッファーから複数の非常に異なったテキストにアクセスできるようにしなければならない場合があります。たとえばバッファーのテキストのサマリーを表示して、ユーザーがそのテキストにアクセスできるようにする場合です。
+  Specialized modes sometimes need to let the user access from the same buffer
+several vastly different types of text.  For example, you may need to
+display a summary of the buffer text, in addition to letting the user access
+the text itself.
 
-  これは、(ユーザーがテキストを編集した際には同期を保つ)複数バッファーや、ナローイング(@ref{Narrowing}を参照)により実装することができるかもしれません。しかしこれらの候補案はときに退屈になりがちであり、特にそれぞれのテキストタイプが正しい表示と編集コマンドを提供するために高価なバッファーグローバル操作を要求する場合には、飛び抜けて高価になる場合があります。
+  This could be implemented with multiple buffers (kept in sync when the user
+edits the text), or with narrowing (@pxref{Narrowing}).  But these
+alternatives might sometimes become tedious or prohibitively expensive,
+especially if each type of text requires expensive buffer-global operations
+in order to provide correct display and editing commands.
 
-  Emacsはそのようなモードにたいして別の機能を提供します。@code{buffer-swap-text}を使用すれば、2つのバッファー間でバッファーテキストを素早く交換することができます。この関数はテキストの移動は行わずに異なるテキスト塊(text
-chunk)をポイントするように、バッファーオブジェクトの内部的なデータ構造だけを変更するため非常に高速です。これを使用することにより、2つ以上のバッファーグループから個々のバッファーのコンテンツすべてを併せもつような、単一の仮想バッファー(virtual
-buffer)が実在するように見せかけることができます。
+  Emacs provides another facility for such modes: you can quickly swap buffer
+text between two buffers with @code{buffer-swap-text}.  This function is
+very fast because it doesn't move any text, it only changes the internal
+data structures of the buffer object to point to a different chunk of text.
+Using it, you can pretend that a group of two or more buffers are actually a
+single virtual buffer that holds the contents of all the individual buffers
+together.
 
 @defun buffer-swap-text buffer
-この関数はカレントバッファーのテキストと、引数@var{buffer}のテキストを交換する。2つのバッファーのいずれか一方がインダイレクトバッファー(@ref{Indirect
-Buffers}を参照)、またはインダイレクトバッファーのベースバッファーの場合はエラーをシグナルする。
+This function swaps the text of the current buffer and that of its argument
+@var{buffer}.  It signals an error if one of the two buffers is an indirect
+buffer (@pxref{Indirect Buffers}) or is a base buffer of an indirect buffer.
 
-バッファーテキストに関連するすべてのバッファープロパティ、つまりポイントとマークの位置、すべてのマーカーとオーバーレイ、テキストプロパティ、アンドゥリスト、@code{enable-multibyte-characters}フラグの値(@ref{Text
-Representations, enable-multibyte-characters}を参照)等も同様に交換される。
+All the buffer properties that are related to the buffer text are swapped as
+well: the positions of point and mark, all the markers, the overlays, the
+text properties, the undo list, the value of the
+@code{enable-multibyte-characters} flag (@pxref{Text Representations,
+enable-multibyte-characters}), etc.
 
-@strong{警告:}
-この関数を@code{save-excursion}内部で呼び出すと、位置とバッファーを保存するために@code{save-excursion}が使用するマーカーも同様に交換されるので、そのフォームを抜ける際にはカレントバッファーは@var{buffer}にセットされるだろう。
+@strong{Warning:} If this function is called from within a
+@code{save-excursion} form, the current buffer will be set to @var{buffer}
+upon leaving the form, since the marker used by @code{save-excursion} to
+save the position and buffer will be swapped as well.
 @end defun
 
-  ファイルをvisitしているバッファーに@code{buffer-swap-text}を使用する場合には、交換されたテキストではなくそのバッファーの元のテキストを保存するようにフックをセットアップするべきです。@code{write-region-annotate-functions}は正にこの目的のために機能します。そのバッファーの@code{buffer-saved-size}を、おそらく交換されたテキストにたいする変更が自動保存に干渉しないであろう、@minus{}2にセットするべきです。
+  If you use @code{buffer-swap-text} on a file-visiting buffer, you should set
+up a hook to save the buffer's original text rather than what it was swapped
+with.  @code{write-region-annotate-functions} works for this purpose.  You
+should probably set @code{buffer-saved-size} to @minus{}2 in the buffer, so
+that changes in the text it is swapped with will not interfere with
+auto-saving.
 
 @node Buffer Gap
-@section バッファーのギャップ
+@section The Buffer Gap
 @cindex buffer gap
 
-  Emacsのバッファーは挿入と削除を高速にするために不可視の@dfn{ギャップ(gap)}を使用して実装されています。挿入はギャップ部分を充填、削除はギャップを追加することにより機能します。もちろんこれは最初にギャップを挿入や削除の部位(locus)に移動しなければならないことを意味します。Emacsはユーザーが挿入か削除を試みたときだけギャップを移動します。大きなバッファー内の遠く離れた位置で編集した後に、他の箇所での最初の編集コマンドに無視できない遅延が発生する場合があるのはこれが理由です。
+  Emacs buffers are implemented using an invisible @dfn{gap} to make insertion
+and deletion faster.  Insertion works by filling in part of the gap, and
+deletion adds to the gap.  Of course, this means that the gap must first be
+moved to the locus of the insertion or deletion.  Emacs moves the gap only
+when you try to insert or delete.  This is why your first editing command in
+one part of a large buffer, after previously editing in another far-away
+part, sometimes involves a noticeable delay.
 
-  このメカニズムは暗黙に機能するものであり、Lispコードはギャップのカレント位置に影響されるべきでは決してありませんが、以下の関数はギャップ状態に関する情報の取得に利用できます。
+  This mechanism works invisibly, and Lisp code should never be affected by
+the gap's current location, but these functions are available for getting
+information about the gap status.
 
 @defun gap-position
-この関数はカレントバッファー内のギャップのカレント位置をリターンする。
+This function returns the current gap position in the current buffer.
 @end defun
 
 @defun gap-size
-この関数はカレントバッファー内のギャップのサイズをリターンする。
+This function returns the current gap size of the current buffer.
 @end defun

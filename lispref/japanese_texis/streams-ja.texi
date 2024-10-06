@@ -10,108 +10,147 @@
 @c Foundation, Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node Read and Print
-@chapter Lispオブジェクトの読み取りとプリント
+@chapter Reading and Printing Lisp Objects
 
-  @dfn{プリント(print)}と@dfn{読み取り(read)}はLispオブジェクトからテキスト形式への変換、またはその逆の変換を行なう操作です。これらは@ref{Lisp
-Data Types}で説明したプリント表現(printed representation)と入力構文(read syntax)を使用します。
+  @dfn{Printing} and @dfn{reading} are the operations of converting Lisp
+objects to textual form and vice versa.  They use the printed
+representations and read syntax described in @ref{Lisp Data Types}.
 
-  このチャプターでは読み取りとプリントのためのLisp関数について説明します。このチャプターではさらに@dfn{ストリーム(stream)}についても説明します。ストリームとは、(読み取りでは)テキストがどこから取得されるか、(プリントでは)テキストをどこに出力するかを指定します。
+  This chapter describes the Lisp functions for reading and printing.  It also
+describes @dfn{streams}, which specify where to get the text (if reading) or
+where to put it (if printing).
 
 @menu
-* Streams Intro::            ストリーム、読み取り、プリントの概観。
-* Input Streams::            入力ストリームとして使用できる、さまざまなデータ型。
-* Input Functions::          テキストからLispオブジェクトを読み取る関数。
-* Output Streams::           出力ストリームとして使用できる、さまざまなデータ型。
-* Output Functions::         テキストとしてLispオブジェクトをプリントする関数。
-* Output Variables::         プリント関数が何を行うか制御する変数。
-* Output Overrides::         出力変数のオーバーライド
+* Streams Intro::            Overview of streams, reading and printing.
+* Input Streams::            Various data types that can be used as input 
+                               streams.
+* Input Functions::          Functions to read Lisp objects from text.
+* Output Streams::           Various data types that can be used as output 
+                               streams.
+* Output Functions::         Functions to print Lisp objects as text.
+* Output Variables::         Variables that control what the printing 
+                               functions do.
+* Output Overrides::         Overriding output variables.
 @end menu
 
 @node Streams Intro
-@section 読み取りとプリントの概念
+@section Introduction to Reading and Printing
 @cindex Lisp reader
 @cindex printing
 @cindex reading
 
-  Lispオブジェクトの@dfn{読み取り}とは、テキスト形式のLisp式をパース(parse:
-解析)して、対応するLispオブジェクトを生成することを意味します。これはLLispプログラムがLispコードファイルからLispに取得される方法でもあります。わたしたちはそのテキストのことを、そのオブジェクトの@dfn{入力構文(read
-syntax)}と呼んでいます。たとえばテキスト@samp{(a .@:
-5)}は、@sc{car}が@code{a}で@sc{cdr}が数字の5であるようなコンスセルにたいする入力構文です。
+  @dfn{Reading} a Lisp object means parsing a Lisp expression in textual form
+and producing a corresponding Lisp object.  This is how Lisp programs get
+into Lisp from files of Lisp code.  We call the text the @dfn{read syntax}
+of the object.  For example, the text @samp{(a .@: 5)} is the read syntax
+for a cons cell whose @sc{car} is @code{a} and whose @sc{cdr} is the number
+5.
 
-  Lispオブジェクトの@dfn{プリント}とは、あるオブジェクトをそのオブジェクトの@dfn{プリント表現(printed
-representation)}に変換することによって、そのオブジェクトを表すテキストを生成することを意味します(@ref{Printed
-Representation}を参照)。上述のコンスセルをプリントするとテキスト@samp{(a .@: 5)}が生成されます。
+  @dfn{Printing} a Lisp object means producing text that represents that
+object---converting the object to its @dfn{printed representation}
+(@pxref{Printed Representation}).  Printing the cons cell described above
+produces the text @samp{(a .@: 5)}.
 
-  読み取りとプリントは概ね逆の処理といえます。あるテキスト断片を読み取った結果として生成されたオブジェクトをプリントすると、多くの場合は同じテキストが生成され、あるオブジェクトをプリントした結果のテキストを読み取ると、通常は同じようなオブジェクトが生成されます。たとえばシンボル@code{foo}をプリントするとテキスト@samp{foo}が生成されて、そのテキストを読み取るとシンボル@code{foo}がリターンされます。要素が@code{a}と@code{b}のリストをプリントするとテキスト@samp{(a
-b)}が生成されて、そのテキストを読み取ると、(同じリストではないが)要素が@code{a}と@code{b}のリストが生成されます。
+  Reading and printing are more or less inverse operations: printing the
+object that results from reading a given piece of text often produces the
+same text, and reading the text that results from printing an object usually
+produces a similar-looking object.  For example, printing the symbol
+@code{foo} produces the text @samp{foo}, and reading that text returns the
+symbol @code{foo}.  Printing a list whose elements are @code{a} and @code{b}
+produces the text @samp{(a b)}, and reading that text produces a list (but
+not the same list) with elements @code{a} and @code{b}.
 
-  しかし、これら2つの処理は互いにまったく逆の処理というわけではありません。３つの例外があります:
+  However, these two operations are not precisely inverse to each other.
+There are three kinds of exceptions:
 
 @itemize @bullet
 @item
-プリントは読み取ることが不可能なテキストを生成できる。たとえばバッファー、フレーム、サブプロセス、マーカーは@samp{#}で始まるテキストとしてプリントされる。このテキストの読み取りを試みるとエラーとなる。これらのデータ型を読み取る方法は存在しない。
+Printing can produce text that cannot be read.  For example, buffers,
+windows, frames, subprocesses and markers print as text that starts with
+@samp{#}; if you try to read this text, you get an error.  There is no way
+to read those data types.
 
 @item
-1つのオブジェクトが複数のテキスト的な表現をもつことができる。たとえば@samp{1}と@samp{01}は同じ整数を表し、@samp{(a
-b)}と@samp{(a .@:
-(b))}は同じリストを表す。読み取りは複数の候補を受容するかもしれないが、プリントはそのうちのただ1つを選択しなければならない。
+One object can have multiple textual representations.  For example, @samp{1}
+and @samp{01} represent the same integer, and @samp{(a b)} and @samp{(a .@:
+(b))} represent the same list.  Reading will accept any of the alternatives,
+but printing must choose one of them.
 
 @item
-あるオブジェクトの読み取りシーケンスの中間の特定ポイントに、読み取り結果に影響を与えないコメントを置くことができる。
+Comments can appear at certain points in the middle of an object's read
+sequence without affecting the result of reading it.
 @end itemize
 
 @node Input Streams
-@section 入力ストリーム
+@section Input Streams
 @cindex stream (for reading)
 @cindex input stream
 
-  テキストを読み取るLisp関数の大部分は、引数として@dfn{入力ストリーム(input
-stream)}を受け取ります。入力ストリームは読み取られるテキストの文字をどこから、どのように取得するかを指定します。以下は利用できる入力ストリーム型です:
+  Most of the Lisp functions for reading text take an @dfn{input stream} as an
+argument.  The input stream specifies where or how to get the characters of
+the text to be read.  Here are the possible types of input stream:
 
 @table @asis
 @item @var{buffer}
 @cindex buffer input stream
-入力文字は@var{buffer}のポイントの後の文字から直接読み取られる。文字の読み取りとともにポイントが進む。
+The input characters are read from @var{buffer}, starting with the character
+directly after point.  Point advances as characters are read.
 
 @item @var{marker}
 @cindex marker input stream
-入力文字は@var{marker}があるバッファーの、マーカーの後の文字から直接読み取られる。文字の読み取りとともにマーカーが進む。ストリームがマーカーならバッファー内のポイント値に影響はない。
+The input characters are read from the buffer that @var{marker} is in,
+starting with the character directly after the marker.  The marker position
+advances as characters are read.  The value of point in the buffer has no
+effect when the stream is a marker.
 
 @item @var{string}
 @cindex string input stream
-入力文字は@var{string}の最初の文字から必要な文字数分が取得される。
+The input characters are taken from @var{string}, starting at the first
+character in the string and using as many characters as required.
 
 @item @var{function}
 @cindex function input stream
-入力文字は@var{function}から生成され、その関数は2種類の呼び出しをサポートしなければならない:
+The input characters are generated by @var{function}, which must support two
+kinds of calls:
 
 @itemize @bullet
 @item
-引数なしで呼び出されたときは次の文字をリターンする。
+When it is called with no arguments, it should return the next character.
 
 @item
-1つの引数(常に文字)で呼び出されたとき、@var{function}は引数を保存して次の呼び出しでリターンするように準備する。これは文字の@dfn{読み戻し(unreading)}と呼ばれ、Lispリーダーが1文字多く読みとったとき、それを`読みとった場所に戻したいときに発生する。この場合には@var{function}のリターン値と違いはない。
+When it is called with one argument (always a character), @var{function}
+should save the argument and arrange to return it on the next call.  This is
+called @dfn{unreading} the character; it happens when the Lisp reader reads
+one character too many and wants to put it back where it came from.  In this
+case, it makes no difference what value @var{function} returns.
 @end itemize
 
 @item @code{t}
 @cindex @code{t} input stream
-@code{t}はその入力がミニバッファーから読み取られるストリームであることを意味する。実際にはミニバッファーが1回呼び出されて、ユーザーから与えられたテキストが、その後に入力ストリームとして使用される文字列となる。Emacsがbatchモード(@ref{Batch
-Mode}を参照)で実行されている場合には、ミニバッファーのかわりに標準入力が使用される。たとえば、
+@code{t} used as a stream means that the input is read from the minibuffer.
+In fact, the minibuffer is invoked once and the text given by the user is
+made into a string that is then used as the input stream.  If Emacs is
+running in batch mode (@pxref{Batch Mode}), standard input is used instead
+of the minibuffer.  For example,
 @example
 (message "%s" (read t))
 @end example
-batchモードでは標準入力からLisp式が読み取られて、結果は標準出力にプリントされるだろう。
+will in batch mode read a Lisp expression from standard input and print the
+result to standard output.
 
 @item @code{nil}
 @cindex @code{nil} input stream
-入力ストリームとして@code{nil}が与えられた場合は、かわりに@code{standard-input}の値が使用されることを意味する。この値は@dfn{デフォルトの入力ストリーム(default
-input stream)}であり、非@code{nil}の入力ストリームでなければならない。
+@code{nil} supplied as an input stream means to use the value of
+@code{standard-input} instead; that value is the @dfn{default input stream},
+and must be a non-@code{nil} input stream.
 
 @item @var{symbol}
-入力ストリームとしてのシンボルは、(もしあれば)そのシンボルの関数定義と等価である。
+A symbol as input stream is equivalent to the symbol's function definition
+(if any).
 @end table
 
-  以下の例ではバッファーストリームから読み込んで、読み取りの前後におけるポイント位置を示しています:
+  Here is an example of reading from a stream that is a buffer, showing where
+point is located before and after:
 
 @example
 @group
@@ -137,9 +176,12 @@ This is the@point{} contents of foo.
 @end example
 
 @noindent
-最初の読み取りではスペースがスキップされていることに注意してください。読み取りでは意味のあるテキストに先行する、任意のサイズの空白文字がスキップされます。
+Note that the first read skips a space.  Reading skips any amount of
+whitespace preceding the significant text.
 
-  以下はマーカーストリームからの読み取りの例で、最初は表示されているバッファーの先頭にマーカーを配置されています。読み取られた値はシンボル@code{This}です。
+  Here is an example of reading from a stream that is a marker, initially
+positioned at the beginning of the buffer shown.  The value read is the
+symbol @code{This}.
 
 @example
 @group
@@ -159,11 +201,11 @@ This is the contents of foo.
 @end group
 @group
 m
-     @result{} #<marker at 5 in foo>   ;; @r{最初のスペースの前}
+     @result{} #<marker at 5 in foo>   ;; @r{Before the first space.}
 @end group
 @end example
 
-  以下では文字列のコンテンツから読み取っています:
+  Here we read from the contents of a string:
 
 @example
 @group
@@ -172,8 +214,9 @@ m
 @end group
 @end example
 
-  以下はミニバッファーから読み取る例です。プロンプトは@w{@samp{Lisp expression:
-}}です(このプロンプトはストリーム@code{t}から読み取る際は常に使用される)。ユーザーの入力はプロンプトの後に表示されます。
+  The following example reads from the minibuffer.  The prompt is:
+@w{@samp{Lisp expression: }}.  (That is always the prompt used when you read
+from the stream @code{t}.)  The user's input is shown following the prompt.
 
 @example
 @group
@@ -185,7 +228,11 @@ Lisp expression: @kbd{23 @key{RET}}
 @end group
 @end example
 
-  最後は@code{useless-stream}という名前の関数ストリームから読み取る例です。ストリームを使用する前に変数@code{useless-list}を文字のリストで初期化しています。その後はリスト内の次の文字を取得するため、または文字をリストの先頭に追加することにより読み戻すために関数@code{useless-stream}を呼び出します。
+  Finally, here is an example of a stream that is a function, named
+@code{useless-stream}.  Before we use the stream, we initialize the variable
+@code{useless-list} to a list of characters.  Then each call to the function
+@code{useless-stream} obtains the next character in the list or unreads a
+character by adding it to the front of the list.
 
 @example
 @group
@@ -204,7 +251,7 @@ Lisp expression: @kbd{23 @key{RET}}
 @end example
 
 @noindent
-このストリームを使って以下のように読み取ります:
+Now we read using the stream thus constructed:
 
 @example
 @group
@@ -219,29 +266,43 @@ useless-list
 @end example
 
 @noindent
-開カッコと閉カッコがリスト内に残されることに注意してください。Lispリーダーは開カッコに出会うと、それを入力の終わりと判断して読み戻します。次にこのポイント位置からこのストリームを読み取ると、@samp{()}が読み取られて@code{nil}がリターンされます。
+Note that the open and close parentheses remain in the list.  The Lisp
+reader encountered the open parenthesis, decided that it ended the input,
+and unread it.  Another attempt to read from the stream at this point would
+read @samp{()} and return @code{nil}.
 
 @node Input Functions
-@section 入力関数
+@section Input Functions
 
-  このセクションでは、読み取りに関係のあるLisp関数と変数について説明します。
+  This section describes the Lisp functions and variables that pertain to
+reading.
 
-  以下の関数では@var{stream}は入力ストリーム(前のセクションを参照)を意味します。@var{stream}が@code{nil}または省略された場合のデフォルト値は@code{standard-input}です。
+  In the functions below, @var{stream} stands for an input stream (see the
+previous section).  If @var{stream} is @code{nil} or omitted, it defaults to
+the value of @code{standard-input}.
 
 @kindex end-of-file
-  読み取りにおいて終端されていないリスト、ベクター、文字列に遭遇したら@code{end-of-file}がシグナルされます。
+  An @code{end-of-file} error is signaled if reading encounters an
+unterminated list, vector, or string.
 
 @defun read &optional stream
-この関数は@var{stream}からテキスト表現されたLisp式を1つ読み取ってLispオブジェクトとしてリターンする。これは基本的なLisp入力関数である。
+This function reads one textual Lisp expression from @var{stream}, returning
+it as a Lisp object.  This is the basic Lisp input function.
 @end defun
 
 @defun read-from-string string &optional start end
 @cindex string to object
-この関数は@var{string}内のテキストからテキスト表現された最初のLisp式を読み取る。リターン値は@sc{car}がその式で、@sc{cdr}が次に読み取られるその文字列内の残りの文字(読み取られていない最初の文字)の位置を与える整数であるようなコンスセルである。
+This function reads the first textual Lisp expression from the text in
+@var{string}.  It returns a cons cell whose @sc{car} is that expression, and
+whose @sc{cdr} is an integer giving the position of the next remaining
+character in the string (i.e., the first one not read).
 
-@var{start}が与えられると、文字列内のインデックス@var{start}(最初の文字はインデックス0)から読み取りが開始される。@var{end}を指定すると、残りの文字列が存在しないかのごとくそのインデックスの直前で読み取りがストップされる。
+If @var{start} is supplied, then reading begins at index @var{start} in the
+string (where the first character is at index 0).  If you specify @var{end},
+then reading is forced to stop just before that index, as if the rest of the
+string were not there.
 
-たとえば:
+For example:
 
 @example
 @group
@@ -254,18 +315,18 @@ useless-list
 @end group
 
 @group
-;; @r{最初の文字から読み取りを開始}
+;; @r{Read starting at the first character.}
 (read-from-string "(list 112)" 0)
      @result{} ((list 112) . 10)
 @end group
 @group
-;; @r{2つ目の文字から読み取りを開始}
+;; @r{Read starting at the second character.}
 (read-from-string "(list 112)" 1)
      @result{} (list . 5)
 @end group
 @group
-;; @r{7番目の文字から読み取りを開始}
-;;   @r{して9番目の文字で停止}
+;; @r{Read starting at the seventh character,}
+;;   @r{and stopping at the ninth.}
 (read-from-string "(list 112)" 6 8)
      @result{} (11 . 8)
 @end group
@@ -273,70 +334,106 @@ useless-list
 @end defun
 
 @defun read-positioning-symbols &optional stream
-この関数は@code{read}が行うように@var{stream}からテキストとして1つの式を読み取るが、読み込んだシンボルにたいしてそのシンボルが@var{stream}で出現した位置を読み込んだシンボルに付加する。効率上の理由によりシンボル@code{nil}だけは位置を付加しない。@ref{Symbols
-with Position}を参照のこと。これはバイトコンパイラーによって使用される関数である。
+This function reads one textual expression from @var{stream}, like
+@code{read} does, but additionally positions the read symbols to the
+positions in @var{stream} where they occurred.  Only the symbol @code{nil}
+is not positioned, this for efficiency reasons.  @xref{Symbols with
+Position}.  This function is used by the byte compiler.
 @end defun
 
 @defvar standard-input
-この変数はデフォルト入力ストリーム(引数@var{stream}が@code{nil}のときに@code{read}が使用するストリーム)を保持する。デフォルトは@code{t}で、これはミニバッファーを使用することを意味する。
+This variable holds the default input stream---the stream that @code{read}
+uses when the @var{stream} argument is @code{nil}.  The default is @code{t},
+meaning use the minibuffer.
 @end defvar
 
 @defvar read-circle
-非@code{nil}なら、この変数は循環構造(circular structure)と共有構造(shared
-structures)の読み取りを有効にする。@ref{Circular Objects}を参照のこと。デフォルト値は@code{t}。
+If non-@code{nil}, this variable enables the reading of circular and shared
+structures.  @xref{Circular Objects}.  Its default value is @code{t}.
 @end defvar
 
 @cindex binary I/O in batch mode
-batchモードのEmacsプロセスの標準入力や標準出力のストリームにたいして読み取りや書き込みを行う際には、任意のバイナリーデータにたいしてそのまま読み取りや書き込みを行うことや、改行とCR-LFの変換を何も行わないことを保証することが要求される場合があります。この問題はMS-WindowsとMS-DOSだけに存在する問題であり、POSIXではそのような問題はありません。以下の関数によりEmacsプロセスのすべての標準ストリームのI/Oモードを制御することができます。
+When reading or writing from the standard input/output streams of the Emacs
+process in batch mode, it is sometimes required to make sure any arbitrary
+binary data will be read/written verbatim, and/or that no translation of
+newlines to or from CR-LF pairs is performed.  This issue does not exist on
+POSIX hosts, only on MS-Windows and MS-DOS@.  The following function allows
+you to control the I/O mode of any standard stream of the Emacs process.
 
 @defun set-binary-mode stream mode
-@var{stream}のI/Oモードのバイナリーとテキストを切り替える。@var{mode}が非@code{nil}ならバイナリーモード、それ以外ならテキストモードに切り替える。@var{stream}の値は@code{stdin}、@code{stdout}、@code{stderr}のいずれか。この関数は副作用として@var{stream}の保留中の出力データをすべてフラッシュして、@var{stream}の以前のI/Oモードの値をリターンする。POSIXでは常に非@code{nil}値をリターンして、保留中の出力のフラッシュ以外は何も行わない。
+Switch @var{stream} into binary or text I/O mode.  If @var{mode} is
+non-@code{nil}, switch to binary mode, otherwise switch to text mode.  The
+value of @var{stream} can be one of @code{stdin}, @code{stdout}, or
+@code{stderr}.  This function flushes any pending output data of
+@var{stream} as a side effect, and returns the previous value of I/O mode
+for @var{stream}.  On POSIX hosts, it always returns a non-@code{nil} value
+and does nothing except flushing pending output.
 @end defun
 
 @defun readablep object
 @cindex readable syntax
-この述語は@var{object}が@dfn{読み取り可能構文(readable syntax)}かどうか、つまり書き込んでからEmacs
-Lispリーダーによって読み戻せるかどうかを判定する。読み取り可能でなければ@code{nil}、読み取り可能であればこの関数は@var{object}のプリント表現をリターンする(@code{prin1}を通じて;
-@ref{Output Functions}を参照)。
+This predicate says whether @var{object} has @dfn{readable syntax}, i.e., it
+can be written out and then read back by the Emacs Lisp reader.  If it
+can't, this function returns @code{nil}; if it can, this function returns a
+printed representation (via @code{prin1}, @pxref{Output Functions}) of
+@var{object}.
 @end defun
 
 @node Output Streams
-@section 出力ストリーム
+@section Output Streams
 @cindex stream (for printing)
 @cindex output stream
 
-  出力ストリームはプリントによって生成された文字に何を行うかを指定します。ほとんどのプリント関数は引数としてオプションで出力ストリームを受け取ります。以下は利用できる出力ストリーム型です:
+  An output stream specifies what to do with the characters produced by
+printing.  Most print functions accept an output stream as an optional
+argument.  Here are the possible types of output stream:
 
 @table @asis
 @item @var{buffer}
 @cindex buffer output stream
-出力文字は@var{buffer}のポイント位置に挿入される。文字が挿入された分だけポイントが進む。
+The output characters are inserted into @var{buffer} at point.  Point
+advances as characters are inserted.
 
 @item @var{marker}
 @cindex marker output stream
-出力文字は@var{marker}があるバッファーのマーカー位置に挿入される。文字が挿入された分だけマーカー位置が進む。ストリームがマーカーのときは、そのバッファー内のポイント位置にプリントは影響せず、この種のプリントでポイントは移動しない(マーカー位置がポイント位置かポイント位置より前の場合は除く。通常はテキストの周囲にポイントが進む)。
+The output characters are inserted into the buffer that @var{marker} points
+into, at the marker position.  The marker position advances as characters
+are inserted.  The value of point in the buffer has no effect on printing
+when the stream is a marker, and this kind of printing does not move point
+(except that if the marker points at or before the position of point, point
+advances with the surrounding text, as usual).
 
 @item @var{function}
 @cindex function output stream
-出力文字は文字を格納する役目をもつ@var{function}に渡される。この関数は1つの文字を引数に出力される文字の回数呼び出され、格納したい場所にその文字を格納する役目をもつ。
+The output characters are passed to @var{function}, which is responsible for
+storing them away.  It is called with a single character as argument, as
+many times as there are characters to be output, and is responsible for
+storing the characters wherever you want to put them.
 
 @item @code{t}
 @cindex @code{t} output stream
-出力文字はエコーエリアに表示される。Emacsがbatchモード(@ref{Batch
-Mode}を参照)で実行中なら、出力はかわりに標準出力デスクリプターに書き込まれる。
+The output characters are displayed in the echo area.  If Emacs is running
+in batch mode (@pxref{Batch Mode}), the output is written to the standard
+output descriptor instead.
 
 @item @code{nil}
 @cindex @code{nil} output stream
-出力ストリームに@code{nil}が指定された場合は、かわりに@code{standard-output}変数の値が使用されることを意味する。この値は@dfn{デフォルトの出力ストリーム(default
-output stream)}であり、非@code{nil}でなければならない。
+@code{nil} specified as an output stream means to use the value of the
+@code{standard-output} variable instead; that value is the @dfn{default
+output stream}, and must not be @code{nil}.
 
 @item @var{symbol}
-出力ストリームとしてのシンボルは、(もしあれば)そのシンボルの関数定義と等価である。
+A symbol as output stream is equivalent to the symbol's function definition
+(if any).
 @end table
 
-  有効な出力ストリームの多くは、入力ストリームとしても有効です。したがって入力ストリームと出力ストリームの違いは、Lispオブジェクトの型ではなく、どのようにLispオブジェクトを使うかという点です。
+  Many of the valid output streams are also valid as input streams.  The
+difference between input and output streams is therefore more a matter of
+how you use a Lisp object, than of different types of object.
 
-  以下はバッファーを出力ストリームとして使用する例です。ポイントは最初は@samp{the}の中の@samp{h}の直前にあります。そして最後も同じ@samp{h}の直前に配置されます。
+  Here is an example of a buffer used as an output stream.  Point is initially
+located as shown immediately before the @samp{h} in @samp{the}.  At the end,
+point is located directly before that same @samp{h}.
 
 @cindex print example
 @example
@@ -358,7 +455,11 @@ This is t
 @end group
 @end example
 
-  次はマーカーを出力ストリームとして使用する例です。マーカーは最初はバッファー@code{foo}内の単語@samp{the}の中の@samp{t}と@samp{h}の間にあります。最後には挿入されたテキストによってマーカーが進んで、同じ@samp{h}の前に留まります。通常の方法で見られるようなポイント位置への影響がないことに注意してください。
+  Now we show a use of a marker as an output stream.  Initially, the marker is
+in buffer @code{foo}, between the @samp{t} and the @samp{h} in the word
+@samp{the}.  At the end, the marker has advanced over the inserted text so
+that it remains positioned before the same @samp{h}.  Note that the location
+of point, shown in the usual fashion, has no effect.
 
 @example
 @group
@@ -391,7 +492,7 @@ m
 @end group
 @end example
 
-  以下はエコーエリアに出力を表示する例です:
+  The following example shows output to the echo area:
 
 @example
 @group
@@ -403,8 +504,10 @@ m
 @end group
 @end example
 
-  最後は関数を出力ストリームとして使用する例です。関数@code{eat-output}は与えられたそれぞれの文字を@code{last-output}の先頭にconsします(@ref{Building
-Lists}を参照)。最後にはリストには出力されたすべての文字が逆順で含まれます。
+  Finally, we show the use of a function as an output stream.  The function
+@code{eat-output} takes each character that it is given and conses it onto
+the front of the list @code{last-output} (@pxref{Building Lists}).  At the
+end, the list contains all the characters output, but in reverse order.
 
 @example
 @group
@@ -431,7 +534,7 @@ last-output
 @end example
 
 @noindent
-このリストを逆転すれば正しい順序で出力することができます:
+Now we can put the output in the proper order by reversing the list:
 
 @example
 @group
@@ -443,14 +546,16 @@ last-output
 @end example
 
 @noindent
-@code{concat}を呼び出してリストを文字列に変換すれば、内容をより明解に確認できます。
+Calling @code{concat} converts the list to a string so you can see its
+contents more clearly.
 
 @cindex @code{stderr} stream, use for debugging
 @anchor{external-debugging-output}
 @defun external-debugging-output character
-この関数はデバッグ時の出力ストリームとして有用。これは標準エラーストリームに@var{character}を書き込む。
+This function can be useful as an output stream when debugging.  It writes
+@var{character} to the standard error stream.
 
-たとえば
+For example
 @example
 @group
 (print "This is the output" #'external-debugging-output)
@@ -461,20 +566,34 @@ last-output
 @end defun
 
 @node Output Functions
-@section 出力関数
+@section Output Functions
 
-  このセクションではオブジェクトをオブジェクトのプリント表現に変換して、LispオブジェクトをプリントするLisp関数を説明します。
+  This section describes the Lisp functions for printing Lisp
+objects---converting objects into their printed representation.
 
 @cindex @samp{"} in printing
 @cindex @samp{\} in printing
 @cindex quoting characters in printing
 @cindex escape characters in printing
-  Emacsプリント関数には、正しく読み取れるように必要なとき出力にクォート文字を追加するものがあります。使用されるクォート文字は@samp{"}と@samp{\}です。これらは文字列をシンボルと区別するとともに、文字列とシンボル内の区切り文字が読み取りの際に区切り文字として扱われることを防ぎます。完全な詳細は@ref{Printed
-Representation}を参照してください。クォートするかしないかはプリント関数の選択によって指定できます。
+  Some of the Emacs printing functions add quoting characters to the output
+when necessary so that it can be read properly.  The quoting characters used
+are @samp{"} and @samp{\}; they distinguish strings from symbols, and
+prevent punctuation characters in strings and symbols from being taken as
+delimiters when reading.  @xref{Printed Representation}, for full details.
+You specify quoting or no quoting by the choice of printing function.
 
-  そのテキストがLispに読み戻す場合、またはLispプログラマーにLispオブジェクトを明解に説明するのが目的の場合は、曖昧さを避けるためにクォート文字をプリントするべきです。しかしプログラマー以外の人間にたいして出力の見栄えを良くするのが目的なら、通常はクォートなしでプリントしたほうがよいでしょう。
+  If the text is to be read back into Lisp, then you should print with quoting
+characters to avoid ambiguity.  Likewise, if the purpose is to describe a
+Lisp object clearly for a Lisp programmer.  However, if the purpose of the
+output is to look nice for humans, then it is usually better to print
+without quoting.
 
-  Lispオブジェクトは自己参照ができます。通常の方法で自己参照オブジェクトをプリントするにはテキストが無限に必要であり、その試みにより無限再帰が発生する恐れがあります。Emacsはそのような再帰を検知して、すでにプリントされたオブジェクトを再帰的にプリントするかわりに、@samp{#@var{level}}をプリントします。たとえば以下はカレントのプリント処理において、レベル0のオブジェクトを再帰的に参照することを示しています:
+  Lisp objects can refer to themselves.  Printing a self-referential object in
+the normal way would require an infinite amount of text, and the attempt
+could cause infinite recursion.  Emacs detects such recursion and prints
+@samp{#@var{level}} instead of recursively printing an object already being
+printed.  For example, here @samp{#0} indicates a recursive reference to the
+object at level 0 of the current print operation:
 
 @example
 (setq foo (list nil))
@@ -483,12 +602,18 @@ Representation}を参照してください。クォートするかしないか�
      @result{} (#0)
 @end example
 
-  以下の関数では@var{stream}は出力ストリームを意味します(出力ストリームの説明は前のセクションを参照。デバッグではストリーム値として@ref{external-debugging-output}も有用)
-@var{stream}が@code{nil}か省略された場合のデフォルトは@code{standard-output}の値です。
+  In the functions below, @var{stream} stands for an output stream.  (See the
+previous section for a description of output streams.  Also
+@xref{external-debugging-output}, a useful stream value for debugging.)  If
+@var{stream} is @code{nil} or omitted, it defaults to the value of
+@code{standard-output}.
 
 @defun print object &optional stream
 @cindex Lisp printer
-@code{print}関数はプリントを行うための便利な手段である。この関数は@var{object}の前後に改行を付与して@var{object}のプリント表現を@var{stream}にプリントする。クォート文字が使用される。@code{print}は@var{object}をリターンする。たとえば:
+The @code{print} function is a convenient way of printing.  It outputs the
+printed representation of @var{object} to @var{stream}, printing in addition
+one newline before @var{object} and another after it.  Quoting characters
+are used.  @code{print} returns @var{object}.  For example:
 
 @example
 @group
@@ -507,7 +632,10 @@ Representation}を参照してください。クォートするかしないか�
 @end defun
 
 @defun prin1 object &optional stream overrides
-この関数は@var{object}のプリント表現を@var{stream}に出力する。この関数は@code{print}のように出力を分割するための改行をプリントしないが、@code{print}のようにクォート文字を使用する。@var{object}をリターンする。
+This function outputs the printed representation of @var{object} to
+@var{stream}.  It does not print newlines to separate output as @code{print}
+does, but it does use quoting characters just like @code{print}.  It returns
+@var{object}.
 
 @example
 @group
@@ -519,15 +647,19 @@ Representation}を参照してください。クォートするかしないか�
 @end group
 @end example
 
-@var{overrides}が非@code{nil}なら、それは@code{t}
-(すべてのプリンター関連変数にたいしてデフォルトとして@code{prin1}を使うよう指示する)、あるいはセッティングのリストであること。詳細については@ref{Output
-Overrides}を参照のこと。
+If @var{overrides} is non-@code{nil}, it should either be @code{t} (which
+tells @code{prin1} to use the defaults for all printer related variables),
+or a list of settings.  @xref{Output Overrides}, for details.
 @end defun
 
 @defun princ object &optional stream
-この関数は@var{object}のプリント表現を@var{stream}に出力する。@var{object}をリターンする。
+This function outputs the printed representation of @var{object} to
+@var{stream}.  It returns @var{object}.
 
-この関数は@code{read}ではなく人間が読める出力を生成することを意図しているので、クォート文字を挿入せず文字列のコンテンツの前後にダブルクォート文字を配置しない。各呼び出しの間にスペースを何も出力しない。
+This function is intended to produce output that is readable by people, not
+by @code{read}, so it doesn't insert quoting characters and doesn't put
+double-quotes around the contents of strings.  It does not add any spacing
+between calls.
 
 @example
 @group
@@ -542,21 +674,30 @@ Overrides}を参照のこと。
 
 @defun terpri &optional stream ensure
 @cindex newline in print
-この関数は@var{stream}に改行を出力する。名前の由来は``terminate
-print(プリントを終端する)''。@var{ensure}が非@code{nil}の場合には、@var{stream}がすでに行頭にあれば改行をプリントしない。この場合には@var{stream}に関数は指定できず、指定するとエラーがシグナルされる。この関数は改行をプリントしたら@code{t}をリターンする。
+This function outputs a newline to @var{stream}.  The name stands for
+``terminate print''.  If @var{ensure} is non-@code{nil} no newline is
+printed if @var{stream} is already at the beginning of a line.  Note in this
+case @var{stream} can not be a function and an error is signaled if it is.
+This function returns @code{t} if a newline is printed.
 @end defun
 
 @defun write-char character &optional stream
-この関数は@var{character}を@var{stream}に出力する。@var{character}をリターンする。
+This function outputs @var{character} to @var{stream}.  It returns
+@var{character}.
 @end defun
 
 @defun flush-standard-output
-端末に出力を送信するようなEmacsベースのバッチスクリプトでは、@code{standard-output}に改行文字を書き込むたびにEmacsが自動的に出力を表示する。この関数を使えば最初に改行文字を送信せずに@code{standard-output}をフラッシュ(flush)できるので、不完全な行を表示することができる。
+If you have Emacs-based batch scripts that send output to the terminal,
+Emacs will automatically display the output whenever you write a newline
+characters to @code{standard-output}.  This function allows you to flush to
+@code{standard-output} without sending a newline character first, which
+enables you to display incomplete lines.
 @end defun
 
 @defun prin1-to-string object &optional noescape overrides
 @cindex object to string
-この関数は同じ引数で@code{prin1}がプリントするテキストを含む文字列をリターンする。
+This function returns a string containing the text that @code{prin1} would
+have printed for the same argument.
 
 @example
 @group
@@ -573,7 +714,8 @@ If @var{overrides} is non-@code{nil}, it should either be @code{t}
 variables), or a list of settings.  @xref{Output Overrides}, for details.
 @end example
 
-@var{noescape}が非@code{nil}なら出力中のクォート文字の使用を抑制する(この引数はEmacsバージョン19以降でサポートされた)。
+If @var{noescape} is non-@code{nil}, that inhibits use of quoting characters
+in the output.  (This argument is supported in Emacs versions 19 and later.)
 
 @example
 @group
@@ -586,14 +728,15 @@ variables), or a list of settings.  @xref{Output Overrides}, for details.
 @end group
 @end example
 
-Lispオブジェクトのプリント表現を文字列として取得する別の手段については、@ref{Formatting
-Strings}の@code{format}を参照のこと。
+See @code{format}, in @ref{Formatting Strings}, for other ways to obtain the
+printed representation of a Lisp object as a string.
 @end defun
 
 @defmac with-output-to-string body@dots{}
-このマクロは出力を文字列に送るよう@code{standard-output}をセットアップしてフォーム@var{body}を実行する。その文字列をリターンする。
+This macro executes the @var{body} forms with @code{standard-output} set up
+to feed output into a string.  Then it returns that string.
 
-たとえばカレントバッファー名が@samp{foo}なら、
+For example, if the current buffer name is @samp{foo},
 
 @example
 (with-output-to-string
@@ -602,37 +745,47 @@ Strings}の@code{format}を参照のこと。
 @end example
 
 @noindent
-は@code{"The buffer is foo"}をリターンする。
+returns @code{"The buffer is foo"}.
 @end defmac
 
 @cindex pretty-printer
 @defun pp object &optional stream
-この関数は@code{prin1}と同じように@var{object}を@var{stream}に出力するが、より優雅(pretty)な方法でこれを行う。すなわちこの関数は人間がより読みやすいようにオブジェクトのインデントとパディングを行う。
+This function outputs @var{object} to @var{stream}, just like @code{prin1},
+but does it in a prettier way.  That is, it'll indent and fill the object to
+make it more readable for humans.
 @end defun
 
-任意のバイナリーデータを書き込んだり非POSIXホストで改行変換を回避するためにこのセクションで説明した関数を使用してbatchモードでバイナリーI/Oモードを使用する必要がある場合には@ref{Input
-Functions, set-binary-mode}を参照してください。
+If you need to use binary I/O in batch mode, e.g., use the functions
+described in this section to write out arbitrary binary data or avoid
+conversion of newlines on non-POSIX hosts, see @ref{Input Functions,
+set-binary-mode}.
 
 @node Output Variables
-@section 出力に影響する変数
+@section Variables Affecting Output
 @cindex output-controlling variables
 
 @defvar standard-output
-この変数の値はデフォルト出力ストリーム(@var{stream}引数が@code{nil}のときプリント関数が使用するストリーム)である。デフォルトは@code{t}で、これはエコーエリアに表示することを意味する。
+The value of this variable is the default output stream---the stream that
+print functions use when the @var{stream} argument is @code{nil}.  The
+default is @code{t}, meaning display in the echo area.
 @end defvar
 
 @defvar print-quoted
-これが非@code{nil}なら、省略されたリーダー構文(たとえば@code{(quote
-foo)}を@code{'foo}、@code{(function
-foo)}を@code{#'foo}のように)を使用してクォートされたフォームをプリントすることを意味する。デフォルトは@code{t}。
+If this is non-@code{nil}, that means to print quoted forms using
+abbreviated reader syntax, e.g., @code{(quote foo)} prints as @code{'foo},
+and @code{(function foo)} as @code{#'foo}.  The default is @code{t}.
 @end defvar
 
 @defvar print-escape-newlines
 @cindex @samp{\n} in print
 @cindex escape characters
-この変数が非@code{nil}なら、文字列内の改行は@samp{\n}、改ページは@samp{\f}でプリントされる。これらの文字は通常は実際の改行と改ページとしてプリントされる。
+If this variable is non-@code{nil}, then newline characters in strings are
+printed as @samp{\n} and formfeeds are printed as @samp{\f}.  Normally these
+characters are printed as actual newlines and formfeeds.
 
-この変数はクォートつきのプリントを行うプリント関数@code{prin1}と@code{print}に影響を与える。@code{princ}に影響はない。以下は@code{prin1}を使用した場合の例である:
+This variable affects the print functions @code{prin1} and @code{print} that
+print with quoting.  It does not affect @code{princ}.  Here is an example
+using @code{prin1}:
 
 @example
 @group
@@ -653,38 +806,59 @@ b"
 @end example
 
 @noindent
-2つ目の式では@code{prin1}を呼び出す間は@code{print-escape-newlines}のローカルバインドが効果をもつが、結果をプリントするときには効果がない。
+In the second expression, the local binding of @code{print-escape-newlines}
+is in effect during the call to @code{prin1}, but not during the printing of
+the result.
 @end defvar
 
 @defvar print-escape-control-characters
-この変数が非@code{nil}なら、クォートつきでプリントするプリント関数@code{prin1}と@code{print}は、文字列内のコントロール文字をバックスラッシュシーケンスとしてプリントする。この変数と@code{print-escape-newlines}がいずれも非@code{nil}なら改行と改頁には後者が優先される。
+If this variable is non-@code{nil}, control characters in strings are
+printed as backslash sequences by the print functions @code{prin1} and
+@code{print} that print with quoting.  If this variable and
+@code{print-escape-newlines} are both non-@code{nil}, the latter takes
+precedences for newlines and formfeeds.
 @end defvar
 
 @defvar print-escape-nonascii
-この変数が非@code{nil}なら、クォートつきでプリントするプリント関数@code{prin1}と@code{print}は文字列内のユニバイトの非@acronym{ASCII}文字を無条件でバックスラッシュシーケンスとしてプリントする。
+If this variable is non-@code{nil}, then unibyte non-@acronym{ASCII}
+characters in strings are unconditionally printed as backslash sequences by
+the print functions @code{prin1} and @code{print} that print with quoting.
 
-これらの関数は出力ストリームがマルチバイトバッファー、あるいはマーカーがマルチバイトバッファーをポイントするときは、この変数の値に関わらずユニバイト非@acronym{ASCII}文字にたいしてバックスラッシュシーケンスを使用する。
+Those functions also use backslash sequences for unibyte non-@acronym{ASCII}
+characters, regardless of the value of this variable, when the output stream
+is a multibyte buffer or a marker pointing into one.
 @end defvar
 
 @defvar print-escape-multibyte
-この変数が非@code{nil}なら、クォートつきでプリントするプリント関数@code{prin1}と@code{print}は、文字列内のマルチバイトの非@acronym{ASCII}文字を無条件でバックスラッシュシーケンスとしてプリントする。
+If this variable is non-@code{nil}, then multibyte non-@acronym{ASCII}
+characters in strings are unconditionally printed as backslash sequences by
+the print functions @code{prin1} and @code{print} that print with quoting.
 
-これらの関数は出力ストリームがユニバイトバッファー、あるいはマーカーがユニバイトバッファーをポイントするときは、この変数の値に関わらずマルチバイト非@acronym{ASCII}文字にたいしてバックスラッシュシーケンスを使用する。
+Those functions also use backslash sequences for multibyte
+non-@acronym{ASCII} characters, regardless of the value of this variable,
+when the output stream is a unibyte buffer or a marker pointing into one.
 @end defvar
 
 @defvar print-charset-text-property
-この変数は文字列のプリントにおいてテキストプロパティ`charset'のプリントを制御する。値は@code{nil}、@code{t}、または@code{default}のいずれか。
+This variable controls printing of `charset' text property on printing a
+string.  The value should be @code{nil}, @code{t}, or @code{default}.
 
-値が@code{nil}なら@code{charset}テキストプロパティを決してプリントせず、@code{t}なら常にプリントする。
+If the value is @code{nil}, @code{charset} text properties are never
+printed.  If @code{t}, they are always printed.
 
-値が@code{default}なら``予期せぬ(unexpected)''@code{charset}プロパティがある場合だけ@code{charset}テキストプロパティをプリントする。ASCII文字ではすべてのcharsetが``期待された(expected)''ものとみなされる。それ以外なら文字の期待される@code{charset}プロパティは@code{char-charset}により与えられる。
+If the value is @code{default}, only print @code{charset} text properties if
+there is an ``unexpected'' @code{charset} property.  For ascii characters,
+all charsets are considered ``expected''.  Otherwise, the expected
+@code{charset} property of a character is given by @code{char-charset}.
 @end defvar
 
 @defvar print-length
 @cindex printing limits
-この変数の値は任意のリスト、ベクター、ブールベクターをプリントする際の最大要素数である。プリントされるオブジェクトがこれより多くの要素をもつ場合は、省略記号(``...'')で省略される。
+The value of this variable is the maximum number of elements to print in any
+list, vector or bool-vector.  If an object being printed has more than this
+many elements, it is abbreviated with an ellipsis.
 
-値が@code{nil}(デフォルト)の場合は無制限。
+If the value is @code{nil} (the default), then there is no limit.
 
 @example
 @group
@@ -700,34 +874,45 @@ b"
 @end defvar
 
 @defvar print-level
-この変数の値はプリント時の丸カッコ(parentheses: ``()'')と角カッコ(brackets:
-``[]"')のネスト最大深さである。この制限を超える任意のリストとベクターは省略記号(``...'')で省略される。値@code{nil}(デフォルト)は無制限を意味する。
+The value of this variable is the maximum depth of nesting of parentheses
+and brackets when printed.  Any list or vector at a depth exceeding this
+limit is abbreviated with an ellipsis.  A value of @code{nil} (which is the
+default) means no limit.
 @end defvar
 
 @defopt eval-expression-print-length
 @defoptx eval-expression-print-level
-これらは@code{eval-expression}によって使用される@code{print-length}と@code{print-level}の値であり、したがって間接的に多くのインタラクティブな評価コマンドにより使用される(@ref{Lisp
-Eval,, Evaluating Emacs Lisp Expressions, emacs, The GNU Emacs Manual}を参照)。
+These are the values for @code{print-length} and @code{print-level} used by
+@code{eval-expression}, and thus, indirectly, by many interactive evaluation
+commands (@pxref{Lisp Eval,, Evaluating Emacs Lisp Expressions, emacs, The
+GNU Emacs Manual}).
 @end defopt
 
-  以下の変数は循環構造および共有構造の検出と報告に使用されます:
+  These variables are used for detecting and reporting circular and shared
+structure:
 
 @defvar print-circle
-非@code{nil}なら、この変数はプリント時の循環構造と共有構造の検出を有効にする。@ref{Circular Objects}を参照のこと。
+If non-@code{nil}, this variable enables detection of circular and shared
+structure in printing.  @xref{Circular Objects}.
 @end defvar
 
 @defvar print-unreadable-function
-デフォルトではEmacsは読み取り可能ではないオブジェクトを@samp{#<...>"}のようにプリントする。たとえば:
+By default, Emacs prints unreadable objects as @samp{#<...>"}.  For
+instance:
 
 @example
 (prin1-to-string (make-marker))
      @result{} "#<marker in no buffer>"
 @end example
 
-この変数が非@code{nil}なら、これらのオブジェクトにたいするプリントを処理するために呼び出される関数であること。この関数はそのオブジェクト、およびプリント関数(@ref{Output
-Functions}を参照)によって使用される@var{noescape}フラグという2つの引数で呼び出される。
+If this variable is non-@code{nil}, it should be a function that will be
+called to handle printing of these objects.  The function will be called
+with two arguments: the object and the @var{noescape} flag used by the
+printing functions (@pxref{Output Functions}).
 
-この関数は@code{nil}(通常のようにオブジェクトをプリント)、文字列(プリントする文字列)、あるいは他のオブジェクト(そのオブジェクトをプリントしない)のいずれかをリターンすること。たとえば:
+The function should return either @code{nil} (print the object as usual), or
+a string (which will be printed), or any other object (don't print the
+object).  For instance:
 
 @example
 (let ((print-unreadable-function
@@ -738,22 +923,35 @@ Functions}を参照)によって使用される@var{noescape}フラグという2
 @end defvar
 
 @defvar print-gensym
-非@code{nil}なら、この変数はプリント時のインターンされていないシンボル(@ref{Creating
-Symbols}を参照)の検出を有効にする。これが有効なら、インターンされていないシンボルはプレフィックス@samp{#:}とともにプリントされる。このプレフィックスは、Lispリーダーにたいしてインターンされていないシンボルを生成するよう告げる。
+If non-@code{nil}, this variable enables detection of uninterned symbols
+(@pxref{Creating Symbols}) in printing.  When this is enabled, uninterned
+symbols print with the prefix @samp{#:}, which tells the Lisp reader to
+produce an uninterned symbol.
 @end defvar
 
 @defvar print-continuous-numbering
-非@code{nil}なら、複数のプリント呼び出しを通じて通番が振られることを意味する。これは@samp{#@var{n}=}ラベルと@samp{#@var{m}#}参照にたいしてプリントされる数字に影響する。この変数を@code{setq}でセットしてはならない。@code{let}を使用して一時的に@code{t}にバインドすること。これを行う場合は@code{print-number-table}も@code{nil}にバインドすること。
+If non-@code{nil}, that means number continuously across print calls.  This
+affects the numbers printed for @samp{#@var{n}=} labels and @samp{#@var{m}#}
+references.  Don't set this variable with @code{setq}; you should only bind
+it temporarily to @code{t} with @code{let}.  When you do that, you should
+also bind @code{print-number-table} to @code{nil}.
 @end defvar
 
 @defvar print-number-table
-この変数は@code{print-circle}機能を実装するために、プリント処理で内部的に使用されるベクターを保持する。@code{print-continuous-numbering}をバインドするときにこの変数を@code{nil}にバインドする以外は、この変数を使用するべきではない。
+This variable holds a vector used internally by printing to implement the
+@code{print-circle} feature.  You should not use it except to bind it to
+@code{nil} when you bind @code{print-continuous-numbering}.
 @end defvar
 
 @defvar float-output-format
-この変数は浮動小数点数をプリントする方法を指定する。デフォルトは@code{nil}で、これは情報を失わずにその数値を表せるもっとも短い出力を使用することを意味する。
+This variable specifies how to print floating-point numbers.  The default is
+@code{nil}, meaning use the shortest output that represents the number
+without losing information.
 
-出力フォーマットをより精密に制御するために、この変数に文字列をセットできる。この文字列にはCの@code{sprintf}関数で使用される@samp{%}指定子をセットする。この変数で使用することのできる制限についての詳細は、この変数のドキュメント文字列を参照のこと。
+To control output format more precisely, you can put a string in this
+variable.  The string should hold a @samp{%}-specification to be used in the
+C function @code{sprintf}.  For further restrictions on what you can use,
+see the variable's documentation string.
 @end defvar
 
 @defvar print-integers-as-characters
@@ -762,76 +960,96 @@ characters will be printed using Lisp character syntax (@pxref{Basic Char
 Syntax}).  Other numbers are printed the usual way.  For example, the list
 @code{(4 65 -1 10)} would be printed as @samp{(4 ?A -1 ?\n)}.
 
-正確にはUnicode一般カテゴリーLetter、Number、Punctuation、Symbol、Private-useに属する文字(@ref{Character
-Properties}を参照)を表す文字、同じように改行のようなエスケープシーケンスを独自にもつコントロール文字にたいする値は、文字構文を使用してプリントされる。
+More precisely, values printed in character syntax are those representing
+characters belonging to the Unicode general categories Letter, Number,
+Punctuation, Symbol and Private-use (@pxref{Character Properties}), as well
+as the control characters having their own escape syntax such as newline.
 @end defvar
 
 @defopt pp-default-function
-このユーザーオプションは出力を見栄えよくするために、@code{pp}が使用する関数を指定する。デフォルトでは@code{pp-fill}を使用する。この関数は速度と@code{fill-column}に適合するような自然な見栄えの出力生成との間で、良好なバランスを達成しようと試みる。以前のデフォルトである@code{pp-28}はより高速だったが、見栄えの自然さとコンパクト性において劣っていた。
+This user variable specifies the function used by @code{pp} to prettify its
+output.  By default it uses @code{pp-fill} which attempts to strike a good
+balance between speed and generating natural looking output that fits within
+@code{fill-column}.  The previous default was @code{pp-28}, which tends to
+be faster but generate output that looks less natural and is less compact.
 @end defopt
 
 @node Output Overrides
-@section 出力変数のオーバーライド
+@section Overriding Output Variables
 @cindex overrides, in output functions
 @cindex output variables, overriding
 
-前のセクション(@ref{Output Variables}を参照)では、Emacs
-Lispプリンターが出力用にデータをどのようにフォーマットするかを制御するさまざまな変数を説明しました。これらは一般的には変更用にユーザーが利用できますが、デフォルトのフォーマットでデータを出力したり、あるいは他の手段でユーザーセッティングをオーバーライドしたい場合があるかもしれません。たとえばEmacs
-Lispのデータをファイルに格納したい場合には、そのデータが@code{print-length}のセッティングによって短縮されたくはないでしょう。
+The previous section (@pxref{Output Variables}) lists the numerous variables
+that control how the Emacs Lisp printer formats data for outputs.  These are
+generally available for users to change, but sometimes you want to output
+data in the default format, or override the user settings in some other
+way.  For instance, if you're storing Emacs Lisp data in a file, you don't
+want that data to be shortened by a @code{print-length} setting.
 
-そのために@code{prin1}および@code{prin1-to-string}という関数にはオプションとして@var{overrides}引数があります。この引数には@code{t}(すべてのプリント用変数をデフォルト値にリセット)、あるいはいくつかの変数にたいするセッティングのリストのいずれかを指定できます。このリストの要素はそれぞれ@code{t}(``デフォルトへのリセット''を意味しており、通常はリストの最初の要素)、あるいは@code{car}が出力変数を意味するシンボルで@code{cdr}がその変数にたいする値であるようなペアーを指定できます。
+The @code{prin1} and @code{prin1-to-string} functions therefore have an
+optional @var{overrides} argument.  This argument can either be @code{t}
+(which means that all printing variables should be reset to the default
+values), or a list of settings for some of the variables.  Each element in
+the list can be either @code{t} (which means ``reset to defaults'', and will
+usually be the first element of the list), or a pair whose @code{car} is a
+symbol that stands for an output variable and whose @code{cdr} is the value
+for that variable.
 
-たとえば以下はデフォルトだけを用いてプリントします:
+For instance, this prints using nothing but defaults:
 
 @lisp
 (prin1 object nil t)
 @end lisp
 
-以下はカレントのプリントセッティングを用いて@var{object}をプリントしますが、@code{print-length}の値を5にオーバーライドします:
+This prints @var{object} using the current printing settings, but overrides
+the value of @code{print-length} to be 5:
 
 @lisp
 (prin1 object nil '((length . 5)))
 @end lisp
 
-そして最後は@code{print-length}を5にバインドする以外はデフォルトセッティングを用いて@var{object}をプリントする例です:
+And finally, this prints @var{object} using only default settings, but with
+@code{print-length} bound to 5:
 
 @lisp
 (prin1 object nil '(t (length . 5)))
 @end lisp
 
-以下は使用できるシンボルと、それらのシンボルがマップされる変数のリストです:
+Below is a list of symbols that can be used, and which variables they map
+to:
 
 @table @code
 @item length
-@code{print-length}をオーバーライドする。
+This overrides @code{print-length}.
 @item level
-@code{print-level}をオーバーライドする。
+This overrides @code{print-level}.
 @item circle
-@code{print-circle}をオーバーライドする。
+This overrides @code{print-circle}.
 @item quoted
-@code{print-quoted}をオーバーライドする。
+This overrides @code{print-quoted}.
 @item escape-newlines
-@code{print-escape-newlines}をオーバーライドする。
+This overrides @code{print-escape-newlines}.
 @item escape-control-characters
-@code{print-escape-control-characters}をオーバーライドする。
+This overrides @code{print-escape-control-characters}.
 @item escape-nonascii
-@code{print-escape-nonascii}をオーバーライドする。
+This overrides @code{print-escape-nonascii}.
 @item escape-multibyte
-@code{print-escape-multibyte}をオーバーライドする。
+This overrides @code{print-escape-multibyte}.
 @item charset-text-property
-@code{print-charset-text-property}をオーバーライドする。
+This overrides @code{print-charset-text-property}.
 @item unreadeable-function
-@code{print-unreadable-function}をオーバーライドする。
+This overrides @code{print-unreadable-function}.
 @item gensym
-@code{print-gensym}をオーバーライドする。
+This overrides @code{print-gensym}.
 @item continuous-numbering
-@code{print-continuous-numbering}をオーバーライドする。
+This overrides @code{print-continuous-numbering}.
 @item number-table
-@code{print-number-table}をオーバーライドする。
+This overrides @code{print-number-table}.
 @item float-format
-@code{float-output-format}をオーバーライドする。
+This overrides @code{float-output-format}.
 @item integers-as-characters
-@code{print-integers-as-characters}をオーバーライドする。
+This overrides @code{print-integers-as-characters}.
 @end table
 
-将来的には変数に直接マップされない、このパラメーターだけを介してのみ使用できるオーバーライドが更に提供されるかもしれません。
+In the future, more overrides may be offered that do not map directly to a
+variable, but can only be used via this parameter.

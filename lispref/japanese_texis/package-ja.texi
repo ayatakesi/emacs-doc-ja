@@ -9,106 +9,147 @@
 @c Copyright (C) 2010--2024 Free Software Foundation, Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node Packaging
-@chapter 配布用Lispコードの準備
+@chapter Preparing Lisp code for distribution
 @cindex package
 @cindex Lisp package
 
-  Emacs
-Lispコードをユーザーに配布するために、Emacsは標準的な方法を提供します。@dfn{パッケージ(package)}はユーザーが簡単にダウンロード、インストール、アンインストール、および更新できるような方法でフォーマットと同梱された1つ以上のファイルのコレクションです。
+  Emacs provides a standard way to distribute Emacs Lisp code to users.  A
+@dfn{package} is a collection of one or more files, formatted and bundled in
+such a way that users can easily download, install, uninstall, and upgrade
+it.
 
-  以降のセクションではパッケージを作成する方法、およびそれを他の人がダウンロードできるように@dfn{パッケージアーカイブ(package
-archive)}に配置する方法を説明します。パッケージングシステムのユーザーレベル機能の説明は@ref{Packages,,, emacs, The
-GNU Emacs Manual}を参照してください。
+  The following sections describe how to create a package, and how to put it
+in a @dfn{package archive} for others to download.  @xref{Packages,,, emacs,
+The GNU Emacs Manual}, for a description of user-level features of the
+packaging system.
 
-  これらのセクションは主にパッケージアーカイブのメンテナー向けであり、情報の多くはパッケージ作成者(これらのアーカイブを介して配布されるコードを記述した人)には関係ありません。
+  These sections are mostly directed towards package archive
+maintainers---much of this information is not relevant for package authors
+(i.e., people who write code that will be distributed via these archives).
 
 @menu
-* Packaging Basics::         Emacs Lispパッケージの基本的概念。
-* Simple Packages::          単一.elファイルをパッケージする方法。
-* Multi-file Packages::      複数ファイルをパッケージする方法。
-* Package Archives::         パッケージアーカイブの保守。
-* Archive Web Server::       アーカイブウェブサーバーへのインターフェース。
-* Forwards-Compatibility::   Emacsの旧バージョンのサポート。
+* Packaging Basics::         The basic concepts of Emacs Lisp packages.
+* Simple Packages::          How to package a single .el file.
+* Multi-file Packages::      How to package multiple files.
+* Package Archives::         Maintaining package archives.
+* Archive Web Server::       Interfacing to an archive web server.
+* Forwards-Compatibility::   Supporting older versions of Emacs.
 @end menu
 
 @node Packaging Basics
-@section パッケージ化の基礎
+@section Packaging Basics
 @cindex package attributes
 @cindex package name
 @cindex package version
 @cindex dependencies
 @cindex package dependencies
 
-  パッケージは@dfn{シンプルパケージ(simple package)}か@dfn{複数ファイルパッケージ(multi-file
-package)}のいずれかです。シンプルパッケージは単一のEmacs
-Lispファイル内に格納される一方、複数ファイルパッケージはtarファイル(複数のLispファイルとマニュアルのような非Lispファイルが含まれる可能性がある)に格納されます。
+  A package is either a @dfn{simple package} or a @dfn{multi-file package}.  A
+simple package is stored in a package archive as a single Emacs Lisp file,
+while a multi-file package is stored as a tar file (containing multiple Lisp
+files, and possibly non-Lisp files such as a manual).
 
-  通常の使い方ではシンプルパッケージと複数ファイルパッケージとの違いは比較的重要ではありません。Package
-Menuインターフェースでは、それらの間に差異はありません。しかし以降のセクションで説明するように作成する手順は異なります。
+  In ordinary usage, the difference between simple packages and multi-file
+packages is relatively unimportant; the Package Menu interface makes no
+distinction between them.  However, the procedure for creating them differs,
+as explained in the following sections.
 
-  パッケージ(シンプルか複数ファイル)はそれぞれ特定の@dfn{属性(attributes)}をもっています:
+  Each package (whether simple or multi-file) has certain @dfn{attributes}:
 
 @table @asis
 @item Name
-短い単語(たとえば@samp{auctex})。これは通常はそのプログラム内でシンボルプレフィクスとしても使用される(@ref{Coding
-Conventions}を参照)。
+A short word (e.g., @samp{auctex}).  This is usually also the symbol prefix
+used in the program (@pxref{Coding Conventions}).
 
 @item Version
-関数@code{version-to-list}が理解できる形式のバージョン番号(たとえば@samp{11.86})。パッケージの各リリースではユーザーがパッケージアーカイブの問い合わせでアップグレードとして認識できるようにバージョン番号のアップも行うこと。
+A version number, in a form that the function @code{version-to-list}
+understands (e.g., @samp{11.86}).  Each release of a package should be
+accompanied by an increase in the version number so that it will be
+recognized as an upgrade by users querying the package archive.
 
 @item Brief description
-そのパッケージがPackage Menuにリストされる際にが表示される。理想的には36文字以内の単一行であること。
+This is shown when the package is listed in the Package Menu.  It should
+occupy a single line, ideally in 36 characters or less.
 
 @item Long description
-これは@kbd{C-h P}
-(@code{describe-package})により作成されたバッファーに表示されて、その後にそのパッケージの簡単な説明(brief
-description)とインストール状態(installation
-status)が続く。これには通常はパッケージの能力とインストール後に使用を開始する方法を複数行に渡って完全に記述すること。
+This is shown in the buffer created by @kbd{C-h P}
+(@code{describe-package}), following the package's brief description and
+installation status.  It normally spans multiple lines, and should fully
+describe the package's capabilities and how to begin using it once it is
+installed.
 
 @item Dependencies
-そのパッケージが依存する他のパッケージ(恐らく最低のバージョン番号を含む)。このリストは空でもよく、その場合にはパッケージに依存パッケージがないことを意味する。それ以外ならパッケージをインストールすることにより依存パッケージも自動的かつ再帰的にインストールされる。依存パッケージのいずれかが見つからなければパッケージをインストールすることはできない。
+A list of other packages (possibly including minimal acceptable version
+numbers) on which this package depends.  The list may be empty, meaning this
+package has no dependencies.  Otherwise, installing this package also
+automatically installs its dependencies, recursively; if any dependency
+cannot be found, the package cannot be installed.
 @end table
 
 @cindex content directory, package
-  コマンド@code{package-install-file}、またはPackage
-Menuのいずれかを介したパッケージのインストールでは、@code{package-user-dir}に@file{@var{name}-@var{version}}という名前のサブディレクトリーが作成されます。ここで@var{name}はパッケージ名、@var{version}はバージョン番号です(たとえば@file{~/.emacs.d/elpa/auctex-11.86/})。わたしたちはこれをパッケージの@dfn{コンテンツディレクトリー(content
-directory)}と呼んでいます。これはEmacsがパッケージのコンテンツ(シンプルパッケージでは単一のLispファイル、または複数ファイルパッケージから抽出されたファイル)を配置する場所です。
+  Installing a package, either via the command @code{package-install-file}, or
+via the Package Menu, creates a subdirectory of @code{package-user-dir}
+named @file{@var{name}-@var{version}}, where @var{name} is the package's
+name and @var{version} its version (e.g.,
+@file{~/.emacs.d/elpa/auctex-11.86/}).  We call this the package's
+@dfn{content directory}.  It is where Emacs puts the package's contents (the
+single Lisp file for a simple package, or the files extracted from a
+multi-file package).
 
 @cindex package autoloads
-  その後にEmacsはautoloadマジックコメント(@ref{Autoload}を参照)にたいしてコンテンツディレクトリー内のすべてのLispファイルを検索します。これらのautoload定義はコンテンツディレクトリーの@file{@var{name}-autoloads.el}という名前のファイルに保存されます。これらは通常はパッケージ内で定義された主要なユーザーコマンドのautoloadに使用されますが、@code{auto-mode-alist}への要素の追加(@ref{Auto
-Major
-Mode}を参照)等の別のタスクを行うこともできます。パッケージは通常はその中で定義された関数と変数のすべてをautoload@emph{しない}ことに注意してください
----
-通常はそのパッケージの使用を開始するために呼び出される一握りのコマンドだけがautoloadされます。それからEmacsはそのパッケージ内のすべてのLispファイルをバイトコンパイルします。
+  Emacs then searches every Lisp file in the content directory for autoload
+magic comments (@pxref{Autoload}).  These autoload definitions are saved to
+a file named @file{@var{name}-autoloads.el} in the content directory.  They
+are typically used to autoload the principal user commands defined in the
+package, but they can also perform other tasks, such as adding an element to
+@code{auto-mode-alist} (@pxref{Auto Major Mode}).  Note that a package
+typically does @emph{not} autoload every function and variable defined
+within it---only the handful of commands typically called to begin using the
+package.  Emacs then byte-compiles every Lisp file in the package.
 
-  インストール後はインストールされたパッケージは@dfn{ロード済み(loaded)}になります。Emacsは@code{load-path}にコンテンツディレクトリーを追加して@file{@var{name}-autoloads.el}内のautoload定義を評価します。
+  After installation, the installed package is @dfn{loaded}: Emacs adds the
+package's content directory to @code{load-path}, and evaluates the autoload
+definitions in @file{@var{name}-autoloads.el}.
 
-  Emacsのスタートアップ時には、カレントセッションでインストール済みパッケージを利用可能にするために、自動的に関数@code{package-activate-all}を呼び出します。これは早期initファイルロード後、かつ通常initファイルロード後に行われます(@ref{Startup
-Summary}を参照)。早期initファイルでユーザーオプション@code{package-enable-at-startup}が@code{nil}にセットされている場合には、パッケージは自動的に利用可能にはなりません。
+  Whenever Emacs starts up, it automatically calls the function
+@code{package-activate-all} to make installed packages available to the
+current session.  This is done after loading the early init file, but before
+loading the regular init file (@pxref{Startup Summary}).  Packages are not
+automatically made available if the user option
+@code{package-enable-at-startup} is set to @code{nil} in the early init
+file.
 
 @defun package-activate-all
-この関数はカレントセッションでパッケージを利用可能にする。ユーザーオプション@code{package-load-list}は利用可能にするパッケージを指定する。デフォルトではインストール済みのパッージすべてが利用可能になる。@ref{Package
-Installation,,, emacs, The GNU Emacs Manual}を参照のこと。
+This function makes the packages available to the current session.  The user
+option @code{package-load-list} specifies which packages to make available;
+by default, all installed packages are made available.  @xref{Package
+Installation,,, emacs, The GNU Emacs Manual}.
 
-ほとんどの場合には、スタートアップの間に自動的に行われるので@code{package-activate-all}を呼び出す必要はないはずである。単に早期initファイル内に@code{package-activate-all}の前に実行される必要のあるコードを配置するとともに、@code{package-activate-all}の後に実行される必要のあるコードを主linitファイルに配置することを確実に行なえばよい(@ref{Init
-File,,, emacs, The GNU Emacs Manual}を参照)。
+In most cases, you should not need to call @code{package-activate-all}, as
+this is done automatically during startup.  Simply make sure to put any code
+that should run before @code{package-activate-all} in the early init file,
+and any code that should run after it in the primary init file (@pxref{Init
+File,,, emacs, The GNU Emacs Manual}).
 @end defun
 
 @deffn Command package-initialize &optional no-activate
 This function initializes Emacs's internal record of which packages are
 installed, and then calls @code{package-activate-all}.
 
-オプション引数@var{no-activate}が非@code{nil}なら、インストール済みパッケージを実際に利用可能にせずにこのレコードを更新する。これは内部でのみ使用される。
+The optional argument @var{no-activate}, if non-@code{nil}, causes Emacs to
+update its record of installed packages without actually making them
+available.
 @end deffn
 
 @node Simple Packages
-@section 単純なパッケージ
+@section Simple Packages
 @cindex single file package
 @cindex simple package
 
-  シンプルパッケージは単一のEmacs Lispソースファイルで構成されます。このファイルはEmacs
-Lispライブラリーのヘッダー規約に準拠していなればなりません(@ref{Library
-Headers}を参照)。以下の例に示すようにパッケージの属性は種々のヘッダーから取得されます:
+  A simple package consists of a single Emacs Lisp source file.  The file must
+conform to the Emacs Lisp library header conventions (@pxref{Library
+Headers}).  The package's attributes are taken from the various headers, as
+illustrated by the following example:
 
 @example
 @group
@@ -136,17 +177,20 @@ Headers}を参照)。以下の例に示すようにパッケージの属性は�
 @dots{}
 @end example
 
-  そのパッケージの名前は1行目のファイル名の拡張子を除いた部分と同じです。ここでは@samp{superfrobnicator}です。
+  The name of the package is the same as the base name of the file, as written
+on the first line.  Here, it is @samp{superfrobnicator}.
 
-  brief description(簡単な説明)も1行目から取得されます。ここでは@samp{Frobnicate and bifurcate
-flanges}です(訳注:
-@samp{flangeをフロブニケートして二股化する}のフロブニケートとはある技術にたいする無目的で非生産的な具体的行為を意味する)。
+  The brief description is also taken from the first line.  Here, it is
+@samp{Frobnicate and bifurcate flanges}.
 
-  バージョン番号は、もしあれば@samp{Package-Version}ヘッダー、それ以外は@samp{Version}ヘッダーから取得されます。これらのヘッダーのいずれかが@emph{提供されていなればなりません}。ここでのバージョン番号は1.3です。
+  The version number comes from the @samp{Package-Version} header, if it
+exists, or from the @samp{Version} header otherwise.  One or the other
+@emph{must} be present.  Here, the version number is 1.3.
 
-  そのファイルに@samp{;;; Commentary:}セクションがあれば、そのセクションは長い説明(long
-description)として使用されます(その説明を表示する際にはEmacsは@samp{;;;
-Commentary:}の行とコメント内のコメント文字列を省略する)。
+  If the file has a @samp{;;; Commentary:} section, this section is used as
+the long description.  (When displaying the description, Emacs omits the
+@samp{;;; Commentary:} line, as well as the leading comment characters in
+the commentary itself.)
 
   If the file has a @samp{Package-Requires} header, that is used as the
 package dependencies.  In the above example, the package depends on the
@@ -155,32 +199,49 @@ description of the @samp{Package-Requires} header.  To depend on a specific
 version of Emacs, specify @samp{emacs} as the package name.  If the header
 is omitted, the package has no dependencies.
 
-  ヘッダー@samp{Keywords}と@samp{URL}はオプションですが含めることを推奨します。コマンド@code{describe-package}は出力にリンクを追加するためにこれらを使用します。@samp{Keywords}ヘッダーには@code{finder-known-keywords}リストからの標準的キーワードを少なくとも1つ含めるべきです。
+  The @samp{Keywords} and @samp{URL} headers are optional, but recommended.
+The command @code{describe-package} uses these to add links to its output.
+The @samp{Keywords} header should contain at least one standard keyword from
+the @code{finder-known-keywords} list.
 
-  ファイルには@ref{Packaging
-Basics}で説明したように1つ以上のautoloadマジックコメントも含めるべきです。上の例ではマジックコメントにより@code{superfrobnicator-mode}が自動ロードされます。
+  The file ought to also contain one or more autoload magic comments, as
+explained in @ref{Packaging Basics}.  In the above example, a magic comment
+autoloads @code{superfrobnicator-mode}.
 
-  パッケージアーカイブに単一ファイルのパッケージを追加する方法は@ref{Package Archives}を参照してください。
+  @xref{Package Archives}, for an explanation of how to add a single-file
+package to a package archive.
 
 @node Multi-file Packages
-@section 複数ファイルのパッケージ
+@section Multi-file Packages
 @cindex multi-file package
 
-  複数ファイルパッケージは単一ファイルパッケージより作成の手軽さが少し劣りますが、より多くの機能を提供します。複数ファイルパッケージには複数のEmacs
-Lispファイル、Infoマニュアル、および(イメージのような)他のファイルタイプを含めることができます。
+  A multi-file package is less convenient to create than a single-file
+package, but it offers more features: it can include multiple Emacs Lisp
+files, an Info manual, and other file types (such as images).
 
-  インストールに先立ち複数パッケージはファイルとしてパッケージアーカイブに含まれます。このtarファイルは@file{@var{name}-@var{version}.tar}という名前でなければなりません。ここで@var{name}はパッケージ名、@var{version}はバージョン番号です。tarのコンテンツは一度解凍されたなら、@dfn{コンテンツディレクトリcontent
-directory)}である@file{@var{name}-@var{version}}という名前のディレクトリーにすべて解凍されなければなりません(@ref{Packaging
-Basics}を参照)。このコンテンツディレクトリーのサブディレクトリーにもファイルが抽出されるかもしれません。
+  Prior to installation, a multi-file package is stored in a package archive
+as a tar file.  The tar file must be named
+@file{@var{name}-@var{version}.tar}, where @var{name} is the package name
+and @var{version} is the version number.  Its contents, once extracted, must
+all appear in a directory named @file{@var{name}-@var{version}}, the
+@dfn{content directory} (@pxref{Packaging Basics}).  Files may also extract
+into subdirectories of the content directory.
 
-  このコンテンツディレクトリー内のファイルのうち1つは@file{@var{name}-pkg.el}という名前のファイルでなければなりません。このファイルには、以下で説明する関数@code{define-package}の呼び出しから構成される単一のLispフォームを含まなければなりません。これはパッケージの属性、簡単な説明(brief
-description)、必要条件(requirements)を定義します。
+  One of the files in the content directory must be named
+@file{@var{name}-pkg.el}.  It must contain a single Lisp form, consisting of
+a call to the function @code{define-package}, described below.  This defines
+the package's attributes: version, brief description, and requirements.
 
-  たとえば、複数ファイルパッケージとしてsuperfrobnicatorのバージョン1.3を配布する場合のtarファイルは@file{superfrobnicator-1.3.tar}になります。これのコンテンツは@file{superfrobnicator-1.3}に解凍されて、そのうちの1つはファイル@file{superfrobnicator-pkg.el}になるでしょう。
+  For example, if we distribute version 1.3 of the superfrobnicator as a
+multi-file package, the tar file would be @file{superfrobnicator-1.3.tar}.
+Its contents would extract into the directory @file{superfrobnicator-1.3},
+and one of these would be the file @file{superfrobnicator-pkg.el}.
 
 @defun define-package name version &optional docstring requirements
-この関数はパッケージを定義する。@var{name}はパッケージの名前(文字列)、@var{version}は関数@code{version-to-list}が理解できる形式のバージョン(文字列)、@var{docstring}は簡単な説明(brief
-description)。
+This function defines a package.  @var{name} is the package name, a string.
+@var{version} is the version, as a string of a form that can be understood
+by the function @code{version-to-list}.  @var{docstring} is the brief
+description.
 
 @var{requirements} is a list of required packages and their versions.  Each
 element in this list should have the form @code{(@var{dep-name}
@@ -190,19 +251,29 @@ dependency's package name, and @var{dep-version} is the dependency's version
 on the given version of Emacs.
 @end defun
 
-  コンテンツディレクトリーに@file{README}という名前のファイルがあれば、(すべての@samp{;;;
-Commentary:}セクションをオーバーライドして)長い説明(long description)として使用されます。
+  If the content directory contains a file named @file{README}, this file is
+used as the long description (overriding any @samp{;;; Commentary:}
+section).
 
-  コンテンツディレクトリーに@file{dir}という名前のファイルがあれば、@command{install-info}で作成されるInfoディレクトリーファイル名とみなされます。@ref{Invoking
-install-info, Invoking install-info, Invoking install-info, texinfo,
-Texinfo}を参照してください。関係のあるInfoファイルもコンテンツディレクトリー内に解凍される必要があります。この場合には、パッケージがアクティブ化されたときにEmacsが自動的に@code{Info-directory-list}にコンテンツディレクトリーを追加します。
+  If the content directory contains a file named @file{dir}, this is assumed
+to be an Info directory file made with @command{install-info}.
+@xref{Invoking install-info, Invoking install-info, Invoking install-info,
+texinfo, Texinfo}.  The relevant Info files should also be present in the
+content directory.  In this case, Emacs will automatically add the content
+directory to @code{Info-directory-list} when the package is activated.
 
-  パッケージ内に@file{.elc}ファイルを含めないでください。これらはパッケージのインストール時に作成されます。ファイルがバイトコンパイルされる順序を制御する方法は存在しないことに注意してください。
+  Do not include any @file{.elc} files in the package.  Those are created when
+the package is installed.  Note that there is no way to control the order in
+which files are byte-compiled.
 
-  @file{@var{name}-autoloads.el}という名前のファイルを含めてはなりません。このファイルはパッケージのautoload定義のために予約済みです(@ref{Packaging
-Basics}を参照)。これはパッケージのインストール時にパッケージ内のすべてのLispファイルからautoloadマジックコメントを検索する際に自動的に作成されます。
+  Do not include any file named @file{@var{name}-autoloads.el}.  This file is
+reserved for the package's autoload definitions (@pxref{Packaging Basics}).
+It is created automatically when the package is installed, by searching all
+the Lisp files in the package for autoload magic comments.
 
-  複数パッケージファイルが、(イメージのような)補助的なデータファイルを含む場合には、パッケージ内のLispファイルは変数@code{load-file-name}を通じてそれらのファイルを参照できます(@ref{Loading}を参照)。以下は例です:
+  If the multi-file package contains auxiliary data files (such as images),
+the package's Lisp code can refer to these files via the variable
+@code{load-file-name} (@pxref{Loading}).  Here is an example:
 
 @smallexample
 (defconst superfrobnicator-base (file-name-directory load-file-name))
@@ -212,52 +283,72 @@ Basics}を参照)。これはパッケージのインストール時にパッケ
 @end smallexample
 
 @cindex @file{.elpaignore} file
-  パッケージにユーザーに配布したくないファイル(たとえば回帰テストなど)が含まれている場合には、それらを@file{.elpaignore}ファイルに追加できます。このファイルの行にはそれぞれファイルのリスト、あるいはファイルにマッチするワイルドカードを記述します。ここで記述したファイルは、ELPA
-(@ref{Package
-Archives}を参照)であなたのパッケージのtarballを生成する際に無視されます(ELPAがダウンロード用にパッケージを準備する際にファイルはコマンドラインオプション@option{-X}を通じて@command{tar}コマンドに渡されることになる)。
+  If your package contains files that you don't wish to distribute to users
+(e.g.@: regression tests), you can add them to an @file{.elpaignore} file.
+In this file, each line lists a file or a wildcard matching files; those
+files should be ignored when producing your package's tarball on ELPA
+(@pxref{Package Archives}).  (ELPA will pass this file to the @command{tar}
+command via the @option{-X} command-line option, when it prepares the
+package for download.)
 
 @node Package Archives
-@section パッケージアーカイブの作成と保守
+@section Creating and Maintaining Package Archives
 @cindex package archive
 
 @cindex GNU ELPA
 @cindex non-GNU ELPA
-  Package Menuを通じて@dfn{パッケージアーカイブ(package
-archives)}からユーザーはパッケージをダウンロードできます。このようなアーカイブは変数@code{package-archives}で指定されます。この変数のデフォルト値は@url{https://elpa.gnu.org,
-GNU ELPA}と@url{https://elpa.nongnu.org, non-GNU
-ELPA}でホストされるアーカイブのリストです。このセクションではパッケージアーカイブのセットアップと保守の方法について説明します。
+  Via the Package Menu, users may download packages from @dfn{package
+archives}.  Such archives are specified by the variable
+@code{package-archives}, whose default value lists the archives hosted on
+@url{https://elpa.gnu.org, GNU ELPA} and @url{https://elpa.nongnu.org,
+non-GNU ELPA}.  This section describes how to set up and maintain a package
+archive.
 
 @cindex base location, package archive
 @defopt package-archives
-この変数の値はEmacsパッケージマネージャーが認識するパッケージアーカイブのリスト。
+The value of this variable is an alist of package archives recognized by the
+Emacs package manager.
 
-このalistの要素はそれぞれが1つのアーカイブに対応する@code{(@var{id}
-.
-@var{location})}という形式であること。ここで@var{id}はパッケージ名(文字列)、@var{location}は文字列であるような@dfn{ベースロケーション(base
-location)}。
+Each alist element corresponds to one archive, and should have the form
+@code{(@var{id} . @var{location})}, where @var{id} is the name of the
+archive (a string) and @var{location} is its @dfn{base location} (a string).
 
-ベースロケーションが@samp{http:}か@samp{https:}で始まる場合にはHTTP(S)のURLとして扱われて、(デフォルトのGNUアーカイブのように)HTTP(S)を介してこのアーカイブからパッケージがダウンロードされる。
+If the base location starts with @samp{http:} or @samp{https:}, it is
+treated as an HTTP(S) URL, and packages are downloaded from this archive via
+HTTP(S) (as is the case for the default GNU archive).
 
-それ以外ならベースロケーションはディレクトリー名であること。この場合にはEmacsは通常のファイルアクセスを通じて、そのアーカイブからパッケージを取得する。localのようなアーカイブは主としてテストに有用。
+Otherwise, the base location should be a directory name.  In this case,
+Emacs retrieves packages from this archive via ordinary file access.  Such
+local archives are mainly useful for testing.
 @end defopt
 
-  パッケージアーカイブはパッケージ、および関連するファイルが格納された単なるディレクトリーです。HTTPを介してそのアーカイブに到達できるようにしたければ、このディレクトリーがウェブサーバーにアクセスできなければなりません。@ref{Archive
-Web Server}を参照してください。
+  A package archive is simply a directory in which the package files, and
+associated files, are stored.  If you want the archive to be reachable via
+HTTP, this directory must be accessible to a web server; @xref{Archive Web
+Server}.
 
-  手軽なのは@code{package-x}を通じてパッケージアーカイブのセットアップと更新を行う方法です。これはEmacsに含まれていますがデフォルトではロードされません。ロードするには@kbd{M-x
-load-library @key{RET} package-x @key{RET}}、または@code{(require
-'package-x)}をinitファイルに追加します。@ref{Lisp Libraries,, Lisp Libraries, emacs, The
-GNU Emacs Manual}を参照してください。
+  A convenient way to set up and update a package archive is via the
+@code{package-x} library.  This is included with Emacs, but not loaded by
+default; type @kbd{M-x load-library @key{RET} package-x @key{RET}} to load
+it, or add @code{(require 'package-x)} to your init file.  @xref{Lisp
+Libraries,, Lisp Libraries, emacs, The GNU Emacs Manual}.
 
 @noindent
-アーカイブ作成後に、それが@code{package-archives}内になければPackage
-Menuインターフェースからアクセスできないことを忘れないでください。
+After you create an archive, remember that it is not accessible in the
+Package Menu interface unless it is in @code{package-archives}.
 
 @cindex package archive security
 @cindex package signing
-公的なパッケージアーカイブの保守には責任が併ないます。アーカイブからEmacsユーザーがパッケージをインストールする際には、それらのパッケージはそのユーザーの権限において任意のコードを実行できるようになります(これはパッケージにたいしてだけでなく一般的なEmacsコードにたいしても真といえる)。そのためアーカイブの保守を保つとともにホスティングシステムが安全であるよう維持するべきです。
+Maintaining a public package archive entails a degree of responsibility.
+When Emacs users install packages from your archive, those packages can
+cause Emacs to run arbitrary code with the permissions of the installing
+user.  (This is true for Emacs code in general, not just for packages.)  So
+you should ensure that your archive is well-maintained and keep the hosting
+system secure.
 
-  暗号化されたキーを使用してパッケージに@dfn{サイン(sign)}するのがパッケージのセキュリティーを向上する1つの方法です。gpgのprivateキーとpublicキーを生成してあれば以下のようにそのパッケージにサインするためにgpgを使用できます:
+  One way to increase the security of your packages is to @dfn{sign} them
+using a cryptographic key.  If you have generated a private/public gpg key
+pair, you can use gpg to sign the package like this:
 
 @c FIXME EasyPG / package-x way to do this.
 @example
@@ -265,18 +356,25 @@ gpg -ba -o @var{file}.sig @var{file}
 @end example
 
 @noindent
-単一ファイルパッケージにたいしては、@var{file}はそのパッケージのLispファイルです。複数ファイルパッケージではそのパッケージのtarファイルです。同じ方法によりアーカイブのコンテンツファイルにもサインできます。これを行うにはパッケージと同じディレクトリーで@file{.sig}ファイルを利用可能できるようにしてください。ダウンロードする人にたいしても、@url{https://pgp.mit.edu/}のようなキーサーバーにアップロードすることによりpublicキーを利用できるようにするべきです。その人がアーカイブからパッケージをインストールする際には署名の検証にpublicキーを使用できます。
+For a single-file package, @var{file} is the package Lisp file; for a
+multi-file package, it is the package tar file.  You can also sign the
+archive's contents file in the same way.  Make the @file{.sig} files
+available in the same location as the packages.  You should also make your
+public key available for people to download; e.g., by uploading it to a key
+server such as @url{https://pgp.mit.edu/}.  When people install packages
+from your archive, they can use your public key to verify the signatures.
 
-これらの方法についての完全な説明はマニュアルの範囲を超えます。暗号化キーとサインに関する詳細は@ref{Top,, GnuPG, gnupg, The
-GNU Privacy Guard Manual}、Emacsに付属するGNU Privacy
-Guardへのインターフェースについては@ref{Top,, EasyPG, epa, Emacs EasyPG Assistant
-Manual}を参照してください。
+A full explanation of these matters is outside the scope of this manual.
+For more information on cryptographic keys and signing, @pxref{Top,, GnuPG,
+gnupg, The GNU Privacy Guard Manual}.  Emacs comes with an interface to GNU
+Privacy Guard, @pxref{Top,, EasyPG, epa, Emacs EasyPG Assistant Manual}.
 
 @node Archive Web Server
-@section アーカイブウェブサーバーとのインターフェイス
+@section Interfacing to an archive web server
 @cindex archive web server
 
-パッケージアーカイブへのアクセスを提供するウェブサーバーは、以下のクエリーをサポートしなければなりません:
+A web server providing access to a package archive must support the
+following queries:
 
 @table @asis
 @item archive-contents
@@ -285,10 +383,10 @@ Return a lisp form describing the archive contents.  The form is a list of
 of the list is the archive version.
 
 @item <package name>-readme.txt
-パッケージの長い説明(long description)をリターンする。
+Return the long description of the package.
 
 @item <file name>.sig
-そのファイルの署名をリターンする。
+Return the signature for the file.
 
 @item <file name>
 Return the file.  This will be the tarball for a multi-file package, or the
@@ -297,30 +395,47 @@ single file for a simple package.
 @end table
 
 @node Forwards-Compatibility
-@section 古いバージョンのEmacsのサポート
+@section Supporting older versions of Emacs
 @cindex compatibility compat
 
-Emacsの最新リリースのより新しい機能を諦めることなくEmacsの古いリリースをサポートしたいパッケージは、GNU
-ELPAのCompatパッケージを使ってそれを実現できます。パッケージに応じて、欠落している機能の互換性定義をEmacsが提供することができます。
+Packages that wish to support older releases of Emacs, without giving up on
+newer functionality from recent Emacs releases, one can make use of the
+Compat package on GNU ELPA.  By depending on the package, Emacs can provide
+compatibility definitions for missing functionality.
 
-Compatのバージョン管理はEmacsのバージョン管理にしたがうので、以下のように定義してパッケージが依存する(@code{emacs}-packageを介した)もっとも古いバージョンの隣に、パッケージが使用したいEmacsのもっとも新しいバージョンを示すことができます:
+The versioning of Compat follows that of Emacs, so next to the oldest
+version that a package relies on (via the @code{emacs}-package), one can
+also indicate what the newest version of Emacs is, that a package wishes to
+use definitions from:
 
 @example
 ;; Package-Requires: ((emacs "27.2") (compat "29.1"))
 @end example
 
-Compatはすでに定義された関数(@code{sort}、@code{assoc}、@dots{})にたいして拡張機能を備えた置換関数を提供することに注意してください。これらの関数は呼び出し規約(追加のオプション引数など)や振る舞いが変更されるかもしれません。これらのは@code{compat-function}で明示的に参照したり、@code{compat-call}で明示的に呼び出さなければなりません。これらを@dfn{拡張定義(Extended
-Definitions)}と呼んでいます。それとは対照的に新たに@dfn{追加された定義(Added
-Definitions)}は通常通り呼び出すことができます。
+Note that Compat provides replacement functions with extended functionality
+for functions that are already defined (@code{sort}, @code{assoc},
+@dots{}).  These functions may have changed their calling convention
+(additional optional arguments) or may have changed their behavior.  These
+functions must be looked up explicitly with @code{compat-function} or called
+explicitly with @code{compat-call}.  We call them @dfn{Extended
+Definitions}.  In contrast, newly @dfn{Added Definitions} can be called as
+usual.
 
 @defmac compat-call fun &rest args
-このマクロは@var{args}とともに互換性関数@var{fun}を呼び出す。このマクロなしで直接呼び出せる多くの関数がCompatにより提供されている。しかし既存関数の互換版をCompatが提供している場合には、@code{compat-call}を通じて関数を呼び出す必要がある。
+This macro calls the compatibility function @var{fun} with @var{args}.  Many
+functions provided by Compat can be called directly without this macro.
+However in the case where Compat provides an alternative version of an
+existing function, the function call has to go through @code{compat-call}.
 @end defmac
 
 @defmac compat-function fun
-このマクロは@var{fun}にたいする互換性関数シンボルをリターンする。互換性を直接呼び出すより簡便なマクロについては@code{compat-call}を参照のこと。
+This macro returns the compatibility function symbol for @var{fun}.  See
+@code{compat-call} for a more convenient macro to directly call
+compatibility functions.
 @end defmac
 
-このパッケージを使用する方法についてのさらなる詳細については@ref{Usage,, Usage, compat, "Compat"
-Manual}を参照のこと。インストール済みマニュアルがない場合には@url{https://elpa.gnu.org/packages/doc/compat.html#Usage,
-Online Compat manual}も役に立つだろう。
+For further details on how to make use of the package, see @ref{Usage,,
+Usage, compat, "Compat" Manual}.  In case you don't have the manual
+installed, you can also read the
+@url{https://elpa.gnu.org/packages/doc/compat.html#Usage, Online Compat
+manual}.

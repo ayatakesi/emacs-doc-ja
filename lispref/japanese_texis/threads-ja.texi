@@ -9,148 +9,207 @@
 @c Copyright (C) 2012--2024 Free Software Foundation, Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node Threads
-@chapter スレッド
+@chapter Threads
 @cindex threads
 @cindex concurrency
 
-  Emacs
-Lispは@dfn{スレッド(thread)}と呼ばれる限定的な並行性(concurrency)の形式を提供します。Emacsの与えられたインターフェース内のすべてのスレッドは同じメモリーを共有します。Emacs
-Lisp内の並行性は``概ね協調的(mostly
-cooperative)''であり、これはEmacsがスレッド間の実効を明確に定義された時間にだけ切り替えることを意味しています。しかしEmacsでのスレッドのサポートは将来よりきめの細かい並行性が可能な方法でデザインされており、正しいプログラムは協調的なスレッドに依存するべきではありません。
+  Emacs Lisp provides a limited form of concurrency, called @dfn{threads}.
+All the threads in a given instance of Emacs share the same memory.
+Concurrency in Emacs Lisp is ``mostly cooperative'', meaning that Emacs will
+only switch execution between threads at well-defined times.  However, the
+Emacs thread support has been designed in a way to later allow more
+fine-grained concurrency, and correct programs should not rely on
+cooperative threading.
 
-  現在のところスレッドの切り替えはキーボード入力や非同期プロセスからの出力の待機中(つまり@code{accept-process-output}の間)、ミューテックスのロックや@code{thread-join}のようなスレッドに関連するブロッキング処理の間での、@code{thread-yield}を介した明示的な要求時に発生します。
+  Currently, thread switching will occur upon explicit request via
+@code{thread-yield}, when waiting for keyboard input or for process output
+from asynchronous processes (e.g., during @code{accept-process-output}), or
+during blocking operations relating to threads, such as mutex locking or
+@code{thread-join}.
 
-  Emacs Lispはスレッドの作成や制御、さらにスレッドの同期に有用なミューテックスや条件変数の作成や制御を行うプリミティブを提供します。
+  Emacs Lisp provides primitives to create and control threads, and also to
+create and control mutexes and condition variables, useful for thread
+synchronization.
 
-  グローバル変数はEmacs
-Lispのすべてのスレッドの間で共有されますがローカル変数(@code{let}によるダイナミックなバインドはローカル)は異なります。スレッドはそれぞれ自身のカレントバッファー(@ref{Current
-Buffer}を参照)と自身のマッチデータ(@ref{Match Data}を参照)を所有します。
+  While global variables are shared among all Emacs Lisp threads, local
+variables are not---a dynamic @code{let} binding is local.  Each thread also
+has its own current buffer (@pxref{Current Buffer}) and its own match data
+(@pxref{Match Data}).
 
-  @code{let}によるバイディングはEmacs
-Lisp実装により特別に処理されることに注意してください。@code{let}の使う以外にこのunwind(巻き戻し)とrewind(巻き戻すための巻き取り)の振る舞いを複製する方法はありません。たとえば@code{unwind-protect}を使用して@code{let}の独自実装で記述しても変数値をスレッド固有にアレンジすることはできません。
+  Note that @code{let} bindings are treated specially by the Emacs Lisp
+implementation.  There is no way to duplicate this unwinding and rewinding
+behavior other than by using @code{let}.  For example, a manual
+implementation of @code{let} written using @code{unwind-protect} cannot
+arrange for variable values to be thread-specific.
 
-  レキシカルバインディング(@ref{Variable Scoping}を参照)の場合には他のEmacs
-Lispオブジェクト類似するものはクロージ(closure)です。クロージャ内のバインディングはクロージャを呼び出したすべてのスレッド間で共有されます。
+  In the case of lexical bindings (@pxref{Variable Scoping}), a closure is an
+object like any other in Emacs Lisp, and bindings in a closure are shared by
+any threads invoking the closure.
 
 @menu
-* Basic Thread Functions::   基本的なスレッド関数。
-* Mutexes::                  データへの排他アクセスを可能にするミューテックス。
-* Condition Variables::      スレッド間のイベント。
-* The Thread List::          アクティブなスレッドの表示。
+* Basic Thread Functions::   Basic thread functions.
+* Mutexes::                  Mutexes allow exclusive access to data.
+* Condition Variables::      Inter-thread events.
+* The Thread List::          Show the active threads.
 @end menu
 
 @node Basic Thread Functions
-@section 基本的なスレッド関数
+@section Basic Thread Functions
 
-  スレッドを作成したり待機することができます。スレッドを直接exitすることはできませんがカンレントスレッドは暗黙にexitでき、他のスレッドはシグナルを受け取ることができます。
+  Threads can be created and waited for.  A thread cannot be exited directly,
+but the current thread can be exited implicitly, and other threads can be
+signaled.
 
 @defun make-thread function &optional name
-@var{function}を呼び出す新たなスレッドの実行を作成する。@var{function}のリターン時にスレッドはexitする。
+Create a new thread of execution which invokes @var{function}.  When
+@var{function} returns, the thread exits.
 
-新たなスレッドは効力をもつローカル変数のバインディングが何もない状態で作成される。新たなスレッドのカレントバッファーはカレントスレッドから継承される。
+The new thread is created with no local variable bindings in effect.  The
+new thread's current buffer is inherited from the current thread.
 
-@var{name}でスレッドに名前を与えることができる。これはデバッグと情報的な用途だけに使用される名前であり、Emacsにとって意味はない。@var{name}を与える場合には文字列でなければならない。
+@var{name} can be supplied to give a name to the thread.  The name is used
+for debugging and informational purposes only; it has no meaning to Emacs.
+If @var{name} is provided, it must be a string.
 
-この関数は新たなスレッドをリターンする。
+This function returns the new thread.
 @end defun
 
 @defun threadp object
-この関数は@var{object}がEmacsスレッドを表すなら@code{t}、それ以外は@code{nil}をリターンする。
+This function returns @code{t} if @var{object} represents an Emacs thread,
+@code{nil} otherwise.
 @end defun
 
 @defun thread-join thread
-@var{thread}がexitするかカレントスレッドがシグナルされるまでブロックする。これは@var{thread}関数の結果をリターンする。@var{thread}がexit済みなら即座にリターンする。
+Block until @var{thread} exits, or until the current thread is signaled.  It
+returns the result of the @var{thread} function.  If @var{thread} has
+already exited, this returns immediately.
 @end defun
 
 @defun thread-signal thread error-symbol data
-@code{signal} (@ref{Signaling
-Errors}を参照)と同様だがシグナルはスレッド@var{thread}に送信される。@var{thread}がカレントスレッドなら、即座に@code{signal}を呼び出す。それ以外なら@var{thread}がカレントになり次第、シグナルを受信する。@code{mutex-lock}、@code{condition-wait}、@code{thread-join}の呼び出しにより@var{thread}がブロックされていたら@code{thread-signal}がロックを解除する。
+Like @code{signal} (@pxref{Signaling Errors}), but the signal is delivered
+in the thread @var{thread}.  If @var{thread} is the current thread, then
+this just calls @code{signal} immediately.  Otherwise, @var{thread} will
+receive the signal as soon as it becomes current.  If @var{thread} was
+blocked by a call to @code{mutex-lock}, @code{condition-wait}, or
+@code{thread-join}; @code{thread-signal} will unblock it.
 
-@var{thread}がメインスレッドならシグナルは伝播されない。かわりにメインスレッド内のメッセージとして表れる。
+If @var{thread} is the main thread, the signal is not propagated there.
+Instead, it is shown as message in the main thread.
 @end defun
 
 @defun thread-yield
-実行可能な次のスレッドに実行を譲り渡す。
+Yield execution to the next runnable thread.
 @end defun
 
 @defun thread-name thread
-@code{make-thread}で指定された@var{thread}の名前をリターンする。
+Return the name of @var{thread}, as specified to @code{make-thread}.
 @end defun
 
 @defun thread-live-p thread
-@var{thread}が生きていれば@code{t}、それ以外は@code{nil}をリターンする。スレッドは自身の関数がまだ実行中なら生きている。
+Return @code{t} if @var{thread} is alive, or @code{nil} if it is not.  A
+thread is alive as long as its function is still executing.
 @end defun
 
 @defun thread--blocker thread
-@var{thread}が待機中のオブジェクトをリターンする。これは主にデバッグを糸した関数であり、それを示すために``2重ハイフン''の名前を付与してある。
+Return the object that @var{thread} is waiting on.  This function is
+primarily intended for debugging, and is given a ``double hyphen'' name to
+indicate that.
 
-@var{thread}が@code{thread-join}内でブロックされていたら待機対象のスレッドをリターンする。
+If @var{thread} is blocked in @code{thread-join}, this returns the thread
+for which it is waiting.
 
-@var{thread}が@code{mutex-lock}内でブロックされていたらミューテックスをリターンする。
+If @var{thread} is blocked in @code{mutex-lock}, this returns the mutex.
 
-@var{thread}が@code{condition-wait}内でブロックされていたら条件変数をリターンする。
+If @var{thread} is blocked in @code{condition-wait}, this returns the
+condition variable.
 
-それ以外なら@code{nil}をリターンする。
+Otherwise, this returns @code{nil}.
 @end defun
 
 @defun current-thread
-カレントスレッドをリターンする。
+Return the current thread.
 @end defun
 
 @defun all-threads
-すべての生きたスレッドオブジェクトのリストをリターンする。呼び出しそれぞれにたいして新たなリストをリターンする。
+Return a list of all the live thread objects.  A new list is returned by
+each invocation.
 @end defun
 
 @defvar main-thread
-この変数はEmacs実行中のメインスレッド、スレッドサポートなしでEmacsコンパイル時には@code{nil}を保持する。
+This variable keeps the main thread Emacs is running, or @code{nil} if Emacs
+is compiled without thread support.
 @end defvar
 
-スレッドが実行したコードがハンドルされないエラーをシグナルすると、そのスレッドはexitします。それ以外のスレッドは以下の関数を使用してスレッドのexitを誘発したエラーフォームにアクセスできます。
+When code run by a thread signals an error that is unhandled, the thread
+exits.  Other threads can access the error form which caused the thread to
+exit using the following function.
 
 @defun thread-last-error &optional cleanup
-この関数はエラーによりスレッドがexitした際に記録された最後のエラーフォームをリターンする。異常終了(abnormal
-exit)した各スレッドが、以前にスレッドエラーで格納されたフォームを新たな値に上書きするので、アクセスできるのは最後のフォームのみ。@var{cleanup}が非@code{nil}なら格納されたフォームを@code{nil}にリセットする。
+This function returns the last error form recorded when a thread exited due
+to an error.  Each thread that exits abnormally overwrites the form stored
+by the previous thread's error with a new value, so only the last one can be
+accessed.  If @var{cleanup} is non-@code{nil}, the stored form is reset to
+@code{nil}.
 @end defun
 
 @node Mutexes
-@section ミューテックス
+@section Mutexes
 
-  @dfn{ミューテックス(mutex)}は排他的なロックです。任意のタイミングにおいて0、または1つのスレッドがミューテックスを所有できます。スレッドがミューテックスの取得を試みたときに別スレッドがすでにそのミューテックスを所有していたら、ミューテックスが利用可能になるまで取得を試みたスレッドはブロックされます。
+  A @dfn{mutex} is an exclusive lock.  At any moment, zero or one threads may
+own a mutex.  If a thread attempts to acquire a mutex, and the mutex is
+already owned by some other thread, then the acquiring thread will block
+until the mutex becomes available.
 
-  Emacs
-Lispのミューテックスは@dfn{再帰的(recursive)}と呼ばれるタイプです。これはスレッドがミューテックスを何回も再帰的に所有できることを意味します。ミューテックスは所有された回数を保持していて、それら所有のそれぞれがリリースとペアになっていなければなりません。スレッドによるミューテックスの最後のリリースによりミューテックスは他のスレッドが潜在的に所有可能である非所有な状態へとリバートされます。
+  Emacs Lisp mutexes are of a type called @dfn{recursive}, which means that a
+thread can re-acquire a mutex it owns any number of times.  A mutex keeps a
+count of how many times it has been acquired, and each acquisition of a
+mutex must be paired with a release.  The last release by a thread of a
+mutex reverts it to the unowned state, potentially allowing another thread
+to acquire the mutex.
 
 @defun mutexp object
-この関数は@var{object}がEmacsのミューテックスを表していれば@code{t}、それ以外は@code{nil}をリターンする。
+This function returns @code{t} if @var{object} represents an Emacs mutex,
+@code{nil} otherwise.
 @end defun
 
 @defun make-mutex &optional name
-新たなミューテックスを作成してリターンする。@var{name}が指定されたらミューテックスの名前として与えられる(文字列でなければならない)。これはデバッグにたいする用途のみの名前でありEmacsにとって意味はない。
+Create a new mutex and return it.  If @var{name} is specified, it is a name
+given to the mutex.  It must be a string.  The name is for debugging
+purposes only; it has no meaning to Emacs.
 @end defun
 
 @defun mutex-name mutex
-@code{make-mutex}で指定された@var{mutex}の名前をリターンする。
+Return the name of @var{mutex}, as specified to @code{make-mutex}.
 @end defun
 
 @defun mutex-lock mutex
-これはスレッドが@var{mutex}を所有するか、スレッドが@code{thread-signal}の使用によりシグナルされるまでブロックする。スレッドが@var{mutex}をすでに所有していたら単にリターンする。
+This will block until this thread acquires @var{mutex}, or until this thread
+is signaled using @code{thread-signal}.  If @var{mutex} is already owned by
+this thread, this simply returns.
 @end defun
 
 @defun mutex-unlock mutex
-@var{mutex}をリリースする。そのスレッドが@var{mutex}を所有していなければエラーをシグナルする。
+Release @var{mutex}.  If @var{mutex} is not owned by this thread, this will
+signal an error.
 @end defun
 
 @defmac with-mutex mutex body@dots{}
-このマクロはもっともシンプルかつ安全にミューテックスを保持しつつフォームを評価する方法である。これは@var{mutex}を取得して@var{body}を呼び出してから@var{mutex}をリリースする。@var{body}の結果をリターンする。
+This macro is the simplest and safest way to evaluate forms while holding a
+mutex.  It acquires @var{mutex}, invokes @var{body}, and then releases
+@var{mutex}.  It returns the result of @var{body}.
 @end defmac
 
 @node Condition Variables
-@section 条件変数
+@section Condition Variables
 
-  @dfn{条件変数(condition
-variable)}は何らかのイベントが発生するまでスレッドをブロックするための手段です。スレッドは別のスレッドが条件を通知した際に目覚めるように条件変数を待機できます。
+  A @dfn{condition variable} is a way for a thread to block until some event
+occurs.  A thread can wait on a condition variable, to be woken up when some
+other thread notifies the condition.
 
-  条件変数はミューテックス、および概念的に何らかの条件に関連付けられます。正しく操作するために、ミューテックスを所有してから待機スレッドはループして、条件のテストを行い条件変数を待機しなければなりません。たとえば:
+  A condition variable is associated with a mutex and, conceptually, with some
+condition.  For proper operation, the mutex must be acquired, and then a
+waiting thread must loop, testing the condition and waiting on the condition
+variable.  For example:
 
 @example
 (with-mutex mutex
@@ -158,9 +217,12 @@ variable)}は何らかのイベントが発生するまでスレッドをブロ�
     (condition-wait cond-var)))
 @end example
 
-  ミューテックスはアトミック操作のために、ループは堅牢性のためのものです。これは偽の通知があるかもしれないからです。
+  The mutex ensures atomicity, and the loop is for robustness---there may be
+spurious notifications.
 
-  同様にミューテックスは条件の通知前に所持されていなければなりません。ミューテックスを所有して条件に関連する変更を行い、それを通知するのが典型的かつ最良なアプローチです:
+  Similarly, the mutex must be held before notifying the condition.  The
+typical, and best, approach is to acquire the mutex, make the changes
+associated with this condition, and then notify it:
 
 @example
 (with-mutex mutex
@@ -169,64 +231,93 @@ variable)}は何らかのイベントが発生するまでスレッドをブロ�
 @end example
 
 @defun make-condition-variable mutex &optional name
-@var{mutex}に関連付けられた条件変数を作成する。@var{name}が指定されたら条件変数の名前として与えられる(文字列でなければならない)。これはデバッグにたいする用途のみの名前でありEmacsにとって意味はない。
+Make a new condition variable associated with @var{mutex}.  If @var{name} is
+specified, it is a name given to the condition variable.  It must be a
+string.  The name is for debugging purposes only; it has no meaning to
+Emacs.
 @end defun
 
 @defun condition-variable-p object
-この関数は@var{object}が条件変数を表していれば@code{t}、それ以外は@code{nil}をリターンする。
+This function returns @code{t} if @var{object} represents a condition
+variable, @code{nil} otherwise.
 @end defun
 
 @defun condition-wait cond
-他のスレッドによる条件変数@var{cond}の通知を待機する。この関数は条件変数の通知、または@code{thread-signal}の使用によりシグナルが送信されるまでブロックする。
+Wait for another thread to notify @var{cond}, a condition variable.  This
+function will block until the condition is notified, or until a signal is
+delivered to this thread using @code{thread-signal}.
 
-ミューテックスに関連付けられた条件を所持しない@code{condition-wait}の呼び出しはエラーとなる。
+It is an error to call @code{condition-wait} without holding the condition's
+associated mutex.
 
-@code{condition-wait}は待機中に関連付けられたミューテックスをリリースする。これは別スレッドによる条件通知するためのミューテックス所有を可能にする。
+@code{condition-wait} releases the associated mutex while waiting.  This
+allows other threads to acquire the mutex in order to notify the condition.
 @end defun
 
 @defun condition-notify cond &optional all
-@var{cond}を通知する。呼び出し前に@var{cond}に関連付けられるミューテックスを所有しなければならない。通常は@code{condition-notify}により単一の待機中スレッドが目覚めさせられる。しかし@var{all}が非@code{nil}なら@var{cond}を待機中のすべてのスレッドに通知される。
+Notify @var{cond}.  The mutex with @var{cond} must be held before calling
+this.  Ordinarily a single waiting thread is woken by
+@code{condition-notify}; but if @var{all} is not @code{nil}, then all
+threads waiting on @var{cond} are notified.
 
 @c why bother?
-@code{condition-notify}は関連付けられたミューテックスを待機中はリリースする。これによりスレッドが条件を待機するためにミューテックスを所有することが可能になる。
+@code{condition-notify} releases the associated mutex while waiting.  This
+allows other threads to acquire the mutex in order to wait on the condition.
 @end defun
 
 @defun condition-name cond
-@code{make-condition-variable}に渡された@var{cond}の名前をリターンする。
+Return the name of @var{cond}, as passed to @code{make-condition-variable}.
 @end defun
 
 @defun condition-mutex cond
-@var{cond}に関連付けられたミューテックスをリターンする。関連付けられたミューテックスは変更できないことに注意。
+Return the mutex associated with @var{cond}.  Note that the associated mutex
+cannot be changed.
 @end defun
 
 @node The Thread List
-@section スレッドリスト
+@section The Thread List
 
 @cindex thread list
 @cindex list of threads
 @findex list-threads
-@code{list-threads}コマンドはカレントでアクティブなすべてのスレッドをリストします。その結果となるバッファー内では、それぞれのスレッドは@code{make-thread}
-(@ref{Basic Thread
-Functions}を参照)に渡された名前、または名前つきで作成されていなければ一意な内部識別子により識別される。バッファーの作成時(または最終更新時)の各スレッドの状態、さらにその時点でスレッドがブロックされていたらブロックしているオブジェクトが表示されます。
+The @code{list-threads} command lists all the currently alive threads.  In
+the resulting buffer, each thread is identified either by the name passed to
+@code{make-thread} (@pxref{Basic Thread Functions}), or by its unique
+internal identifier if it was not created with a name.  The status of each
+thread at the time of the creation or last update of the buffer is shown, in
+addition to the object the thread was blocked on at the time, if it was
+blocked.
 
 @defvar thread-list-refresh-seconds
-@file{*Threads*}バッファーは自動的に毎秒2回更新される。この変数をカスタマイズしてリフレッシュ間隔を加減できる。
+The @file{*Threads*} buffer will automatically update twice per second.  You
+can make the refresh rate faster or slower by customizing this variable.
 @end defvar
 
-以下はレッドリストバッファーで利用できるコマンドです:
+Here are the commands available in the thread list buffer:
 
 @table @kbd
 
 @cindex backtrace of thread
 @cindex thread backtrace
 @item b
-ポイント位置のスレッドのバックトレースを表示する。これは@kbd{b}を押下した時点でスレッドが生成またはブロックされたコードを表示する。このバックトレースはスナップショットであることに注意。それ以降にスレッドが実行を再開して異なる状態になったりexitしているかもしれない。
+Show a backtrace of the thread at point.  This will show where in its code
+the thread had yielded or was blocked at the moment you pressed @kbd{b}.  Be
+aware that the backtrace is a snapshot; the thread could have meanwhile
+resumed execution, and be in a different state, or could have exited.
 
-バックトレースバッファーは自動的に更新されないので、スレッドのバックトレースバッファーでは、更新されたバックトレースを取得するために@kbd{g}を使用できる。バックトレースおよびそれらに機能する他のコマンドの説明は@ref{Backtraces}を参照のこと。
+You may use @kbd{g} in the thread's backtrace buffer to get an updated
+backtrace, as backtrace buffers do not automatically update.
+@xref{Backtraces}, for a description of backtraces and the other commands
+which work on them.
 
 @item s
-ポイント位置のスレッドにシグナルを送信する。@kbd{s}の後に@kbd{q}をタイプするとquit、@kbd{e}をタイプするとエラーをシグナルする。スレッドはシグナルを処理するように実装されているかもしれないが、デフォルトではすべてのシグナルにたいしてexitする。したがってターゲットとなるスレッドの再開方法を理解している場合のみこのコマンドを使用すること(必要なスレッドがkillされるとEmacsセッションは不正に振る舞うかもしれない)。
+Signal the thread at point.  After @kbd{s}, type @kbd{q} to send a quit
+signal or @kbd{e} to send an error signal.  Threads may implement handling
+of signals, but the default behavior is to exit on any signal.  Therefore
+you should only use this command if you understand how to restart the target
+thread, because your Emacs session may behave incorrectly if necessary
+threads are killed.
 
 @item g
-スレッドのリストと状態を更新する。
+Update the list of threads and their statuses.
 @end table

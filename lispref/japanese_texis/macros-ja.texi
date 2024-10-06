@@ -10,30 +10,41 @@
 @c Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node Macros
-@chapter マクロ
+@chapter Macros
 @cindex macros
 
-  @dfn{マクロ(macros)}により新たな制御構造や、他の言語機能の定義を可能にします。マクロは関数のように定義されますが、値の計算方法を指定するかわりに、値を計算する別のLisp式を計算する方法を指示します。わたしたちはこの式のことをマクロの@dfn{展開(expansion)}と呼んでいます。
+  @dfn{Macros} enable you to define new control constructs and other language
+features.  A macro is defined much like a function, but instead of telling
+how to compute a value, it tells how to compute another Lisp expression
+which will in turn compute the value.  We call this expression the
+@dfn{expansion} of the macro.
 
-  マクロは関数が行うように引数の値を処理するのではなく、引数にたいする未評価の式を処理することによって、これを行うことができます。したがってマクロは、これらの引数式かその一部を含む式を構築することができます。
+  Macros can do this because they operate on the unevaluated expressions for
+the arguments, not on the argument values as functions do.  They can
+therefore construct an expansion containing these argument expressions or
+parts of them.
 
-  て通常の関数が行えることをマクロを使用して行う場合、単にそれが速度面の理由ならばかわりにインライン関数の使用を考慮してください。@ref{Inline
-Functions}を参照してください。
+  If you are using a macro to do something an ordinary function could do, just
+for the sake of speed, consider using an inline function instead.
+@xref{Inline Functions}.
 
 @menu
-* Simple Macro::             基本的な例。
-* Expansion::                いつ、なぜ、どのようにマクロが展開されるか。
-* Compiling Macros::         コンパイラーによりマクロが展開される方法。
-* Defining Macros::          マクロ定義を記述する方法。
-* Problems with Macros::     マクロ引数を何回も評価しないこと。ユーザーの変数を隠さないこと。
-* Indenting Macros::         マクロ呼び出しのインデント方法の指定。
+* Simple Macro::             A basic example.
+* Expansion::                How, when and why macros are expanded.
+* Compiling Macros::         How macros are expanded by the compiler.
+* Defining Macros::          How to write a macro definition.
+* Problems with Macros::     Don't evaluate the macro arguments too many 
+                               times.  Don't hide the user's variables.
+* Indenting Macros::         Specifying how to indent macro calls.
 @end menu
 
 @node Simple Macro
-@section 単純なマクロの例
+@section A Simple Example of a Macro
 
-  Cの@code{++}演算子のように、変数の値をインクリメントするためのLisp構造を定義したいとしましょう。@code{(inc
-x)}のように記述すれば、@code{(setq x (1+ x))}という効果を得たいとします。以下はこれを行うマクロ定義です:
+  Suppose we would like to define a Lisp construct to increment a variable
+value, much like the @code{++} operator in C@.  We would like to write
+@code{(inc x)} and have the effect of @code{(setq x (1+ x))}.  Here's a
+macro definition that does the job:
 
 @findex inc
 @example
@@ -43,44 +54,72 @@ x)}のように記述すれば、@code{(setq x (1+ x))}という効果を得た�
 @end group
 @end example
 
-  これを@code{(inc x)}のように呼び出すと、引数@var{var}はシンボル@code{x}になります ---
-関数のときのように@code{x}の@emph{値ではありません}。このマクロのbodyはこれを展開の構築に使用して、展開形は@code{(setq x
-(1+ x))}になります。マクロが一度この展開形をリターンするとLispはそれを評価するので、@code{x}がインクリメントされます。
+  When this is called with @code{(inc x)}, the argument @var{var} is the
+symbol @code{x}---@emph{not} the @emph{value} of @code{x}, as it would be in
+a function.  The body of the macro uses this to construct the expansion,
+which is @code{(setq x (1+ x))}.  Once the macro definition returns this
+expansion, Lisp proceeds to evaluate it, thus incrementing @code{x}.
 
 @defun macrop object
-この述語はその引数がマクロかどうかテストして、もしマクロなら@code{t}、それ以外は@code{nil}をリターンする。
+This predicate tests whether its argument is a macro, and returns @code{t}
+if so, @code{nil} otherwise.
 @end defun
 
 @node Expansion
-@section マクロ呼び出しの展開
+@section Expansion of a Macro Call
 @cindex expansion of macros
 @cindex macro call
 
-  マクロ呼び出しは関数の呼び出しと同じ外観をもち、マクロの名前で始まるリストで表されます。そのリストの残りの要素はマクロの引数になります。
+  A macro call looks just like a function call in that it is a list which
+starts with the name of the macro.  The rest of the elements of the list are
+the arguments of the macro.
 
-  マクロ呼び出しの評価は1つの重大な違いを除いて、関数の評価と同じように開始されます。重要な違いとはそのマクロの引数はマクロ呼び出し内で実際の式として現れます。これらの引数はマクロ定義に与えられる前には評価されません。対象的に関数の引数はその関数の呼び出しリストの要素を評価した結果です。
+  Evaluation of the macro call begins like evaluation of a function call
+except for one crucial difference: the macro arguments are the actual
+expressions appearing in the macro call.  They are not evaluated before they
+are given to the macro definition.  By contrast, the arguments of a function
+are results of evaluating the elements of the function call list.
 
-  こうして得た引数を使用して、Lispは関数呼び出しのようにマクロ定義を呼び出します。マクロの引数変数はマクロ呼び出しの引数値にバインドされるか、a
-@code{&rest}引数の場合は引数地のリストになります。そしてそのマクロのbodyが実行されて、関数bodyが行うようにマクロbodyの値をリターンします。
+  Having obtained the arguments, Lisp invokes the macro definition just as a
+function is invoked.  The argument variables of the macro are bound to the
+argument values from the macro call, or to a list of them in the case of a
+@code{&rest} argument.  And the macro body executes and returns its value
+just as a function body does.
 
-  マクロと関数の2つ目の重要な違いは、マクロのbodyからリターンされる値が代替となるLisp式であることで、これはマクロの@dfn{展開(expansion)}としても知られています。Lispインタープリターはマクロから展開形が戻されると、すぐにその展開形の評価を行います。
+  The second crucial difference between macros and functions is that the value
+returned by the macro body is an alternate Lisp expression, also known as
+the @dfn{expansion} of the macro.  The Lisp interpreter proceeds to evaluate
+the expansion as soon as it comes back from the macro.
 
-  展開形は通常の方法で評価されるので、もしかしたらその展開形は他のマクロの呼び出しを含むかもしれません。一般的ではありませんが、もしかすると同じマクロを呼び出すかもしれません。
+  Since the expansion is evaluated in the normal manner, it may contain calls
+to other macros.  It may even be a call to the same macro, though this is
+unusual.
 
-  EmacsはコンパイルされていないLispファイルをロードするときに、マクロの展開を試みることに注意してください。これは常に利用可能ではありませんが、もし可能ならそれ以降の実行の速度を改善します。@ref{How
-Programs Do Loading}を参照してください。
+  Note that Emacs tries to expand macros when loading an uncompiled Lisp
+file.  This is not always possible, but if it is, it speeds up subsequent
+execution.  @xref{How Programs Do Loading}.
 
-  @code{macroexpand}を呼び出すことにより、与えられたマクロ呼び出しにたいする展開形を確認することができます。
+  You can see the expansion of a given macro call by calling
+@code{macroexpand}.
 
 @defun macroexpand form &optional environment
 @cindex macro expansion
-この関数はそれがマクロ呼び出しなら@var{form}を展開する。結果が他のマクロ呼び出しなら、結果がマクロ呼び出しでなくなるまで順番に展開を行う。これが@code{macroexpand}からリターンされる値になる。@var{form}がマクロ呼び出しで開始されなければ、与えられた@var{form}をそのままリターンする。
+This function expands @var{form}, if it is a macro call.  If the result is
+another macro call, it is expanded in turn, until something which is not a
+macro call results.  That is the value returned by @code{macroexpand}.  If
+@var{form} is not a macro call to begin with, it is returned as given.
 
-@code{macroexpand}は、(たとえいくつかのマクロ定義がそれを行っているとしても)@var{form}の部分式(subexpression)を調べないことに注意。たとえ部分式自身がマクロ呼び出しでも、@code{macroexpand}はそれらを展開しない。
+Note that @code{macroexpand} does not look at the subexpressions of
+@var{form} (although some macro definitions may do so).  Even if they are
+macro calls themselves, @code{macroexpand} does not expand them.
 
-関数@code{macroexpand}はインライン関数の呼び出しを展開しない。なぜならインライン関数の呼び出しは、通常の関数呼び出しと比較して理解が難しい訳ではないので、通常はそれを行う必要がないからである。
+The function @code{macroexpand} does not expand calls to inline functions.
+Normally there is no need for that, since a call to an inline function is no
+harder to understand than a call to an ordinary function.
 
-@var{environment}が与えられたら、それはそのとき定義されているマクロをシャドーするマクロのalistを指定する。バイトコンパイルではこの機能を使用している。
+If @var{environment} is provided, it specifies an alist of macro definitions
+that shadow the currently defined macros.  Byte compilation uses this
+feature.
 
 @example
 @group
@@ -100,16 +139,20 @@ Programs Do Loading}を参照してください。
 
 @group
 (macroexpand '(inc2 r s))
-     @result{} (progn (inc r) (inc s))  ; @r{ここでは@code{inc}は展開されない}
+     @result{} (progn (inc r) (inc s))  ; @r{@code{inc} not expanded here.}
 @end group
 @end example
 @end defun
 
 
 @defun macroexpand-all form &optional environment
-@code{macroexpand-all}は@code{macroexpand}と同様にマクロを展開するが、ドップレベルだけではなく@var{form}内のすべてのマクロを探して展開する。展開されたマクロがなければリターン値は@var{form}と@code{eq}になる。
+@code{macroexpand-all} expands macros like @code{macroexpand}, but will look
+for and expand all macros in @var{form}, not just at the top-level.  If no
+macros are expanded, the return value is @code{eq} to @var{form}.
 
-上記@code{macroexpand}で使用した例を@code{macroexpand-all}に用いると、@code{macroexpand-all}が@code{inc}に埋め込まれた呼び出しの展開を@emph{行う}ことを確認できる
+Repeating the example used for @code{macroexpand} above with
+@code{macroexpand-all}, we see that @code{macroexpand-all} @emph{does}
+expand the embedded calls to @code{inc}:
 
 @example
 (macroexpand-all '(inc2 r s))
@@ -119,50 +162,82 @@ Programs Do Loading}を参照してください。
 @end defun
 
 @defun macroexpand-1 form &optional environment
-この関数は@code{macroexpand}のようにマクロを展開するが、展開の1ステップだけを行う。結果が別のマクロ呼び出しなら@code{macroexpand-1}はそれを展開しない。
+This function expands macros like @code{macroexpand}, but it only performs
+one step of the expansion: if the result is another macro call,
+@code{macroexpand-1} will not expand it.
 @end defun
 
 @node Compiling Macros
-@section マクロとバイトコンパイル
+@section Macros and Byte Compilation
 @cindex byte-compiling macros
 
-  なぜわざわざマクロにたいする展開形を計算して、その後に展開形を評価する手間をかけるのか、不思議に思うかもしれません。なぜマクロbodyは直接望ましい結果を生成しないのでしょうか?
-それはコンパイルする必要があるからです。
+  You might ask why we take the trouble to compute an expansion for a macro
+and then evaluate the expansion.  Why not have the macro body produce the
+desired results directly? The reason has to do with compilation.
 
-  コンパイルされるLispプログラム内にマクロ呼び出しがあるとき、Lispコンパイラーはインタープリターが行うようにマクロ定義を呼び出して展開形を受け取ります。しかし展開形を評価するかわりに、コンパイラーは展開形が直接プログラム内にあるかのようにコンパイルを行います。結果としてコンパイルされたコードはそのマクロにたいする値と副作用を生成しますが、実行速度は完全にコンパイルされたときと同じになります。もしマクロbody自身が値と副作用を計算したら、このようには機能しません
---- コンパイル時に計算されることになり、それは有用ではありません。
+  When a macro call appears in a Lisp program being compiled, the Lisp
+compiler calls the macro definition just as the interpreter would, and
+receives an expansion.  But instead of evaluating this expansion, it
+compiles the expansion as if it had appeared directly in the program.  As a
+result, the compiled code produces the value and side effects intended for
+the macro, but executes at full compiled speed.  This would not work if the
+macro body computed the value and side effects itself---they would be
+computed at compile time, which is not useful.
 
-  マクロ呼び出しのコンパイルが機能するためには、マクロを呼び出すコードがコンパイルされるとき、そのマクロがLisp内ですでに定義されていなければなりません。コンパイラーにはこれを行うのを助ける特別な機能があります。コンパイルされるファイルが@code{defmacro}フォームを含むなら、そのファイルの残りの部分をコンパイルするためにそのマクロが一時的に定義されます。
+  In order for compilation of macro calls to work, the macros must already be
+defined in Lisp when the calls to them are compiled.  The compiler has a
+special feature to help you do this: if a file being compiled contains a
+@code{defmacro} form, the macro is defined temporarily for the rest of the
+compilation of that file.
 
-  ファイルをバイトコンパイルすると、ファイル内のトップレベルにあるすべての@code{require}呼び出しも実行されるので、それらを定義しているファイルをrequireすることにより、コンパイルの間に必要なマクロ定義が利用できることが確実になります(@ref{Named
-Features}を参照)。誰かがコンパイルされたプログラムを@emph{実行}するときに、マクロ定義ファイルのロードをしないようにするには、@code{require}呼び出しの周囲に@code{eval-when-compile}を記述します(@ref{Eval
-During Compile}を参照)。
+  Byte-compiling a file also executes any @code{require} calls at top-level in
+the file, so you can ensure that necessary macro definitions are available
+during compilation by requiring the files that define them (@pxref{Named
+Features}).  To avoid loading the macro definition files when someone
+@emph{runs} the compiled program, write @code{eval-when-compile} around the
+@code{require} calls (@pxref{Eval During Compile}).
 
 @node Defining Macros
-@section マクロの定義
+@section Defining Macros
 @cindex defining macros
 @cindex macro, how to define
 
-  Lispのマクロオブジェクトは、@sc{car}が@code{macro}で@sc{cdr}が関数であるようなリストです。マクロの展開形はマクロ呼び出しから、@emph{評価されていない}引数のリストに、(@code{apply}を使って)関数を適用することにより機能します。
+  A Lisp macro object is a list whose @sc{car} is @code{macro}, and whose
+@sc{cdr} is a function.  Expansion of the macro works by applying the
+function (with @code{apply}) to the list of @emph{unevaluated} arguments
+from the macro call.
 
-  無名関数のように無名Lispマクロを使用することも可能ですが、無名マクロを@code{mapcar}のような関数に渡すことに意味がないので、これが行われることはありません。実際のところすべてのLispマクロは名前をもち、ほとんど常に@code{defmacro}マクロで定義されます。
+  It is possible to use an anonymous Lisp macro just like an anonymous
+function, but this is never done, because it does not make sense to pass an
+anonymous macro to functionals such as @code{mapcar}.  In practice, all Lisp
+macros have names, and they are almost always defined with the
+@code{defmacro} macro.
 
 @defmac defmacro name args [doc] [declare] body@dots{}
-@code{defmacro}はシンボル@var{name}(クォートはしない)を、以下のようなマクロとして定義する:
+@code{defmacro} defines the symbol @var{name} (which should not be quoted)
+as a macro that looks like this:
 
 @example
 (macro lambda @var{args} . @var{body})
 @end example
 
-(このリストの@sc{cdr}はラムダ式であることに注意。)
-このマクロオブジェクトは@var{name}の関数セルに格納される。@var{args}の意味は関数の場合と同じで、キーワード@code{&rest}や@code{&optional}が使用されることもある(@ref{Argument
-List}を参照)。@var{name}と@var{args}はどちらもクォートされるべきではない。@code{defmacro}のリターン値は未定義。
+(Note that the @sc{cdr} of this list is a lambda expression.)  This macro
+object is stored in the function cell of @var{name}.  The meaning of
+@var{args} is the same as in a function, and the keywords @code{&rest} and
+@code{&optional} may be used (@pxref{Argument List}).  Neither @var{name}
+nor @var{args} should be quoted.  The return value of @code{defmacro} is
+undefined.
 
-@var{doc}が与えられたら、それはマクロのドキュメント文字列を指定する文字列であること。@var{declare}が与えられたら、それはマクロのメタデータを指定する@code{declare}フォームであること(@ref{Declare
-Form}を参照)。マクロを対話的に呼び出すことはできないので、インタラクティブ宣言をもつことはできないことに注意。
+@var{doc}, if present, should be a string specifying the macro's
+documentation string.  @var{declare}, if present, should be a @code{declare}
+form specifying metadata for the macro (@pxref{Declare Form}).  Note that
+macros cannot have interactive declarations, since they cannot be called
+interactively.
 @end defmac
 
-  マクロが定数部と非定数部の混合体から構築される巨大なリスト構造を必要とする場合があります。これを簡単に行うためには@samp{`}構文(@ref{Backquote}を参照)を使用します。たとえば:
+  Macros often need to construct large list structures from a mixture of
+constants and nonconstant parts.  To make this easier, use the @samp{`}
+syntax (@pxref{Backquote}).  For example:
 
 @example
 @group
@@ -178,23 +253,30 @@ Form}を参照)。マクロを対話的に呼び出すことはできないの�
 @end example
 
 @node Problems with Macros
-@section マクロ使用に関する一般的な問題
+@section Common Problems Using Macros
 @cindex macro caveats
 
-  マクロ展開が直感に反する結果となることがあり得ます。このセクションでは問題になりやすい重要な結果と、問題を避けるためにしたがうべきルールをいくつか説明します。
+  Macro expansion can have counterintuitive consequences.  This section
+describes some important consequences that can lead to trouble, and rules to
+follow to avoid trouble.
 
 @menu
-* Wrong Time::               マクロ内ではなく展開形で作業を行う。
-* Argument Evaluation::      展開形は各マクロ引数を一度評価すること。
-* Surprising Local Vars::    展開形でのローカル変数バインディングには特に注意を要する。
-* Eval During Expansion::    評価せずに展開形の中に配置すること。
-* Repeated Expansion::       展開が行われる回数への依存を避ける。
+* Wrong Time::               Do the work in the expansion, not in the macro.
+* Argument Evaluation::      The expansion should evaluate each macro arg 
+                               once.
+* Surprising Local Vars::    Local variable bindings in the expansion 
+                               require special care.
+* Eval During Expansion::    Don't evaluate them; put them in the expansion.
+* Repeated Expansion::       Avoid depending on how many times expansion is 
+                               done.
 @end menu
 
 @node Wrong Time
-@subsection タイミング間違い
+@subsection Wrong Time
 
-  マクロを記述する際のもっとも一般的な問題として、展開形の中ではなくマクロ展開中に早まって実際に何らかの作業を行ってしまうことがあります。たとえば実際のパッケージが以下のマクロ定義をもつとします:
+  The most common problem in writing macros is doing some of the real work
+prematurely---while expanding the macro, rather than in the expansion
+itself.  For instance, one real package had this macro definition:
 
 @example
 (defmacro my-set-buffer-multibyte (arg)
@@ -202,7 +284,11 @@ Form}を参照)。マクロを対話的に呼び出すことはできないの�
       (set-buffer-multibyte arg)))
 @end example
 
-この誤ったマクロ定義は解釈(interpret)されるときは正常に機能しますがコンパイル時に失敗します。このマクロ定義はコンパイル時に@code{set-buffer-multibyte}を呼び出してしまいますが、それは間違っています。その後でコンパイルされたパッケージを実行しても何も行いません。プログラマーが実際に望むのは以下の定義です:
+With this erroneous macro definition, the program worked fine when
+interpreted but failed when compiled.  This macro definition called
+@code{set-buffer-multibyte} during compilation, which was wrong, and then
+did nothing when the compiled package was run.  The definition that the
+programmer really wanted was this:
 
 @example
 (defmacro my-set-buffer-multibyte (arg)
@@ -211,12 +297,17 @@ Form}を参照)。マクロを対話的に呼び出すことはできないの�
 @end example
 
 @noindent
-このマクロは、もし適切なら@code{set-buffer-multibyte}の呼び出しに展開され、それはコンパイルされたプログラム実行時に実行されるでしょう。
+This macro expands, if appropriate, into a call to
+@code{set-buffer-multibyte} that will be executed when the compiled program
+is actually run.
 
 @node Argument Evaluation
-@subsection マクロ引数の多重評価
+@subsection Evaluating Macro Arguments Repeatedly
 
-  マクロを定義する場合、展開形が実行されるときに引数が何回評価されるか注意を払わなければなりません。以下の(繰り返し処理を用意にする)マクロで、この問題を示してみましょう。このマクロでfor-loop構文を記述できます。
+  When defining a macro you must pay attention to the number of times the
+arguments will be evaluated when the expansion is executed.  The following
+macro (used to facilitate iteration) illustrates the problem.  This macro
+allows us to write a for-loop construct.
 
 @findex for
 @example
@@ -253,10 +344,12 @@ For example, (for i from 1 to 10 do (print i))."
 @end example
 
 @noindent
-マクロ内の引数@code{from}、@code{to}、@code{do}は構文糖(syntactic
-sugar)であり完全に無視されます。このアイデアはマクロ呼び出し中で(@code{from}、@code{to}、@code{do}のような)余計な単語をこれらの位置に記述できるようにするというものです。
+The arguments @code{from}, @code{to}, and @code{do} in this macro are
+syntactic sugar; they are entirely ignored.  The idea is that you will write
+noise words (such as @code{from}, @code{to}, and @code{do})  in those
+positions in the macro call.
 
-以下はバッククォートの使用により、より単純化された等価の定義です:
+Here's an equivalent definition simplified through use of backquote:
 
 @example
 @group
@@ -270,11 +363,18 @@ For example, (for i from 1 to 10 do (print i))."
 @end group
 @end example
 
-この定義のフォームは両方(バッククォートのあるものとないもの)とも、各繰り返しにおいて毎回@var{final}が評価されるという欠点をもちます。@var{final}が定数のときは問題がありません。しかしこれがより複雑な、たとえば@code{(long-complex-calculation
-x)}のようなフォームならば、実行速度は顕著に低下し得ます。@var{final}が副作用をもつなら、複数回実行するとおそらく誤りになります。
+Both forms of this definition (with backquote and without) suffer from the
+defect that @var{final} is evaluated on every iteration.  If @var{final} is
+a constant, this is not a problem.  If it is a more complex form, say
+@code{(long-complex-calculation x)}, this can slow down the execution
+significantly.  If @var{final} has side effects, executing it more than once
+is probably incorrect.
 
 @cindex macro argument evaluation
-うまく設計されたマクロ定義は、繰り返し評価することがそのマクロの意図された目的でない限り、引数を正確に1回評価を行う展開形を生成することで、この問題を避けるためのステップを費やします。以下は@code{for}マクロの正しい展開形です:
+A well-designed macro definition takes steps to avoid this problem by
+producing an expansion that evaluates the argument expressions exactly once
+unless repeated evaluation is part of the intended purpose of the macro.
+Here is a correct expansion for the @code{for} macro:
 
 @example
 @group
@@ -287,7 +387,7 @@ x)}のようなフォームならば、実行速度は顕著に低下し得ま�
 @end group
 @end example
 
-以下はこの展開形を生成するためのマクロ定義です:
+Here is a macro definition that creates this expansion:
 
 @example
 @group
@@ -301,13 +401,16 @@ x)}のようなフォームならば、実行速度は顕著に低下し得ま�
 @end group
 @end example
 
-  残念なことにこの訂正により以下のセクションで説明する、別の問題が発生します。
+  Unfortunately, this fix introduces another problem, described in the
+following section.
 
 @node Surprising Local Vars
-@subsection マクロ展開でのローカル変数
+@subsection Local Variables in Macro Expansions
 
 @ifnottex
-  前のセクションでは@code{for}の定義を、展開形がマクロ引数を正しい回数評価するように訂正しました:
+  In the previous section, the definition of @code{for} was fixed as follows
+to make the expansion evaluate the macro arguments the proper number of
+times:
 
 @example
 @group
@@ -324,7 +427,9 @@ x)}のようなフォームならば、実行速度は顕著に低下し得ま�
 @end example
 @end ifnottex
 
-  @code{for}の新しい定義には新たな問題があります。この定義はユーザーが意識していない、@code{max}という名前のローカル変数を導入しています。これは以下の例で示すようなトラブルを招きます:
+  The new definition of @code{for} has a new problem: it introduces a local
+variable named @code{max} which the user does not expect.  This causes
+trouble in examples such as the following:
 
 @example
 @group
@@ -337,10 +442,17 @@ x)}のようなフォームならば、実行速度は顕著に低下し得ま�
 @end example
 
 @noindent
-@code{for}のbody内部の@code{max}への参照は、@code{max}のユーサーバインディングの参照を意図したものですが、実際には@code{for}により作られたバインディングにアクセスします。
+The references to @code{max} inside the body of the @code{for}, which are
+supposed to refer to the user's binding of @code{max}, really access the
+binding made by @code{for}.
 
-これを修正する方法は、@code{max}のかわりにinternされていない(uninterned)シンボルを使用することです(@ref{Creating
-Symbols}を参照)。internされていないシンボルは他のシンボルと同じようにバインドして参照することができますが、@code{for}により作成されるので、わたしたちはすでにユーザーのプログラムに存在するはずがないことを知ることができます。これはinternされていないので、プログラムの後続の部分でそれを配置する方法はありません。これは@code{for}により配置された場所をのぞき、他の場所で配置されることがないのです。以下はこの方法で機能する@code{for}の定義です:
+The way to correct this is to use an uninterned symbol instead of @code{max}
+(@pxref{Creating Symbols}).  The uninterned symbol can be bound and referred
+to just like any other symbol, but since it is created by @code{for}, we
+know that it cannot already appear in the user's program.  Since it is not
+interned, there is no way the user can put it into the program later.  It
+will never appear anywhere except where put by @code{for}.  Here is a
+definition of @code{for} that works this way:
 
 @example
 @group
@@ -356,14 +468,24 @@ Symbols}を参照)。internされていないシンボルは他のシンボル�
 @end example
 
 @noindent
-作成されたinternされていないシンボルの名前は@code{max}で、これを通常のinternされたシンボル@code{max}のかわりに、式内のその位置に記述します。
+This creates an uninterned symbol named @code{max} and puts it in the
+expansion instead of the usual interned symbol @code{max} that appears in
+expressions ordinarily.
 
 @node Eval During Expansion
-@subsection 展開におけるマクロ引数の評価
+@subsection Evaluating Macro Arguments in Expansion
 
-  マクロ定義自体が@code{eval}(@ref{Eval}を参照)の呼び出しなどによりマクロ引数式を評価した場合には別の問題が発生します。まだ呼び出し側のコンテキスト(マクロ展開が評価される場所)にアクセスできない場合には、コード実行の遥か前にマクロが展開されることを考慮する必要があります。
+  Another problem can happen if the macro definition itself evaluates any of
+the macro argument expressions, such as by calling @code{eval}
+(@pxref{Eval}).  You have to take into account that macro expansion may take
+place long before the code is executed, when the context of the caller
+(where the macro expansion will be evaluated) is not yet accessible.
 
-  更にマクロ定義で@code{lexical-binding}バインディングを使用していなければ、ユーザーの同じ名前の変数ををマクロの正規引数が隠してしまうかもしれません。マクロのbody内では、マクロ引数のバインディングはこのような変数のもっともローカルなバインディングなので、そのフォーム内部の任意の参照はそれを参照するように評価されます。以下は例です:
+  Also, if your macro definition does not use @code{lexical-binding}, its
+formal arguments may hide the user's variables of the same name.  Inside the
+macro body, the macro argument binding is the most local binding of such
+variable, so any references inside the form being evaluated do refer to it.
+Here is an example:
 
 @example
 @group
@@ -373,36 +495,57 @@ Symbols}を参照)。internされていないシンボルは他のシンボル�
 @group
 (setq x 'b)
 (foo x) @expansion{} (setq b t)
-     @result{} t                  ; @r{@code{b}がセットされる}
+     @result{} t                  ; @r{and @code{b} has been set.}
 ;; @r{but}
 (setq a 'c)
 (foo a) @expansion{} (setq a t)
-     @result{} t                  ; @r{しかし@code{c}ではなく@code{a}がセットされる}
+     @result{} t                  ; @r{but this set @code{a}, not @code{c}.}
 
 @end group
 @end example
 
-  ユーザーの変数の名前が@code{a}か@code{x}かということで違いが生じています。これは@code{a}がマクロの引数変数@code{a}と競合しているからです。
+  It makes a difference whether the user's variable is named @code{a} or
+@code{x}, because @code{a} conflicts with the macro argument variable
+@code{a}.
 
-  更に上記の@code{(foo x)}の展開は、コードがコンパイル済みの際には@code{(setq x
-'b)}の実行は後刻そのコードが実行されるときだけ発生するのに、@code{(foo
-x)}はコンパイル時に展開されるので、異なる結果をリターンしたりエラーをシグナルするでしょう。
+  Also, the expansion of @code{(foo x)} above will return something different
+or signal an error when the code is compiled, since in that case @code{(foo
+x)} is expanded during compilation, whereas the execution of @code{(setq x
+'b)} will only take place later when the code is executed.
 
-  この問題を避けるためには、@strong{マクロ展開形の計算では引数式を評価しないでください}。かわりにその式をマクロ展開形の中に置き換えれば、その値は展開形の実行の一部として計算されます。これは、このチャプターの他の例が機能する方法です。
+  To avoid these problems, @strong{don't evaluate an argument expression while
+computing the macro expansion}.  Instead, substitute the expression into the
+macro expansion, so that its value will be computed as part of executing the
+expansion.  This is how the other examples in this chapter work.
 
 @node Repeated Expansion
-@subsection マクロが展開される回数は?
+@subsection How Many Times is the Macro Expanded?
 
-  逐次解釈される関数で毎回マクロ呼び出しが展開されるが、コンパイルされた関数では(コンパイル時の)1回だけしか展開されないという事実にもとづく問題が時折発生します。そのマクロ定義が副作用をもつなら、そのマクロが何回展開されたかによって、それらのマクロは異なる動作をとるでしょう。
+  Occasionally problems result from the fact that a macro call is expanded
+each time it is evaluated in an interpreted function, but is expanded only
+once (during compilation) for a compiled function.  If the macro definition
+has side effects, they will work differently depending on how many times the
+macro is expanded.
 
-  したがってあなたが何をしているか本当に判っていないのであれば、マクロ展開形の計算での副作用は避けるべきです。
+  Therefore, you should avoid side effects in computation of the macro
+expansion, unless you really know what you are doing.
 
-  避けることのできない特殊な副作用が1つあります。それはLispオブジェクトの構築です。ほとんどすべてのマクロ展開形にはリストの構築が含まれます。リスト構築はほとんどのマクロの核心部分です。これは通常は安全です。用心しなければならないケースが1つだけあります。それは構築するオブジェクトがマクロ展開形の中でクォートされた定数の一部となるときです。
+  One special kind of side effect can't be avoided: constructing Lisp
+objects.  Almost all macro expansions include constructed lists; that is the
+whole point of most macros.  This is usually safe; there is just one case
+where you must be careful: when the object you construct is part of a quoted
+constant in the macro expansion.
 
-  そのマクロが1回だけ --- コンパイル時 ---
-しか展開されないなら、そのオブジェクトの構築もコンパイル時の1回です。しかし逐次実行では、そのマクロはマクロ呼び出しが実行されるたびに展開され、これは毎回新たなオブジェクトが構築されることを意味します。
+  If the macro is expanded just once, in compilation, then the object is
+constructed just once, during compilation.  But in interpreted execution,
+the macro is expanded each time the macro call runs, and this means a new
+object is constructed each time.
 
-  クリーンなLispコードのほとんどでは、この違いは問題になりません。しかしマクロ定義によるオブジェクト構築の副作用を処理する場合には、問題になるかもしれません。したがって問題を避けるために、@strong{マクロ定義によるオブジェクト構築の副作用を避けてください}。以下は副作用により問題が起こる例です:
+  In most clean Lisp code, this difference won't matter.  It can matter only
+if you perform side-effects on the objects constructed by the macro
+definition.  Thus, to avoid trouble, @strong{avoid side effects on objects
+constructed by macro definitions}.  Here is an example of how such side
+effects can get you into trouble:
 
 @lisp
 @group
@@ -420,15 +563,25 @@ x)}はコンパイル時に展開されるので、異なる結果をリター�
 @end lisp
 
 @noindent
-@code{initialize}が解釈されると、@code{initialize}が呼び出されるたびに新しいリスト@code{(nil)}が構築されます。したがって各呼び出しの間において副作用は存続しません。しかし@code{initialize}がコンパイルされると、マクロ@code{empty-object}はコンパイル時に展開され、これは1つの定数@code{(nil)}を生成し、この定数は@code{initialize}の呼び出しの各回で再利用、変更されます。
+If @code{initialize} is interpreted, a new list @code{(nil)} is constructed
+each time @code{initialize} is called.  Thus, no side effect survives
+between calls.  If @code{initialize} is compiled, then the macro
+@code{empty-object} is expanded during compilation, producing a single
+constant @code{(nil)} that is reused and altered each time @code{initialize}
+is called.
 
-このような異常な状態を避ける1つの方法は、@code{empty-object}をメモリー割り当て構造ではなく一種の奇妙な変数と考えることです。@code{'(nil)}のような定数にたいして@code{setcar}を使うことはないでしょうから、当然@code{(empty-object)}にも使うことはないでしょう。
+One way to avoid pathological cases like this is to think of
+@code{empty-object} as a funny kind of constant, not as a memory allocation
+construct.  You wouldn't use @code{setcar} on a constant such as
+@code{'(nil)}, so naturally you won't use it on @code{(empty-object)}
+either.
 
 @node Indenting Macros
-@section マクロのインデント
+@section Indenting Macros
 
-  マクロ定義ではマクロ呼び出しを@key{TAB}がどのようにインデントすべきか指定するために、@code{declare}フォーム(@ref{Defining
-Macros}を参照)を使うことができます。インデント指定は以下のように記述します:
+  Within a macro definition, you can use the @code{declare} form
+(@pxref{Defining Macros}) to specify how @key{TAB} should indent calls to
+the macro.  An indentation specification is written like this:
 
 @example
 (declare (indent @var{indent-spec}))
@@ -436,28 +589,50 @@ Macros}を参照)を使うことができます。インデント指定は以下
 
 @noindent
 @cindex @code{lisp-indent-function} property
-この@code{lisp-indent-function}プロパティ内の結果はマクロの名前にセットされます。
+This results in the @code{lisp-indent-function} property being set on the
+macro name.
 
 @noindent
-以下は利用できる@var{indent-spec}です:
+Here are the possibilities for @var{indent-spec}:
 
 @table @asis
 @item @code{nil}
-これはプロパティを指定しない場合と同じ --- 標準的なインデントパターンを使用する。
+This is the same as no property---use the standard indentation pattern.
 @item @code{defun}
-この関数を@samp{def}構文 --- 2番目の行が@dfn{body}の開始 --- と同様に扱う。
-@item 整数: @var{number}
-関数の最初の@var{number}個の引数は@dfn{区別}され、残りは式のbodyと判断される。その式の中の行は、最初の引数が区別されているかどうかにしたがってインデントされる。引数がbodyの一部なら、その行はこの式の先頭の開カッコ(open-parenthesis)よりも@code{lisp-body-indent}だけ多い列にインデントされる。引数が区別されていて1つ目か2つ目の引数なら、@emph{2倍}余分にインデントされる。引数が区別されていて1つ目か2つ目以外の引数なら、その行は標準パターンによってインデントされる。
-@item シンボル: @var{symbol}
-@var{symbol}は関数名。この関数はこの式のインデントを計算するために呼び出される関数。この関数は2つの引数をとる:
+Handle this function like a @samp{def} construct: treat the second line as
+the start of a @dfn{body}.
+@item an integer, @var{number}
+The first @var{number} arguments of the function are @dfn{distinguished}
+arguments; the rest are considered the body of the expression.  A line in
+the expression is indented according to whether the first argument on it is
+distinguished or not.  If the argument is part of the body, the line is
+indented @code{lisp-body-indent} more columns than the open-parenthesis
+starting the containing expression.  If the argument is distinguished and is
+either the first or second argument, it is indented @emph{twice} that many
+extra columns.  If the argument is distinguished and not the first or second
+argument, the line uses the standard pattern.
+@item a symbol, @var{symbol}
+@var{symbol} should be a function name; that function is called to calculate
+the indentation of a line within this expression.  The function receives two
+arguments:
 
 @table @asis
 @item @var{pos}
-その行のインデントが開始される位置。
+The position at which the line being indented begins.
 @item @var{state}
-その行の開始まで解析したとき、@code{parse-partial-sexp}(インデントとネスト深さの計算のためのLispプリミティブ)によりリターンされる値。
+The value returned by @code{parse-partial-sexp} (a Lisp primitive for
+indentation and nesting computation) when it parses up to the beginning of
+this line.
 @end table
 
 @noindent
-これは数(その行のインデントの列数)、またはそのような数がcarであるようなリストをリターンすること。数とリストの違いは、数の場合は同じネスト深さの後続のすべての行はこの数と同じインデントとなる。リストなら、後続の行は異なるインデントを呼び出すかもしれない。これは@kbd{C-M-q}によりインデントが計算されるときに違いが生じる。値が数なら@kbd{C-M-q}はリストの終わりまでの後続の行のインデントを再計算する必要はない。
+It should return either a number, which is the number of columns of
+indentation for that line, or a list whose car is such a number.  The
+difference between returning a number and returning a list is that a number
+says that all following lines at the same nesting level should be indented
+just like this one; a list says that following lines might call for
+different indentations.  This makes a difference when the indentation is
+being computed by @kbd{C-M-q}; if the value is a number, @kbd{C-M-q} need
+not recalculate indentation for the following lines until the end of the
+list.
 @end table

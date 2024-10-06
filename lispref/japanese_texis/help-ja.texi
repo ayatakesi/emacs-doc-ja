@@ -10,75 +10,110 @@
 @c Foundation, Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node Documentation
-@chapter ドキュメント
+@chapter Documentation
 @cindex documentation strings
 
-  GNU
-Emacsには便利なビルトインのヘルプ機能があり、それらのほとんどは関数や変数のドキュメント文字列に付属するドキュメント文字列の情報が由来のものです。このチャプターではLispプログラムからドキュメント文字列にアクセスする方法について説明します。
+  GNU Emacs has convenient built-in help facilities, most of which derive
+their information from documentation strings associated with functions and
+variables.  This chapter describes how to access documentation strings in
+Lisp programs.
 
-  ドキュメント文字列のコンテンツはある種の慣習にしたがう必要があります。特に最初の行はその関数や変数を簡単に説明する1つか2つの完全なセンテンスであるべきです。よいドキュメント文字列を記述する方法については@ref{Documentation
-Tips}を参照してください。
+  The contents of a documentation string should follow certain conventions.
+In particular, its first line should be a complete sentence (or two complete
+sentences) that briefly describes what the function or variable does.
+@xref{Documentation Tips}, for how to write good documentation strings.
 
-  Emacs向けのドキュメント文字列はEmacsマニュアルと同じものではないことに注意してください。マニュアルはTexinfo言語で記述された独自のソースファイルをもちます。それにたいしドキュメント文字列はそれが適用される関数と変数の定義内で指定されたものです。ドキュメント文字列を収集してもそれはマニュアルとしては不十分です。なぜならよいマニュアルはそのやり方でまとめられたものではなく、議論にたいするトピックという観点でまとめられたものだからです。
+  Note that the documentation strings for Emacs are not the same thing as the
+Emacs manual.  Manuals have their own source files, written in the Texinfo
+language; documentation strings are specified in the definitions of the
+functions and variables they apply to.  A collection of documentation
+strings is not sufficient as a manual because a good manual is not organized
+in that fashion; it is organized in terms of topics of discussion.
 
-  ドキュメント文字列を表示するコマンドについては、@ref{Help, , Help, emacs, The GNU Emacs
-Manual}を参照してください。
+  For commands to display documentation strings, see @ref{Help, , Help, emacs,
+The GNU Emacs Manual}.
 
 @menu
-* Documentation Basics::     ドキュメント文字列が定義、格納される場所。
-* Accessing Documentation::  Lispプログラムがドキュメント文字列にアクセスする方法。
-* Keys in Documentation::    カレントキーバインディングの置き換え。
-* Text Quoting Style::       ドキュメント文字列やメッセージの中のクォーテーションマーク。
-* Describing Characters::    非プリント文字やキーシーケンスをプリント可能な記述にする。
-* Help Functions::           Emacsヘルプ機能により使用されるサブルーチン。
-* Documentation Groups::     グループごとに関数をリストする。
+* Documentation Basics::     Where doc strings are defined and stored.
+* Accessing Documentation::  How Lisp programs can access doc strings.
+* Keys in Documentation::    Substituting current key bindings.
+* Text Quoting Style::       Quotation marks in doc strings and messages.
+* Describing Characters::    Making printable descriptions of non-printing 
+                               characters and key sequences.
+* Help Functions::           Subroutines used by Emacs help facilities.
+* Documentation Groups::     Listing functions by groups.
 @end menu
 
 @node Documentation Basics
-@section ドキュメントの基礎
+@section Documentation Basics
 @cindex documentation conventions
 @cindex writing a documentation string
 @cindex string, writing a doc string
 
-  ドキュメント文字列はテキストをダブルクォート文字で囲んだ文字列にたいするLisp構文を使用して記述されます。実はこれは実際のLisp文字列です。関数または変数の定義内の適切な箇所に文字列があると、それは関数や変数のドキュメントの役割を果たします。
+  A documentation string is written using the Lisp syntax for strings, with
+double-quote characters surrounding the text.  It is, in fact, an actual
+Lisp string.  When the string appears in the proper place in a function or
+variable definition, it serves as the function's or variable's
+documentation.
 
 @cindex @code{function-documentation} property
-  関数定義(@code{lambda}や@code{defun}フォーム)の中では、ドキュメント文字列は引数リストの後に指定され、通常は関数オブジェクト内に直接格納されます。@ref{Function
-Documentation}を参照してください。関数名の@code{function-documentation}プロパティに関数ドキュメントをputすることもできます(@ref{Accessing
-Documentation}を参照)。
+  In a function definition (a @code{lambda} or @code{defun} form), the
+documentation string is specified after the argument list, and is normally
+stored directly in the function object.  @xref{Function Documentation}.  You
+can also put function documentation in the @code{function-documentation}
+property of a function name (@pxref{Accessing Documentation}).
 
 @cindex @code{variable-documentation} property
-  変数定義(@code{defvar}フォーム)の中では、ドキュメント文字列は初期値の後に指定されます。@ref{Defining
-Variables}を参照してください。この文字列はその変数の@code{variable-documentation}プロパティに格納されます。
+  In a variable definition (a @code{defvar} form), the documentation string is
+specified after the initial value.  @xref{Defining Variables}.  The string
+is stored in the variable's @code{variable-documentation} property.
 
 @cindex @file{DOC} (documentation) file
-  Emacsがメモリー内にドキュメント文字列を保持しないときがあります。それには、これには2つの状況があります。1つ目はメモリーを節約するためでプリミティブ関数(@ref{What
-Is a
-Function}を参照)およびビルトイン変数のドキュメントは、@code{doc-directory}で指定されたディレクトリー内の@file{DOC}という名前のファイルに保持されます(@ref{Accessing
-Documentation}を参照)。2つ目は関数や変数がバイトコンパイルされたファイルからロードされたときで、Emacsはそれらのドキュメント文字列のロードを無効にします(@ref{Docs
-and Compilation}を参照)。どちらの場合も、ある関数にたいしてユーザーが@kbd{C-h
-f}(@code{describe-function})を呼び出したとき等の必要なときだけEmacsはファイルのドキュメント文字列を照会します。
+  Sometimes, Emacs does not keep documentation strings in memory.  There are
+two such circumstances.  Firstly, to save memory, the documentation for
+primitive functions (@pxref{What Is a Function}) and built-in variables is
+kept in a file named @file{DOC}, in the directory specified by
+@code{doc-directory} (@pxref{Accessing Documentation}).  Secondly, when a
+function or variable is loaded from a byte-compiled file, Emacs avoids
+loading its documentation string (@pxref{Docs and Compilation}).  In both
+cases, Emacs looks up the documentation string from the file only when
+needed, such as when the user calls @kbd{C-h f} (@code{describe-function})
+for a function.
 
-  ドキュメント文字列にはユーザーがドキュメントを閲覧するときのみルックアップされるキーバインディングを参照する、特別な@dfn{キー置換シーケンス(key
-substitution
-sequences)}を含めることができます。これにより、たとえユーザーがデフォルトのキーバインディングを変更していてもヘルプコマンドが正しいキーを表示できるようになります。
+  Documentation strings can contain special @dfn{key substitution sequences},
+referring to key bindings which are looked up only when the user views the
+documentation.  This allows the help commands to display the correct keys
+even if a user rearranges the default key bindings.  @xref{Keys in
+Documentation}.
 
-  オートロードされたコマンド(@ref{Autoload}を参照)のドキュメント文字列ではこれらのキー置換シーケンスは特別な効果をもち、そのコマンドにたいする@kbd{C-h
-f}によってオートロードをトリガーします(これは@file{*Help*}バッファー内のハイパーリンクを正しくセットアップするために必要となる)。
+  In the documentation string of an autoloaded command (@pxref{Autoload}),
+these key-substitution sequences have an additional special effect: they
+cause @kbd{C-h f} on the command to trigger autoloading.  (This is needed
+for correctly setting up the hyperlinks in the @file{*Help*} buffer.)
 
 @node Accessing Documentation
-@section ドキュメント文字列へのアクセス
+@section Access to Documentation Strings
 @cindex accessing documentation strings
 
 @defun documentation-property symbol property &optional verbatim
-この関数はプロパティ@var{property}配下の@var{symbol}のプロパティリスト内に記録されたドキュメント文字列をリターンする。これはほとんどの場合@var{property}を@code{variable-documentation}にして、変数のドキュメント文字列の照会に使用される。しかしカスタマイゼーショングループのような他の種類のドキュメント照会にも使用できる(が関数のドキュメントには以下の@code{documentation}関数を使用する)。
+This function returns the documentation string recorded in @var{symbol}'s
+property list under property @var{property}.  It is most often used to look
+up the documentation strings of variables, for which @var{property} is
+@code{variable-documentation}.  However, it can also be used to look up
+other kinds of documentation, such as for customization groups (but for
+function documentation, use the @code{documentation} function, below).
 
-そのプロパティの値が@file{DOC}ファイルやバイトコンパイル済みファイルに格納されたドキュメント文字列を参照する場合、この関数はその文字列を照会してそれをリターンする。
+If the property value refers to a documentation string stored in the
+@file{DOC} file or a byte-compiled file, this function looks up that string
+and returns it.
 
-プロパティの値が@code{nil}や文字列以外でファイル内のテキストも参照しなければ、文字列を取得するLisp式として評価される。
+If the property value isn't @code{nil}, isn't a string, and doesn't refer to
+text in a file, then it is evaluated as a Lisp expression to obtain a
+string.
 
-最終的にこの関数はキーバインディングを置換するために、文字列を@code{substitute-command-keys}に引き渡す(@ref{Keys
-in Documentation}を参照)。@var{verbatim}が非@code{nil}ならこのステップはスキップされる。
+Finally, this function passes the string through
+@code{substitute-command-keys} to substitute key bindings (@pxref{Keys in
+Documentation}).  It skips this step if @var{verbatim} is non-@code{nil}.
 
 @smallexample
 @group
@@ -98,26 +133,43 @@ in Documentation}を参照)。@var{verbatim}が非@code{nil}ならこのステ�
 @end defun
 
 @defun documentation function &optional verbatim
-この関数は@var{function}のドキュメント文字列をリターンする。この関数はマクロ、名前付きキーボードマクロ、およびスペシャルフォームも通常の関数と同様に処理する。
+This function returns the documentation string of @var{function}.  It
+handles macros, named keyboard macros, and special forms, as well as
+ordinary functions.
 
-@var{function}がシンボルならそのシンボルの@code{function-documentation}プロパティを最初に調べる。それが非@code{nil}値をもつなら、その値(プロパティの値が文字列以外ならそれを評価した値)がドキュメントとなる。
+If @var{function} is a symbol, this function first looks for the
+@code{function-documentation} property of that symbol; if that has a
+non-@code{nil} value, the documentation comes from that value (if the value
+is not a string, it is evaluated).
 
-@var{function}がシンボル以外、あるいは@code{function-documentation}プロパティをもたなければ、@code{documentation}は必要ならファイルを読み込んで実際の関数定義のドキュメント文字列を抽出する。
+If @var{function} is not a symbol, or if it has no
+@code{function-documentation} property, then @code{documentation} extracts
+the documentation string from the actual function definition, reading it
+from a file if called for.
 
-最後に@var{verbatim}が@code{nil}なら、この関数は@code{substitute-command-keys}を呼び出す。結果はリターンするための文字列。
+Finally, unless @var{verbatim} is non-@code{nil}, this function calls
+@code{substitute-command-keys}.  The result is the documentation string to
+return.
 
-@code{documentation}関数は@var{function}が関数定義をもたなければ@code{void-function}エラーをシグナルする。しかし関数定義がドキュメントをもたない場合は問題ない。その場合は@code{documentation}は@code{nil}をリターンする。
+The @code{documentation} function signals a @code{void-function} error if
+@var{function} has no function definition.  However, it is OK if the
+function definition has no documentation string.  In that case,
+@code{documentation} returns @code{nil}.
 @end defun
 
 @defun function-documentation function
-@code{documentation}が関数オブジェクトから生のdoc文字列を抽出するために用いるジェネリック関数。対応するメソッドを追加することによって、特定の関数タイプのdoc文字列を取得する方法を指定できる。
+Generic function used by @code{documentation} to extract the raw docstring
+from a function object.  You can specify how to get the docstring of a
+specific function type by adding a corresponding method to it.
 @end defun
 
 @defun face-documentation face
-この関数は@var{face}のドキュメント文字列をフェイスとしてリターンする。
+This function returns the documentation string of @var{face} as a face.
 @end defun
 
-以下は@code{documentation}と@code{documentation-property}を使用した例で、いくつかのシンボルのドキュメント文字列を@file{*Help*}バッファー内に表示します。
+Here is an example of using the two functions, @code{documentation} and
+@code{documentation-property}, to display the documentation strings for
+several symbols in a @file{*Help*} buffer.
 
 @anchor{describe-symbols example}
 @smallexample
@@ -131,25 +183,25 @@ in the *Help* buffer."
          (lambda (s)
 @end group
 @group
-            ;; @r{シンボルの説明をプリントする}
-            (if (fboundp s)             ; @r{これは関数}
-                (princ
-                 (format "%s\t%s\n%s\n\n" s
-                   (if (commandp s)
-                       (let ((keys (where-is-internal s)))
-                         (if keys
-                             (concat
-                              "Keys: "
-                              (mapconcat 'key-description
-                                         keys " "))
-                           "Keys: none"))
-                     "Function")
+           ;; @r{Print description of symbol.}
+           (if (fboundp s)             ; @r{It is a function.}
+               (princ
+                (format "%s\t%s\n%s\n\n" s
+                  (if (commandp s)
+                      (let ((keys (where-is-internal s)))
+                        (if keys
+                            (concat
+                             "Keys: "
+                             (mapconcat 'key-description
+                                        keys " "))
+                          "Keys: none"))
+                    "Function")
 @end group
 @group
                   (or (documentation s)
                       "not documented"))))
 
-           (if (boundp s)              ; @r{これは変数}
+           (if (boundp s)              ; @r{It is a variable.}
 @end group
 @group
                (princ
@@ -165,14 +217,14 @@ in the *Help* buffer."
 @end group
 
 @group
-    ;; @r{パターンにマッチするシンボルのリストを構築}
+    ;; @r{Build a list of symbols that match pattern.}
     (mapatoms (lambda (sym)
                 (if (string-match pattern (symbol-name sym))
                     (setq sym-list (cons sym sym-list)))))
 @end group
 
 @group
-    ;; @r{データを表示}
+    ;; @r{Display the data.}
     (help-setup-xref (list 'describe-symbols pattern)
                  (called-interactively-p 'interactive))
     (with-help-window (help-buffer)
@@ -180,7 +232,8 @@ in the *Help* buffer."
 @end group
 @end smallexample
 
-  @code{describe-symbols}関数は@code{apropos}のように機能しますが、より多くの情報を提供します。
+  The @code{describe-symbols} function works like @code{apropos}, but provides
+more information.
 
 @smallexample
 @group
@@ -210,15 +263,7 @@ With a non-nil argument ARG, clears out the goal column
 so that C-n and C-p resume vertical motion.
 The goal column is stored in the variable ‘goal-column’.
 
-msgid ""
-"(defun describe-symbols (pattern)\n"
-"  \"Describe the Emacs Lisp symbols matching PATTERN.\n"
-"All symbols that have PATTERN in their name are described\n"
-"in the `*Help*' buffer.\"\n"
-"  (interactive \"sDescribe symbols matching: \")\n"
-"  (let ((describe-func\n"
-"         (function\n"
-"          (lambda (s)\n"
+(fn ARG)
 @end group
 
 @group
@@ -240,34 +285,46 @@ When the ‘track-eol’ feature is doing its job, the value is
 
 @anchor{Definition of Snarf-documentation}
 @defun Snarf-documentation filename
-この関数はEmacsビルド時の実行可能なEmacsダンプ直前に使用される。これはファイル@var{filename}内に格納されたドキュメント文字列の位置を探して、メモリー上の関数定義および変数のプロパティリスト内にそれらの位置を記録する。@ref{Building
-Emacs}を参照のこと。
+This function is used when building Emacs, just before the runnable Emacs is
+dumped.  It finds the positions of the documentation strings stored in the
+file @var{filename}, and records those positions into memory in the function
+definitions and variable property lists.  @xref{Building Emacs}.
 
-Emacsは@file{emacs/etc}ディレクトリーからファイル@var{filename}を読み込む。その後ダンプされたEmacs実行時に、ディレクトリー@code{doc-directory}内の同じファイルを照会する。@var{filename}は通常は@code{"DOC"}。
+Emacs reads the file @var{filename} from the @file{emacs/etc} directory.
+When the dumped Emacs is later executed, the same file will be looked for in
+the directory @code{doc-directory}.  Usually @var{filename} is @code{"DOC"}.
 @end defun
 
 @defvar doc-directory
-この変数はビルトインの関数と変数のドキュメント文字列を含んだファイル@code{"DOC"}があるべきディレクトリーの名前を保持する。
+This variable holds the name of the directory which should contain the file
+@code{"DOC"} that contains documentation strings for built-in functions and
+variables.
 
-これはほとんどの場合は@code{data-directory}と同一。実際にインストールしたEmacsではなくEmacsをビルドしたディレクトリーからEmacsを実行したときは異なるかもしれない。@ref{Definition
-of data-directory}を参照のこと。
+In most cases, this is the same as @code{data-directory}.  They may be
+different when you run Emacs from the directory where you built it, without
+actually installing it.  @xref{Definition of data-directory}.
 @end defvar
 
 @node Keys in Documentation
-@section ドキュメント内でのキーバインディングの置き換え
+@section Substituting Key Bindings in Documentation
 @cindex documentation, keys in
 @cindex keys in documentation strings
 @cindex substituting keys in documentation
 @cindex key substitution sequence
 
-  ドキュメント文字列がキーシーケンスを参照する際、それらはカレントである実際のキーバインディングを使用するべきです。これらは以下で説明する特別なキーシーケンスを使用して行うことができます。通常の方法によるドキュメント文字列へのアクセスは、これらの特別なキーシーケンスをカレントキーバインディングに置き換えます。これは@code{substitute-command-keys}を呼び出すことにより行われます。あなた自身がこの関数を呼び出すこともできます。
+  When documentation strings refer to key sequences, they should use the
+current, actual key bindings.  They can do so using certain special text
+sequences described below.  Accessing documentation strings in the usual way
+substitutes current key binding information for these special sequences.
+This works by calling @code{substitute-command-keys}.  You can also call
+that function yourself.
 
-  以下はそれら特別なシーケンスと、その意味についてのリストです:
+  Here is a list of the special sequences and what they mean:
 
 @table @code
 @item \[@var{command}]
-これは@var{command}を呼び出すキーシーケンス、または@var{command}がキーバインディングをもたなければ@samp{M-x
-@var{command}}。
+stands for a key sequence that will invoke @var{command}, or @samp{M-x
+@var{command}} if @var{command} has no key bindings.
 
 @item \@{@var{mapvar}@}
 stands for a summary of the keymap which is the value of the variable
@@ -277,23 +334,34 @@ argument to @code{substitute-command-keys} is non-@code{nil}, the menu
 bindings will be included.
 
 @item \<@var{mapvar}>
-これ自体は何のテキストも意味せず副作用のためだけに使用される。これはこのドキュメント文字列内にある、後続のすべての@samp{\[@var{command}]}にたいするキーマップとして@var{mapvar}の値を指定する。
+stands for no text itself.  It is used only for a side effect: it specifies
+@var{mapvar}'s value as the keymap for any following @samp{\[@var{command}]}
+sequences in this documentation string.
 
 @item \`@var{KEYSEQ}'
-これはキーシーケンス@var{KEYSEQ}を表し、コマンド置き換えと同じフェイスが使用される。これはキーシーケンスがたとえば@code{read-key-sequence}によって直接読み取られた場合のように、対応するコマンドがない場合のみ使用すること。キーシーケンスは@code{key-valid-p}に照らして有効なキーシーケンスでなければならない。これは@samp{\`M-x
-foo'}のようなコマンド名にたいして、キーボードシーケンスのようにフォント表示したいものの、@samp{\[foo]}が行うようなキーシーケンスへの変換を抑止したい場合にも使用できる。
+stands for a key sequence @var{KEYSEQ}, which will use the same face as a
+command substitution.  This should be used only when a key sequence has no
+corresponding command, for example when it is read directly with
+@code{read-key-sequence}.  It must be a valid key sequence according to
+@code{key-valid-p}.  It can also be used with command names, like
+@samp{\`M-x foo'}, where you want this to be fontified like a keyboard
+sequence, but you want to inhibit translating it into a key sequence like
+@samp{\[foo]} does.
 
 @item `
-グレイブアクセント(grave
-accent)は左クォートを意味する。これは@code{text-quoting-style}の値に応じて左シングルクォーテーションマーク、アポストロフィ、グレイブアクセントのいずれかを生成する。@ref{Text
-Quoting Style}を参照のこと。
+(grave accent) stands for a left quote.  This generates a left single
+quotation mark, an apostrophe, or a grave accent depending on the value of
+@code{text-quoting-style}.  @xref{Text Quoting Style}.
 
 @item '
-アポストロフィ(apostrophe)は右クォートを意味する。これは@code{text-quoting-style}の値に応じて右シングルクォーテーションマーク、アポストロフィのいずれかを生成する。@ref{Text
-Quoting Style}を参照のこと。
+(apostrophe) stands for a right quote.  This generates a right single
+quotation mark or an apostrophe depending on the value of
+@code{text-quoting-style}.
 
 @item \=
-これは後続の文字をクォートして無効にする。したがって@samp{\=`}は@samp{`}、@samp{\=\[}は@samp{\[}、@samp{\=\=}は@samp{\=}を出力する。
+quotes the following character and is discarded; thus, @samp{\=`} puts
+@samp{`} into the output, @samp{\=\[} puts @samp{\[} into the output, and
+@samp{\=\=} puts @samp{\=} into the output.
 
 @item \+
 This indicates that the symbol directly following should not be marked as a
@@ -305,21 +373,30 @@ in Emacs Lisp (@pxref{Syntax for Strings}).
 
 @defun substitute-command-keys string &optional no-face include-menus
 @vindex help-key-binding@r{ (face)}
-この関数は上述の特別なシーケンスを@var{string}からスキャンして、それらが意味するもので置き換えてその結果を文字列としてリターンする。これによりそのユーザー自身がカスタマイズした実際のキーシーケンスを参照するドキュメントが表示できる。そのキーバインディングにはデフォルトでは特別なフェイス@code{help-key-binding}が与えられるが、オプション引数@var{no-face}が非@code{nil}なら、この関数は生成した文字列にこのフェイスを追加しない。
+This function scans @var{string} for the above special sequences and
+replaces them by what they stand for, returning the result as a string.
+This permits display of documentation that refers accurately to the user's
+own customized key bindings.  By default, the key bindings are given a
+special face @code{help-key-binding}, but if the optional argument
+@var{no-face} is non-@code{nil}, the function doesn't add this face to the
+produced string.
 
 @cindex advertised binding
-あるコマンドが複数のバインディングをもつ場合、通常この関数は最初に見つかったバインディングを使用する。以下のようにしてコマンドのシンボルプロパティ@code{:advertised-binding}に割り当てることにより、特定のキーバインディングを指定できる:
+If a command has multiple bindings, this function normally uses the first
+one it finds.  You can specify one particular key binding by assigning an
+@code{:advertised-binding} symbol property to the command, like this:
 
 @smallexample
 (put 'undo :advertised-binding [?\C-/])
 @end smallexample
 
 @noindent
-@code{:advertised-binding}プロパティはメニューアイテム(@ref{Menu
-Bar}を参照)に表示されるバインディングにも影響する。コマンドが実際にもたないキーバインディングを指定するとこのプロパティは無視される。
+The @code{:advertised-binding} property also affects the binding shown in
+menu items (@pxref{Menu Bar}).  The property is ignored if it specifies a
+key binding that the command does not actually have.
 @end defun
 
-  以下は特別なキーシーケンスの例:
+  Here are examples of the special sequences:
 
 @smallexample
 @group
@@ -355,57 +432,81 @@ The keymap description will normally exclude menu items, but if
 @end smallexample
 
 @defun substitute-quotes string
-この関数は@code{substitute-command-keys}と同じように機能するが、クォート文字だけを置き換える。
+This function works like @code{substitute-command-keys}, but only replaces
+quote characters.
 @end defun
 
-  ドキュメント文字列内のテキストにたいしては他にも特別な慣習があります。それらはたとえばこのマニュアルの関数、変数、およびセクションで参照できます。詳細は@ref{Documentation
-Tips}を参照してください。
+  There are other special conventions for the text in documentation
+strings---for instance, you can refer to functions, variables, and sections
+of this manual.  @xref{Documentation Tips}, for details.
 
 @node Text Quoting Style
-@section テキストのクォートスタイル
+@section Text Quoting Style
 
-  ドキュメント文字列や診断メッセージの中では、グレイブアクセント(grave
-accent)とアポストロフィ(apostrophe)は通常は特別に扱われてマッチするシングルクォーテーションマーク(``curved
-quotes''とも呼ばれる)に変換されます。たとえばドキュメント文字列@t{"Alias for
-`foo'."}と関数呼び出し@code{(message "Alias for `foo'.")}はどちらも@t{"Alias for
-‘foo’."}に変換されます。あまり一般的ではありませんが、Emacsがグレイブアクセントとアポストロフィをそのまま表示したり、アポストロフィだけ(@t{"Alias
-for
-'foo'."})を表示する場合もあります。ドキュメント文字列やメッセージフォーマットは、これらのスタイルすべてで良好に表示されるように記述する必要があります。たとえば通常の英語スタイル@t{"Alias
-for ’foo’."}で表示できるのならば、ドキュメント文字列@t{"Alias for 'foo'."}はあなたが望むスタイルではないでしょう。
+  Typically, grave accents and apostrophes are treated specially in
+documentation strings and diagnostic messages, and translate to matching
+single quotation marks (also called ``curved quotes'').  For example, the
+documentation string @t{"Alias for `foo'."} and the function call
+@code{(message "Alias for `foo'.")} both translate to @t{"Alias for
+‘foo’."}.  Less commonly, Emacs displays grave accents and apostrophes as
+themselves, or as apostrophes only (e.g., @t{"Alias for 'foo'."}).
+Documentation strings and message formats should be written so that they
+display well with any of these styles.  For example, the documentation
+string @t{"Alias for 'foo'."} is probably not what you want, as it can
+display as @t{"Alias for ’foo’."}, an unusual style in English.
 
-  テキストのクォートスタイルとは無関係に変換なしでグレイブアクセントやアポストロフィの表示を要するときがあるかもしれません。ドキュメント文字列ではエスケープでこれを行うことができます。たとえばドキュメント文字列@t{"\\=`(a
-,(sin 0)) ==> (a
-0.0)"}では、グレイブアクセントはLispコードの表現を意図しているので、グレイブアクセントエスケープしてクォートスタイルとは無関係にそれ自身を表示します。@code{message}や@code{error}の呼び出しでは、フォーマット@t{"%s"}と@code{format}呼び出しを引数として変換を回避できます。たとえば@code{(message
-"%s" (format "`(a ,(sin %S)) ==> (a %S)" x (sin
-x)))}はテキストのクォートスタイルに関わらず、グレイブアクセントで始まるメッセージを表示します。
+  Sometimes you may need to display a grave accent or apostrophe without
+translation, regardless of text quoting style.  In a documentation string,
+you can do this with escapes.  For example, in the documentation string
+@t{"\\=`(a ,(sin 0)) ==> (a 0.0)"} the grave accent is intended to denote
+Lisp code, so it is escaped and displays as itself regardless of quoting
+style.  In a call to @code{message} or @code{error}, you can avoid
+translation by using a format @t{"%s"} with an argument that is a call to
+@code{format}.  For example, @code{(message "%s" (format "`(a ,(sin %S)) ==>
+(a %S)" x (sin x)))} displays a message that starts with grave accent
+regardless of text quoting style.
 
 @defopt text-quoting-style
 @cindex curved quotes
 @cindex curly quotes
-このユーザーオプションの値はヘルプやメッセージの文言中のシングルクォートにたいして、Emacsが使用するべきスタイルを指定するシンボル。このオプションの値が@code{curve}なら@t{‘like
-this’}のようなcurved single quotesスタイル。値が@code{straight}なら@t{'like
-this'}のような素のアポストロフィスタイル。値が@code{grave}ならクォートは変換せずに、@t{`like
-this'}のようなEmacsバージョン25以前の標準スタイルであるグレイブアクセントとアポストロフィのスタイル。デフォルト値の@code{nil}はcurved
-single quotesが表示可能なようなら@code{curve}、それ以外なら@code{grave}のように機能する。
+The value of this user option is a symbol that specifies the style Emacs
+should use for single quotes in the wording of help and messages.  If the
+option's value is @code{curve}, the style is @t{‘like this’} with curved
+single quotes.  If the value is @code{straight}, the style is @t{'like
+this'} with straight apostrophes.  If the value is @code{grave}, quotes are
+not translated and the style is @t{`like this'} with grave accent and
+apostrophe, the standard style before Emacs version 25.  The default value
+@code{nil} acts like @code{curve} if curved single quotes seem to be
+displayable, and like @code{grave} otherwise.
 
-このオプションはcurved quotesに問題があるプラットフォームで有用。個人の好みに応じてこれを自由にカスタマイズできる。
+This option is useful on platforms that have problems with curved quotes.
+You can customize it freely according to your personal preference.
 @end defopt
 
 @defun text-quoting-style
-変数@code{text-quoting-style}の値を直接読み取るべきではない。カレント端末においてこの変数に@code{nil}がセットされている際の正しいクォートスタイルを動的に算出するために、この同名の関数を使用すること。
+You should not read the value of the variable @code{text-quoting-style}
+directly.  Instead, use this function with the same name to dynamically
+compute the correct quoting style on the current terminal in the @code{nil}
+case described above.
 @end defun
 
 @node Describing Characters
-@section ヘルプメッセージの文字記述
+@section Describing Characters for Help Messages
 @cindex describe characters and events
 
-  以下の関数はイベント、キーシーケンス、文字をテキスト表記(textual
-descriptions)に変換します。これらの変換された表記は、メッセージ内に任意のテキスト文字やキーシーケンスを含める場合に有用です。なぜなら非プリント文字や空白文字はプリント文字シーケンスに変換されるからです。空白文字以外のプリント文字はその文字自身が表記になります。
+  These functions convert events, key sequences, or characters to textual
+descriptions.  These descriptions are useful for including arbitrary text
+characters or key sequences in messages, because they convert non-printing
+and whitespace characters to sequences of printing characters.  The
+description of a non-whitespace printing character is the character itself.
 
 @defun key-description sequence &optional prefix
 @cindex Emacs event standard notation
-この関数は@var{sequence}内の入力イベントにたいしてEmacsの標準表記を含んだ文字列をリターンする。@var{prefix}が非@code{nil}なら、それは@var{sequence}に前置される入力イベントシーケンスであり、リターン値にも含まれる。引数には文字列、ベクター、またはリストを指定できる。有効なイベントに関する詳細は@ref{Input
-Events}を参照のこと。
+This function returns a string containing the Emacs standard notation for
+the input events in @var{sequence}.  If @var{prefix} is non-@code{nil}, it
+is a sequence of input events leading up to @var{sequence} and is included
+in the return value.  Both arguments may be strings, vectors or lists.
+@xref{Input Events}, for more information about valid events.
 
 @smallexample
 @group
@@ -418,7 +519,7 @@ Events}を参照のこと。
 @end group
 @end smallexample
 
-  以下の@code{single-key-description}の例も参照のこと。
+  See also the examples for @code{single-key-description}, below.
 @end defun
 
 @defun single-key-description event &optional no-angles
@@ -426,10 +527,17 @@ Events}を参照のこと。
 @cindex character printing
 @cindex control character printing
 @cindex meta character printing
-この関数はキーボード入力にたいするEmacsの標準表記として@var{event}を表記する文字列をリターンする。通常のプリント文字はその文字自身で表れるが、コントロール文字は@samp{C-}で始まる文字列、メタ文字は@samp{M-}で始まる文字列、スペースやタブ等は@samp{SPC}や@samp{TAB}のように変換される。ファンクションキーのシンボルは@samp{<@dots{}>}のように角カッコ(angle
-brackets)の内側に表れる。リストであるようなイベントは、そのリストの@sc{car}内のシンボル名が角カッコの内側に表れる。
+This function returns a string describing @var{event} in the standard Emacs
+notation for keyboard input.  A normal printing character appears as itself,
+but a control character turns into a string starting with @samp{C-}, a meta
+character turns into a string starting with @samp{M-}, and space, tab, etc.,
+appear as @samp{SPC}, @samp{TAB}, etc.  A function key symbol appears inside
+angle brackets @samp{<@dots{}>}.  An event that is a list appears as the
+name of the symbol in the @sc{car} of the list, inside angle brackets.
 
-オプション引数@var{no-angles}が非@code{nil}なら、ファンクションキーやイベントシンボルを括る角カッコは省略される。これは角カッコを使用しない古いバージョンのEmacsとの互換性のため。
+If the optional argument @var{no-angles} is non-@code{nil}, the angle
+brackets around function keys and event symbols are omitted; this is for
+compatibility with old versions of Emacs which didn't use the brackets.
 
 @smallexample
 @group
@@ -456,8 +564,15 @@ brackets)の内側に表れる。リストであるようなイベントは、�
 @end defun
 
 @defun text-char-description character
-この関数はテキスト内に出現し得る文字にたいするEmacsの標準表記として@var{character}を記述する文字列をリターンする。これは@code{single-key-description}と似ているが、引数が@code{characterp}によるテスト(@ref{Character
-Codes}を参照)をパスする有効な文字コードでなければならない点が異なる。この関数は先頭のカレットによりコントロール文字の記述を生成する(Emacsがバッファー内にコントロール文字を表示する通常の方法)。修飾ビットをもつ文字にたいして、この関数はエラーをシグナルする(コントロール修飾された@acronym{ASCII}文字は例外であり、これらはコントロール文字として表現される)。
+This function returns a string describing @var{character} in the standard
+Emacs notation for characters that can appear in text---similar to
+@code{single-key-description}, except that the argument must be a valid
+character code that passes a @code{characterp} test (@pxref{Character
+Codes}).  The function produces descriptions of control characters with a
+leading caret (which is how Emacs usually displays control characters in
+buffers).  Characters with modifier bits will cause this function to signal
+an error (@acronym{ASCII} characters with the Control modifier are an
+exception, they are represented as control characters).
 
 @smallexample
 @group
@@ -472,42 +587,61 @@ Codes}を参照)をパスする有効な文字コードでなければならな�
 @end defun
 
 @deffn Command read-kbd-macro string &optional need-vector
-この関数は主にキーボードマクロを操作するために使用されるが、大雑把な意味で@code{key-description}の逆の処理にも使用できる。キー表記を含むスペース区切りの文字列でこれを呼び出すと、それに対応するイベントを含む文字列かベクターをリターンする(これは単一の有効なキーシーケンスであるか否かは問わず何のイベントを使用するかに依存する。@ref{Key
-Sequences}を参照のこと)。@var{need-vector}が非@code{nil}ならリターン値は常にベクター。
+This function is used mainly for operating on keyboard macros, but it can
+also be used as a rough inverse for @code{key-description}.  You call it
+with a string containing key descriptions, separated by spaces; it returns a
+string or vector containing the corresponding events.  (This may or may not
+be a single valid key sequence, depending on what events you use; @pxref{Key
+Sequences}.)  If @var{need-vector} is non-@code{nil}, the return value is
+always a vector.
 @end deffn
 
 @node Help Functions
-@section ヘルプ関数
+@section Help Functions
 @cindex help functions
 
-  Emacsはさまざまなビルトインのヘルプ関数を提供しており、それらはすべてプレフィックス@kbd{C-h}のサブコマンドとしてユーザーがアクセスできます。それらについての詳細は@ref{Help,
-, Help, emacs, The GNU Emacs
-Manual}を参照してください。ここでは同様な情報に関するプログラムレベルのインターフェイスを説明します。
+  Emacs provides a variety of built-in help functions, all accessible to the
+user as subcommands of the prefix @kbd{C-h}.  For more information about
+them, see @ref{Help, , Help, emacs, The GNU Emacs Manual}.  Here we describe
+some program-level interfaces to the same information.
 
 @deffn Command apropos pattern &optional do-all
-この関数は名前にaproposパターン(apropos pattern: 適切なパターン)
-@var{pattern}を含む重要なすべてのシンボルを探す。マッチに使用されるaproposパターンは単語、最低2つはマッチしなければならないスペース区切りの単語、または(特別な正規表現文字があれば)正規表現のいずれか。あるシンボルが関数、変数、フェイスとしての定義、あるいはプロパティをもつならそのシンボルは重要とみなされる。
+This function finds all meaningful symbols whose names contain a match for
+the apropos pattern @var{pattern}.  An apropos pattern is either a word to
+match, a space-separated list of words of which at least two must match, or
+a regular expression (if any special regular expression characters occur).
+A symbol is meaningful if it has a definition as a function, variable, or
+face, or has properties.
 
-この関数は以下のような要素のリストをリターンする:
+The function returns a list of elements that look like this:
 
 @example
 (@var{symbol} @var{score} @var{function-doc} @var{variable-doc}
  @var{plist-doc} @var{widget-doc} @var{face-doc} @var{group-doc})
 @end example
 
-ここで@var{score}はマッチの面からそのシンボルがどれだけ重要に見えるかを比較する整数である。残りの各要素は@var{symbol}にたいする関数、変数、...等のドキュメント文字列(または@code{nil})。
+Here, @var{score} is an integer measure of how important the symbol seems to
+be as a match.  Each of the remaining elements is a documentation string, or
+@code{nil}, for @var{symbol} as a function, variable, etc.
 
-これは@file{*Apropos*}という名前のバッファーにもシンボルを表示する。その際、各行にはドキュメント文字列の先頭から取得した1行説明とともに表示される。
+It also displays the symbols in a buffer named @file{*Apropos*}, each with a
+one-line description taken from the beginning of its documentation string.
 
-@var{do-all}が非@code{nil}、またはユーザーオプション@code{apropos-do-all}が非@code{nil}なら、@code{apropos}は見つかった関数のキーバインディングも表示する。これは重要なものだけでなく、internされた@emph{すべて}のシンボルも表示する(同様にリターン値としてもそれらをリストする)。
+If @var{do-all} is non-@code{nil}, or if the user option
+@code{apropos-do-all} is non-@code{nil}, then @code{apropos} also shows key
+bindings for the functions that are found; it also shows @emph{all} interned
+symbols, not just meaningful ones (and it lists them in the return value as
+well).
 @end deffn
 
 @defvar help-map
-この変数の値はHelpキー@kbd{C-h}に続く文字にたいするローカルキーマップである。
+The value of this variable is a local keymap for characters following the
+Help key, @kbd{C-h}.
 @end defvar
 
 @deffn {Prefix Command} help-command
-このシンボルは関数ではなく関数定義セルには@code{help-map}としてキーマップを保持する。これは@file{help.el}内で以下のように定義されている:
+This symbol is not a function; its function definition cell holds the keymap
+known as @code{help-map}.  It is defined in @file{help.el} as follows:
 
 @smallexample
 @group
@@ -518,115 +652,184 @@ Manual}を参照してください。ここでは同様な情報に関するプ�
 @end deffn
 
 @defopt help-char
-この変数の値はヘルプ文字(help character:
-Helpを意味する文字としてEmacsが認識する文字)。デフォルトの値は@kbd{C-h}を意味する8。この文字を読み取った際に@code{help-form}が非@code{nil}のLisp式なら、Emacsはその式を評価して結果が文字列の場合はウィンドウ内にそれを表示する。
+The value of this variable is the help character---the character that Emacs
+recognizes as meaning Help.  By default, its value is 8, which stands for
+@kbd{C-h}.  When Emacs reads this character, if @code{help-form} is a
+non-@code{nil} Lisp expression, it evaluates that expression, and displays
+the result in a window if it is a string.
 
-@code{help-form}の値は通常は@code{nil}。その場合にはヘルプ文字はコマンド入力のレベルにおいて特別な意味を有さず、通常の方法におけるキーシーケンスの一部となる。@kbd{C-h}の標準的なキーバインディングは、複数の汎用目的をもつヘルプ機能のプレフィックスキー。
+Usually the value of @code{help-form} is @code{nil}.  Then the help
+character has no special meaning at the level of command input, and it
+becomes part of a key sequence in the normal way.  The standard key binding
+of @kbd{C-h} is a prefix key for several general-purpose help features.
 
-ヘルプ文字はプレフィックスキーの後でも特別な意味をもつ。ヘルプ文字がプレフィックスキーのサブコマンドとしてバインディングをもたなければ、そのプレフィックスキーのすべてのサブコマンドのリストを表示する@code{describe-prefix-bindings}を実行する。
+The help character is special after prefix keys, too.  If it has no binding
+as a subcommand of the prefix key, it runs @code{describe-prefix-bindings},
+which displays a list of all the subcommands of the prefix key.
 @end defopt
 
 @defopt help-event-list
-この変数の値はヘルプ文字の選択肢の役割を果たすイベント型のリスト。これらのイベントは@code{help-char}で指定されるイベントと同様に処理される。
+The value of this variable is a list of event types that serve as
+alternative help characters.  These events are handled just like the event
+specified by @code{help-char}.
 @end defopt
 
 @defvar help-form
-この変数が非@code{nil}なら、その値は文字@code{help-char}が読み取られるたびに評価されるフォームであること。そのフォームの評価によって文字列が生成されたらその文字列が表示される。
+If this variable is non-@code{nil}, its value is a form to evaluate whenever
+the character @code{help-char} is read.  If evaluating the form produces a
+string, that string is displayed.
 
-@code{read-event}、@code{read-char-choice}、@code{read-char}、@code{read-char-from-minibuffer}、@code{y-or-n-p}を呼び出すコマンドは、それが入力を行う間は恐らく@code{help-form}を非@code{nil}にバインドするべきだろう(@kbd{C-h}が他の意味をもつなら行わないこと)。この式を評価した結果は、それが何にたいする入力なのかと、それを正しくエンターする方法を説明する文字列であること。
+A command that calls @code{read-event}, @code{read-char-choice},
+@code{read-char}, @code{read-char-from-minibuffer}, or @code{y-or-n-p}
+probably should bind @code{help-form} to a non-@code{nil} expression while
+it does input.  (The time when you should not do this is when @kbd{C-h} has
+some other meaning.)  Evaluating this expression should result in a string
+that explains what the input is for and how to enter it properly.
 
-ミニバッファーへのエントリーにより、この変数は@code{minibuffer-help-form}の値にバインドされる(@ref{Definition
-of minibuffer-help-form}を参照)。
+Entry to the minibuffer binds this variable to the value of
+@code{minibuffer-help-form} (@pxref{Definition of minibuffer-help-form}).
 @end defvar
 
 @defvar prefix-help-command
-この変数はプレフィックスキーにたいするヘルプをプリントする関数を保持する。その関数はユーザーが後にヘルプ文字を伴うプレフィックスキーをタイプして、そのヘルプ文字がプレフィックスの後のバインディングをもたないたときに呼び出される。この変数のデフォルト値は@code{describe-prefix-bindings}。
+This variable holds a function to print help for a prefix key.  The function
+is called when the user types a prefix key followed by the help character,
+and the help character has no binding after that prefix.  The variable's
+default value is @code{describe-prefix-bindings}.
 @end defvar
 
 @deffn Command describe-prefix-bindings
-この関数はもっとも最近のプレフィックスキーのサブコマンドすべてにたいするリストを表示する@code{describe-bindings}を呼び出す。記述されるプレフィックスは、そのキーシーケンスの最後のイベントを除くすべてから構成される(最後のイベントは恐らくヘルプ文字)。
+This function calls @code{describe-bindings} to display a list of all the
+subcommands of the prefix key of the most recent key sequence.  The prefix
+described consists of all but the last event of that key sequence.  (The
+last event is, presumably, the help character.)
 @end deffn
 
-  以下の2つの関数はelectricモードのように制御を放棄せずにヘルプを提供したいモードを意図しています。これらは通常のヘルプ関数と区別するために名前が@samp{Helper}で始まります。
+  The following two functions are meant for modes that want to provide help
+without relinquishing control, such as the electric modes.  Their names
+begin with @samp{Helper} to distinguish them from the ordinary help
+functions.
 
 @deffn Command Helper-describe-bindings
-このコマンドはローカルキーマップとグローバルキーマップの両方のキーバインディングすべてのリストを含むヘルプバッファーを表示するウィンドウをポップアップする。これは@code{describe-bindings}を呼び出すことによって機能する。
+This command pops up a window displaying a help buffer containing a listing
+of all of the key bindings from both the local and global keymaps.  It works
+by calling @code{describe-bindings}.
 @end deffn
 
 @deffn Command Helper-help
-このコマンドはカレントモードにたいするヘルプを提供する。これはミニバッファー内でメッセージ@samp{Help (Type ? for further
-options)}とともにユーザーに入力を求めて、その後キーバインディングが何か、何を意図するモードなのかを探すための助けを提供する。これは@code{nil}をリターンする。
+This command provides help for the current mode.  It prompts the user in the
+minibuffer with the message @samp{Help (Type ? for further options)}, and
+then provides assistance in finding out what the key bindings are, and what
+the mode is intended for.  It returns @code{nil}.
 
 @vindex Helper-help-map
-これはマップ@code{Helper-help-map}を変更することによってカスタマイズできる。
+This can be customized by changing the map @code{Helper-help-map}.
 @end deffn
 
 @defvar data-directory
 @anchor{Definition of data-directory}
-この変数はEmacsに付随する特定のドキュメントおよびテキストファイルを探すディレクトリーの名前を保持する。
+This variable holds the name of the directory in which Emacs finds certain
+documentation and text files that come with Emacs.
 @end defvar
 
 @defun help-buffer
-この関数はヘルプバッファーの名前(通常は@file{*Help*})をリターンする。そのようなバッファーが存在しなければ最初にそれを作成する。
+This function returns the name of the help buffer, which is normally
+@file{*Help*}; if such a buffer does not exist, it is first created.
 @end defun
 
 @vindex help-window-select
 @defmac with-help-window buffer-or-name body@dots{}
-このマクロは@code{with-output-to-temp-buffer} (@ref{Temporary
-Displays}を参照)のように@var{body}を評価して、そのフォームが生成したすべての出力を@var{buffer-name}で指定されるバッファーに挿入する(@var{buffer-name}は関数@code{help-buffer}によりリターンされる値であることが多い)。このマクロは指定されたバッファーをHelpモードにして、ヘルプウィンドウのquitやスクロールする方法を告げるメッセージを表示する。これはユーザーオプション@code{help-window-select}のカレント値が適切にセットされていればヘルプウィンドウの選択も行う。これは@var{body}内の最後の値をリターンする。
+This macro evaluates @var{body} like @code{with-output-to-temp-buffer}
+(@pxref{Temporary Displays}), inserting any output produced by its forms
+into a buffer specified by @var{buffer-or-name}, which can be a buffer or
+the name of a buffer.  (Frequently, @var{buffer-or-name} is the value
+returned by the function @code{help-buffer}.)  This macro puts the specified
+buffer into Help mode and displays a message telling the user how to quit
+and scroll the help window.  It selects the help window if the current value
+of the user option @code{help-window-select} has been set accordingly.  It
+returns the last value in @var{body}.
 @end defmac
 
 @defun help-setup-xref item interactive-p
-この関数は@file{*Help*}バッファー内のクロスリファレンスデータを更新する。このクロスリファレンスはユーザーが@samp{Back}ボタンか@samp{Forward}ボタン上でクリックした際のヘルプ情報の再生成に使用される。@file{*Help*}バッファーを使用するほとんどのコマンドは、バッファーをクリアーする前にこの関数を呼び出すべきである。@var{item}引数は@code{(@var{function}
-.
-@var{args})}という形式であること。ここで@var{function}は引数リスト@var{args}で呼び出されるヘルプバッファーを再生成する関数。コマンド呼び出しがinteractiveに行われた場合、@var{interactive-p}引数は非@code{nil}。この場合には@file{*Help*}バッファーの@samp{Back}ボタンにたいするitemのスタックはクリアーされる。
+This function updates the cross reference data in the @file{*Help*} buffer,
+which is used to regenerate the help information when the user clicks on the
+@samp{Back} or @samp{Forward} buttons.  Most commands that use the
+@file{*Help*} buffer should invoke this function before clearing the
+buffer.  The @var{item} argument should have the form @code{(@var{function}
+. @var{args})}, where @var{function} is a function to call, with argument
+list @var{args}, to regenerate the help buffer.  The @var{interactive-p}
+argument is non-@code{nil} if the calling command was invoked interactively;
+in that case, the stack of items for the @file{*Help*} buffer's @samp{Back}
+buttons is cleared.
 @end defun
 
-@code{help-buffer}、@code{with-help-window}、@code{help-setup-xref}の使用例は@ref{describe-symbols
-example}を参照してください。
+@xref{describe-symbols example}, for an example of using @code{help-buffer},
+@code{with-help-window}, and @code{help-setup-xref}.
 
 @defmac make-help-screen fname help-line help-text help-map
-このマクロは提供するサブコマンドのリストを表示するプレフィックスキーのように振る舞う、@var{fname}という名前のヘルプコマンドを定義する。
+This macro defines a help command named @var{fname} that acts like a prefix
+key that shows a list of the subcommands it offers.
 
-呼び出された際、@var{fname}はウィンドウ内に@var{help-text}を表示してから@var{help-map}に応じてキーシーケンスの読み取りと実行を行う。文字列@var{help-text}は@var{help-map}内で利用可能なバインディングを説明すること。
+When invoked, @var{fname} displays @var{help-text} in a window, then reads
+and executes a key sequence according to @var{help-map}.  The string
+@var{help-text} should describe the bindings available in @var{help-map}.
 
-コマンド@var{fname}は@var{help-text}の表示をスクロールすることによる、自身のいくつかのイベントを処理するために定義される。@var{fname}がこれらのスペシャルイベントのいずれかを読み取った際には、スクロールを行った後で他のイベントを読み取る。自身が処理する以外のイベントを読み取りそのイベントが@var{help-map}内にバインディングを有す際は、そのキーのバインディングを実行した後にリターンする。
+The command @var{fname} is defined to handle a few events itself, by
+scrolling the display of @var{help-text}.  When @var{fname} reads one of
+those special events, it does the scrolling and then reads another event.
+When it reads an event that is not one of those few, and which has a binding
+in @var{help-map}, it executes that key's binding and then returns.
 
-引数@var{help-line}は@var{help-map}内の候補の1行要約であること。Emacsのカレントバージョンでは、オプション@code{three-step-help}を@code{t}にセットした場合のみこの引数が使用される。
+The argument @var{help-line} should be a single-line summary of the
+alternatives in @var{help-map}.  In the current version of Emacs, this
+argument is used only if you set the option @code{three-step-help} to
+@code{t}.
 
-このマクロは@kbd{C-h C-h}にバインドされるコマンド@code{help-for-help}内で使用される。
+This macro is used in the command @code{help-for-help} which is the binding
+of @kbd{C-h C-h}.
 @end defmac
 
 @defopt three-step-help
-この変数が非@code{nil}なら、@code{make-help-screen}で定義されたコマンドは最初にエコーエリア内に自身の@var{help-line}文字列を表示して、ユーザーが再度ヘルプ文字をタイプした場合のみ長い@var{help-text}文字列を表示する。
+If this variable is non-@code{nil}, commands defined with
+@code{make-help-screen} display their @var{help-line} strings in the echo
+area at first, and display the longer @var{help-text} strings only if the
+user types the help character again.
 @end defopt
 
 
 @node Documentation Groups
-@section ドキュメントのグループ
+@section Documentation Groups
 @cindex documentation groups
 @cindex groups of functions
 @cindex function groups
 
-Emacsは種々のグループにもとづいて関数をリストできます。たとえば@code{string-trim}や@code{mapconcat}などは``string(文字列)''の関数ですが、@kbd{M-x
-shortdoc RET string RET}によって文字列を操作する関数の概要を得ることができます。
+Emacs can list functions based on various groupings.  For instance,
+@code{string-trim} and @code{mapconcat} are ``string'' functions, so
+@kbd{M-x shortdoc RET string RET} will give an overview of functions that
+operate on strings.
 
-ドキュメンテーショングループは@code{define-short-documentation-group}マクロにより作成されます。
+The documentation groups are created with the
+@code{define-short-documentation-group} macro.
 
 @defmac define-short-documentation-group group &rest functions
-関数グループとして@var{group}を定義して、それらの関数の使用に関する短いサマリーを提供する。オプション引数@var{functions}は要素が以下の形式であるようなリスト:
+Define @var{group} as a group of functions, and provide short summaries of
+using those functions.  The optional argument @var{functions} is a list
+whose elements are of the form:
 
 @lisp
 (@var{func} [@var{keyword} @var{val}]@dots{})
 @end lisp
 
-以下のキーワードが認識される:
+The following keywords are recognized:
 
 @table @code
 
 @item :eval
-値は評価時の副作用をもたないフォームであること。このフォームはドキュメント内で@code{prin1}でプリントして使用されることになる(@ref{Output
-Functions}を参照)。しかしこのフォームが文字列ならそのまま挿入されてから、フォームを生成するために@code{read}される。いずれのケースでも、その後にフォームは評価されて結果が使用される。たとえば:
+The value should be a form that has no side effect when evaluated.  The form
+will be used in the documentation by printing it with @code{prin1}
+(@pxref{Output Functions}).  However, if the form is a string, it will be
+inserted as-is, and the string will then be @code{read} to yield the form.
+In any case, the form will then be evaluated, and the result used.  For
+instance:
 
 @example
 :eval (concat "foo" "bar" "zot")
@@ -634,7 +837,7 @@ Functions}を参照)。しかしこのフォームが文字列ならそのまま
 @end example
 
 @noindent
-は以下の結果になる:
+will result in:
 
 @example
 (concat "foo" "bar" "zot")
@@ -643,11 +846,16 @@ Functions}を参照)。しかしこのフォームが文字列ならそのまま
 @result{} "xxxxx"
 @end example
 
-(Lispフォームと文字列の両方を受け付けるのは、特定のフォーム表現が望まれるいくつかのケースにおいてプリントのコントロールを可能にするのが理由。この例では@samp{?x}が文字列に含まれていなければ@samp{120}としてプリントされるだろう。)
+(The reason for allowing both Lisp forms and strings here is so that
+printing could be controlled in the few cases where a certain presentation
+of the form is wished for.  In the example, @samp{?x} would otherwise have
+been printed as @samp{120} if it hadn't been included in a string.)
 
 @item :no-eval
 
-これは@code{:eval}と似ているが、フォームを評価しない点が異なる。この場合では何らかの類の@code{:result}要素が含まれている必要がある。
+This is like @code{:eval}, except that the form will not be evaluated.  In
+these cases, a @code{:result} element of some kind (see below)  should be
+included.
 
 @example
 :no-eval (file-symlink-p "/tmp/foo")
@@ -655,14 +863,15 @@ Functions}を参照)。しかしこのフォームが文字列ならそのまま
 @end example
 
 @item :no-eval*
-@code{:no-eval}と同様だが、常に@samp{[it depends]}を結果として挿入する。たとえば:
+Like @code{:no-eval}, but always inserts @samp{[it depends]} as the result.
+For instance:
 
 @example
 :no-eval* (buffer-string)
 @end example
 
 @noindent
-は以下の結果になる:
+will result in:
 
 @example
 (buffer-string)
@@ -670,10 +879,11 @@ Functions}を参照)。しかしこのフォームが文字列ならそのまま
 @end example
 
 @item :no-value
-@code{:no-eval}と同様だが、対象となっている関数が明確に定義されたリターン値をもち、副作用のためだけに使用される際に用いられる。
+Like @code{:no-eval}, but is used when the function in question has no
+well-defined return value, and is used for side effect only.
 
 @item :result
-評価されないフォーム例の結果を出力するために使用される。
+Used to output the result from non-evaluating example forms.
 
 @example
 :no-eval (setcar list 'c)
@@ -681,7 +891,8 @@ Functions}を参照)。しかしこのフォームが文字列ならそのまま
 @end example
 
 @item :eg-result
-評価されないフォーム例の結果例を出力するために使用される。たとえば:
+Used to output an example result from non-evaluating example forms.  For
+instance:
 
 @example
 :no-eval (looking-at "f[0-9]")
@@ -689,7 +900,7 @@ Functions}を参照)。しかしこのフォームが文字列ならそのまま
 @end example
 
 @noindent
-は以下の結果になる:
+will result in:
 
 @example
 (looking-at "f[0-9]")
@@ -698,7 +909,9 @@ eg. @click{} t
 
 @item :result-string
 @itemx :eg-result-string
-これら2つはそれぞれ@code{:result}や@code{:eg-result}と同じだが、そのまま挿入される。これは結果が読めなかったり、特定の形式が要求される際に有用:
+These two are the same as @code{:result} and @code{:eg-result},
+respectively, but are inserted as is.  This is useful when the result is
+unreadable or should be of a particular form:
 
 @example
 :no-eval (find-file "/tmp/foo")
@@ -708,10 +921,11 @@ eg. @click{} t
 @end example
 
 @item :no-manual
-その関数がマニュアルにドキュメントされていないことを示す。
+Indicates that this function is not documented in the manual.
 
 @item :args
-デフォルトではその関数の実際の引数リストが表示される。@code{:args}が与えられたら、かわりにそれらが使用される。
+By default, the function's actual argument list is shown.  If @code{:args}
+is present, they are used instead.
 
 @example
 :args (regexp string)
@@ -719,7 +933,7 @@ eg. @click{} t
 
 @end table
 
-以下に非常に短い例を示す:
+Here's a very short example:
 
 @lisp
 (define-short-documentation-group string
@@ -731,32 +945,46 @@ eg. @click{} t
    :eval (concat "foo" "bar" "zot")))
 @end lisp
 
-1つ目の引数は定義するグループ名、その後に任意個数の関数説明が続く。
+The first argument is the name of the group to be defined, and then follows
+any number of function descriptions.
 
 @end defmac
 
-関数は任意個数のドキュメンテーショングループに所属できます。
+A function can belong to any number of documentation groups.
 
-このリストは関数説明に加えて、ドキュメントからセクションへの分割に使用される文字列要素ももつことができます。
+In addition to function descriptions, the list can also have string
+elements, which are used to divide a documentation group into sections.
 
 @defun shortdoc-add-function group section elem
-この関数によりLispパッケージは関数をグループに追加できる。@var{elem}はそれぞれ上述したような関数説明であること。@var{group}は関数グループ、@var{section}は関数を挿入する関数グループのセクション。
+Lisp packages can add functions to groups with this function.  Each
+@var{elem} should be a function description, as described above.
+@var{group} is the function group, and @var{section} is what section in the
+function group to insert the function into.
 
-@var{group}が存在しなければ作成する。@var{section}が存在しなければ、その関数グループの最後に追加される。
+If @var{group} doesn't exist, it will be created.  If @var{section} doesn't
+exist, it will be added to the end of the function group.
 @end defun
 
-shortdocのグループで定義された関数の使用例の問い合わせもできます。
+You can also query the examples of use of functions defined in shortdoc
+groups.
 
 @defun shortdoc-function-examples function
-この関数は@var{function}のshortdocすべての例をリターンする。リターン値はアイテムが@w{@code{(@var{group}
-.
-@var{examples})}}という形式のalist。ここで@var{group}は@var{function}が記載されたドキュメントグループ、@var{examples}は@var{group}において定義されている@var{function}の使用例(文字列)。
+This function returns all shortdoc examples for @var{function}.  The return
+value is an alist with items of the form @w{@code{(@var{group}
+. @var{examples})}}, where @var{group} is a documentation group where
+@var{function} appears, and @var{examples} is a string with the examples of
+@var{function}s use as defined in @var{group}.
 
-@var{function}が関数ではない、あるいはshortdocに例がなければ@code{shortdoc-function-examples}は@code{nil}をリターンする。
+@code{shortdoc-function-examples} returns @code{nil} if @var{function} is
+not a function or if it doesn't have any shortdoc examples.
 @end defun
 
 @vindex help-fns-describe-function-functions
 @defun shortdoc-help-fns-examples-function function
-この関数は登録済みのshortdocグループにたいして問い合わせを行い、与えられたEmacs
-Lispの@var{function}の使用例をカレントバッファーに挿入する。これは@code{help-fns-describe-function-functions}フックに追加するのに適している。そうすれば関数のドキュメントを要求された際に@file{*Help*}の使用例が@file{*Help*}バッファーに表示されるだろう。
+This function queries the registered shortdoc groups and inserts examples of
+use of a given Emacs Lisp @var{function} into the current buffer.  It is
+suitable for addition to the @code{help-fns-describe-function-functions}
+hook, in which case examples from shortdoc of using a function will be
+displayed in the @file{*Help*} buffer when the documentation of the function
+is requested.
 @end defun

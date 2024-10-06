@@ -9,143 +9,190 @@
 @c Copyright (C) 1997--2024 Free Software Foundation, Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node Customization
-@chapter カスタマイゼーション設定
+@chapter Customization Settings
 
 @cindex customization item
-  EmacsのユーザーはCustomizeインターフェースにより、Lispコードを記述することなく変数とフェースをカスタマイズできます。@ref{Easy
-Customization,,, emacs, The GNU Emacs
-Manual}を参照してください。このチャプターではCustomizeインターフェースを通じて、ユーザーとやりとりするための@dfn{カスタマイズアイテム（customization
-items）}を定義する方法を説明します。
+  Users of Emacs can customize variables and faces without writing Lisp code,
+by using the Customize interface.  @xref{Easy Customization,,, emacs, The
+GNU Emacs Manual}.  This chapter describes how to define @dfn{customization
+items} that users can interact with through the Customize interface.
 
-  カスタマイズアイテムには@code{defcustom}マクロ
+  Customization items include customizable variables, which are defined with
+the
 @ifinfo
-(@ref{Variable Definitions}を参照)で定義されるカスタマイズ可能変数
+@code{defcustom} macro (@pxref{Variable Definitions});
 @end ifinfo
 @ifnotinfo
-で定義されるカスタマイズ可能変数
+@code{defcustom} macro;
 @end ifnotinfo
-@code{defface}(@ref{Defining
-Faces}で個別に説明)で定義されるカスタマイズ可能フェイス、および@code{defgroup}
+customizable faces, which are defined with @code{defface} (described
+separately in @ref{Defining Faces}); and @dfn{customization groups}, defined
+with
 @ifinfo
-(@ref{Group Definitions}を参照)で定義される
+@code{defgroup} (@pxref{Group Definitions}),
 @end ifinfo
 @ifnotinfo
-で定義される
+@code{defgroup},
 @end ifnotinfo
-@dfn{カスタマイゼーショングループ(customization
-groups)}が含まれ、これは関連するカスタマイゼーションアイテムのコンテナとして振る舞います。
+which act as containers for groups of related customization items.
 
 @menu
-* Common Keywords::          すべての種類のカスタマイゼーション宣言に共通なキーワード引数。
-* Group Definitions::        カスタマイゼーショングループ定義の記述。
-* Variable Definitions::     ユーザーオプションの宣言。
-* Customization Types::      ユーザーオプションの型指定。
-* Applying Customizations::  カスタマイゼーションセッティングを適用する関数。
-* Custom Themes::            Customテーマの記述。
+* Common Keywords::          Common keyword arguments for all kinds of 
+                               customization declarations.
+* Group Definitions::        Writing customization group definitions.
+* Variable Definitions::     Declaring user options.
+* Customization Types::      Specifying the type of a user option.
+* Applying Customizations::  Functions to apply customization settings.
+* Custom Themes::            Writing Custom themes.
 @end menu
 
 @node Common Keywords
-@section 一般的なキーワードアイテム
+@section Common Item Keywords
 
 @cindex customization keywords
-   以降のセクションで説明するカスタマイゼーション宣言(customization declaration) ---
-@code{defcustom}、@code{defgroup}などはすべてさまざまな情報を指定するためのキーワード引数(@ref{Constant
-Variables}を参照)を受け取ります。このセクションではカスタマイゼーション宣言のすべての種類に適用されるキーワードを説明します。
+  The customization declarations that we will describe in the next few
+sections---@code{defcustom}, @code{defgroup}, etc.---all accept keyword
+arguments (@pxref{Constant Variables}) for specifying various information.
+This section describes keywords that apply to all types of customization
+declarations.
 
-  @code{:tag}以外のすべてのキーワードは、与えられたアイテムにたいして複数回使用できます。キーワードの使用はそれぞれ独立した効果をもちます。例外は@code{:tag}で、これはすべての与えられたアイテムは1つの名前だけを表示できるからです。
+  All of these keywords, except @code{:tag}, can be used more than once in a
+given item.  Each use of the keyword has an independent effect.  The keyword
+@code{:tag} is an exception because any given item can only display one
+name.
 
 @table @code
 @item :tag @var{label}
 @kindex tag@r{, customization keyword}
-@var{label}を使用すると、カスタマイゼーションメニュー(customization
-menu)とカスタマイゼーションバッファー(customization
-buffer)のアイテムのラベルづけに、そのアイテムの名前のかわりに指定された文字列を使用します。@strong{混乱を招くのでそのアイテムの実際の名前と大きく異なる名前は使用しないでください}。
+Use @var{label}, a string, instead of the item's name, to label the item in
+customization menus and buffers.  @strong{Don't use a tag which is
+substantially different from the item's real name; that would cause
+confusion.}
 
 @kindex group@r{, customization keyword}
 @item :group @var{group}
-このカスタマイゼーションアイテムをグループ@var{group}にputする。カスタマイゼーションアイテムからこのキーワードが欠落していると、アイテムは最後に定義された同じグループ内に配置されるだろう。
+Put this customization item in group @var{group}.  If this keyword is
+missing from a customization item, it'll be placed in the same group that
+was last defined (in the current file).
 
-@code{defgroup}内で@code{:group}を使用すると、そのアイテムは新しいグループ(@code{:group}のサブグループ)になる。
+When you use @code{:group} in a @code{defgroup}, it makes the new group a
+subgroup of @var{group}.
 
-このキーワードを複数回使用すると、1つのアイテムを複数のグループに配置することができる。それらのグループのいずれかを表示すると、このアイテムが表示される。煩雑になるので多用しないこと。
+If you use this keyword more than once, you can put a single item into more
+than one group.  Displaying any of those groups will show this item.  Please
+don't overdo this, since the result would be annoying.
 
 @item :link @var{link-data}
 @kindex link@r{, customization keyword}
-このアイテムのドキュメント文字列の後に外部リンクを含める。これは他のドキュメントを参照するセンテンスを含んだボタンである。
+Include an external link after the documentation string for this item.  This
+is a sentence containing a button that references some other documentation.
 
-@var{link-data}に使用できる複数の選択肢がある:
+There are several alternatives you can use for @var{link-data}:
 
 @table @code
 @item (custom-manual @var{info-node})
-infoノードへのリンク。@var{info-node}は@code{"(emacs)Top"}のような、ノード名を示す文字列である。このリンクはカスタマイゼーションバッファーの@samp{[Manual]}に表示され、@var{info-node}にたいしてビルトインのinfoリーダーを起動する。
+Link to an Info node; @var{info-node} is a string which specifies the node
+name, as in @code{"(emacs)Top"}.  The link appears as @samp{[Manual]} in the
+customization buffer and enters the built-in Info reader on @var{info-node}.
 
 @item (info-link @var{info-node})
-@code{custom-manual}と同様だが、カスタマイゼーションバッファーにはそのinfoノード名が表示される。
+Like @code{custom-manual} except that the link appears in the customization
+buffer with the Info node name.
 
 @item (url-link @var{url})
-ウェブページヘのリンク。@var{url}は@acronym{URL}を指定する文字列である。カスタマイゼーションバッファーに表示されるリンクは@code{browse-url-browser-function}で指定されたWWWブラウザーを呼び出す。
+Link to a web page; @var{url} is a string which specifies the
+@acronym{URL}.  The link appears in the customization buffer as @var{url}
+and invokes the WWW browser specified by @code{browse-url-browser-function}.
 
 @item (emacs-commentary-link @var{library})
-ライブラリーのコメントセクション(commentary
-section)へのリンク。@var{library}はライブラリー名を指定する文字列である。@ref{Library Headers}を参照のこと。
+Link to the commentary section of a library; @var{library} is a string which
+specifies the library name.  @xref{Library Headers}.
 
 @item (emacs-library-link @var{library})
-Emacs Lispライブラリーファイルへのリンク。@var{library}はライブラリー名を指定する文字列である。
+Link to an Emacs Lisp library file; @var{library} is a string which
+specifies the library name.
 
 @item (file-link @var{file})
-ファイルへのリンク。@var{file}はユーザーがこのリンクを呼び出したときに@code{find-file}でvisitするファイルの名前を指定する文字列である。
+Link to a file; @var{file} is a string which specifies the name of the file
+to visit with @code{find-file} when the user invokes this link.
 
 @item (function-link @var{function})
-関数のドキュメントへのリンク。@var{function}はユーザーがこのリンクを呼び出したときに@code{describe-function}で説明を表示する関数の名前を指定する文字列である。
+Link to the documentation of a function; @var{function} is a string which
+specifies the name of the function to describe with @code{describe-function}
+when the user invokes this link.
 
 @item (variable-link @var{variable})
-変数のドキュメントへのリンク。@var{variable}はユーザーがこのリンクを呼び出したときに@code{describe-variable}で説明を表示する変数の名前を指定する文字列である。
+Link to the documentation of a variable; @var{variable} is a string which
+specifies the name of the variable to describe with @code{describe-variable}
+when the user invokes this link.
 
 @item (face-link @var{face})
-フェイスのドキュメントへのリンク。@var{face}はユーザーがこのリンクを呼び出したときに@code{describe-face}で説明を表示する関数の名前を指定する文字列である。
+Link to the documentation of a face; @var{face} is a string which specifies
+the name of the face to describe with @code{describe-face} when the user
+invokes this link.
 
 @item (custom-group-link @var{group})
-他のカスタマイゼーショングループへのリンク。このリンクを呼び出すことにより@var{group}にたいする新たなカスタマイゼーションバッファーが作成される。
+Link to another customization group.  Invoking it creates a new
+customization buffer for @var{group}.
 @end table
 
-@var{link-data}の1つ目の要素の後に@code{:tag
-@var{name}}を追加することにより、カスタマイゼーションバッファーで使用するテキストを指定できます。たとえば@code{(info-link
-:tag "foo" "(emacs)Top")}は、そのバッファーで@samp{foo}と表示されるEmacs manualへのリンクを作成します。
+You can specify the text to use in the customization buffer by adding
+@code{:tag @var{name}} after the first element of the @var{link-data}; for
+example, @code{(info-link :tag "foo" "(emacs)Top")} makes a link to the
+Emacs manual which appears in the buffer as @samp{foo}.
 
-複数のリンクを追加するために、このキーワードを複数回使用することができます。
+You can use this keyword more than once, to add multiple links.
 
 @item :load @var{file}
 @kindex load@r{, customization keyword}
-そのカスタマイゼーションアイテムを表示する前にファイル@var{file}をロードする(@ref{Loading}を参照)。ロードは@code{load}により行われ、そのファイルがまだロードされていないときだけロードを行う。
+Load file @var{file} (a string) before displaying this customization item
+(@pxref{Loading}).  Loading is done with @code{load}, and only if the file
+is not already loaded.
 
 @item :require @var{feature}
 @kindex require@r{, customization keyword}
-保存したカスタマイゼーションがこのアイテム値をセットするとき、@code{(require
-'@var{feature})}が実行される。@var{feature}はシンボル。
+Execute @code{(require '@var{feature})} when your saved customizations set
+the value of this item.  @var{feature} should be a symbol.
 
-@code{:require}を使用するもっとも一般的な理由は、ある変数がマイナーモードのような機能を有効にするとき、そのモードを実装するコードがロードされていなければ、変数のセットだけでは効果がないからである。
+The most common reason to use @code{:require} is when a variable enables a
+feature such as a minor mode, and just setting the variable won't have any
+effect unless the code which implements the mode is loaded.
 
 @item :version @var{version}
 @kindex version@r{, customization keyword}
-このキーワードはそのアイテムが最初に導入されたEmacsバージョン@var{version}か、そのアイテムのデフォルト値がそのバージョンで変更されたことを指定する。値@var{version}は文字列でなければならない。
+This keyword specifies that the item was first introduced in Emacs version
+@var{version}, or that its default value was changed in that version.  The
+value @var{version} must be a string.
 
 @item :package-version '(@var{package} . @var{version})
 @kindex package-version@r{, customization keyword}
-このキーワードはそのアイテムが最初に導入された@var{package}のバージョン@var{version}か、アイテムの意味(またはデフォルト値)が変更されたバージョンを指定する。このキーワードは@code{:version}より優先される。
+This keyword specifies that the item was first introduced in @var{package}
+version @var{version}, or that its meaning or default value was changed in
+that version.  This keyword takes priority over @code{:version}.
 
-@var{package}にはそのパッケージの公式名をシンボルとして指定すること(たとえば@code{MH-E})。@var{version}には文字列であること。パッケージ@var{package}がEmacsの一部としてリリースされたなら、@var{package}と@var{version}の値は@code{customize-package-emacs-version-alist}の値に表示されるはずである。
+@var{package} should be the official name of the package, as a symbol (e.g.,
+@code{MH-E}).  @var{version} should be a string.  If the package
+@var{package} is released as part of Emacs, @var{package} and @var{version}
+should appear in the value of @code{customize-package-emacs-version-alist}.
 @end table
 
-Emacsの一部として配布された@code{:package-version}キーワードを使用するパッケージは、@code{customize-package-emacs-version-alist}変数も更新しなければなりません。
+Packages distributed as part of Emacs that use the @code{:package-version}
+keyword must also update the @code{customize-package-emacs-version-alist}
+variable.
 
 @defvar customize-package-emacs-version-alist
-これは@code{:package-version}キーワード内でリストされたパッケージのバージョンに関連付けられたEmacsのバージョンにたいして、マッピングを提供するalistである。このalistの要素は:
+This alist provides a mapping for the versions of Emacs that are associated
+with versions of a package listed in the @code{:package-version} keyword.
+Its elements are:
 
 @example
 (@var{package} (@var{pversion} . @var{eversion})@dots{})
 @end example
 
-それぞれの@var{package}(シンボル)にたいして、パッケージバージョン@var{pversion}を含む1つ以上の要素と、それに関連付けられるEmacsバージョン@var{eversion}が存在する。これらのバージョンは文字列である。たとえばMH-Eパッケージは以下によりalistを更新する:
+For each @var{package}, which is a symbol, there are one or more elements
+that contain a package version @var{pversion} with an associated Emacs
+version @var{eversion}.  These versions are strings.  For example, the MH-E
+package updates this alist with the following:
 
 @c Must be small else too wide.
 @c FIXME obviously this is out of date (in the code).
@@ -156,171 +203,266 @@ Emacsの一部として配布された@code{:package-version}キーワードを�
                     ("7.4" . "22.1") ("8.0" . "22.1")))
 @end smallexample
 
-@var{package}の値は一意である必要があり、@code{:package-version}キーワード内に現れる@var{package}の値とマッチする必要がある。おそらくユーザーはエラーメッセージからこの値を確認するので、MH-EやGnusのようなパッケージの公式名を選択するのがよいだろう。
+The value of @var{package} needs to be unique and it needs to match the
+@var{package} value appearing in the @code{:package-version} keyword.  Since
+the user might see the value in an error message, a good choice is the
+official name of the package, such as MH-E or Gnus.
 @end defvar
 
 @node Group Definitions
-@section カスタマイゼーショングループの定義
+@section Defining Customization Groups
 @cindex define customization group
 @cindex customization groups, defining
 
-  Emacs Lispパッケージはそれぞれ、1つのメインのカスタマイゼーショングループ(main customization
-group)をもち、それにはすべてのオプションとフェイス、そのパッケージ内の他のグループが含まれるべきです。そのパッケージに少数のオプションとフェイスしかなければ、1つのグループだけを使用してその中にすべてを配置します。20以上のオプションやフェイスがあるなら、それらをサブグループ内に構造化して、そのサブグループをメインのカスタマイゼーショングループの下に配置します。そのパッケージ内の任意のオプションやフェイスを、サブグループと並行してメイングループに配置しても問題はありません。
+  Each Emacs Lisp package should have one main customization group which
+contains all the options, faces and other groups in the package.  If the
+package has a small number of options and faces, use just one group and put
+everything in it.  When there are more than twenty or so options and faces,
+then you should structure them into subgroups, and put the subgroups under
+the package's main customization group.  It is OK to put some of the options
+and faces in the package's main group alongside the subgroups.
 
-  そのパッケージのメイングループ(または唯一のグループ)は、1つ以上の標準カスタマイゼーショングループ(standard customization
-group)のメンバーであるべきです(これらの完全なリストを表示するには@kbd{M-x
-customize}を使用する)。それらの内から1つ以上(多すぎないこと)を選択して、@code{:group}を使用してあなたのグループをそれらに追加します。
+  The package's main or only group should be a member of one or more of the
+standard customization groups.  (To display the full list of them, use
+@kbd{M-x customize}.)  Choose one or more of them (but not too many), and
+add your group to each of them using the @code{:group} keyword.
 
-  新しいカスタマイゼーショングループは@code{defgroup}で宣言します。
+  The way to declare new customization groups is with @code{defgroup}.
 
 @defmac defgroup group members doc [keyword value]@dots{}
-@var{members}を含むカスタマイゼーショングループとして@var{group}を宣言する。シンボル@var{group}はクォートしない。引数@var{doc}はそのグループにたいするドキュメント文字列を指定する。
+Declare @var{group} as a customization group containing @var{members}.  Do
+not quote the symbol @var{group}.  The argument @var{doc} specifies the
+documentation string for the group.
 
-引数@var{members}はそのグループのメンバーとなるカスタマイゼーションアイテムの初期セットを指定するリストである。しかしほとんどの場合は@var{members}を@code{nil}にして、メンバーを定義するときに@code{:group}キーワードを使用することによってそのグループのメンバーを指定する。
+The argument @var{members} is a list specifying an initial set of
+customization items to be members of the group.  However, most often
+@var{members} is @code{nil}, and you specify the group's members by using
+the @code{:group} keyword when defining those members.
 
-@var{members}を通じてグループのメンバーを指定したければ、要素はそれぞれ@code{(@var{name}
-@var{widget})}という形式で指定すること。ここで@var{name}はシンボル、@var{widget}はそのシンボルを編集するウィジェット型(widget
-type)である。変数には@code{custom-variable}、フェイスにはる@code{custom-face}、グループには@code{custom-group}が有用なウィジェットである。
+If you want to specify group members through @var{members}, each element
+should have the form @code{(@var{name} @var{widget})}.  Here @var{name} is a
+symbol, and @var{widget} is a widget type for editing that symbol.  Useful
+widgets are @code{custom-variable} for a variable, @code{custom-face} for a
+face, and @code{custom-group} for a group.
 
-Emacsに新しいグループを導入するときは@code{defgroup}内で@code{:version}キーワードを使用する。そうすればグループの個別のメンバーにたいしてそれを使用する必要がなくなる。
+When you introduce a new group into Emacs, use the @code{:version} keyword
+in the @code{defgroup}; then you need not use it for the individual members
+of the group.
 
-一般的なキーワード(@ref{Common Keywords}を参照)に加えて、@code{defgroup}内では以下のキーワードも使用できる:
+In addition to the common keywords (@pxref{Common Keywords}), you can also
+use this keyword in @code{defgroup}:
 
 @table @code
 @item :prefix @var{prefix}
 @kindex prefix@r{, @code{defgroup} keyword}
-グループ内のアイテムの名前が@var{prefix}で始まり、カスタマイズ変数@code{custom-unlispify-remove-prefixes}が非@code{nil}なら、そのアイテムのタグから@var{prefix}が省略される。グループは任意の数のプレフィクスをもつことができる。
+If the name of an item in the group starts with @var{prefix}, and the
+customizable variable @code{custom-unlispify-remove-prefixes} is
+non-@code{nil}, the item's tag will omit @var{prefix}.  A group can have any
+number of prefixes.
 @end table
 
 @cindex @code{custom-group} property
-変数およびグループのサブグループはグループのシンボルの@code{custom-group}プロパティに格納される。@ref{Symbol
-Plists}を参照のこと。このプロパティの値は@code{car}が変数、フェイスまたはサブグループのシンボル、@code{cdr}はそれぞれ@code{custom-variable}、@code{custom-face}、または@code{custom-group}のうちいずれかに対応するシンボルであるようなリスト。
+The variables, faces, and subgroups of a group are stored in the
+@code{custom-group} property of the group's symbol.  @xref{Symbol Plists}.
+The value of that property is a list of pairs whose @code{car} is the symbol
+of the variable or the face or the subgroup, and the @code{cdr} is one of
+the corresponding symbols @code{custom-variable}, @code{custom-face}, or
+@code{custom-group}.
 @end defmac
 
 @defopt custom-unlispify-remove-prefixes
-この変数が非@code{nil}ならグループの@code{:prefix}キーワードで指定されたプレフィクスは、ユーザーがグループをカスタマイズするときは常にタグ名から省略される。
+If this variable is non-@code{nil}, the prefixes specified by a group's
+@code{:prefix} keyword are omitted from tag names, whenever the user
+customizes the group.
 
-デフォルト値は@code{nil}、つまりプレフィクス省略(prefix-discarding)の機能は無効となる。これはオプションやフェイスの名前にたいするプレフィクスの省略が混乱を招くことがあるからである。
+The default value is @code{nil}, i.e., the prefix-discarding feature is
+disabled.  This is because discarding prefixes often leads to confusing
+names for options and faces.
 @end defopt
 
 @node Variable Definitions
-@section カスタマイゼーション変数の定義
+@section Defining Customization Variables
 @cindex define customization options
 @cindex customizable variables, how to define
 @cindex user options, how to define
 
-  @dfn{カスタマイズ可能変数(customizable variable)}は@dfn{ユーザーオプション(user
-option)}とも呼ばれ、これはCustomizeインターフェースを通じてセットできるグローバルなLisp変数です。@code{defvar}(@ref{Defining
-Variables}を参照)デ定義される他のグローバル変数と異なり、カスタマイズ可能変数は@code{defcustom}マクロを使用して定義されます。サブルーチンとして@code{defvar}を呼び出すことに加えテ、@code{defcustom}はCustomizeインターフェースでその変数が表示される方法や、その変数がとることができる値などを明示します。
+  @dfn{Customizable variables}, also called @dfn{user options}, are global
+Lisp variables whose values can be set through the Customize interface.
+Unlike other global variables, which are defined with @code{defvar}
+(@pxref{Defining Variables}), customizable variables are defined using the
+@code{defcustom} macro.  In addition to calling @code{defvar} as a
+subroutine, @code{defcustom} states how the variable should be displayed in
+the Customize interface, the values it is allowed to take, etc.
 
 @defmac defcustom option standard doc [keyword value]@dots{}
-このマクロはユーザーオプション(かカスタマイズ可能変数)として@var{option}を宣言する。@var{option}はクォートしないこと。
+This macro declares @var{option} as a user option (i.e., a customizable
+variable).  You should not quote @var{option}.
 
-引数@var{standard}は@var{option}の標準値を指定する式である。@code{defcustom}フォームの評価により@var{standard}が評価されるが、その値にそのオプションをバインドする必要はない。@var{option}がすでにデフォルト値をもつなら、それは変更されずに残る。ユーザーがすでに@var{option}にたいするカスタマイゼーションを保存していれば、ユーザーによりカスタマイズされた値がデフォルト値としてインストールされる。それ以外なら@var{standard}を評価した結果がデフォルト値としてインストールされる。
+The argument @var{standard} is an expression that specifies the standard
+value for @var{option}.  Evaluating the @code{defcustom} form evaluates
+@var{standard}, but does not necessarily bind the option to that value.  If
+@var{option} already has a default value, it is left unchanged.  If the user
+has already saved a customization for @var{option}, the user's customized
+value is installed as the default value.  Otherwise, the result of
+evaluating @var{standard} is installed as the default value.
 
-@code{defvar}と同様、このマクロは@code{option}をスペシャル変数 --- 常にダイナミックにバインドされることを意味する ---
-としてマークする。@var{option}がすでにレキシカルバインドをもつなら、そのレキシカルバインドはバインディング構文を抜けるまで効果をもつ。@ref{Variable
-Scoping}を参照のこと。
+Like @code{defvar}, this macro marks @code{option} as a special variable,
+meaning that it should always be dynamically bound.  If @var{option} is
+already lexically bound, that lexical binding remains in effect until the
+binding construct exits.  @xref{Variable Scoping}.
 
-式@var{standard}は別の様々な機会 --- カスタマイゼーション機能が@var{option}の標準値を知る必要があるときは常に ---
-にも評価される可能性がある。そのため任意回数の評価を行ても安全な式を使用するように留意されたい。
+The expression @var{standard} can be evaluated at various other times,
+too---whenever the customization facility needs to know @var{option}'s
+standard value.  So be sure to use an expression which is harmless to
+evaluate at any time.
 
-引数@var{doc}はその変数にたいするドキュメント文字列を指定する。
+The argument @var{doc} specifies the documentation string for the variable.
 
-@code{defcustom}が何も@code{:group}を指定しなければ、同じファイル内で@code{defgroup}によって最後に定義されたグループが使用される。この方法ではほとんどの@code{defcustom}は明示的な@code{:group}が不必要になる。
+If a @code{defcustom} does not specify any @code{:group}, the last group
+defined with @code{defgroup} in the same file will be used.  This way, most
+@code{defcustom} do not need an explicit @code{:group}.
 
 @cindex @code{eval-defun}, and @code{defcustom} forms
-Emacs
-Lispモードで@kbd{C-M-x}(@code{eval-defun})で@code{defcustom}フォームを評価するとき、@code{eval-defun}の特別な機能は変数の値がvoidかどうかテストせずに、無条件に変数をセットするよう段取りする(同じ機能は@code{defvar}にも適用される。@ref{Defining
-Variables}を参照)。すでに定義されたdefcustomで@code{eval-defun}を使用することにより、(もしあれば)@code{:set}関数(以下参照)が呼び出される。
+When you evaluate a @code{defcustom} form with @kbd{C-M-x} in Emacs Lisp
+mode (@code{eval-defun}), a special feature of @code{eval-defun} arranges to
+set the variable unconditionally, without testing whether its value is
+void.  (The same feature applies to @code{defvar}, @pxref{Defining
+Variables}.)  Using @code{eval-defun} on a defcustom that is already defined
+calls the @code{:set} function (see below), if there is one.
 
-事前ロード(pre-loaded)されたEmacs Lispファイル(@ref{Building
-Emacs}を参照)に@code{defcustom}を配置すると、ダンプ時にインストールされた標準値は正しくない ---
-たとえば依存している他の変数がまだ正しい値を割り当てられていない
----　かもしれない。この場合はEmacs起動後に標準値を再評価するために、以下で説明する@code{custom-reevaluate-setting}を使用する。
+If you put a @code{defcustom} in a pre-loaded Emacs Lisp file
+(@pxref{Building Emacs}), the standard value installed at dump time might be
+incorrect, e.g., because another variable that it depends on has not been
+assigned the right value yet.  In that case, use
+@code{custom-reevaluate-setting}, described below, to re-evaluate the
+standard value after Emacs starts up.
 @end defmac
 
-  @ref{Common Keywords}にリストされたキーワードに加えて、このマクロには以下のキーワードを指定できる
+  In addition to the keywords listed in @ref{Common Keywords}, this macro
+accepts the following keywords:
 
 @table @code
 @item :type @var{type}
-このオプションのデータ型として@var{type}を使用する。これはどんな値が適正なのか、その値をどのように表示するかを指定する(@ref{Customization
-Types}を参照)。@code{defcustom}はそれぞれこのキーワードにたいする値を指定すること。
+Use @var{type} as the data type for this option.  It specifies which values
+are legitimate, and how to display the value (@pxref{Customization Types}).
+Every @code{defcustom} should specify a value for this keyword.
 
 @item :options @var{value-list}
 @kindex options@r{, @code{defcustom} keyword}
-このオプションに使用する適正な値のリストを指定する。ユーザーが使用できる値はこれらの値に限定されないが、これらは便利な値の選択肢を提示する。
+Specify the list of reasonable values for use in this option.  The user is
+not restricted to using only these values, but they are offered as
+convenient alternatives.
 
-これは特定の型にたいしてのみ意味をもち現在のところ@code{hook}、@code{plist}、@code{alist}が含まれる。@code{:options}を使用する方法は個別の型の定義を参照のこと。
+This is meaningful only for certain types, currently including @code{hook},
+@code{plist} and @code{alist}.  See the definition of the individual types
+for a description of how to use @code{:options}.
 
-異なる@code{:options}値による@code{defcustom}フォームの再評価では以前の評価で追加された値や、@code{custom-add-frequent-value}
-(以下参照)呼び出しで追加された値はクリアーされない。
+Re-evaluating a @code{defcustom} form with a different @code{:options} value
+does not clear the values added by previous evaluations, or added by calls
+to @code{custom-add-frequent-value} (see below).
 
 @item :set @var{setfunction}
 @kindex set@r{, @code{defcustom} keyword}
-Customizeインターフェースを使用してこのオプションの値を変更する方法として@var{setfunction}を指定する。関数@var{setfunction}は2つの引数
---- シンボル(オプション名)と新しい値 ---
-を受け取り、このオプションにたいして正しく値を更新するために必要なことは何であれ行うこと(これはおそらくLisp変数として単にオプションをセットすることを意味しない)。この関数は引数の値を破壊的に変更しないことが望ましい。@var{setfunction}のデフォルトは@code{set-default-toplevel-value}。
+Specify @var{setfunction} as the way to change the value of this option when
+using the Customize interface.  The function @var{setfunction} should take
+two arguments, a symbol (the option name) and the new value, and should do
+whatever is necessary to update the value properly for this option (which
+may not mean simply setting the option as a Lisp variable); preferably,
+though, it should not modify its value argument destructively.  The default
+for @var{setfunction} is @code{set-default-toplevel-value}.
 
-定義された場合にはEmacs
-Lispモードから@kbd{C-M-x}により@code{defcustom}が評価されたとき、あるいは@code{setopt}マクロ(@ref{Setting
-Variables, setopt}を参照)を介して@var{option}の値が変更された際にも@var{setfunction}が呼び出される。
+If defined, @var{setfunction} will also be called when evaluating a
+@code{defcustom} form with @kbd{C-M-x} in Emacs Lisp mode and when the
+@var{option}'s value is changed via the @code{setopt} macro (@pxref{Setting
+Variables, setopt}).
 
-このキーワードを指定すると、その変数のドキュメント文字列には@var{setfunction}を直接呼び出すか、@code{setopt}を用いることによって手入力のLispコードで同じことを行う方法が記載されていること。
+If you specify this keyword, the variable's documentation string should
+describe how to do the same job in hand-written Lisp code, either by
+invoking @var{setfunction} directly or by using @code{setopt}.
 
 @item :get @var{getfunction}
 @kindex get@r{, @code{defcustom} keyword}
-このオプションの値を抽出する方法として@var{getfunction}を指定する。関数@var{getfunction}は1つの引数(シンボル)を受け取り、カスタマイズがそのシンボル(シンボルのLisp値である必要はない)にたいするカレント値としてそれを使うべきかどうかをリターンすること。デフォルトは@code{default-toplevel-value}。
+Specify @var{getfunction} as the way to extract the value of this option.
+The function @var{getfunction} should take one argument, a symbol, and
+should return whatever customize should use as the current value for that
+symbol (which need not be the symbol's Lisp value).  The default is
+@code{default-toplevel-value}.
 
-@code{:get}を正しく使用するためには、Customの機能を真に理解する必要がある。これは変数としてCustom内で扱われる値のためのものだが、実際にはLisp変数には格納されない。実際にLisp変数に格納されている値に@var{getfunction}を指定するのは、ほとんどの場合は誤りである。
+You have to really understand the workings of Custom to use @code{:get}
+correctly.  It is meant for values that are treated in Custom as variables
+but are not actually stored in Lisp variables.  It is almost surely a
+mistake to specify @var{getfunction} for a value that really is stored in a
+Lisp variable.
 
 @item :initialize @var{function}
 @kindex initialize@r{, @code{defcustom} keyword}
-@var{function}は@code{defcustom}が評価されるときに変数を初期化するために使用される関数であること。これは2つの引数 ---
-オプション名(シンボル)と値を受け取る。この方法での使用のために事前定義された関数がいくつかある:
+@var{function} should be a function used to initialize the variable when the
+@code{defcustom} is evaluated.  It should take two arguments, the option
+name (a symbol) and the value.  Here are some predefined functions meant for
+use in this way:
 
 @table @code
 @item custom-initialize-set
-変数の初期化にその変数の@code{:set}関数を使用するが、値がすでに非voidなら再初期化を行わない。
+Use the variable's @code{:set} function to initialize the variable, but do
+not reinitialize it if it is already non-void.
 
 @item custom-initialize-default
-@code{custom-initialize-set}と同様だが、その変数の@code{:set}のかわりに関数@code{set-default-toplevel-value}を使用して変数をセットする。これは変数の@code{:set}関数がマイナーモードを有効または無効にする場合の通常の選択である。この選択により変数の定義ではマイナーモード関数を呼び出しは行わないが、変数をカスタマイズしたときはマイナーモード関数を呼び出すだろう。
+Like @code{custom-initialize-set}, but use the function
+@code{set-default-toplevel-value} to set the variable, instead of the
+variable's @code{:set} function.  This is the usual choice for a variable
+whose @code{:set} function enables or disables a minor mode; with this
+choice, defining the variable will not call the minor mode function, but
+customizing the variable will do so.
 
 @item custom-initialize-reset
-変数の初期化に常に@code{:set}関数を使用する。変数がすでに非voidなら、(@code{:get}メソッドでリターンされる)カレント値を使用して@code{:set}関数を呼び出して変数をリセットする。これはデフォルトの@code{:initialize}関数である。
+Always use the @code{:set} function to initialize the variable.  If the
+variable is already non-void, reset it by calling the @code{:set} function
+using the current value (returned by the @code{:get} method).  This is the
+default @code{:initialize} function.
 
 @item custom-initialize-changed
-変数がすでにセットされている、またはカスタマイズされていれば@code{:set}関数、それ以外なら単に@code{set-default-toplevel-value}を使用して変数の初期化を行う。
+Use the @code{:set} function to initialize the variable, if it is already
+set or has been customized; otherwise, just use
+@code{set-default-toplevel-value}.
 
 @item custom-initialize-delay
-この関数は@code{custom-initialize-set}と同様に振る舞うが、実際の初期化をEmacsの次回起動時に遅延させる。これはビルド時ではなく実行時のコンテキストで初期化を行わせるように、事前ロードされるファイル(やautoloadされる変数)で使用すること。これは(遅延された)初期化が@code{:set}関数で処理されるという副作用ももつ。@ref{Building
-Emacs}を参照のこと。
+This function behaves like @code{custom-initialize-set}, but it delays the
+actual initialization to the next Emacs start.  This should be used in files
+that are preloaded (or for autoloaded variables), so that the initialization
+is done in the run-time context rather than the build-time context.  This
+also has the side-effect that the (delayed) initialization is performed with
+the @code{:set} function.  @xref{Building Emacs}.
 @end table
 
 @item :local @var{value}
 @kindex local@r{, @code{defcustom} keyword}
-@var{value}が@code{t}なら@var{option}をバッファーローカルと自動的にマークする。値が@code{permanent}なら@var{option}の@code{permanent-local}プロパティも@code{t}にセットする。@ref{Creating
-Buffer-Local}を参照のこと。
+If the @var{value} is @code{t}, mark @var{option} as automatically
+buffer-local; if the value is @code{permanent}, also set @var{option}s
+@code{permanent-local} property to @code{t}.  @xref{Creating Buffer-Local}.
 
 @item :risky @var{value}
 @kindex risky@r{, @code{defcustom} keyword}
-その変数の@code{risky-local-variable}プロパティを@var{value}にセットする(@ref{File Local
-Variables}を参照)。
+Set the variable's @code{risky-local-variable} property to @var{value}
+(@pxref{File Local Variables}).
 
 @item :safe @var{function}
 @kindex safe@r{, @code{defcustom} keyword}
-その変数の@code{safe-local-variable}プロパティを@var{function}にセットします(@ref{File Local
-Variables}を参照)。
+Set the variable's @code{safe-local-variable} property to @var{function}
+(@pxref{File Local Variables}).
 
 @item :set-after @var{variables}
 @kindex set-after@r{, @code{defcustom} keyword}
-保存されたカスタマイゼーションに合わせて変数をセッティングするときは、その前に変数@var{variables}確実にセット ---
-つまりこれら他のものが処理される後までセッティングを遅延 ---
-すること。これら他の変数が意図された値をもっていない場合に、この変数のセッティングが正しく機能しなければ@code{:set-after}を使用すること。
+When setting variables according to saved customizations, make sure to set
+the variables @var{variables} before this one; i.e., delay setting this
+variable until after those others have been handled.  Use @code{:set-after}
+if setting this variable won't work properly unless those other variables
+already have their intended values.
 @end table
 
-  特定の機能をオンに切り替えるオプションには、@code{:require}キーワードを指定すると便利です。これはその機能がまだロードされていないときには、そのオプションがセットされればEmacsがその機能をロードするようにします。@ref{Common
-Keywords}を参照してください。以下は例です:
+  It is useful to specify the @code{:require} keyword for an option that turns
+on a certain feature.  This causes Emacs to load the feature, if it is not
+already loaded, whenever the option is set.  @xref{Common Keywords}.  Here
+is an example:
 
 @example
 (defcustom frobnicate-automatically nil
@@ -330,7 +472,14 @@ Keywords}を参照してください。以下は例です:
   :group 'frobnicate)
 @end example
 
-あるカスタマイゼーションアイテムが@code{:options}がサポートする@code{hook}や@code{alist}のような型をもつなら、@code{custom-add-frequent-value}を呼び出すことによって@code{defcustom}宣言の外部から別途値を追加できます。たとえば@code{emacs-lisp-mode-hook}から呼び出されることを意図した関数@code{my-lisp-mode-initialization}を定義する場合は、@code{emacs-lisp-mode-hook}にたいする正当な値として、その定義を編集することなくその関数をリストに追加したいと思うかもしれません。これは以下のようにして行うことができます:
+If a customization item has a type such as @code{hook} or @code{alist},
+which supports @code{:options}, you can add additional values to the list
+from outside the @code{defcustom} declaration by calling
+@code{custom-add-frequent-value}.  For example, if you define a function
+@code{my-lisp-mode-initialization} intended to be called from
+@code{emacs-lisp-mode-hook}, you might want to add that to the list of
+reasonable values for @code{emacs-lisp-mode-hook}, but not by editing its
+definition.  You can do it thus:
 
 @example
 (custom-add-frequent-value 'emacs-lisp-mode-hook
@@ -338,37 +487,62 @@ Keywords}を参照してください。以下は例です:
 @end example
 
 @defun custom-add-frequent-value symbol value
-カスタマイズオプション@var{symbol}にたいして正当な値のリストに@var{value}を追加する。
+For the customization option @var{symbol}, add @var{value} to the list of
+reasonable values.
 
-追加による正確な効果は@var{symbol}のカスタマイズ型に依存する。
+The precise effect of adding a value depends on the customization type of
+@var{symbol}.
 
-以前に追加した値は@code{defcustom}フォームの評価ではクリアーされないので、Lispプログラムは未定義のユーザーおっしゃるへの値追加にこの関数を使用できる。
+Since evaluating a @code{defcustom} form does not clear values added
+previously, Lisp programs can use this function to add values for user
+options not yet defined.
 @end defun
 
-@code{defcustom}は内部的に、標準値にたいする式の記録にシンボルプロパティ@code{standard-value}、カスタマイゼーションバッファーでユーザーが保存した値の記録に@code{saved-value}、カスタマイゼーションバッファーでユーザーがセットして未保存の値の記録に@code{customized-value}を使用します。@ref{Symbol
-Properties}を参照してください。加えてテーマによりセットされた値の記録に使用される@code{themed-value}も存在します(@ref{Custom
-Themes}を参照)。これらのプロパティは、carがその値を評価する式であるようなリストです。
+Internally, @code{defcustom} uses the symbol property @code{standard-value}
+to record the expression for the standard value, @code{saved-value} to
+record the value saved by the user with the customization buffer, and
+@code{customized-value} to record the value set by the user with the
+customization buffer, but not saved.  @xref{Symbol Properties}.  In
+addition, there's @code{themed-value}, which is used to record the value set
+by a theme (@pxref{Custom Themes}).  These properties are lists, the car of
+which is an expression that evaluates to the value.
 
 @defun custom-reevaluate-setting symbol
-この関数は@code{defcustom}を通じて宣言されたユーザーオプション@var{symbol}の標準値を再評価する。変数がカスタマイズされたなら、この関数はかわりに保存された値を再評価する。それからこの関数はその値に、(もし定義されていればそのオプションの@code{:set}プロパティを使用して)ユーザーオプションをセットする。
+This function re-evaluates the standard value of @var{symbol}, which should
+be a user option declared via @code{defcustom}.  If the variable was
+customized, this function re-evaluates the saved value instead.  Then it
+sets the user option to that value (using the option's @code{:set} property
+if that is defined).
 
-これは値が正しく計算される前に定義されたカスタマイズ可能オプションにたいして有用である。たとえばstartupの間、Emacsは事前ロードされたEmacs
-Lispファイルで定義されたユーザーオプションにたいしてこの関数を呼び出すが、これらの初期値は実行時だけ利用可能な情報に依存する。
+This is useful for customizable options that are defined before their value
+could be computed correctly.  For example, during startup Emacs calls this
+function for some user options that were defined in pre-loaded Emacs Lisp
+files, but whose initial values depend on information available only at
+run-time.
 @end defun
 
 @defun custom-variable-p arg
-この関数は@var{arg}がカスタマイズ可能変数なら非@code{nil}をリターンする。カスタマイズ可能変数とは、@code{standard-value}か@code{custom-autoload}プロパティをもつ(通常は@code{defcustom}で宣言されたことを意味する)変数、または別のカスタマイズ可能変数にたいするエイリアスのことである。
+This function returns non-@code{nil} if @var{arg} is a customizable
+variable.  A customizable variable is either a variable that has a
+@code{standard-value} or @code{custom-autoload} property (usually meaning it
+was declared with @code{defcustom}), or an alias for another customizable
+variable.
 @end defun
 
 @node Customization Types
-@section カスタマイゼーション型
+@section Customization Types
 
 @cindex customization types
-  @code{defcustom}でユーザーオプションを定義するときは、ユーザーオプションの@dfn{カスタマイゼーション型(customization
-type)}を指定しなければなりません。これは(1)どの値が適正か、および(2)編集のためにカスタマイゼーションバッファーで値を表示する方法を記述するLispオブジェクトです。
+  When you define a user option with @code{defcustom}, you must specify its
+@dfn{customization type}.  That is a Lisp object which describes (1)  which
+values are legitimate and (2) how to display the value in the customization
+buffer for editing.
 
 @kindex type@r{, @code{defcustom} keyword}
-  カスタマイゼーション型は@code{defcustom}内の@code{:type}キーワードで指定します。@code{:type}の引数は評価されますが、@code{defcustom}が実行されるときに1回だけ評価されるので、さまざまな値をとる場合には有用でありません。通常はクォートされた定数を使用します。たとえば:
+  You specify the customization type in @code{defcustom} with the @code{:type}
+keyword.  The argument of @code{:type} is evaluated, but only once when the
+@code{defcustom} is executed, so it isn't useful for the value to vary.
+Normally we use a quoted constant.  For example:
 
 @example
 (defcustom diff-command "diff"
@@ -377,164 +551,226 @@ type)}を指定しなければなりません。これは(1)どの値が適正�
   :group 'diff)
 @end example
 
-  一般的にカスタマイゼーション型は最初の要素が以降のセクションで定義されるカスタマイゼーション型の1つであるようなリストです。このシンボルの後にいくつかの引数があり、それはそのシンボルに依存します。型シンボルと引数の間にはオプションでkeyword-valueペアー(@ref{Type
-Keywords}を参照)を記述できます。
+  In general, a customization type is a list whose first element is a symbol,
+one of the customization type names defined in the following sections.
+After this symbol come a number of arguments, depending on the symbol.
+Between the type symbol and its arguments, you can optionally write
+keyword-value pairs (@pxref{Type Keywords}).
 
-  いくつかの型シンボルは引数を使用しません。これらは@dfn{シンプル型(simple
-types)}と呼ばれます。シンプル型ではkeyword-valueペアーを使用しないなら、型シンボルの周囲のカッコ(parentheses)を省略できます。たとえばカスタマイゼーション型として単に@code{string}と記述すると、それは@code{(string)}と等価です。
+  Some type symbols do not use any arguments; those are called @dfn{simple
+types}.  For a simple type, if you do not use any keyword-value pairs, you
+can omit the parentheses around the type symbol.  For example just
+@code{string} as a customization type is equivalent to @code{(string)}.
 
-  すべてのカスタマイゼーション型はウィジェットとして実装されます。詳細は、@ref{Top, , Introduction, widget, The
-Emacs Widget Library}を参照してください。
+  All customization types are implemented as widgets; see @ref{Top, ,
+Introduction, widget, The Emacs Widget Library}, for details.
 
 @menu
-* Simple Types::             シンプルなカスタマイゼーション型(sexp、integerなど)。
-* Composite Types::          他の型やデータから新しい型を構築する。
-* Splicing into Lists::      @code{:inline}で要素をリストに結合する。
-* Type Keywords::            カスタマイゼーション型でのキーワード／引数ペアー
-* Defining New Types::       型に名前をつける。
+* Simple Types::             Simple customization types: sexp, integer, etc.
+* Composite Types::          Build new types from other types or data.
+* Splicing into Lists::      Splice elements into list with @code{:inline}.
+* Type Keywords::            Keyword-argument pairs in a customization type.
+* Defining New Types::       Give your type a name.
 @end menu
 
 @node Simple Types
-@subsection 単純型
+@subsection Simple Types
 
-  このセクションではすべてのシンプルデータ型を説明します。これらのカスタマイゼーション型のうちのいくつかにたいして、カスタマイゼーションウィジェットは@kbd{C-M-i}か@kbd{M-@key{TAB}}によるインライン補完を提供します。
+  This section describes all the simple customization types.  For several of
+these customization types, the customization widget provides inline
+completion with @kbd{C-M-i} or @kbd{M-@key{TAB}}.
 
 @table @code
 @item sexp
-値はプリントと読み込みができる任意のLispオブジェクト。より特化した型を使用するために時間をとりたくなければ、すべてのオプションにたいするフォールバックとして@code{sexp}を使用することができる。
+The value may be any Lisp object that can be printed and read back.  You can
+use @code{sexp} as a fall-back for any option, if you don't want to take the
+time to work out a more specific type to use.
 
 @item integer
-値は整数でなければならない。
+The value must be an integer.
 
 @item natnum
-値は非負の整数でなければならない。
+The value must be a nonnegative integer.
 
 @item number
-値は数(浮動小数点数か整数)でなければならない。
+The value must be a number (floating point or integer).
 
 @item float
-値は浮動小数点数でなければならない。
+The value must be floating point.
 
 @item string
-値は文字列でなければならない。カスタマイゼーションバッファーはその文字列を区切り文字@samp{"}文字と@samp{\}クォートなしで表示する。
+The value must be a string.  The customization buffer shows the string
+without delimiting @samp{"} characters or @samp{\} quotes.
 
 @item regexp
-@code{string}文字と同様だがその文字列は有効な正規表現でなければならない。
+Like @code{string} except that the string must be a valid regular
+expression.
 
 @item character
-値は文字コードでなければならない。文字コードは実際には整数だが、この型は数字を表示せずにバッファー内にその文字を挿入することにより値を表示する。
+The value must be a character code.  A character code is actually an
+integer, but this type shows the value by inserting the character in the
+buffer, rather than by showing the number.
 
 @item file
-値はファイル名でなければならない。ウィジェットは補完を提供する。
+The value must be a file name.  The widget provides completion.
 
 @item (file :must-match t)
-値は既存のファイル名でなければならない。ウィジェットは補完を提供する。
+The value must be a file name for an existing file.  The widget provides
+completion.
 
 @item directory
-値はディレクトリーでなければならない。ウィジェットは補完を提供する。
+The value must be a directory.  The widget provides completion.
 
 @item hook
-値は関数のリストでなければならない。このカスタマイゼーション型はフック変数にたいして使用される。フック内で使用を推奨される関数のリストを指定するために、フック変数の@code{defcustom}内で@code{:options}キーワードを使用できる。@ref{Variable
-Definitions}を参照のこと。
+The value must be a list of functions.  This customization type is used for
+hook variables.  You can use the @code{:options} keyword in a hook
+variable's @code{defcustom} to specify a list of functions recommended for
+use in the hook; @xref{Variable Definitions}.
 
 @item symbol
-値はシンボルでなければならない。これはカスタマイゼーションバッファー内でシンボル名として表示される。ウィジェットは補完を提供する。
+The value must be a symbol.  It appears in the customization buffer as the
+symbol name.  The widget provides completion.
 
 @item function
-値はラムダ式か関数名でなければならない。ウィジェットは関数名にたいする補完を提供する。
+The value must be either a lambda expression or a function name.  The widget
+provides completion for function names.
 
 @item variable
-値は変数名でなければならない。ウィジェットは補完を提供する。
+The value must be a variable name.  The widget provides completion.
 
 @item face
-値はフェイス名のシンボルでなければならない。ウィジェットは補完を提供する。
+The value must be a symbol which is a face name.  The widget provides
+completion.
 
 @item boolean
-値は真偽値 ---
-@code{nil}か@code{t}である。@code{choice}と@code{const}を合わせて使用することにより(次のセクションを参照)、値は@code{nil}か@code{t}でなければならないが、それら選択肢に固有の意味に適合する方法でそれぞれの値を説明するテキストを指定することもできる。
+The value is boolean---either @code{nil} or @code{t}.  Note that by using
+@code{choice} and @code{const} together (see the next section), you can
+specify that the value must be @code{nil} or @code{t}, but also specify the
+text to describe each value in a way that fits the specific meaning of the
+alternative.
 
 @item key
-@kbd{key-valid-p}に照らして有効となるような、たとえば@code{keymap-set}に用いるのに適した値。
+The value is a valid key according to @kbd{key-valid-p}, and suitable for
+use with, for example @code{keymap-set}.
 
 @item key-sequence
-値はキーシーケンス。カスタマイゼーションバッファーは@kbd{kbd}関数と同じ構文を使用してキーシーケンスを表示する。このタイプは過去の遺物であり、かわりに@kbd{kbd}関数を使うこと。@ref{Key
-Sequences}を参照されたい。
+The value is a key sequence.  The customization buffer shows the key
+sequence using the same syntax as the @kbd{kbd} function.  @xref{Key
+Sequences}.  This is a legacy type; use @code{key} instead.
 
 @item coding-system
-値はコーディングシステム名でなければならず、@kbd{M-@key{TAB}}で補完することができる。
+The value must be a coding-system name, and you can do completion with
+@kbd{M-@key{TAB}}.
 
 @item color
-値は有効なカラー名でなければならない。ウィジェットはカラー名にたいする補完と、同様に@file{*Colors*}バッファーに表示されるカラーサンプルとカラー名のリストからカラー名を選択するボタンを提供する。
+The value must be a valid color name.  The widget provides completion for
+color names, as well as a sample and a button for selecting a color name
+from a list of color names shown in a @file{*Colors*} buffer.
 
 @item fringe-bitmap
-値はフリンジビットマップ名でなければならない。ウィジェットは補完を提供する。
+The value must be a valid fringe bitmap name.  The widget provides
+completion.
 @end table
 
 @node Composite Types
-@subsection 複合型
+@subsection Composite Types
 @cindex composite types (customization)
 
-  適切なシンプル型がなければ複合型(composite
-types)を使用することができます。複合型は特定のデータにより、他の型から新しい型を構築します。指定された型やデータは、その複合型の@dfn{引数(argument)}と呼ばれます。複合型は通常は以下のようなものです:
+  When none of the simple types is appropriate, you can use composite types,
+which build new types from other types or from specified data.  The
+specified types or data are called the @dfn{arguments} of the composite
+type.  The composite type normally looks like this:
 
 @example
 (@var{constructor} @var{arguments}@dots{})
 @end example
 
 @noindent
-しかし以下のように引数の前にkeyword-valueペアーを追加することもできます。
+but you can also add keyword-value pairs before the arguments, like this:
 
 @example
 (@var{constructor} @r{@{}@var{keyword} @var{value}@r{@}}@dots{} @var{arguments}@dots{})
 @end example
 
-  以下のテーブルに、コンストラクター(constructor)と複合型を記述するためにそれらを使用する方法を示します:
+  Here is a table of constructors and how to use them to write composite
+types:
 
 @table @code
 @item (cons @var{car-type} @var{cdr-type})
-値はコンスセルでなければならず@sc{car}は@var{car-type}、@sc{cdr}は@var{cdr-type}に適合していなければならない。たとえば@code{(cons
-string symbol)}は、@code{("foo" . foo)}のような値にマッチするデータ型となる。
+The value must be a cons cell, its @sc{car} must fit @var{car-type}, and its
+@sc{cdr} must fit @var{cdr-type}.  For example, @code{(cons string symbol)}
+is a customization type which matches values such as @code{("foo" . foo)}.
 
-カスタマイゼーションバッファーでは、@sc{car}と@sc{cdr}はそれぞれ特定のデータ型に応じて個別に表示と編集が行われる。
+In the customization buffer, the @sc{car} and @sc{cdr} are displayed and
+edited separately, each according to their specified type.
 
 @item (list @var{element-types}@dots{})
-値は@var{element-types}で与えられる要素と数が正確に一致するリストでなければならず、リストの各要素はそれぞれ対応する@var{element-type}に適合しなければならない。
+The value must be a list with exactly as many elements as the
+@var{element-types} given; and each element must fit the corresponding
+@var{element-type}.
 
-たとえば@code{(list integer string
-function)}は3つの要素のリストを示し、1つ目の要素は整数、2つ目の要素は文字列、3つ目の要素は関数である。
+For example, @code{(list integer string function)} describes a list of three
+elements; the first element must be an integer, the second a string, and the
+third a function.
 
-カスタマイゼーションバッファーでは、各要素はそれぞれ特定のデータ型に応じて個別に表示と編集が行われる。
+In the customization buffer, each element is displayed and edited
+separately, according to the type specified for it.
 
 @item (group @var{element-types}@dots{})
-これは@code{list}と似ているが、Customバッファー内でのテキストのフォーマットが異なる。@code{list}は各要素の値をそのタグでラベルづけするが、@code{group}はそれを行わない。
+This works like @code{list} except for the formatting of text in the Custom
+buffer.  @code{list} labels each element value with its tag; @code{group}
+does not.
 
 @item (vector @var{element-types}@dots{})
-これは@code{list}と似ているが、リストではなくベクターでなければならない。各要素は@code{list}の場合と同様に機能する。
+Like @code{list} except that the value must be a vector instead of a list.
+The elements work the same as in @code{list}.
 
 @item (alist :key-type @var{key-type} :value-type @var{value-type})
-値はコンスセルのリストでなければならず、各セルの@sc{car}はカスタマイゼーション型@var{key-type}のキーを表し、同じセルの@sc{cdr}はカスタマイゼーション型@var{value-type}の値を表す。ユーザーはkey/valueペアーの追加や削除ができ、各ペアのキーと値の両方を編集することができる。
+The value must be a list of cons-cells, the @sc{car} of each cell
+representing a key of customization type @var{key-type}, and the @sc{cdr} of
+the same cell representing a value of customization type @var{value-type}.
+The user can add and delete key/value pairs, and edit both the key and the
+value of each pair.
 
-省略された場合の@var{key-type}と@var{value-type}のデフォルトは@code{sexp}。
+If omitted, @var{key-type} and @var{value-type} default to @code{sexp}.
 
-ユーザーは指定されたkey-typeにマッチする任意のキーを追加できるが、@code{:options}(@ref{Variable
-Definitions}を参照)で指定することにより、あるキーを優先的に扱うことができる。指定されたキーは、(適切な値とともに)常にカスタマイゼーションバッファーに表示される。またalistにkey/valueを含めるか、除外するか、それとも無効にするかを指定するチェックボックスも一緒に表示される。ユーザーは@code{:options}キーワード引数で指定された値を変更できない。
+The user can add any key matching the specified key type, but you can give
+some keys a preferential treatment by specifying them with the
+@code{:options} (@pxref{Variable Definitions}).  The specified keys will
+always be shown in the customize buffer (together with a suitable value),
+with a checkbox to include or exclude or disable the key/value pair from the
+alist.  The user will not be able to edit the keys specified by the
+@code{:options} keyword argument.
 
-@code{:options}キーワードにたいする引数は、alist内の適切なキーにたいする仕様のリストであること。これらは通常は単純なアトムであり、それらは自身を意味します。たとえば:
+The argument to the @code{:options} keywords should be a list of
+specifications for reasonable keys in the alist.  Ordinarily, they are
+simply atoms, which stand for themselves.  For example:
 
 @example
 :options '("foo" "bar" "baz")
 @end example
 
 @noindent
-これは名前が@code{"foo"}、@code{"bar"}、@code{"baz"}であるような3つの既知のキーがあることを指定し、それらは常に最初に表示される。
+specifies that there are three known keys, namely @code{"foo"}, @code{"bar"}
+and @code{"baz"}, which will always be shown first.
 
-たとえば@code{"bar"}キーに対応する値を整数だけにするというように、特定のキーに対して値の型を制限したいときがあるかもしれない。これはリスト内でアトムのかわりにリストを使用することにより指定することができる。前述のように1つ目の要素はそのキー、2つ目の要素は値の型を指定する。たとえば:
+You may want to restrict the value type for specific keys, for example, the
+value associated with the @code{"bar"} key can only be an integer.  You can
+specify this by using a list instead of an atom in the list.  The first
+element will specify the key, like before, while the second element will
+specify the value type.  For example:
 
 @example
 :options '("foo" ("bar" integer) "baz")
 @end example
 
-最後にキーが表示される方法を変更したいときもあるだろう。デフォルトでは@code{:options}キーワードで指定された特別なキーはユーザーが変更できないので、キーは単に@code{const}として表示される。しかしたとえばそれが関数バインディングをもつシンボルであることが既知なら、@code{function-item}のようにあるキーの表示のためにより特化した型を使用したいと思うかもしれない。これはキーにたいしてシンボルを使うかわりに、カスタマイゼーション型指定を使用することにより行うことができる。
+Finally, you may want to change how the key is presented.  By default, the
+key is simply shown as a @code{const}, since the user cannot change the
+special keys specified with the @code{:options} keyword.  However, you may
+want to use a more specialized type for presenting the key, like
+@code{function-item} if you know it is a symbol with a function binding.
+This is done by using a customization type specification instead of a symbol
+for the key.
 
 @example
 :options '("foo"
@@ -542,16 +778,8 @@ Definitions}を参照)で指定することにより、あるキーを優先的�
            "baz")
 @end example
 
-多くのalistはコンスセルのかわりに2要素のリストを使用する。たとえば、
-
-@example
-(defcustom cons-alist
-  '(("foo" . 1) ("bar" . 2) ("baz" . 3))
-  "Each element is a cons-cell (KEY . VALUE).")
-@end example
-
-@noindent
-のかわりに以下を使用する
+Many alists use lists with two elements, instead of cons cells.  For
+example,
 
 @example
 (defcustom list-alist
@@ -559,7 +787,18 @@ Definitions}を参照)で指定することにより、あるキーを優先的�
   "Each element is a list of the form (KEY VALUE).")
 @end example
 
-リストはコンスセルの最上位に実装されているため、上記の@code{list-alist}をコンスセルのalist(値の型が実際の値を含む1要素のリスト)として扱うことができる。
+@noindent
+instead of
+
+@example
+(defcustom cons-alist
+  '(("foo" . 1) ("bar" . 2) ("baz" . 3))
+  "Each element is a cons-cell (KEY . VALUE).")
+@end example
+
+Because of the way lists are implemented on top of cons cells, you can treat
+@code{list-alist} in the example above as a cons cell alist, where the value
+type is a list with a single element containing the real value.
 
 @example
 (defcustom list-alist '(("foo" 1) ("bar" 2) ("baz" 3))
@@ -567,9 +806,11 @@ Definitions}を参照)で指定することにより、あるキーを優先的�
   :type '(alist :value-type (group integer)))
 @end example
 
-@code{list}のかわりに@code{group}を使用するのは、それが目的に適したフォーマットだという理由だけである。
+The @code{group} widget is used here instead of @code{list} only because the
+formatting is better suited for the purpose.
 
-同様に以下のようなトリックの類を用いることにより、より多くの値が各キー連づけられたalistを得ることができる:
+Similarly, you can have alists with more values associated with each key,
+using variations of this trick:
 
 @example
 (defcustom person-data '(("brian"  50 t)
@@ -581,16 +822,23 @@ Each element has the form (NAME AGE MALE-FLAG)."
 @end example
 
 @item (plist :key-type @var{key-type} :value-type @var{value-type})
-このカスタマイゼーション型は@code{alist}(上記参照)と似ているが、(1)情報がプロパティリスト(@ref{Property
-Lists}を参照)に格納されていて、(2)@var{key-type}が省略された場合のデフォルトは@code{sexp}ではなく@code{symbol}になる。
+This customization type is similar to @code{alist} (see above), except that
+(i) the information is stored as a property list, (@pxref{Property Lists}),
+and (ii) @var{key-type}, if omitted, defaults to @code{symbol} rather than
+@code{sexp}.
 
 @item (choice @var{alternative-types}@dots{})
-値は@var{alternative-types}のうちのいずれかに適合しなければならない。たとえば@code{(choice integer
-string)}では整数か文字列が許容される。
+The value must fit one of @var{alternative-types}.  For example,
+@code{(choice integer string)} allows either an integer or a string.
 
-カスタマイゼーションバッファーでは、ユーザーはメニューを使用して候補を選択して、それらの候補にたいして通常の方法で値を編集できる。
+In the customization buffer, the user selects an alternative using a menu,
+and can then edit the value in the usual way for that alternative.
 
-通常はこの選択からメニューの文字列が自動的に決定される。しかし候補の中に@code{:tag}キーワードを含めることにより、メニューにたいして異なる文字列を指定できる。たとえば空白の数を意味する整数と、その通りに使用したいテキストにたいする文字列なら、以下のような方法でカスタマイゼーション型を記述したいと思うかもしれない
+Normally the strings in this menu are determined automatically from the
+choices; however, you can specify different strings for the menu by
+including the @code{:tag} keyword in the alternatives.  For example, if an
+integer stands for a number of spaces, while a string is text to use
+verbatim, you might write the customization type this way,
 
 @example
 (choice (integer :tag "Number of spaces")
@@ -598,12 +846,16 @@ string)}では整数か文字列が許容される。
 @end example
 
 @noindent
-この場合のメニューは@samp{Number of spaces}と@samp{Literal text}を提示する。
+so that the menu offers @samp{Number of spaces} and @samp{Literal text}.
 
-@code{const}以外の@code{nil}が有効な値ではない選択肢には、@code{:value}キーワードを使用して有効なデフォルト値を指定すること。@ref{Type
-Keywords}を参照のこと。
+In any alternative for which @code{nil} is not a valid value, other than a
+@code{const}, you should specify a valid default for that alternative using
+the @code{:value} keyword.  @xref{Type Keywords}.
 
-複数の候補によりいくつかの値が提供されるなら、カスタマイズは適合する値をもつ最初の候補を選択する。これは常にもっとも特有な型が最初で、もっとも一般的な型が最後にリストされるべきことを意味する。以下は適切な使い方の例である
+If some values are covered by more than one of the alternatives, customize
+will choose the first alternative that the value fits.  This means you
+should always list the most specific types first, and the most general
+last.  Here's an example of proper usage:
 
 @example
 (choice (const :tag "Off" nil)
@@ -611,19 +863,25 @@ Keywords}を参照のこと。
 @end example
 
 @noindent
-この使い方では特別な値@code{nil}はその他のシンボルとは別に扱われ、シンボルは他のLisp式とは別に扱われる。
+This way, the special value @code{nil} is not treated like other symbols,
+and symbols are not treated like other Lisp expressions.
 
 @cindex radio, customization types
 @item (radio @var{element-types}@dots{})
-これは@code{choice}と似ているが、選択はメニューではなくラジオボタンで表示される。これは該当する選択にたいしてドキュメントを表示できる利点があるので、関数定数(@code{function-item}カスタマイゼーション型)の選択に適している場合がある。
+This is similar to @code{choice}, except that the choices are displayed
+using radio buttons rather than a menu.  This has the advantage of
+displaying documentation for the choices when applicable and so is often a
+good choice for a choice between constant functions (@code{function-item}
+customization types).
 
 @item (const @var{value})
-値は@var{value}でなければならず他は許容されない。
+The value must be @var{value}---nothing else is allowed.
 
-@code{const}は主に@code{choice}の中で使用される。たとえば@code{(choice integer (const
-nil))}では整数か@code{nil}が選択できる。
+The main use of @code{const} is inside of @code{choice}.  For example,
+@code{(choice integer (const nil))} allows either an integer or @code{nil}.
 
-@code{choice}の中では@code{:tag}とともに@code{const}が使用される場合がある。たとえば、
+@code{:tag} is often used with @code{const}, inside of @code{choice}.  For
+example,
 
 @example
 (choice (const :tag "Yes" t)
@@ -632,12 +890,15 @@ nil))}では整数か@code{nil}が選択できる。
 @end example
 
 @noindent
-これは@code{t}がyes、@code{nil}がno、@code{foo}が``ask''を意味することを示す。
+describes a variable for which @code{t} means yes, @code{nil} means no, and
+@code{foo} means ``ask''.
 
 @item (other @var{value})
-この選択肢は任意のLisp値にマッチできるが、ユーザーがこの選択肢を選択したら値@var{value}が選択される。
+This alternative can match any Lisp value, but if the user chooses this
+alternative, that selects the value @var{value}.
 
-@code{other}は主に@code{choice}の最後の要素に使用される。たとえば、
+The main use of @code{other} is as the last element of @code{choice}.  For
+example,
 
 @example
 (choice (const :tag "Yes" t)
@@ -646,28 +907,44 @@ nil))}では整数か@code{nil}が選択できる。
 @end example
 
 @noindent
-これは@code{t}がyes、@code{nil}がno、それ以外は``ask''を意味することを示す。ユーザーが選択肢メニューから@samp{Ask}を選択したら、値@code{foo}が指定される。しかしその他の値(@code{t}、@code{nil}、@code{foo}を除く)なら@code{foo}と同様に@samp{Ask}が表示される。
+describes a variable for which @code{t} means yes, @code{nil} means no, and
+anything else means ``ask''.  If the user chooses @samp{Ask} from the menu
+of alternatives, that specifies the value @code{foo}; but any other value
+(not @code{t}, @code{nil} or @code{foo}) displays as @samp{Ask}, just like
+@code{foo}.
 
 @item (function-item @var{function})
-@code{const}と同様だが値が関数のときに使用される。これはドキュメント文字列も関数名と同じように表示する。ドキュメント文字列は@code{:doc}で指定した文字列か@var{function}自身のドキュメント文字列。
+Like @code{const}, but used for values which are functions.  This displays
+the documentation string as well as the function name.  The documentation
+string is either the one you specify with @code{:doc}, or @var{function}'s
+own documentation string.
 
 @item (variable-item @var{variable})
-@code{const}と同様だが値が変数名のときに使用される。これはドキュメント文字列も変数名と同じように表示する。ドキュメント文字列は@code{:doc}で指定した文字列か@var{variable}自身のドキュメント文字列。
+Like @code{const}, but used for values which are variable names.  This
+displays the documentation string as well as the variable name.  The
+documentation string is either the one you specify with @code{:doc}, or
+@var{variable}'s own documentation string.
 
 @item (set @var{types}@dots{})
-値はリストでなければならず指定された@var{types}のいずれかにマッチしなければならない。
+The value must be a list, and each element of the list must match one of the
+@var{types} specified.
 
-これはカスタマイゼーションバッファーではチェックリストとして表示されるので、@var{types}はそれぞれ対応する要素を1つ、あるいは要素をもたない。同じ1つの@var{types}にマッチするような、異なる2つの要素を指定することはできない。たとえば@code{(set
-integer
-symbol)}はリスト内で1つの整数、および/または1つのシンボルが許容されて、複数の整数や複数のシンボルは許容されない。結果として@code{set}内で@code{integer}のような特化していない型を使用するのは稀である。
+This appears in the customization buffer as a checklist, so that each of
+@var{types} may have either one corresponding element or none.  It is not
+possible to specify two different elements that match the same one of
+@var{types}.  For example, @code{(set integer symbol)} allows one integer
+and/or one symbol in the list; it does not allow multiple integers or
+multiple symbols.  As a result, it is rare to use nonspecific types such as
+@code{integer} in a @code{set}.
 
-以下のように@code{const}型は@code{set}内の@var{types}でよく使用される:
+Most often, the @var{types} in a @code{set} are @code{const} types, as shown
+here:
 
 @example
 (set (const :bold) (const :italic))
 @end example
 
-alist内で利用できる要素を示すために使用されることもある:
+Sometimes they describe possible elements in an alist:
 
 @example
 (set (cons :tag "Height" (const height) integer)
@@ -675,26 +952,34 @@ alist内で利用できる要素を示すために使用されることもある
 @end example
 
 @noindent
-これによりユーザーにオプションでheightとwidthの値を指定させることができる。
+That lets the user specify a height value optionally and a width value
+optionally.
 
 @item (repeat @var{element-type})
-値はリストでなければならず、リストの各要素は型@var{element-type}に適合しなければならない。カスタマイゼーションバッファーでは要素のリストとして表示され、@samp{[INS]}と@samp{[DEL]}ボタンで要素の追加や削除が行われる。
+The value must be a list and each element of the list must fit the type
+@var{element-type}.  This appears in the customization buffer as a list of
+elements, with @samp{[INS]} and @samp{[DEL]} buttons for adding more
+elements or removing elements.
 
 @cindex restricted-sexp, customization types
 @item (restricted-sexp :match-alternatives @var{criteria})
-これはもっとも汎用的な複合型の構築方法である。値は@var{criteria}を満足する任意のLispオブジェクト。@var{criteria}はリストで、リストの各要素は以下のうちのいずれかを満たす必要がある:
+This is the most general composite type construct.  The value may be any
+Lisp object that satisfies one of @var{criteria}.  @var{criteria} should be
+a list, and each element should be one of these possibilities:
 
 @itemize @bullet
 @item
-述語 ---
-つまり引数は1つで、引数に応じて@code{nil}か非@code{nil}のどちらかをリターンする関数。リスト内での述語の使用により、その述語が非@code{nil}をリターンするようなオブジェクトが許されることを意味する。
+A predicate---that is, a function of one argument that returns either
+@code{nil} or non-@code{nil} according to the argument.  Using a predicate
+in the list says that objects for which the predicate returns non-@code{nil}
+are acceptable.
 
 @item
-クォートされた定数 ---
-つまり@code{'@var{object}}。リスト内でこの要素は@var{object}自身が許容される値であることを示す。
+A quoted constant---that is, @code{'@var{object}}.  This sort of element in
+the list says that @var{object} itself is an acceptable value.
 @end itemize
 
-たとえば、
+For example,
 
 @example
 (restricted-sexp :match-alternatives
@@ -702,50 +987,67 @@ alist内で利用できる要素を示すために使用されることもある
 @end example
 
 @noindent
-これは整数、@code{t}、@code{nil}を正当な値として受け入れる。
+allows integers, @code{t} and @code{nil} as legitimate values.
 
-カスタマイゼーションバッファーは適切な値をそれらの入力構文de表示して、ユーザーはこれらをテキストとして編集できる。
+The customization buffer shows all legitimate values using their read
+syntax, and the user edits them textually.
 @end table
 
-  以下は複合型でキーワード/値ペアーとして使用できるキーワードのテーブルです:
+  Here is a table of the keywords you can use in keyword-value pairs in a
+composite type:
 
 @table @code
 @item :tag @var{tag}
-@var{tag}はユーザーとのコミュニケーションのために、その候補の名前として使用される。@code{choice}内に出現する型にたいして有用。
+Use @var{tag} as the name of this alternative, for user communication
+purposes.  This is useful for a type that appears inside of a @code{choice}.
 
 @item :match-alternatives @var{criteria}
 @kindex match-alternatives@r{, customization keyword}
-@var{criteria}は可能な値とのマッチに使用される。@code{restricted-sexp}内でのみ有用。
+Use @var{criteria} to match possible values.  This is used only in
+@code{restricted-sexp}.
 
 @item :args @var{argument-list}
 @kindex args@r{, customization keyword}
-型構築の引数として@var{argument-list}の要素を使用する。たとえば@code{(const :args
-(foo))}は@code{(const
-foo)}と等価である。明示的に@code{:args}と記述する必要があるのは稀である。なぜなら最後のキーワード/値ペアーの後に続くものは何であれ、引数として認識されるからである。
+Use the elements of @var{argument-list} as the arguments of the type
+construct.  For instance, @code{(const :args (foo))} is equivalent to
+@code{(const foo)}.  You rarely need to write @code{:args} explicitly,
+because normally the arguments are recognized automatically as whatever
+follows the last keyword-value pair.
 @end table
 
 @node Splicing into Lists
-@subsection リストへのスプライス
+@subsection Splicing into Lists
 
-  @code{:inline}機能により可変個の要素を、カスタマイゼーション型の@code{list}や@code{vector}の途中にスプライス(splice:
-継ぎ足す)することができます。@code{list}や@code{vector}記述を含む型にたいして@code{:inline
-t}を追加することによってこれを使用します。
+  The @code{:inline} feature lets you splice a variable number of elements
+into the middle of a @code{list} or @code{vector} customization type.  You
+use it by adding @code{:inline t} to a type specification which is contained
+in a @code{list} or @code{vector} specification.
 
-  @code{list}や@code{vector}型の仕様は、通常は単一の要素型を表します。しかしエントリーが@code{:inline
-t}を含むなら、マッチする値は含まれるシーケンスに直接マージされます。たとえばエントリーが3要素のリストにマッチするなら、全体が3要素のシーケンスになります。これはバッククォート構文(@ref{Backquote}を参照)の@samp{,@@}に類似しています。
+  Normally, each entry in a @code{list} or @code{vector} type specification
+describes a single element type.  But when an entry contains @code{:inline
+t}, the value it matches is merged directly into the containing sequence.
+For example, if the entry matches a list with three elements, those become
+three elements of the overall sequence.  This is analogous to @samp{,@@} in
+a backquote construct (@pxref{Backquote}).
 
-  たとえば最初の要素が@code{baz}で、残りの引数は0個以上の@code{foo}か@code{bar}でなければならないようなリストを指定するには、以下のカスタマイゼーション型を使用します:
+  For example, to specify a list whose first element must be @code{baz} and
+whose remaining arguments should be zero or more of @code{foo} and
+@code{bar}, use this customization type:
 
 @example
 (list (const baz) (set :inline t (const foo) (const bar)))
 @end example
 
 @noindent
-これは@code{(baz)}、@code{(baz foo)}、@code{(baz bar)}、@code{(baz foo
-bar)}のような値にマッチします。
+This matches values such as @code{(baz)}, @code{(baz foo)}, @code{(baz bar)}
+and @code{(baz foo bar)}.
 
 @cindex choice, customization types
-  要素の型が@code{choice}なら、@code{choice}自身の中で@code{:inline}を使用せずに、@code{choice}の選択肢(の一部)の中で使用します。たとえば最初がファイル名で始まり、その後にシンボル@code{t}か2つの文字列を続けなければならないようなリストにマッチさせるには、以下のカスタマイゼーション型を使用します:
+  When the element-type is a @code{choice}, you use @code{:inline} not in the
+@code{choice} itself, but in (some of) the alternatives of the
+@code{choice}.  For example, to match a list which must start with a file
+name, followed either by the symbol @code{t} or two strings, use this
+customization type:
 
 @example
 (list file
@@ -754,108 +1056,148 @@ bar)}のような値にマッチします。
 @end example
 
 @noindent
-選択においてユーザーが選択肢の1つ目を選んだ場合はリスト全体が2つの要素をもち、2つ目の要素は@code{t}になります。ユーザーが2つ目の候補を選んだ場合にはリスト全体が3つの要素をもち、2つ目と3つ目の要素は文字列でなければなりません。
+If the user chooses the first alternative in the choice, then the overall
+list has two elements and the second element is @code{t}.  If the user
+chooses the second alternative, then the overall list has three elements and
+the second and third must be strings.
 
-  ウィジェットは@code{:match-inline}要素でインライン値がウィジェットにマッチするかどうかを告げる述語を指定できます。
+  The widgets can specify predicates to say whether an inline value matches
+the widget with the @code{:match-inline} element.
 
 @node Type Keywords
-@subsection 型キーワード
+@subsection Type Keywords
 
-カスタマイゼーション型内の型名シンボルの後にキーワード/引数ペアーを指定できます。以下は使用できるキーワードとそれらの意味です:
+You can specify keyword-argument pairs in a customization type after the
+type name symbol.  Here are the keywords you can use, and their meanings:
 
 @table @code
 @item :value @var{default}
-デフォルト値を提供する。
+Provide a default value.
 
-その候補にたいして@code{nil}が有効な値でなければ、@code{:value}に有効なデフォルトを指定することが必須となる。
+If @code{nil} is not a valid value for the alternative, then it is essential
+to specify a valid default with @code{:value}.
 
-@code{choice}の内部の選択肢として出現する型にたいしてこれを使用するなら、ユーザーがカスタマイゼーションバッファー内のメニューでその選択肢を選択したときに使用するデフォルト値を最初に指定する。
+If you use this for a type that appears as an alternative inside of
+@code{choice}; it specifies the default value to use, at first, if and when
+the user selects this alternative with the menu in the customization buffer.
 
-もちろんオプションの実際の値がこの選択肢に適合するなら、@var{default}ではなく実際の値が表示される。
+Of course, if the actual value of the option fits this alternative, it will
+appear showing the actual value, not @var{default}.
 
 @item :format @var{format-string}
 @kindex format@r{, customization keyword}
-この文字列はその型に対応する値を記述するために、バッファーに挿入される。@var{format-string}内では以下の@samp{%}エスケープが利用できる:
+This string will be inserted in the buffer to represent the value
+corresponding to the type.  The following @samp{%} escapes are available for
+use in @var{format-string}:
 
 @table @samp
 @item %[@var{button}%]
-ボタンとしてマークされたテキスト@var{button}を表示する。@code{:action}属性はユーザーがそれを呼び出したときに、そのボタンが何を行うか指定する。この属性の値は2つの引数
---- ボタンが表示されるウィジェットとイベント --- を受け取る関数である。
+Display the text @var{button} marked as a button.  The @code{:action}
+attribute specifies what the button will do if the user invokes it; its
+value is a function which takes two arguments---the widget which the button
+appears in, and the event.
 
-異なるアクションを行う2つの異なるボタンを指定する方法はない。
+There is no way to specify two different buttons with different actions.
 
 @item %@{@var{sample}%@}
-@code{:sample-face}により指定されたスペシャルフェイス内の@var{sample}を表示する。
+Show @var{sample} in a special face specified by @code{:sample-face}.
 
 @item %v
-そのアイテムの値を代替えする。その値がどのように表示されるかはアイテムの種類と、(カスタマイゼーション型にたいしては)カスタマイゼーション型にに依存する。
+Substitute the item's value.  How the value is represented depends on the
+kind of item, and (for variables) on the customization type.
 
 @item %d
-そのアイテムのドキュメント文字列を代替えする。
+Substitute the item's documentation string.
 
 @item %h
-@samp{%d}と同様だが、ドキュメント文字列が複数行なら、ドキュメント文字列全体か最初の行だけかを制御するボタンを追加する。
+Like @samp{%d}, but if the documentation string is more than one line, add a
+button to control whether to show all of it or just the first line.
 
 @item %t
-その位置でタグに置き換える。@code{:tag}キーワードでタグを指定する。
+Substitute the tag here.  You specify the tag with the @code{:tag} keyword.
 
 @item %%
-リテラル@samp{%}を表示する。
+Display a literal @samp{%}.
 @end table
 
 @item :action @var{action}
 @kindex action@r{, customization keyword}
-ユーザーがボタンをクリックしたら@var{action}を実行する。
+Perform @var{action} if the user clicks on a button.
 
 @item :button-face @var{face}
 @kindex button-face@r{, customization keyword}
-@samp{%[@dots{}%]}で表示されたボタンテキストにたいして、フェイス@var{face}(フェイス名、またはフェイス名のリスト)を使用する。
+Use the face @var{face} (a face name or a list of face names) for button
+text displayed with @samp{%[@dots{}%]}.
 
 @item :button-prefix @var{prefix}
 @itemx :button-suffix @var{suffix}
 @kindex button-prefix@r{, customization keyword}
 @kindex button-suffix@r{, customization keyword}
-これらはボタンの前か後に表示されるテキストを指定する。以下が指定できる:
+These specify the text to display before and after a button.  Each can be:
 
 @table @asis
 @item @code{nil}
-テキストは挿入されない。
+No text is inserted.
 
-@item 文字列
-その文字列がリテラルに挿入される。
+@item a string
+The string is inserted literally.
 
-@item シンボル
-そのシンボルの値が使用される。
+@item a symbol
+The symbol's value is used.
 @end table
 
 @item :tag @var{tag}
-この型に対応する値(または値の一部)にたいするタグとして@var{tag}(文字列)を使用する。
+Use @var{tag} (a string) as the tag for the value (or part of the value)
+that corresponds to this type.
 
 @item :doc @var{doc}
 @kindex doc@r{, customization keyword}
-この型に対応する値(か値の一部)にたいするドキュメント文字列として@var{doc}を使用する。これが機能するためには@code{:format}にたいする値を指定して、その値にたいして@samp{%d}か@samp{%h}を使用しなければならない。
+Use @var{doc} as the documentation string for this value (or part of the
+value) that corresponds to this type.  In order for this to work, you must
+specify a value for @code{:format}, and use @samp{%d} or @samp{%h} in that
+value.
 
-ある型にたいしてドキュメント文字列を指定するのは@code{choice}内の選択肢の型や、他の複合型の一部について情報を提供するのが通常の理由。
+The usual reason to specify a documentation string for a type is to provide
+more information about the meanings of alternatives inside a @code{choice}
+type or the parts of some other composite type.
 
 @item :help-echo @var{motion-doc}
 @kindex help-echo@r{, customization keyword}
-@code{widget-forward}や@code{widget-backward}でこのアイテムに移動したときに、エコーエリアに文字列@var{motion-doc}を表示する。さらにマウスの@code{help-echo}文字列として@var{motion-doc}が使用され、これには実際には」ヘルプ文字列を生成するために評価される関数かフォームを指定できる。もし関数ならそれは1つの引数(そのウィジェット)で呼び出される。
+When you move to this item with @code{widget-forward} or
+@code{widget-backward}, it will display the string @var{motion-doc} in the
+echo area.  In addition, @var{motion-doc} is used as the mouse
+@code{help-echo} string and may actually be a function or form evaluated to
+yield a help string.  If it is a function, it is called with one argument,
+the widget.
 
 @item :match @var{function}
 @kindex match@r{, customization keyword}
-値がその型にマッチするか判断する方法を指定する。対応する値@var{function}は2つの引数(ウィジェットと値)を受け取る関数であり、値が適切なら非@code{nil}をリターンすること。
+Specify how to decide whether a value matches the type.  The corresponding
+value, @var{function}, should be a function that accepts two arguments, a
+widget and a value; it should return non-@code{nil} if the value is
+acceptable.
 
 @item :match-inline @var{function}
 @kindex match-inline@r{, customization keyword}
-インライン値がその型にマッチするか判断する方法を指定する。対応する値@var{function}は2つの引数(ウィジェットとインライン値)を受け取る関数であり、値が適切なら非@code{nil}をリターンすること。インライン値に関する詳細な情報は@ref{Splicing
-into Lists}を参照のこと。
+Specify how to decide whether an inline value matches the type.  The
+corresponding value, @var{function}, should be a function that accepts two
+arguments, a widget and an inline value; it should return non-@code{nil} if
+the value is acceptable.  See @ref{Splicing into Lists} for more information
+about inline values.
 
 @item :validate @var{function}
-入力にたいして検証を行う関数を指定する。@var{function}は引数としてウィジェットを受け取り、そのウィジェットのカレント値がウィジェットにたいして有効なら@code{nil}をリターンすること。それ以外なら無効なデータを含むウィジェットをリターンして、そのウィジェットの@code{:error}プロパティに、そのエラーを記述する文字列をセットすること。
+Specify a validation function for input.  @var{function} takes a widget as
+an argument, and should return @code{nil} if the widget's current value is
+valid for the widget.  Otherwise, it should return the widget containing the
+invalid data, and set that widget's @code{:error} property to a string
+explaining the error.
 
 @item :type-error @var{string}
 @kindex type-error@r{, customization keyword}
-@var{string}は値がなぜ@code{:match}関数で判定されるような値にマッチしないかを説明する文字列であること。@code{:match}関数が@code{nil}をリターンした際には、ウィジェットの@code{:error}プロパティが@var{string}にセットされる。
+@var{string} should be a string that describes why a value doesn't match the
+type, as determined by the @code{:match} function.  When the @code{:match}
+function returns @code{nil}, the widget's @code{:error} property will be set
+to @var{string}.
 
 @ignore
 @item :indent @var{columns}
@@ -921,15 +1263,25 @@ arguments, which will be used when creating the @code{radio-button} or
 @end table
 
 @node Defining New Types
-@subsection 新たな型の定義
+@subsection Defining New Types
 @cindex customization types, define new
 @cindex define new customization types
 
-前のセクションでは、@code{defcustom}にたいして型の詳細な仕様を作成する方法を説明しました。そのような型仕様に名前を与えたい場合があるかもしれません。理解しやすいケースとしては、多くのユーザーオプションに同じ型を使用する場合などです。各オプションにたいして仕様を繰り返すよりその型に名前を与えて、@code{defcustom}それぞれにその名前を使用することができます。他にもユーザーオプションの値が再帰的なデータ構造のケースがあります。あるデータ型がそれ自身を参照できるようにするためには、それが名前をもつ必要があります。
+In the previous sections we have described how to construct elaborate type
+specifications for @code{defcustom}.  In some cases you may want to give
+such a type specification a name.  The obvious case is when you are using
+the same type for many user options: rather than repeat the specification
+for each option, you can give the type specification a name, and use that
+name each @code{defcustom}.  The other case is when a user option's value is
+a recursive data structure.  To make it possible for a datatype to refer to
+itself, it needs to have a name.
 
-カスタマイゼーション型はウィジェットとして実装されているめ、新しいカスタマイゼーション型を定義するには、新たにウィジェット型を定義します。ここではウィジェットインターフェイスの詳細は説明しません。@ref{Top,
-, Introduction, widget, The Emacs Widget
-Library}を参照してください。かわりにシンプルな例を用いて、カスタマイゼーション型を新たに定義するために必要な最小限の機能について説明します。
+Since custom types are implemented as widgets, the way to define a new
+customize type is to define a new widget.  We are not going to describe the
+widget interface here in details, see @ref{Top, , Introduction, widget, The
+Emacs Widget Library}, for that.  Instead we are going to demonstrate the
+minimal functionality needed for defining new customize types by a simple
+example.
 
 @example
 (define-widget 'binary-tree-of-string 'lazy
@@ -947,148 +1299,248 @@ Library}を参照してください。かわりにシンプルな例を用いて
   :type 'binary-tree-of-string)
 @end example
 
-新しいウィジェットを定義するための関数は@code{define-widget}と呼ばれます。1つ目の引数は新たなウィジェット型にしたいシンボルです。2つ目の引数は既存のウィジェットを表すシンボルで、新しいウィジェットではこの既存のウィジェットと異なる部分を定義することになります。新たなカスタマイゼーション型を定義する目的にたいしては@code{lazy}ウィジェットが最適です。なぜならこれは@code{defcustom}にたいするキーワード引数と同じ構文と名前でキーワード引数@code{:type}を受け取るからです。3つ目の引数は新しいウィジェットにたいするドキュメント文字列です。この文字列は@kbd{M-x
-widget-browse @key{RET} binary-tree-of-string @key{RET}}コマンドで参照することができます。
+The function to define a new widget is called @code{define-widget}.  The
+first argument is the symbol we want to make a new widget type.  The second
+argument is a symbol representing an existing widget, the new widget is
+going to be defined in terms of difference from the existing widget.  For
+the purpose of defining new customization types, the @code{lazy} widget is
+perfect, because it accepts a @code{:type} keyword argument with the same
+syntax as the keyword argument to @code{defcustom} with the same name.  The
+third argument is a documentation string for the new widget.  You will be
+able to see that string with the @kbd{M-x widget-browse @key{RET}
+binary-tree-of-string @key{RET}} command.
 
-これらの必須の引数の後にキーワード引数が続きます。もっとも重要なのは@code{:type}で、これはこのウィジェットにマッチさせたいデータ型を表します。上記の例では@code{binary-tree-of-string}は文字列、またはcarとcdrが@code{binary-tree-of-string}であるようなコンスセルです。この定義中でのウィジェット型への参照に注意してください。@code{:tag}属性はユーザーインターフェイスでウィジェット名となる文字列、@code{:offset}引数はカスタマイゼーションバッファーでのツリー構造の外観で，子ノードと関連する親ノードの間に4つのスペースを確保します。
+After these mandatory arguments follow the keyword arguments.  The most
+important is @code{:type}, which describes the data type we want to match
+with this widget.  Here a @code{binary-tree-of-string} is described as being
+either a string, or a cons-cell whose car and cdr are themselves both
+@code{binary-tree-of-string}.  Note the reference to the widget type we are
+currently in the process of defining.  The @code{:tag} attribute is a string
+to name the widget in the user interface, and the @code{:offset} argument is
+there to ensure that child nodes are indented four spaces relative to the
+parent node, making the tree structure apparent in the customization buffer.
 
-@code{defcustom}は通常のカスタマイゼーション型に使用される方法で新しいウィジェットを表示します。
+The @code{defcustom} shows how the new widget can be used as an ordinary
+customization type.
 
-@code{lazy}という名前の由来は、他のウィジェットではそれらがバッファーでインスタンス化されるとき、他の合成されたウィジェットが下位のウィジェットを内部形式に変換するからです。この変換は再帰的なので、下位のウィジェットは@emph{それら自身}の下位ウィジェットへと変換されます。データ構造自体が再帰的なら、その変換は無限再帰(infinite
-recursion)となります。@code{lazy}ウィジェットは、@code{:type}引数を必要なときだけ変換することによってこの再帰を防ぎます。
+The reason for the name @code{lazy} is that the other composite widgets
+convert their inferior widgets to internal form when the widget is
+instantiated in a buffer.  This conversion is recursive, so the inferior
+widgets will convert @emph{their} inferior widgets.  If the data structure
+is itself recursive, this conversion is an infinite recursion.  The
+@code{lazy} widget prevents the recursion: it convert its @code{:type}
+argument only when needed.
 
 @node Applying Customizations
-@section カスタマイゼーションの適用
+@section Applying Customizations
 @cindex applying customizations
 
-以下の関数には変数とフェイスにたいして、そのユーザーのカスタマイゼーション設定をインストールする役目をもちます。それらの関数はユーザーがCustomizeインターフェイスで@samp{Save
-for future
-sessions}を呼び出したとき、次回のEmacs起動時に評価されるように@code{custom-set-variables}フォーム、および/または@code{custom-set-faces}フォームがカスタムファイルに書き込まれることによって効果をもちます。
+The following functions are responsible for installing the user's
+customization settings for variables and faces, respectively.  When the user
+invokes @samp{Save for future sessions} in the Customize interface, that
+takes effect by writing a @code{custom-set-variables} and/or a
+@code{custom-set-faces} form into the custom file, to be evaluated the next
+time Emacs starts.
 
 @defun custom-set-variables &rest args
-この関数は@var{args}により指定された変数のカスタマイゼーションをインストールする。@var{args}内の引数はそれぞれ、以下のようなフォームであること
+This function installs the variable customizations specified by @var{args}.
+Each argument in @var{args} should have the form
 
 @example
 (@var{var} @var{expression} [@var{now} [@var{request} [@var{comment}]]])
 @end example
 
 @noindent
-@var{var}は変数名(シンボル)、@var{expression}はカスタマイズされた値に評価される式である。
+@var{var} is a variable name (a symbol), and @var{expression} is an
+expression which evaluates to the desired customized value.
 
-この@code{custom-set-variables}呼び出しより前に@var{var}にたいして@code{defcustom}フォームが評価されたら即座に@var{expression}が評価されて、その変数の値にその結果がセットされる。それ以外ならその変数の@code{saved-value}プロパティに@var{expression}が格納されて、これに関係する@code{defcustom}が呼び出されたとき(通常はその変数を定義するライブラリーがEmacsにロードされたとき)に評価される。
+If the @code{defcustom} form for @var{var} has been evaluated prior to this
+@code{custom-set-variables} call, @var{expression} is immediately evaluated,
+and the variable's value is set to the result.  Otherwise, @var{expression}
+is stored into the variable's @code{saved-value} property, to be evaluated
+when the relevant @code{defcustom} is called (usually when the library
+defining that variable is loaded into Emacs).
 
-@var{now}、@var{request}、@var{comment}エントリーは内部的な使用に限られており、省略されるかもしれない。@var{now}がもし非@code{nil}なら、たとえその変数の@code{defcustom}フォームが評価されていなくても、その変数の値がそのときセットされる。@var{request}は即座にロードされる機能のリストである(@ref{Named
-Features}を参照)。@var{comment}はそのカスタマイゼーションを説明する文字列。
+The @var{now}, @var{request}, and @var{comment} entries are for internal use
+only, and may be omitted.  @var{now}, if non-@code{nil}, means to set the
+variable's value now, even if the variable's @code{defcustom} form has not
+been evaluated.  @var{request} is a list of features to be loaded
+immediately (@pxref{Named Features}).  @var{comment} is a string describing
+the customization.
 @end defun
 
 @defun custom-set-faces &rest args
-この関数は@var{args}により指定されたフェイスのカスタマイゼーションをインストールする。@var{args}内の引数はそれぞれ以下のようなフォームであること
+This function installs the face customizations specified by @var{args}.
+Each argument in @var{args} should have the form
 
 @example
 (@var{face} @var{spec} [@var{now} [@var{comment}]])
 @end example
 
 @noindent
-@var{face}はフェイス名(シンボル)、@var{spec}はそのフェイスにたいするカスタマイズされたフェイス仕様(@ref{Defining
-Faces}を参照)。
+@var{face} is a face name (a symbol), and @var{spec} is the customized face
+specification for that face (@pxref{Defining Faces}).
 
-@var{now}、@var{request}、@var{comment}エントリーは内部的な使用に限られており、省略されるかもしれない。@var{now}がもし非@code{nil}なら、たとえ@code{defface}フォームが評価されていなくても、そのフェイス仕様がそのときセットされる。@var{comment}はそのカスタマイズを説明する文字列。
+The @var{now} and @var{comment} entries are for internal use only, and may
+be omitted.  @var{now}, if non-@code{nil}, means to install the face
+specification now, even if the @code{defface} form has not been evaluated.
+@var{comment} is a string describing the customization.
 @end defun
 
 @node Custom Themes
-@section Customテーマ
+@section Custom Themes
 
 @cindex custom themes
-  @dfn{Customテーマ(Custom themes)}とはユニットとして有効や無効にできるセッティングのコレクションです。@ref{Custom
-Themes,,, emacs, The GNU Emacs Manual}を参照してください。CustomテーマはそれぞれEmacs
-Lispソースファイルにより定義され、それらはこのセクションで説明する慣習にしたがう必要があります(Customテーマを手作業で記述するかわりに、Customize風のインターフェイスを使用して作成することもできる。@ref{Creating
-Custom Themes,,, emacs, The GNU Emacs Manual}を参照)。
+  @dfn{Custom themes} are collections of settings that can be enabled or
+disabled as a unit.  @xref{Custom Themes,,, emacs, The GNU Emacs Manual}.
+Each Custom theme is defined by an Emacs Lisp source file, which should
+follow the conventions described in this section.  (Instead of writing a
+Custom theme by hand, you can also create one using a Customize-like
+interface; @pxref{Creating Custom Themes,,, emacs, The GNU Emacs Manual}.)
 
-  Customテーマファイルは@file{@var{foo}-theme.el}のように命名すること。ここで@var{foo}はテーマの名前。このファイルでの最初のLispフォームは@code{deftheme}の呼び出しで、最後のフォームは@code{provide-theme}にすること。
+  A Custom theme file should be named @file{@var{foo}-theme.el}, where
+@var{foo} is the theme name.  The first Lisp form in the file should be a
+call to @code{deftheme}, and the last form should be a call to
+@code{provide-theme}.
 
 @defmac deftheme theme &optional doc &rest properties
-このマクロはCustomテーマの名前として@var{theme}(シンボル)を宣言する。オプション引数@var{doc}は、そのテーマを説明する文字列であること。この文字列はユーザーが@code{describe-theme}コマンドを呼び出したり、@samp{*Custom
-Themes*}バッファーで@kbd{?}をタイプしたときに表示される。残りの引数@var{properties}テーマの属性を含んだプロパティリストを渡すために使用される。
+This macro declares @var{theme} (a symbol) as the name of a Custom theme.
+The optional argument @var{doc} should be a string describing the theme;
+this is the description shown when the user invokes the
+@code{describe-theme} command or types @kbd{?} in the @samp{*Custom Themes*}
+buffer.  The remaining arguments @var{properties} are used pass a property
+list with theme attributes.
 
-サポートされている属性は以下のとおり:
+The following attributes are supported:
 
 @table @code
 @item :family
-テーマがどの``ファミリー(family)''に属すかを示すシンボル。テーマの@dfn{ファミリー}とは、フレームのバックグラウンドのライト(light:
-明るい)とダーク(dark: 暗い)を意図したフェイスカラーのように、似ているがマイナーな側面は異なるテーマセットのこと。
+A symbol designating what ``family'' a theme belongs to.  A @dfn{family} of
+themes is a set of similar themes that differ by minor aspects, such as face
+colors that are meant for the light vs dark background of the frame.
 @item :kind
-シンボル。テーマが有効かつこのプロパティの値が@code{color-scheme}なら、テーマを切り替えるためにコマンド@code{theme-choose-variant}は同じファミリーに属する他のの利用可能なテーマを探す。現在のところ他の値は指定されておらず、使用するべきではない。
+A symbol.  If a theme is enabled and this property has the value
+@code{color-scheme}, then the @code{theme-choose-variant} command will look
+for other available themes that belong to the same family in order to switch
+the themes.  Other values are currently unspecified and should not be used.
 @item :background-mode
-@code{light}か@code{dark}いずれかのシンボル。この属性は現在のところ使用されていないが依然として指定はする必要がある。
+A symbol, either @code{light} or @code{dark}.  This attribute is currently
+unused, but should still be specified.
 @end table
 
-2つの特別なテーマ名は禁止されている(使用するとエラーになる)。@code{user}はそのユーザーの直接的なカスタマイズ設定を格納するためのダミーのテーマである。そし@code{changed}はCustomizeシステムの外部で行われた変更を格納するためのダミーのテーマである。
+Two special theme names are disallowed (using them causes an error):
+@code{user} is a dummy theme that stores the user's direct customization
+settings, and @code{changed} is a dummy theme that stores changes made
+outside of the Customize system.
 @end defmac
 
 @defmac provide-theme theme
-このマクロは完全に仕様が定められたテーマ名@var{theme}を宣言する。
+This macro declares that the theme named @var{theme} has been fully
+specified.
 @end defmac
 
-  @code{deftheme}と@code{provide-theme}の違いは、そのテーマセッティングを規定するLispフォームです(通常は@code{custom-theme-set-variables}の呼び出し、および/または@code{custom-theme-set-faces}の呼び出し)。
+  In between @code{deftheme} and @code{provide-theme} are Lisp forms
+specifying the theme settings: usually a call to
+@code{custom-theme-set-variables} and/or a call to
+@code{custom-theme-set-faces}.
 
 @defun custom-theme-set-variables theme &rest args
-この関数はCustomテーマ@var{theme}の変数のセッティングを規定する。@var{theme}はシンボル。@var{args}内の各引数はフォームのリスト。
+This function specifies the Custom theme @var{theme}'s variable settings.
+@var{theme} should be a symbol.  Each argument in @var{args} should be a
+list of the form
 
 @example
 (@var{var} @var{expression} [@var{now} [@var{request} [@var{comment}]]])
 @end example
 
 @noindent
-ここでリストエントリーは@code{custom-set-variables}のときと同じ意味をもつ。@ref{Applying
-Customizations}を参照のこと。
+where the list entries have the same meanings as in
+@code{custom-set-variables}.  @xref{Applying Customizations}.
 @end defun
 
 @defun custom-theme-set-faces theme &rest args
-この関数はCustomテーマ@var{theme}のフェイスのセッティングを規定する。@var{theme}はシンボル。@var{args}内の各引数はフォームのリスト。
+This function specifies the Custom theme @var{theme}'s face settings.
+@var{theme} should be a symbol.  Each argument in @var{args} should be a
+list of the form
 
 @example
 (@var{face} @var{spec} [@var{now} [@var{comment}]])
 @end example
 
 @noindent
-ここでリストエントリーは@code{custom-set-faces}のときと同じ意味をもつ。@ref{Applying
-Customizations}を参照のこと。
+where the list entries have the same meanings as in
+@code{custom-set-faces}.  @xref{Applying Customizations}.
 @end defun
 
-  原則的にテーマファイルは他のLispフォームを含むこともでき、それらはそのテーマがロードされるときに評価されるでしょうが、これは悪いフォームです。悪意のあるコードを含むテーマのロードを防ぐために最初に非ビルトインテーマをロードする前に、Emacsはソースファイルを表示してユーザーに確認を求めます。このようにテーマは通常のバイトコンパイルは行わずに、Emacsがテーマをロードする際には通常はソースファイルが優先されます。
+  In theory, a theme file can also contain other Lisp forms, which would be
+evaluated when loading the theme, but that is bad form.  To protect against
+loading themes containing malicious code, Emacs displays the source file and
+asks for confirmation from the user before loading any non-built-in theme
+for the first time.  As such, themes are not ordinarily byte-compiled, and
+source files usually take precedence when Emacs is looking for a theme to
+load.
 
-  以下の関数は、テーマをプログラム的に有効または無効にするのに有用です:
+  The following functions are useful for programmatically enabling and
+disabling themes:
 
 @defun custom-theme-p theme
-この関数は@var{theme}(シンボル)がCustomテーマの名前(たとえばそのテーマが有効かどうかにかかわらず、CustomテーマがEmacsにロードされている)なら非@code{nil}をリターンする。それ以外は@code{nil}をリターンする。
+This function return a non-@code{nil} value if @var{theme} (a symbol)  is
+the name of a Custom theme (i.e., a Custom theme which has been loaded into
+Emacs, whether or not the theme is enabled).  Otherwise, it returns
+@code{nil}.
 @end defun
 
 @defvar custom-known-themes
-この変数の値はEmacsにロードされたテーマのリストである。テーマはそれぞれLispシンボル(テーマ名)により表される。この変数のデフォルト値は2つのダミーテーマ@code{(user
-changed)}を含む。@code{changed}テーマにはCustomテーマが適用される前に行われたセッティング(たとえばCustomの外部での変数のセット)が格納されている。@code{user}テーマにはそのユーザーがカスタマイズして保存したセッティングが格納されている。@code{deftheme}マクロで宣言されたすべての追加テーマは、このリストの先頭に追加される。
+The value of this variable is a list of themes loaded into Emacs.  Each
+theme is represented by a Lisp symbol (the theme name).  The default value
+of this variable is a list containing two dummy themes: @code{(user
+changed)}.  The @code{changed} theme stores settings made before any Custom
+themes are applied (e.g., variables set outside of Customize).  The
+@code{user} theme stores settings the user has customized and saved.  Any
+additional themes declared with the @code{deftheme} macro are added to the
+front of this list.
 @end defvar
 
 @deffn Command load-theme theme &optional no-confirm no-enable
-この関数は@var{theme}という名前のCustomテーマを、変数@code{custom-theme-load-path}で指定されたディレクトリーから探して、ソースファイルからロードする。@ref{Custom
-Themes,,, emacs, The GNU Emacs
-Manual}を参照のこと。またそのテーマの変数とフェイスのセッティングが効果を及ぼすようにテーマを@dfn{enables}にする(オプション引数@var{no-enable}が@code{nil}の場合)。さらにオプション引数@var{no-confirm}が@code{nil}なら、そのテーマをロードする前にユーザーに確認を求める。
+This function loads the Custom theme named @var{theme} from its source file,
+looking for the source file in the directories specified by the variable
+@code{custom-theme-load-path}.  @xref{Custom Themes,,, emacs, The GNU Emacs
+Manual}.  It also @dfn{enables} the theme (unless the optional argument
+@var{no-enable} is non-@code{nil}), causing its variable and face settings
+to take effect.  It prompts the user for confirmation before loading the
+theme, unless the optional argument @var{no-confirm} is non-@code{nil}.
 @end deffn
 
 @defun require-theme feature &optional noerror
-この関数は@var{feature}をprovideするファイルを@code{custom-theme-load-path}から検索してロードする。これは関数@code{require}
-(@ref{Named Features}を参照)と似ているが、@code{load-path} (@ref{Library
-Search}を参照)ではなく@code{custom-theme-load-path}を検索する点が異なるこれはLispサポートファイルおロードを要するCustomテーマにおいて、@code{require}が不適切な際に有用かもしれない。
+This function searches @code{custom-theme-load-path} for a file that
+provides @var{feature} and then loads it.  This is like the function
+@code{require} (@pxref{Named Features}), except it searches
+@code{custom-theme-load-path} instead of @code{load-path} (@pxref{Library
+Search}).  This can be useful in Custom themes that need to load supporting
+Lisp files when @code{require} is unsuitable for that.
 
-カレントのEmacsセッションにおいて@code{featurep}に照らして@var{feature}
-(シンボル)がまだ与えられていなければ、@code{require-theme}は@code{custom-theme-load-path}で指定されたディレクトリー内から、@var{feature}に@samp{.elc}、次に@samp{.el}のサフィックスを追加した名前をもつファイルを検索する。
+If @var{feature}, which should be a symbol, is not already present in the
+current Emacs session according to @code{featurep}, then
+@code{require-theme} searches for a file named @var{feature} with an added
+@samp{.elc} or @samp{.el} suffix, in that order, in the directories
+specified by @code{custom-theme-load-path}.
 
-@var{feature}をprovideするファイルが見つかりロードに成功すると、@code{require-theme}は@var{feature}をリターンする。オプション引数@var{noerror}は検索やロードの失敗時に何が発生するかを決定する。@code{nil}ならこの関数はエラーをシグナルして、それ以外なら@code{nil}をリターンする。ファイルのロードには成功しても@var{feature}をlprovideしない場合には、@code{require-theme}はエラーをシグナルする(これは抑止不可)。
+If a file providing @var{feature} is successfully found and loaded, then
+@code{require-theme} returns @var{feature}.  The optional argument
+@var{noerror} determines what happens if the search or loading fails.  If it
+is @code{nil}, the function signals an error; otherwise, it returns
+@code{nil}.  If the file loads successfully but does not provide
+@var{feature}, then @code{require-theme} signals an error; this cannot be
+suppressed.
 @end defun
 
 @deffn Command enable-theme theme
-この関数は@var{theme}という名前のCustomテーマを有効にする。そのようなテーマがロードされていなければ、エラーをシグナルする。
+This function enables the Custom theme named @var{theme}.  It signals an
+error if no such theme has been loaded.
 @end deffn
 
 @deffn Command disable-theme theme
-この関数は@var{theme}という名前のCustomテーマを無効にする。テーマはロードされたまま残るので、続けて@code{enable-theme}を呼び出せばテーマは再び有効になる。
+This function disables the Custom theme named @var{theme}.  The theme
+remains loaded, so that a subsequent call to @code{enable-theme} will
+re-enable it.
 @end deffn

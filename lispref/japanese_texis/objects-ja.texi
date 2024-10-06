@@ -10,64 +10,84 @@
 @c Foundation, Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node Lisp Data Types
-@chapter Lispのデータ型
+@chapter Lisp Data Types
 @cindex object
 @cindex Lisp object
 @cindex type
 @cindex data type
 
-  Lispの@dfn{オブジェクト(object)}とは、Lispプログラムから操作されるデータです。@dfn{型(type)}や@dfn{データ型(data
-type)}とは、可能なオブジェクトの集合を意味します。
+  A Lisp @dfn{object} is a piece of data used and manipulated by Lisp
+programs.  For our purposes, a @dfn{type} or @dfn{data type} is a set of
+possible objects.
 
-  すべてのオブジェクトは少なくとも1つの型に属します。同じ型のオブジェクトは同様な構造をもち、通常は同じコンテキストで使用されます。型を重複してもつことができ、オブジェクトは複数の型に属することができます。その結果として、あるオブジェクトが特定の型に属するかどうかを尋ねることはできますが、オブジェクトが@emph{その}型だけに属するかどうかは決定できません。
+  Every object belongs to at least one type.  Objects of the same type have
+similar structures and may usually be used in the same contexts.  Types can
+overlap, and objects can belong to two or more types.  Consequently, we can
+ask whether an object belongs to a particular type, but not for @emph{the}
+type of an object.
 
 @cindex primitive type
-  Emacsにはいくつかの基本オブジェクト型が組み込まれています。これらの型は他のすべての型を構成するもとであり、@dfn{プリミティブ型(primitive
-types:
-基本型)}と呼ばれます。すべてのオブジェクトはただ1つのプリミティブ型に属します。これらの型には@dfn{整数(integer)}、@dfn{浮動小数点数(float)}、@dfn{コンス(cons)}、@dfn{シンボル(symbol)}、@dfn{文字列(string)}、@dfn{ベクター(vector)}、@dfn{ハッシュテーブル(hash-table)}、@dfn{サブルーチン(subr)}、@dfn{バイトコード関数(byte-code
-function)}、@dfn{レコード(record)}、および@dfn{buffer}のような編集に関連した特別な型が含まれます(@ref{Editing
-Types}を参照)。
+  A few fundamental object types are built into Emacs.  These, from which all
+other types are constructed, are called @dfn{primitive types}.  Each object
+belongs to one and only one primitive type.  These types include
+@dfn{integer}, @dfn{float}, @dfn{cons}, @dfn{symbol}, @dfn{string},
+@dfn{vector}, @dfn{hash-table}, @dfn{subr}, @dfn{byte-code function}, and
+@dfn{record}, plus several special types, such as @dfn{buffer}, that are
+related to editing.  (@xref{Editing Types}.)
 
-  プリミティブ型にはそれぞれ、オブジェクトがその型のメンバーかどうかのチェックを行なうために、それぞれ対応するLisp関数があります。
+  Each primitive type has a corresponding Lisp function that checks whether an
+object is a member of that type.
 
-  他の多くの言語とは異なり、Lispのオブジェクトは@dfn{自己記述(self-typing)}的です。オブジェクトのプリミティブ型は、オブジェクト自体に暗に含まれます。たとえばオブジェクトがベクターなら、それを数字として扱うことはできません。Lispはベクターが数字でないことを知っているのです。
+  Lisp is unlike many other languages in that its objects are
+@dfn{self-typing}: the primitive type of each object is implicit in the
+object itself.  For example, if an object is a vector, nothing can treat it
+as a number; Lisp knows it is a vector, not a number.
 
-  多くの言語では、プログラマーは各変数にたいしてデータ型を宣言しなければならず、コンパイラーは型を知っていますが、データの中に型はありません。Emacs
-Lispには、このような型宣言はありません。Lisp変数は任意の型の値をもつことができ、変数に保存した値と型を記憶します(実際には特定の型の値だけをもつことができる少数のEmacs
-Lisp変数がある。@ref{Variables with Restricted Values}を参照されたい)。
+  In most languages, the programmer must declare the data type of each
+variable, and the type is known by the compiler but not represented in the
+data.  Such type declarations do not exist in Emacs Lisp.  A Lisp variable
+can have any type of value, and it remembers whatever value you store in it,
+type and all.  (Actually, a small number of Emacs Lisp variables can only
+take on values of a certain type.  @xref{Variables with Restricted Values}.)
 
-  このチャプターでは、GNU Emacs Lispの各標準型の意味、プリント表現(printed representation)、入力構文(read
-syntax)を説明します。これらのデータ型を使用する方法についての詳細は、以降のチャプターを参照してください。
+  This chapter describes the purpose, printed representation, and read syntax
+of each of the standard types in GNU Emacs Lisp.  Details on how to use
+these types can be found in later chapters.
 
 @menu
-* Printed Representation::   Lispオブジェクトがテキストとして表現される方法。
-* Special Read Syntax::      すべての特殊なシーケンスの概要。
-* Comments::                 コメントとコメント書式の慣例。
-* Programming Types::        すべてのLispシステムに存在する型。
-* Editing Types::            Emacs固有の型。
-* Circular Objects::         循環構造にたいする入力構文。
-* Type Predicates::          型に関連するテスト。
-* Equality Predicates::      2つのオブジェクトが等しいかのテスト。
-* Mutability::               変更されるべきではないオブジェクト。
-* Type Hierarchy::           Emacs 
-                               Lispオブジェクトのタイプ階層。
+* Printed Representation::   How Lisp objects are represented as text.
+* Special Read Syntax::      An overview of all the special sequences.
+* Comments::                 Comments and their formatting conventions.
+* Programming Types::        Types found in all Lisp systems.
+* Editing Types::            Types specific to Emacs.
+* Circular Objects::         Read syntax for circular structure.
+* Type Predicates::          Tests related to types.
+* Equality Predicates::      Tests of equality between any two objects.
+* Mutability::               Some objects should not be modified.
+* Type Hierarchy::           Type Hierarchy of Emacs Lisp objects.
 @end menu
 
 @node Printed Representation
-@section プリント表現と読み取り構文
+@section Printed Representation and Read Syntax
 @cindex printed representation
 @cindex read syntax
 
-  オブジェクトのプリント表現(printed
-representation)とは、オブジェクトにたいしてLispプリンター(関数@code{prin1})が生成する出力のフォーマットです。すべてのデータ型は一意なプリント表現をもちます。オブジェクトの@dfn{入力構文(read
-syntax)}とは、オブジェクトにたいしてLispリーダー(関数@code{read})が受け取る入力のフォーマットです。これは一意である必要はありません。多くの種類のオブジェクトが複数の構文をもちます。@ref{Read
-and Print}を参照してください。
+  The @dfn{printed representation} of an object is the format of the output
+generated by the Lisp printer (the function @code{prin1}) for that object.
+Every data type has a unique printed representation.  The @dfn{read syntax}
+of an object is the format of the input accepted by the Lisp reader (the
+function @code{read}) for that object.  This is not necessarily unique; many
+kinds of object have more than one syntax.  @xref{Read and Print}.
 
 @cindex hash notation
-  ほとんどの場合、オブジェクトのプリント表現が、入力構文としても使用されます。しかしLispプログラム内の定数とすることに意味が無いいくつかの型には、入力構文がありません。これらのオブジェクトは@dfn{ハッシュ表記(hash
-notation)}でプリントされ、@samp{#<}、説明的な文字列(典型的には型名にオブジェクトの名前を続けたもの)、@samp{>}で構成される文字列です(``hash:
-ハッシュ記号''や``number sign:
-番号記号''として知られている@samp{#}文字で始まることから``ハッシュ表記''と呼ばれる)。たとえば:
+  In most cases, an object's printed representation is also a read syntax for
+the object.  However, some types have no read syntax, since it does not make
+sense to enter objects of these types as constants in a Lisp program.  These
+objects are printed in @dfn{hash notation}, which consists of the characters
+@samp{#<}, a descriptive string (typically the type name followed by the
+name of the object), and a closing @samp{>}.  (This is called ``hash
+notation'' because it begins with the @samp{#} character, known as ``hash''
+or ``number sign'').  For example:
 
 @example
 (current-buffer)
@@ -75,40 +95,57 @@ notation)}でプリントされ、@samp{#<}、説明的な文字列(典型的に
 @end example
 
 @noindent
-ハッシュ表記は読み取ることができないので、Lispリーダーは@samp{#<}に遭遇すると常にエラー@code{invalid-read-syntax}をシグナルします。
+Hash notation cannot be read at all, so the Lisp reader signals the error
+@code{invalid-read-syntax} whenever it encounters @samp{#<}.
 @kindex invalid-read-syntax
 
-  このチャプターの以降のセクションにおいては、そのデータタイプを構成するLispデータタイプそれぞれにたいして読み取り構文とプリント表現を説明していきます。たとえば@ref{String
-Type}とそのサブセクションにおける文字列、@ref{Vector
-Type}とそのサブセクションにおけるベクターの読み取り構文とプリント表現を参照してください。
+  We describe the read syntax and the printed representation of each Lisp data
+type where we describe that data type, in the following sections of this
+chapter.  For example, see @ref{String Type}, and its subsections for the
+read syntax and printed representation of strings; see @ref{Vector Type} for
+the same information about vectors; etc.
 
-  他の言語では式はテキストであり、これ以外の形式はありません。Lispでは式は第一にまずLispオブジェクトであって、オブジェクトの入力構文であるテキストは副次的なものに過ぎません。たいていこの違いを強調する必要はありませんが、このことを心に留めておかないとたまに混乱することがあるでしょう。
+  In other languages, an expression is text; it has no other form.  In Lisp,
+an expression is primarily a Lisp object and only secondarily the text that
+is the object's read syntax.  Often there is no need to emphasize this
+distinction, but you must keep it in the back of your mind, or you will
+occasionally be very confused.
 
-  インタラクティブに式を評価するとき、Lispインタープリターは最初にそれのテキスト表現を読み取り、Lispオブジェクトを生成してからそのオブジェクトを評価します(@ref{Evaluation}を参照)。しかし評価と読み取りは別の処理です。読み取りによりテキストにより表現されたLispオブジェクトを読み取り、Lispオブジェクトがリターンされます。後でオブジェクトは評価されるかもしれないし、評価されないかもしれません。オブジェクトを読み取るための基本的な関数@code{read}の説明は、@ref{Input
-Functions}を参照してください。
+  When you evaluate an expression interactively, the Lisp interpreter first
+reads the textual representation of it, producing a Lisp object, and then
+evaluates that object (@pxref{Evaluation}).  However, evaluation and reading
+are separate activities.  Reading returns the Lisp object represented by the
+text that is read; the object may or may not be evaluated later.
+@xref{Input Functions}, for a description of @code{read}, the basic function
+for reading objects.
 
 @node Special Read Syntax
-@section 特別な読み取り構文
+@section Special Read Syntax
 @cindex special read syntax
 
-  Emacs Lispでは特別なハッシュ表記を通じて多くの特別なオブジェクトと構文を表します。
+  Emacs Lisp represents many special objects and constructs via special hash
+notations.
 
 @table @samp
 @item #<@dots{}>
-入力構文がないオブジェクトはこのように表される(@ref{Printed Representation}を参照)。
+Objects that have no read syntax are presented like this (@pxref{Printed
+Representation}).
 
 @item ##
-名前が空文字列であるようなインターン済みシンボルのプリント表現(@ref{Symbol Type}を参照)。
+The printed representation of an interned symbol whose name is an empty
+string (@pxref{Symbol Type}).
 
 @item #'
-@code{function}にたいするショートカット。@ref{Anonymous Functions}を参照のこと。
+This is a shortcut for @code{function}, see @ref{Anonymous Functions}.
 
 @item #:
-名前が@var{foo}であるようなインターンされていないシンボルのプリント表現は@samp{#:@var{foo}} (@ref{Symbol
-Type}を参照)。
+The printed representation of an uninterned symbol whose name is @var{foo}
+is @samp{#:@var{foo}} (@pxref{Symbol Type}).
 
 @item #N
-循環構造のプリント時には構造が自身をループバックすることを表すためにこの構文が使用される。ここで@samp{N}リストの開始カウント。
+When printing circular structures, this construct is used to represent where
+the structure loops back onto itself, and @samp{N} is the starting list
+count:
 
 @lisp
 (let ((a (list 1)))
@@ -118,184 +155,242 @@ Type}を参照)。
 
 @item #N=
 @itemx #N#
-@samp{#N=}はオブジェクト名、@samp{#N#}はそのオブジェクトを表すので、これらはコピーではなく同一オブジェクトになる(@ref{Circular
-Objects}を参照)。
+@samp{#N=} gives the name to an object, and @samp{#N#} represents that
+object, so when reading back the object, they will be the same object
+instead of copies (@pxref{Circular Objects}).
 
 @item #xN
-16進表現の@samp{N} (@samp{#x2a})。
+@samp{N} represented as a hexadecimal number (@samp{#x2a}).
 
 @item #oN
-8進表現の@samp{N} (@samp{#o52})。
+@samp{N} represented as an octal number (@samp{#o52}).
 
 @item #bN
-2進表現の@samp{N} (@samp{#b101010})。
+@samp{N} represented as a binary number (@samp{#b101010}).
 
 @item #(@dots{})
-文字列のテキストプロパティ(@ref{Text Props and Strings}を参照)。
+String text properties (@pxref{Text Props and Strings}).
 
 @item #^
-文字テーブル(@ref{Char-Table Type}を参照)。
+A char table (@pxref{Char-Table Type}).
 
 @item #s(hash-table @dots{})
-ハッシュテーブル(@ref{Hash Table Type}を参照)。
+A hash table (@pxref{Hash Table Type}).
 
 @item ?C
-文字(@ref{Basic Char Syntax}を参照)。
+A character (@pxref{Basic Char Syntax}).
 
 @item #$
-バイトコンパイル済みファイルのカレントファイル名(@ref{Docs and Compilation}を参照)。これはEmacs
-Lispソースファイルで使用するためのものではない。
+The current file name in byte-compiled files (@pxref{Docs and
+Compilation}).  This is not meant to be used in Emacs Lisp source files.
 
 @item #@@N
-次の@samp{N}文字をスキップする(@ref{Comments}を参照)。バイトコンパイル済みファイル内で使用されるものであって、Emacs
-Lispソースファイル内で使用するためのものではない。
+Skip the next @samp{N} characters (@pxref{Comments}).  This is used in
+byte-compiled files, and is not meant to be used in Emacs Lisp source files.
 
 @item #f
-これに続くフォームがEmacs
-Lispリーダーで読み取れないことを示す。これは表示されることを意図したテキストだけに出現する読み取り構文(読み取れないフォームを示すための他の選択肢よりも見栄えがよくなると思われる場合)、でありLispファイル中に出現することは決してない。
+Indicates that the following form isn't readable by the Emacs Lisp reader.
+This is only in text for display purposes (when that would look prettier
+than alternative ways of indicating an unreadable form)  and will never
+appear in any Lisp file.
 @end table
 
 
 @node Comments
-@section コメント
+@section Comments
 @cindex comments
 @cindex @samp{;} for commenting
 
-  @dfn{コメント(comment)}はプログラム中に記述されたテキストであり、そのプログラムを読む人間ためだけに存在するものであって、プログラムの意味には何の影響ももちません。Lispではそれが文字列や文字定数にある場合をのぞき、エスケープされていないセミコロン(@samp{;})でコメントが開始されます。行の終端までがコメントになります。Lispリーダーはコメントを破棄します。コメントはLispシステム内でプログラムを表すLispオブジェクトの一部にはなりません。
+  A @dfn{comment} is text that is written in a program only for the sake of
+humans that read the program, and that has no effect on the meaning of the
+program.  In Lisp, an unescaped semicolon (@samp{;})  starts a comment if it
+is not within a string or character constant.  The comment continues to the
+end of line.  The Lisp reader discards comments; they do not become part of
+the Lisp objects which represent the program within the Lisp system.
 
-  @samp{#@@@var{count}}構成は、次の@var{count}個の文字をスキップします。これはプログラムにより生成されたバイナリーデータを含むコメントにたいして有用です。Emacs
-Lispバイトコンパイラーは出力ファイルにこれを使用します(@ref{Byte Compilation}を参照)。しかしソースファイル用ではありません。
+  The @samp{#@@@var{count}} construct, which skips the next @var{count}
+characters, is useful for program-generated comments containing binary
+data.  The Emacs Lisp byte compiler uses this in its output files
+(@pxref{Byte Compilation}).  It isn't meant for source files, however.
 
-  コメントのフォーマットにたいする慣例は、@ref{Comment Tips}を参照してください。
+  @xref{Comment Tips}, for conventions for formatting comments.
 
 @node Programming Types
-@section プログラミングの型
+@section Programming Types
 @cindex programming types
 
-  Emacs
-Lispには2種類の一般的な型があります。1つはLispプログラミングに関わるもので、もう1つは編集に関わるものです。前者はさまざまな形で多くのLisp実装に存在します。後者はEmacs
-Lispに固有です。
+  There are two general categories of types in Emacs Lisp: those having to do
+with Lisp programming, and those having to do with editing.  The former
+exist in many Lisp implementations, in one form or another.  The latter are
+unique to Emacs Lisp.
 
 @menu
-* Integer Type::             小数部のない数字。
-* Floating-Point Type::      広い範囲をもつ、小数部をもつ数字。
-* Character Type::           文字、数字、コントロール文字にたいする表現。
-* Symbol Type::              関数、変数、プロパティリストを参照する、一意に識別される多目的オブジェクト。
-* Sequence Type::            リストと配列はどちらもシーケンスに分類される。
-* Cons Cell Type::           コンスセル、および(コンスセルにより作られる)リスト。
-* Array Type::               配列には文字列とベクターが含まれる。
-* String Type::              (効率的な)文字の配列。
-* Vector Type::              1次元の配列。
-* Char-Table Type::          文字によりインデックスされる1次元の疎な配列。
-* Bool-Vector Type::         @code{t}と@code{nil}からなる1次元の配列。
-* Hash Table Type::          非常に高速な参照用のテーブル。
-* Function Type::            他の場所から呼び出せる実行可能なコード断片。
-* Macro Type::               より基本的だが少し見栄えの悪い、式を他の式に展開する手法。
-* Primitive Function Type::  Lispから呼び出せるCで記述された関数。
-* Closure Type::             Lispで記述された関数。
-* Record Type::              プログラーが定義する合成オブジェクト型。
-* Type Descriptors::         型に関する情報を保持するオブジェクト。
-* Autoload Type::            頻繁に使用されない関数を自動的にロードするために使用される型。
-* Finalizer Type::           オブジェクトが到達不能になった際に実行するコード。
+* Integer Type::             Numbers without fractional parts.
+* Floating-Point Type::      Numbers with fractional parts and with a large 
+                               range.
+* Character Type::           The representation of letters, numbers and 
+                               control characters.
+* Symbol Type::              A multi-use object that refers to a function, 
+                               variable, or property list, and has a unique 
+                               identity.
+* Sequence Type::            Both lists and arrays are classified as 
+                               sequences.
+* Cons Cell Type::           Cons cells, and lists (which are made from cons 
+                               cells).
+* Array Type::               Arrays include strings and vectors.
+* String Type::              An (efficient) array of characters.
+* Vector Type::              One-dimensional arrays.
+* Char-Table Type::          One-dimensional sparse arrays indexed by 
+                               characters.
+* Bool-Vector Type::         One-dimensional arrays of @code{t} or 
+                               @code{nil}.
+* Hash Table Type::          Super-fast lookup tables.
+* Function Type::            A piece of executable code you can call from 
+                               elsewhere.
+* Macro Type::               A method of expanding an expression into 
+                               another expression, more fundamental but less 
+                               pretty.
+* Primitive Function Type::  A function written in C, callable from Lisp.
+* Closure Type::             A function written in Lisp.
+* Record Type::              Compound objects with programmer-defined types.
+* Type Descriptors::         Objects holding information about types.
+* Autoload Type::            A type used for automatically loading 
+                               seldom-used functions.
+* Finalizer Type::           Runs code when no longer reachable.
 
 @end menu
 
 @node Integer Type
-@subsection 整数型
+@subsection Integer Type
 
-  内部には@dfn{fixnums}と呼ばれる小さい整数、および@dfn{bignums}という大きい整数という2種類の整数が存在します。
+  Under the hood, there are two kinds of integers---small integers, called
+@dfn{fixnums}, and large integers, called @dfn{bignums}.
 
-  fixnumの値の範囲はマシンに依存します、最小のレンジは@minus{}536,870,912から536,870,911(30ビットでは
+  The range of values for a fixnum depends on the machine.  The minimum range
+is @minus{}536,870,912 to 536,870,911 (30 bits; i.e.,
 @ifnottex
 @minus{}2**29
 @end ifnottex
 @tex
 @math{-2^{29}}
 @end tex
-から
+to
 @ifnottex
 2**29 @minus{} 1)
 @end ifnottex
 @tex
 @math{2^{29}-1})
 @end tex
-しかし多くのマシンはより広い範囲を提供します。
+but many machines provide a wider range.
 
-  bignumは任意の精度をもつことができます。fixnumのオーバーフローする処理では、かわりにbignumをリターンされます。
+  Bignums can have arbitrary precision.  Operations that overflow a fixnum
+will return a bignum instead.
 
-  @code{eql}や@code{=}ですべての数値、fixnumなら@code{eq}で比較することができます。整数がfixnumかbignumをテストするには@code{most-negative-fixnum}と@code{most-positive-fixnum}で比較するか、便利な述語@code{fixnump}と@code{bignump}を任意のオブジェクトに使用できます。
+  All numbers can be compared with @code{eql} or @code{=}; fixnums can also be
+compared with @code{eq}.  To test whether an integer is a fixnum or a
+bignum, you can compare it to @code{most-negative-fixnum} and
+@code{most-positive-fixnum}, or you can use the convenience predicates
+@code{fixnump} and @code{bignump} on any object.
 
-  整数にたいする入力構文は、(10を基数とする)数字のシーケンスで、オプションで先頭に符号、最後にピリオドがつきます。Lispインタープリターにより生成されるプリント表現には、先頭の
-@samp{+}や最後の@samp{.}はありません。
+  The read syntax for integers is a sequence of (base ten) digits with an
+optional sign at the beginning and an optional period at the end.  The
+printed representation produced by the Lisp interpreter never has a leading
+@samp{+} or a final @samp{.}.
 
 @example
 @group
--1               ; @r{整数の@minus{}1}
-1                ; @r{整数の1}
-1.               ; @r{これも整数の1}
-+1               ; @r{これも整数の1}
+-1               ; @r{The integer @minus{}1.}
+1                ; @r{The integer 1.}
+1.               ; @r{Also the integer 1.}
++1               ; @r{Also the integer 1.}
 @end group
 @end example
 
 @noindent
 
-  詳細は@ref{Numbers}を参照してください。
+  @xref{Numbers}, for more information.
 
 @node Floating-Point Type
-@subsection 浮動小数点数型
+@subsection Floating-Point Type
 
-  浮動小数点数は、コンピューターにおける科学表記に相当するものです。浮動小数点数を10の指数をともなう有理数として考えることができます。正確な有効桁数と可能な指数はマシン固有です。Emacsは値の保存にCデータ型の@code{double}を使用し、内部的には10の指数ではなく、2の指数として記録します。
+  Floating-point numbers are the computer equivalent of scientific notation;
+you can think of a floating-point number as a fraction together with a power
+of ten.  The precise number of significant figures and the range of possible
+exponents is machine-specific; Emacs uses the C data type @code{double} to
+store the value, and internally this records a power of 2 rather than a
+power of 10.
 
-  浮動小数点数のプリント表現には、(後に最低1つの数字をともなう)小数点と、指数のどちらか一方、または両方が必要です。たとえば@samp{1500.0}、@samp{+15e2}、@samp{15.0e+2}、@samp{+1500000e-3}、@samp{.15e4}は、いずれも浮動小数点数の1500を記述し、これらはすべて等価です。
+  The printed representation for floating-point numbers requires either a
+decimal point (with at least one digit following), an exponent, or both.
+For example, @samp{1500.0}, @samp{+15e2}, @samp{15.0e+2},
+@samp{+1500000e-3}, and @samp{.15e4} are five ways of writing a
+floating-point number whose value is 1500.  They are all equivalent.
 
-  詳細は@ref{Numbers}を参照してください。
+  @xref{Numbers}, for more information.
 
 @node Character Type
-@subsection 文字型
+@subsection Character Type
 @cindex @acronym{ASCII} character codes
 
-  Emacs
-Lispでの@dfn{文字(character)}は、整数以外の何者でもありません。言い換えると、文字は文字コードで表現されます。たとえば文字@kbd{A}は、@w{整数の65}として表現されます。これも通常のプリント表現です。@ref{Basic
-Char Syntax}を参照してください。
+  A @dfn{character} in Emacs Lisp is nothing more than an integer.  In other
+words, characters are represented by their character codes.  For example,
+the character @kbd{A} is represented as the @w{integer 65}.  That is also
+their usual printed representation; see @ref{Basic Char Syntax}.
 
-  プログラムで文字を個別に使用するのは稀であり、文字のシーケンスとして構成される@emph{文字列(strings)}として扱われるのがより一般的です。@ref{String
-Type}を参照してください。
+  Individual characters are used occasionally in programs, but it is more
+common to work with @emph{strings}, which are sequences composed of
+characters.  @xref{String Type}.
 
-  文字列やバッファーの中の文字は、現在のところ0から4194303の範囲 --- つまり22ビットに制限されています(@ref{Character
-Codes}を参照)。0から127のコードは@acronym{ASCII}コードで、残りは非@acronym{ASCII}です(@ref{Non-ASCII
-Characters}を参照)。キーボード入力を表す文字はコントロール(Control)、メタ(Meta)、シフト(Shift)などの修飾キーをエンコードするために、より広い範囲をもちます。
+  Characters in strings and buffers are currently limited to the range of 0 to
+4194303---twenty two bits (@pxref{Character Codes}).  Codes 0 through 127
+are @acronym{ASCII} codes; the rest are non-@acronym{ASCII}
+(@pxref{Non-ASCII Characters}).  Characters that represent keyboard input
+have a much wider range, to encode modifier keys such as Control, Meta and
+Shift.
 
-  文字から可読なテキスト記述を生成する、メッセージ用の特別な関数が存在します。@ref{Describing Characters}を参照してください。
+  There are special functions for producing a human-readable textual
+description of a character for the sake of messages.  @xref{Describing
+Characters}.
 
 @menu
-* Basic Char Syntax::        標準的な文字の構文。
-* General Escape Syntax::    文字をコードにより指定する方法。
-* Ctl-Char Syntax::          コントロール文字の構文。
-* Meta-Char Syntax::         メタ文字の構文。
-* Other Char Bits::          ハイパー、スーパー、アルト文字の構文。
+* Basic Char Syntax::        Syntax for regular characters.
+* General Escape Syntax::    How to specify characters by their codes.
+* Ctl-Char Syntax::          Syntax for control characters.
+* Meta-Char Syntax::         Syntax for meta-characters.
+* Other Char Bits::          Syntax for hyper-, super-, and alt-characters.
 @end menu
 
 @node Basic Char Syntax
-@subsubsection 基本的な文字構文
+@subsubsection Basic Char Syntax
 @cindex read syntax for characters
 @cindex printed representation for characters
 @cindex syntax for characters
 @cindex @samp{?} in character constant
 @cindex question mark in character constant
 
-  文字は実際には整数なので、文字のプリント表現は10進数です。文字にたいする入力構文も利用可能ですが、Lispプログラムでこの方法により文字を記述するのは、明解なプログラミングではありません。文字にたいしては、Emacs
-Lispが提供する、特別な入力構文を@emph{常に}使用するべきです。これらの構文フォーマットはクエスチョンマークで開始されます。
+  Since characters are really integers, the printed representation of a
+character is a decimal number.  This is also a possible read syntax for a
+character, but writing characters that way in Lisp programs is not clear
+programming.  You should @emph{always} use the special read syntax formats
+that Emacs Lisp provides for characters.  These syntax formats start with a
+question mark.
 
-  英数字にたいする通常の入力構文は、クエスチョンマークと、その後にその文字を記述します。したがって文字@kbd{A}は@samp{?A}、文字@kbd{B}は@samp{?B}、文字@kbd{a}は@samp{?a}となります。
+  The usual read syntax for alphanumeric characters is a question mark
+followed by the character; thus, @samp{?A} for the character @kbd{A},
+@samp{?B} for the character @kbd{B}, and @samp{?a} for the character
+@kbd{a}.
 
-  たとえば:
+  For example:
 
 @example
 ?Q @result{} 81     ?q @result{} 113
 @end example
 
-  区切り文字(punctuation
-characters)にも同じ構文を使用できますが、区切り文字がLispで特別な意味をもつ場合には@samp{\}でクォートしなければなりません。たとえば@samp{?\(}が開カッコを記述する方法であり、同様に文字が@samp{\}なら、@samp{?\\}のようにクォートするために2つ目の@samp{\}を使用しなければなりません。
+  You can use the same syntax for punctuation characters.  However, if the
+punctuation character has a special syntactic meaning in Lisp, you must
+quote it with a @samp{\}.  For example, @samp{?\(} is the way to write the
+open-paren character.  Likewise, if the character is @samp{\}, you must use
+a second @samp{\} to quote it: @samp{?\\}.
 
 @cindex whitespace
 @cindex bell character
@@ -316,189 +411,289 @@ characters)にも同じ構文を使用できますが、区切り文字がLisp�
 @cindex @samp{\e}
 @cindex space (ASCII character)
 @cindex @samp{\s}
-  Ctrl+g(control-g)、バックスペース(backspace)、タブ(tab)、改行(newline)、垂直タブ(vertical
-tab)、フォームフィード(formfeed)、スペース(space)、キャリッジリターン(return)、デリート(del)、エスケープ(escape)はそれぞれ@samp{?\a}、@samp{?\b}、@samp{?\t}、@samp{?\n}、@samp{?\v}、@samp{?\f}、@samp{?\s}、@samp{?\r}、@samp{?\d}、@samp{?\e}と表すことができます(後にダッシュのついた@samp{?\s}は違う意味をもつ
---- これは後続の文字にたいしてスーパーによる修飾を適用する)。したがって、
+  You can express the characters control-g, backspace, tab, newline, vertical
+tab, formfeed, space, return, del, and escape as @samp{?\a}, @samp{?\b},
+@samp{?\t}, @samp{?\n}, @samp{?\v}, @samp{?\f}, @samp{?\s}, @samp{?\r},
+@samp{?\d}, and @samp{?\e}, respectively.  (@samp{?\s} followed by a dash
+has a different meaning---it applies the Super modifier to the following
+character.)  Thus,
 
 @example
-?\a @result{} 7                 ; @r{control-g、@kbd{C-g}}
-?\b @result{} 8                 ; @r{バックスペース、@key{BS}、@kbd{C-h}}
-?\t @result{} 9                 ; @r{タブ、@key{TAB}、@kbd{C-i}}
-?\n @result{} 10                ; @r{改行、@kbd{C-j}}
-?\v @result{} 11                ; @r{垂直タブ、@kbd{C-k}}
-?\f @result{} 12                ; @r{フォームフィード文字、@kbd{C-l}}
-?\r @result{} 13                ; @r{キャリッジリターン、@key{RET}、@kbd{C-m}}
-?\e @result{} 27                ; @r{エスケープ文字、@key{ESC}、@kbd{C-[}}
-?\s @result{} 32                ; @r{スペース文字、@key{SPC}}
-?\\ @result{} 92                ; @r{バックスラッシュ文字、@kbd{\}}
-?\d @result{} 127               ; @r{デリート文字、@key{DEL}}
+?\a @result{} 7                 ; @r{control-g, @kbd{C-g}}
+?\b @result{} 8                 ; @r{backspace, @key{BS}, @kbd{C-h}}
+?\t @result{} 9                 ; @r{tab, @key{TAB}, @kbd{C-i}}
+?\n @result{} 10                ; @r{newline, @kbd{C-j}}
+?\v @result{} 11                ; @r{vertical tab, @kbd{C-k}}
+?\f @result{} 12                ; @r{formfeed character, @kbd{C-l}}
+?\r @result{} 13                ; @r{carriage return, @key{RET}, @kbd{C-m}}
+?\e @result{} 27                ; @r{escape character, @key{ESC}, @kbd{C-[}}
+?\s @result{} 32                ; @r{space character, @key{SPC}}
+?\\ @result{} 92                ; @r{backslash character, @kbd{\}}
+?\d @result{} 127               ; @r{delete character, @key{DEL}}
 @end example
 
 @cindex escape sequence
-  バックスラッシュがエスケープ文字の役割を果たすので、これらのバックスラッシュで始まるシーケンスは@dfn{エスケープシーケンス(escape
-sequences)}とも呼ばれます。この用語法は文字@key{ESC}とは関係ありません。@samp{\s}は文字定数としての使用を意図しており、文字定数の内部では単にスペースを記述します。
+  These sequences which start with backslash are also known as @dfn{escape
+sequences}, because backslash plays the role of an escape character; this
+has nothing to do with the character @key{ESC}.  @samp{\s} is meant for use
+in character constants; in string constants, just write the space.
 
-  エスケープという特別な意味を与えずに、任意の文字の前にバックスラッシュの使用することは許されていて害もありません。したがって@samp{?\+}は@samp{?+}と等価です。ほとんどの文字の前にバックスラッシュを追加することに理由はありません。しかし文字@samp{()[]\;"}の前にはバックスラッシュを追加しなければならず、Lispコードを編集するEmacsコマンドが混乱するのを避けるために@samp{|'`#.,}の前にもバックスラッシュを追加するべきです。コードを読む人の混乱を避けるために、前に言及した@acronym{ASCII}文字と類似したUnicode文字の前にもバックスラッシュを追加する必要があります。これを奨励するために、@samp{‘}のような一般的には混乱を招くエスケープされていない文字をハイライトします。スペース、タブ、改行、フォームフィードのような空白文字の前にもバックスラッシュを追加できます。しかしタブやスペースspaceのような実際の空白文字のかわりに、@samp{\t}や@samp{\s}のような可読性のあるエスケープシーケンスを使用するほうが明解です(スペースを後にともなうバックスラッシュを記述する場合、後続のテキストと区別するために、文字定数の後に余分なスペースを記述すること)。
+  A backslash is allowed, and harmless, preceding any character without a
+special escape meaning; thus, @samp{?\+} is equivalent to @samp{?+}.  There
+is no reason to add a backslash before most characters.  However, you must
+add a backslash before any of the characters @samp{()[]\;"}, and you should
+add a backslash before any of the characters @samp{|'`#.,} to avoid
+confusing the Emacs commands for editing Lisp code.  You should also add a
+backslash before Unicode characters which resemble the previously mentioned
+@acronym{ASCII} ones, to avoid confusing people reading your code.  Emacs
+will highlight some non-escaped commonly confused characters such as
+@samp{‘} to encourage this.  You can also add a backslash before whitespace
+characters such as space, tab, newline and formfeed.  However, it is cleaner
+to use one of the easily readable escape sequences, such as @samp{\t} or
+@samp{\s}, instead of an actual whitespace character such as a tab or a
+space.  (If you do write backslash followed by a space, you should write an
+extra space after the character constant to separate it from the following
+text.)
 
 @node General Escape Syntax
-@subsubsection 一般的なエスケープ構文
+@subsubsection General Escape Syntax
 
-  特に重要なコントロール文字にたいする特別なエスケープシーケンスに加えて、Emacsは非@acronym{ASCII}テキスト文字の指定に使用できる、何種類かのエスケープ構文を提供します。
+  In addition to the specific escape sequences for special important control
+characters, Emacs provides several types of escape syntax that you can use
+to specify non-@acronym{ASCII} text characters.
 
 @enumerate
 @item
 @cindex @samp{\} in character constant
 @cindex backslash in character constants
 @cindex unicode character escape
-もしあればUnicode名で文字を指定できる。@code{?\N@{@var{NAME}@}}は@var{NAME}という名前のUnicode文字を表す。したがって@samp{?\N@{LATIN
-SMALL LETTER A WITH
-GRAVE@}}は@code{?à}と等価でありUnicode文字のU+00E0を意味する。名前中のスペースを空白文字(改行)の非空のシーケンスにして複数行文字列の入力を簡略化できる。
+You can specify characters by their Unicode names, if any.
+@code{?\N@{@var{NAME}@}} represents the Unicode character named @var{NAME}.
+Thus, @samp{?\N@{LATIN SMALL LETTER A WITH GRAVE@}} is equivalent to
+@code{?à} and denotes the Unicode character U+00E0.  To simplify entering
+multi-line strings, you can replace spaces in the names by non-empty
+sequences of whitespace (e.g., newlines).
 
 @item
-Unicode値で文字を指定できる。@code{?\N@{U+@var{X}@}}はUnicodeコードポイント@var{X}
-(16進数値)を表す。また@code{?\u@var{xxxx}}と@code{?\U@var{xxxxxxxx}}はそれぞれコードポイント@var{xxxx}と@var{xxxxxxxx}を表す@var{x}は(1つの16進数字)。たとえば@code{?\N@{U+E0@}}、@code{?\u00e0}、@code{?\U000000E0}は@code{?@`a}と@samp{?\N@{LATIN
-SMALL LETTER A WITH
-GRAVE@}}に等しい。Unicode標準は@samp{U+@var{10ffff}}以下のコードポイントだけを定義するので、これより大きいコードポイントではEmacsはエラーをシグナルする。
+You can specify characters by their Unicode values.  @code{?\N@{U+@var{X}@}}
+represents a character with Unicode code point @var{X}, where @var{X} is a
+hexadecimal number.  Also, @code{?\u@var{xxxx}} and @code{?\U@var{xxxxxxxx}}
+represent code points @var{xxxx} and @var{xxxxxxxx}, respectively, where
+each @var{x} is a single hexadecimal digit.  For example,
+@code{?\N@{U+E0@}}, @code{?\u00e0} and @code{?\U000000E0} are all equivalent
+to @code{?@`a} and to @samp{?\N@{LATIN SMALL LETTER A WITH GRAVE@}}.  The
+Unicode Standard defines code points only up to @samp{U+@var{10ffff}}, so if
+you specify a code point higher than that, Emacs signals an error.
 
 @item
-文字を16進の文字コードで指定できる。16進エスケープシーケンスはバックスラッシュ、@samp{x}、および16進の文字コードにより構成される。したがって@samp{?\x41}は文字@kbd{A}、@samp{?\x1}は文字@kbd{C-a}、@code{?\xe0}は文字@kbd{@`a}
-(グレイブアクセントつきの@kbd{a})になる。@samp{x}の後に1つ以上の16進数を使用できるので、この方法で任意の文字を表すことができる。
+You can specify characters by their hexadecimal character codes.  A
+hexadecimal escape sequence consists of a backslash, @samp{x}, and the
+hexadecimal character code.  Thus, @samp{?\x41} is the character @kbd{A},
+@samp{?\x1} is the character @kbd{C-a}, and @code{?\xe0} is the character
+@kbd{@`a} (@kbd{a} with grave accent).  You can use one or more hex digits
+after @samp{x}, so you can represent any character code in this way.
 
 @item
 @cindex octal character code
-8進の文字コードにより文字を指定できる。8進エスケープシーケンスは3桁までの8進数字をともなうバックスラッシュにより形成される。したがって@samp{?\101}は文字@kbd{A}、@samp{?\001}は文字@kbd{C-a}、@code{?\002}は文字@kbd{C-b}を表す。この方法で指定できるのは8進コード777までの文字のみ。
+You can specify characters by their character code in octal.  An octal
+escape sequence consists of a backslash followed by up to three octal
+digits; thus, @samp{?\101} for the character @kbd{A}, @samp{?\001} for the
+character @kbd{C-a}, and @code{?\002} for the character @kbd{C-b}.  Only
+characters up to octal code 777 can be specified this way.
 
 @end enumerate
 
-  これらのエスケープシーケンスは文字列内でも使用されます。@ref{Non-ASCII in Strings}を参照してください。
+  These escape sequences may also be used in strings.  @xref{Non-ASCII in
+Strings}.
 
 @node Ctl-Char Syntax
-@subsubsection コントロール文字構文
+@subsubsection Control-Character Syntax
 
 @cindex control characters
-  他の入力構文を使用してコントロール文字を表すことができます。これは後にバックスラッシュ、カレット、対応する非コントロール文字(大文字か小文字)をともなうクエスチョンマークから構成されます。たとえば@samp{?\^I}と@samp{?\^i}はどちらも、値が9である文字@kbd{C-i}の有効な入力構文です。
+  Control characters can be represented using yet another read syntax.  This
+consists of a question mark followed by a backslash, caret, and the
+corresponding non-control character, in either upper or lower case.  For
+example, both @samp{?\^I} and @samp{?\^i} are valid read syntax for the
+character @kbd{C-i}, the character whose value is 9.
 
-  @samp{^}のかわりに@samp{C-}を使用することもできます。したがって@samp{?\C-i}は@samp{?\^I}や@samp{?\^i}と等価です。
+  Instead of the @samp{^}, you can use @samp{C-}; thus, @samp{?\C-i} is
+equivalent to @samp{?\^I} and to @samp{?\^i}:
 
 @example
 ?\^I @result{} 9     ?\C-I @result{} 9
 @end example
 
-  文字列やバッファーの中では@acronym{ASCII}のコントロール文字だけが許されますが、キーボード入力にたいしては@samp{C-}により任意の文字をコントロール文字にすることができます。これらの非@acronym{ASCII}のコントロール文字にたいするコントロール文字には
+  In strings and buffers, the only control characters allowed are those that
+exist in @acronym{ASCII}; but for keyboard input purposes, you can turn any
+character into a control character with @samp{C-}.  The character codes for
+these non-@acronym{ASCII} control characters include the
 @tex
-非コントロール文字にたいするコードと同様に、@math{2^{26}}
+@math{2^{26}}
 @end tex
 @ifnottex
-非コントロール文字にたいするコードと同様に、2**26
+2**26
 @end ifnottex
-ビットが含まれます。すべてのテキスト端末が非@acronym{ASCII}コントロール文字を生成できる訳ではありませんが、Xやその他のウィンドウシステムを使用すれば直接生成することができます。
+bit as well as the code for the corresponding non-control character.  Not
+all text terminals can generate non-@acronym{ASCII} control characters, but
+it is straightforward to generate them using X and other window systems.
 
-  歴史的な理由により、Emacsは@key{DEL}文字を@kbd{?}のコントロール文字として扱います:
+  For historical reasons, Emacs treats the @key{DEL} character as the control
+equivalent of @kbd{?}:
 
 @example
 ?\^? @result{} 127     ?\C-? @result{} 127
 @end example
 
 @noindent
-結果として、Xでは有意な入力文字である@kbd{Control-?}文字を、@samp{\C-}を使用して表現することは今のところできません。さまざまなLispファイルがこの方法で@key{DEL}を参照するので、これを変更するのは簡単ではないのです。
+As a result, it is currently not possible to represent the character
+@kbd{Control-?}, which is a meaningful input character under X, using
+@samp{\C-}.  It is not easy to change this, as various Lisp files refer to
+@key{DEL} in this way.
 
-  コントロール文字の表現はファイルや文字列内で見ることができますが、わたしたちは@samp{^}構文を推奨します。キーボード入力にたいするコントロール文字に好ましいのは、@samp{C-}構文です。どちらを使用するかはプログラムの意味に影響しませんが、プログラムを読む人の理解を助けるでしょう。
+  For representing control characters to be found in files or strings, we
+recommend the @samp{^} syntax; for control characters in keyboard input, we
+prefer the @samp{C-} syntax.  Which one you use does not affect the meaning
+of the program, but may guide the understanding of people who read it.
 
 @node Meta-Char Syntax
-@subsubsection メタ文字構文
+@subsubsection Meta-Character Syntax
 
 @cindex meta characters
-  @dfn{メタ文字(meta character)}とは、@key{META}修飾キーとともにタイプされた文字です。そのような文字を表す整数には
+  A @dfn{meta character} is a character typed with the @key{META} modifier
+key.  The integer that represents such a character has the
 @tex
 @math{2^{27}}
 @end tex
 @ifnottex
 2**27
 @end ifnottex
-のビットがセットされています。基本的な文字コードの広い範囲を利用可能にするために、メタやその他の修飾にたいしては上位ビットを使用します。
+bit set.  We use high bits for this and other modifiers to make possible a
+wide range of basic character codes.
 
-  文字列では、メタ文字を示す@acronym{ASCII}文字に、
+  In a string, the
 @tex
 @math{2^{7}}
 @end tex
 @ifnottex
 2**7
 @end ifnottex
-ビットが付加されます。したがって文字列に含めることができるメタ文字のコードは128から255の範囲となり、メタ文字は通常の@acronym{ASCII}文字のメタ修飾されたバージョンとなります。文字列内での@key{META}処理の詳細については、@ref{Strings
-of Events}を参照してください。
+bit attached to an @acronym{ASCII} character indicates a meta character;
+thus, the meta characters that can fit in a string have codes in the range
+from 128 to 255, and are the meta versions of the ordinary @acronym{ASCII}
+characters.  @xref{Strings of Events}, for details about @key{META}-handling
+in strings.
 
-  メタ文字の入力構文には@samp{\M-}を使用します。たとえば@samp{?\M-A}は@kbd{M-A}を意味します。8進文字コード(以下参照)や、@samp{\C-}、その他の文字にたいする他の構文とともに@samp{\M-}を使用できます。したがって、@kbd{M-A}は@samp{?\M-A}や@samp{?\M-\101}と記述できます。同様に@kbd{C-M-b}は@samp{?\M-\C-b}、@samp{?\C-\M-b}、@samp{?\M-\002}と記述することができます。
+  The read syntax for meta characters uses @samp{\M-}.  For example,
+@samp{?\M-A} stands for @kbd{M-A}.  You can use @samp{\M-} together with
+octal character codes (see below), with @samp{\C-}, or with any other syntax
+for a character.  Thus, you can write @kbd{M-A} as @samp{?\M-A}, or as
+@samp{?\M-\101}.  Likewise, you can write @kbd{C-M-b} as @samp{?\M-\C-b},
+@samp{?\C-\M-b}, or @samp{?\M-\002}.
 
 @node Other Char Bits
-@subsubsection その他の文字修飾ビット
+@subsubsection Other Character Modifier Bits
 
-  グラフィック文字(graphic
-character)のcaseは文字コードで示されます。たとえば@acronym{ASCII}では、文字@samp{a}と文字@samp{A}は区別されます。しかし@acronym{ASCII}にはコントロール文字が大文字なのか小文字なのかを表現する方法がありません。コントロール文字がタイプされたときシフトキーが使用されたかを示すために、Emacsは
+  The case of a graphic character is indicated by its character code; for
+example, @acronym{ASCII} distinguishes between the characters @samp{a} and
+@samp{A}.  But @acronym{ASCII} has no way to represent whether a control
+character is upper case or lower case.  Emacs uses the
 @tex
 @math{2^{25}}
 @end tex
 @ifnottex
 2**25
 @end ifnottex
-のビットを使用します。この区別はX上でのGUIディスプレイのようなグラフィカルディスプレイでのみ利用できます。通常のテキスト端末はこれらの違いを報告しません。シフトをあらわすビットのためのLisp構文は@samp{\S-}です。したがって@samp{?\C-\S-o}や@samp{?\C-\S-O}は、Shift+Ctrl+o文字を表します。
+bit to indicate that the shift key was used in typing a control character.
+This distinction is possible only on a graphical display such as a GUI
+display on X; text terminals do not report the distinction.  The Lisp syntax
+for the shift bit is @samp{\S-}; thus, @samp{?\C-\S-o} or @samp{?\C-\S-O}
+represents the shifted-control-o character.
 
 @cindex hyper characters
 @cindex super characters
 @cindex alt characters
-  Xウィンドウシステムは文字にセットするために、他にも3つ@anchor{modifier bits}修飾ビット ---
-@dfn{ハイパー(hyper)}、@dfn{スーパー(super)}、@dfn{アルト(alt)}を定義します。これらのビットにたいする構文は、@samp{\H-}、@samp{\s-}、@samp{\A-}です(これらのプレフィクスでは、caseは意味がある)。したがって@samp{?\H-\M-\A-x}は@kbd{Alt-Hyper-Meta-x}を表します(@samp{-}が後にない@samp{\s}はスペース文字を表すことに注意)。
+  The X Window System defines three other @anchor{modifier bits}modifier bits
+that can be set in a character: @dfn{hyper}, @dfn{super} and @dfn{alt}.  The
+syntaxes for these bits are @samp{\H-}, @samp{\s-} and @samp{\A-}.  (Case is
+significant in these prefixes.)  Thus, @samp{?\H-\M-\A-x} represents
+@kbd{Alt-Hyper-Meta-x}.  (Note that @samp{\s} with no following @samp{-}
+represents the space character.)
 @tex
-数値としてはビット値@math{2^{22}}はアルト、@math{2^{23}}はスーパー、@math{2^{24}}はハイパーです。
+Numerically, the bit values are @math{2^{22}} for alt, @math{2^{23}}
+for super and @math{2^{24}} for hyper.
 @end tex
 @ifnottex
-数値としてはビット値2**22はアルト、2**23はスーパー、2**24はハイパーです。
+Numerically, the bit values are 2**22 for alt, 2**23 for super and 2**24 for
+hyper.
 @end ifnottex
 
 @node Symbol Type
-@subsection シンボル型
+@subsection Symbol Type
 
-  GNU Emacs
-Lispでの@dfn{シンボル(symbol)}とは、名前をもつオブジェクトです。シンボル名は、そのシンボルのプリント表現としての役割があります。Lispの通常の使用では、1つのobarray(@ref{Creating
-Symbols}を参照)により、シンボル名は一意です --- 2つのシンボルが同じ名前をもつことはありません。
+  A @dfn{symbol} in GNU Emacs Lisp is an object with a name.  The symbol name
+serves as the printed representation of the symbol.  In ordinary Lisp use,
+with one single obarray (@pxref{Creating Symbols}), a symbol's name is
+unique---no two symbols have the same name.
 
-  シンボルは変数や関数名としての役割、プロパティリストを保持する役割をもつことができます。データ構造内にそのようなシンボルが存在することが確実に認識できるように、他のすべてのLispオブジェクトから区別するためだけの役割をもつ場合もあります。与えられたコンテキストにおいて、通常はこれらのうちの1つの使用だけが意図されます。しかし3つすべての方法で、1つのシンボルを独立して使用することもできます。
+  A symbol can serve as a variable, as a function name, or to hold a property
+list.  Or it may serve only to be distinct from all other Lisp objects, so
+that its presence in a data structure may be recognized reliably.  In a
+given context, usually only one of these uses is intended.  But you can use
+one symbol in all of these ways, independently.
 
-  名前がコロン(@samp{:})で始まるシンボルは@dfn{キーワードシンボル(keyword
-symbol)}と呼ばれます。これらのシンボルは自動的に定数として振る舞い、通常は未知のシンボルといくつかの特定の候補を比較することだけに使用されます。@ref{Constant
-Variables}を参照してください。
+  A symbol whose name starts with a colon (@samp{:}) is called a @dfn{keyword
+symbol}.  These symbols automatically act as constants, and are normally
+used only by comparing an unknown symbol with a few specific alternatives.
+@xref{Constant Variables}.
 
 @cindex @samp{\} in symbols
 @cindex backslash in symbols
-  シンボル名にはどんな文字でも含めることができます。ほとんどのシンボル名は英字、数字、@samp{-+=*/}などの区切り文字で記述されます。このような名前には特別な区切り文字は必要ありません。名前が数字のように見えない限り、名前にはどのような文字も使用できます(名前が数字のように見える場合は、名前の先頭に@samp{\}を記述して強制的にシンボルとして解釈させる)。文字@samp{_~!@@$%^&:<>@{@}?}はあまり使用されませんが、これらも特別な句読点文字を必要としません。他の文字も、バックスラッシュでエスケープすることにより、シンボル名に含めることができます。しかし文字列内でのバックスラッシュの使用とは対照的に、シンボル名でのバックスラッシュは、バックスラッシュの後の1文字をエスケープするだけです。たとえば文字列内では、@samp{\t}はタブ文字を表します。しかしシンボル名の中では、@samp{\t}は英字@samp{t}をクォートするに過ぎません。名前にタブ文字をもつシンボルを記述するには、(バックスラッシュを前置した)実際のタブを使用しなければなりません。しかし、そのようなことを行なうことは稀です。
+  A symbol name can contain any characters whatever.  Most symbol names are
+written with letters, digits, and the punctuation characters @samp{-+=*/}.
+Such names require no special punctuation; the characters of the name
+suffice as long as the name does not look like a number.  (If it does, write
+a @samp{\} at the beginning of the name to force interpretation as a
+symbol.)  The characters @samp{_~!@@$%^&:<>@{@}?} are less often used but
+also require no special punctuation.  Any other characters may be included
+in a symbol's name by escaping them with a backslash.  In contrast to its
+use in strings, however, a backslash in the name of a symbol simply quotes
+the single character that follows the backslash.  For example, in a string,
+@samp{\t} represents a tab character; in the name of a symbol, however,
+@samp{\t} merely quotes the letter @samp{t}.  To have a symbol with a tab
+character in its name, you must actually use a tab (preceded with a
+backslash).  But it's rare to do such a thing.
 
 @cindex CL note---case of letters
 @quotation
-@b{Common Lispに関する注意:}Common
-Lispでは明示的にエスケープされない限り、小文字は常に大文字に``フォールド(folded)''される。Emacs
-Lispでは大文字と小文字は区別される。
+@b{Common Lisp note:} In Common Lisp, lower case letters are always folded
+to upper case, unless they are explicitly escaped.  In Emacs Lisp, upper
+case and lower case letters are distinct.
 @end quotation
 
-  以下はシンボル名の例です。4つ目の例の中の@samp{+}は、シンボルが数字として読み取られるのを防ぐためにエスケープされていることに注意してください。6つ目の例では、名前の残りの部分により数字としては不正なのでエスケープの必要はありません。
+  Here are several examples of symbol names.  Note that the @samp{+} in the
+fourth example is escaped to prevent it from being read as a number.  This
+is not necessary in the sixth example because the rest of the name makes it
+invalid as a number.
 
 @example
 @group
-foo                 ; @r{@samp{foo}という名前のシンボル}
-FOO                 ; @r{@samp{foo}とは別の、@samp{FOO}という名前のシンボル}
+foo                 ; @r{A symbol named @samp{foo}.}
+FOO                 ; @r{A symbol named @samp{FOO}, different from @samp{foo}.}
 @end group
 @group
-1+                  ; @r{@samp{1+}という名前のシンボル}
-                    ;   @r{(整数の@samp{+1}ではない)}
+1+                  ; @r{A symbol named @samp{1+}}
+                    ;   @r{(not @samp{+1}, which is an integer).}
 @end group
 @group
-\+1                 ; @r{@samp{+1}という名前のシンボル}
-                    ;   @r{(判読しにくい名前)}
+\+1                 ; @r{A symbol named @samp{+1}}
+                    ;   @r{(not a very readable name).}
 @end group
 @group
 @c the @'s in this next line use up three characters, hence the
 @c apparent misalignment of the comment.
-\(*\ 1\ 2\)         ; @r{@samp{(* 1 2)}という名前のシンボル(悪い名前)}
-+-*/_~!@@$%^&=:<>@{@}  ; @r{@samp{+-*/_~!@@$%^&=:<>@{@}}という名前のシンボル}
-                    ;   @r{これらの文字のエスケープは不要}
+\(*\ 1\ 2\)         ; @r{A symbol named @samp{(* 1 2)} (a worse name).}
++-*/_~!@@$%^&=:<>@{@}  ; @r{A symbol named @samp{+-*/_~!@@$%^&=:<>@{@}}.}
+                    ;   @r{These characters need not be escaped.}
 @end group
 @end example
 
@@ -511,82 +706,124 @@ FOO                 ; @r{@samp{foo}とは別の、@samp{FOO}という名前の�
 @ifnotinfo
 @cindex @samp{#:} read syntax
 @end ifnotinfo
-  シンボル名がプリント表現としての役割をもつというルールの例外として、@samp{##}があります。これは、名前が空文字列のinternされたシンボルのプリント表現です。さらに@samp{#:@var{foo}}は、internされていない@var{foo}という名前のシンボルにたいするプリント表現です(通常、Lispリーダーはすべてのシンボルをinternする。@ref{Creating
-Symbols}を参照されたい)。
+  As an exception to the rule that a symbol's name serves as its printed
+representation, @samp{##} is the printed representation for an interned
+symbol whose name is an empty string.  Furthermore, @samp{#:@var{foo}} is
+the printed representation for an uninterned symbol whose name is
+@var{foo}.  (Normally, the Lisp reader interns all symbols; @pxref{Creating
+Symbols}.)
 
 @node Sequence Type
-@subsection シーケンス型
+@subsection Sequence Types
 
-  @dfn{シーケンス(sequence)}とは、要素の順序セットを表現するLispオブジェクトです。Emacs Lispには2種類のシーケンス ---
-@dfn{リスト(lists)}と@dfn{配列(arrays)}があります。
+  A @dfn{sequence} is a Lisp object that represents an ordered set of
+elements.  There are two kinds of sequence in Emacs Lisp: @dfn{lists} and
+@dfn{arrays}.
 
-  リストはもっとも一般的に使用されるシーケンスです。リストは任意の型の要素を保持でき、要素の追加と削除により簡単に長さを変更できます。リストについては、次のサブセクションを参照してください。
+  Lists are the most commonly-used sequences.  A list can hold elements of any
+type, and its length can be easily changed by adding or removing elements.
+See the next subsection for more about lists.
 
-  配列は固定長のシーケンスです。配列はさらに文字列(strings)、ベクター(vectors)、文字テーブル(char-tables)、ブールベクター(bool-vectors)に細分されます。ベクターは任意の型の要素を保持できますが、文字列の要素は文字でなければならず、ブールベクターの要素は@code{t}か@code{nil}でなければなりません。文字テーブルはベクターと似ていますが、有効な文字によりインデックスづけされる点が異なります。文字列内の文字は、バッファー内の文字のようにテキストプロパティをもつことができます(@ref{Text
-Properties}を参照)。しかしベクターはその要素が文字のときでも、テキストプロパティをサポートしません。
+  Arrays are fixed-length sequences.  They are further subdivided into
+strings, vectors, char-tables and bool-vectors.  Vectors can hold elements
+of any type, whereas string elements must be characters, and bool-vector
+elements must be @code{t} or @code{nil}.  Char-tables are like vectors
+except that they are indexed by any valid character code.  The characters in
+a string can have text properties like characters in a buffer (@pxref{Text
+Properties}), but vectors do not support text properties, even when their
+elements happen to be characters.
 
-  リスト、文字列、およびその他の配列型も、重要な類似点を共有します。たとえば、それらはすべて長さ@var{l}をもち、要素は0から@var{l}@minus{}1でインデックスづけされます。いくつかの関数はシーケンス関数と呼ばれ、これらは任意の種類のシーケンスを許容します。たとえば、関数@code{length}は、任意の種類のシーケンスの長さを報告します。@ref{Sequences
-Arrays Vectors}を参照してください。
+  Lists, strings and the other array types also share important similarities.
+For example, all have a length @var{l}, and all have elements which can be
+indexed from zero to @var{l} minus one.  Several functions, called sequence
+functions, accept any kind of sequence.  For example, the function
+@code{length} reports the length of any kind of sequence.  @xref{Sequences
+Arrays Vectors}.
 
-  シーケンスは読み取りにより常に新たに作成されるため、同じシーケンスを2回読み取るのは一般的に不可能です。シーケンスにたいする入力構文を2回読み取った場合には、内容が等しい2つのシーケンスを得ます。これには1つ例外があります。空リスト@code{()}は、常に同じオブジェクト@code{nil}を表します。
+  It is generally impossible to read the same sequence twice, since sequences
+are always created anew upon reading.  If you read the read syntax for a
+sequence twice, you get two sequences with equal contents.  There is one
+exception: the empty list @code{()} always stands for the same object,
+@code{nil}.
 
 @node Cons Cell Type
-@subsection コンスセルとリスト型
+@subsection Cons Cell and List Types
 @cindex address field of register
 @cindex decrement field of register
 @cindex pointers
 
-  @dfn{コンスセル(cons
-cell)}は@sc{car}スロット、@sc{cdr}スロットと呼ばれる2つのスロットから構成されるオブジェクトです。それぞれのスロットはには、任意のLispオブジェクトを@dfn{保持}できます。そのとき@sc{car}スロットに保持されるオブジェクトが何であれ、わたしたちは``このコンスセルの@sc{car}''のような言い方をします。これは@sc{cdr}の場合も同様です。
+  A @dfn{cons cell} is an object that consists of two slots, called the
+@sc{car} slot and the @sc{cdr} slot.  Each slot can @dfn{hold} any Lisp
+object.  We also say that the @sc{car} of this cons cell is whatever object
+its @sc{car} slot currently holds, and likewise for the @sc{cdr}.
 
 @cindex list structure
-  @dfn{リスト(list)}はコンスセルの連続するシリーズで、各コンスセルの@sc{cdr}スロットは次のコンスセル、または空リストを保持します。空リストは実際にはシンボル@code{nil}です。詳細については、@ref{Lists}を参照してください。ほとんどのコンスセルはリストの一部として使用されるので、わたしたちはコンスセルにより構成される任意の構造を、@dfn{リスト構造(list
-structure)}という用語で参照します。
+  A @dfn{list} is a series of cons cells, linked together so that the @sc{cdr}
+slot of each cons cell holds either the next cons cell or the empty list.
+The empty list is actually the symbol @code{nil}.  @xref{Lists}, for
+details.  Because most cons cells are used as part of lists, we refer to any
+structure made out of cons cells as a @dfn{list structure}.
 
 @cindex linked list
 @quotation
-Cプログラマーにたいする注意: Lispのリストはコンスセルにより構築される@dfn{リンクリスト(linked
-list)}として機能する。Lispではポインターは暗黙的なので、コンスセルのスロットが値を``保持(hold)''するのか、それとも値を``指す(point)''のかは区別しない。
+A note to C programmers: a Lisp list thus works as a @dfn{linked list} built
+up of cons cells.  Because pointers in Lisp are implicit, we do not
+distinguish between a cons cell slot holding a value versus pointing to the
+value.
 @end quotation
 
 @cindex atoms
-  コンスセルはLispの中核なので、コンスセルではないオブジェクトにたいする用語もあります。これらのオブジェクトは@dfn{アトム(atoms)}と呼ばれます。
+  Because cons cells are so central to Lisp, we also have a word for an object
+which is not a cons cell.  These objects are called @dfn{atoms}.
 
 @cindex parenthesis
 @cindex @samp{(@dots{})} in lists
-  リストにたいする入力構文とプリント表現は同じで左カッコ、任意の数の要素、右カコから構成されます。以下はリストの例です:
+  The read syntax and printed representation for lists are identical, and
+consist of a left parenthesis, an arbitrary number of elements, and a right
+parenthesis.  Here are examples of lists:
 
 @example
-(A 2 "A")            ; @r{3要素のリスト}
-()                   ; @r{要素がないリスト(空リスト)}
-nil                  ; @r{要素がないリスト(空リスト)}
-("A ()")             ; @r{1要素のリスト: 文字列@code{"A ()"}}
-(A ())               ; @r{2要素のリスト: @code{A}と空リスト}
-(A nil)              ; @r{同上}
-((A B C))            ; @r{1要素のリスト}
-                     ;   @r{(この要素は、3要素のリスト)}
+(A 2 "A")            ; @r{A list of three elements.}
+()                   ; @r{A list of no elements (the empty list).}
+nil                  ; @r{A list of no elements (the empty list).}
+("A ()")             ; @r{A list of one element: the string @code{"A ()"}.}
+(A ())               ; @r{A list of two elements: @code{A} and the empty list.}
+(A nil)              ; @r{Equivalent to the previous.}
+((A B C))            ; @r{A list of one element}
+                     ;   @r{(which is a list of three elements).}
 @end example
 
-   読み取りではカッコの内側はリストの要素になります。つまりコンスセルは各要素から作成されます。コンスセルの@sc{car}スロットは要素を保持し、@sc{cdr}スロットはリスト内の次のコンスセル(このコンスセルはリスト内の次の要素をする)を参照します。最後のコンスセルの@sc{cdr}スロットは@code{nil}を保持するようにセットされます。
+   Upon reading, each object inside the parentheses becomes an element of the
+list.  That is, a cons cell is made for each element.  The @sc{car} slot of
+the cons cell holds the element, and its @sc{cdr} slot refers to the next
+cons cell of the list, which holds the next element in the list.  The
+@sc{cdr} slot of the last cons cell is set to hold @code{nil}.
 
-  @sc{car}や@sc{cdr}という名称はLispの歴史に由来します。オリジナルのLisp実装は@w{IBM
-704}コンピューターで実行されていました。ワードを2つの部分、つまり``address''と呼ばれる部分と、``decrement''と呼ばれる部分に分割していて、その際@sc{car}はaddress部から内容を取り出す命令で、@sc{cdr}はdecrement部から内容を取り出す命令でした。これとは対照的に``cons
-cells''は、これらを作成する関数@code{cons}から命名されました。この関数は関数の目的、すなわちセルを作る(construction of
-cells)という目的から命名されました。
+  The names @sc{car} and @sc{cdr} derive from the history of Lisp.  The
+original Lisp implementation ran on an @w{IBM 704} computer which divided
+words into two parts, the address and the decrement; @sc{car} was an
+instruction to extract the contents of the address part of a register, and
+@sc{cdr} an instruction to extract the contents of the decrement.  By
+contrast, cons cells are named for the function @code{cons} that creates
+them, which in turn was named for its purpose, the construction of cells.
 
 @menu
-* Box Diagrams::             リストの図解。
-* Dotted Pair Notation::     コンスセルの一般的な構文。
-* Association List Type::    特別に構築されるリスト。
+* Box Diagrams::             Drawing pictures of lists.
+* Dotted Pair Notation::     A general syntax for cons cells.
+* Association List Type::    A specially constructed list.
 @end menu
 
 @node Box Diagrams
-@subsubsection ボックスダイアグラムによるリストの描写
+@subsubsection Drawing Lists as Box Diagrams
 @cindex box diagrams, for lists
 @cindex diagrams, boxed, for lists
 
-  コンスセルを表現するドミノのような1対のボックスによる図で、リストを説明することができます(Lispリーダーがこのような図を読み取ることはできない。人間とコンピューターが理解できるテキスト表記と異なり、ボックス図は人間だけが理解できる)。この図は3要素のリスト@code{(rose
-violet buttercup)}を表したものです:
+  A list can be illustrated by a diagram in which the cons cells are shown as
+pairs of boxes, like dominoes.  (The Lisp reader cannot read such an
+illustration; unlike the textual notation, which can be understood by both
+humans and computers, the box illustrations can be understood only by
+humans.)  This picture represents the three-element list @code{(rose violet
+buttercup)}:
 
 @example
 @group
@@ -599,11 +836,20 @@ violet buttercup)}を表したものです:
 @end group
 @end example
 
-  この図では、ボックスは任意のLispオブジェクトへの参照を保持できるスロットを表します。ボックスのペアーはコンスセルを表します。矢印はLispオブジェクト(アトム、または他のコンスセル)への参照を表します。
+  In this diagram, each box represents a slot that can hold or refer to any
+Lisp object.  Each pair of boxes represents a cons cell.  Each arrow
+represents a reference to a Lisp object, either an atom or another cons
+cell.
 
-  この例では、1番目のボックスは1番目のコンスセルで、それの@sc{car}は@code{rose}(シンボル)を参照または保持します。2番目のボックスは1番目のコンスセルの@sc{cdr}を保持し、次のボックスペアすなわち2番目のコンスセルを参照します。2番目のコンスセルの@sc{car}は@code{violet}で、@sc{cdr}は3番目のコンスセルです。(最後の)3番目のコンスセルの@sc{cdr}は@code{nil}です。
+  In this example, the first box, which holds the @sc{car} of the first cons
+cell, refers to or holds @code{rose} (a symbol).  The second box, holding
+the @sc{cdr} of the first cons cell, refers to the next pair of boxes, the
+second cons cell.  The @sc{car} of the second cons cell is @code{violet},
+and its @sc{cdr} is the third cons cell.  The @sc{cdr} of the third (and
+last) cons cell is @code{nil}.
 
-  同じリスト@code{(rose violet buttercup)}を、違うやり方で描いた別の図で表してみましょう:
+  Here is another diagram of the same list, @code{(rose violet buttercup)},
+sketched in a different manner:
 
 @smallexample
 @group
@@ -617,10 +863,12 @@ violet buttercup)}を表したものです:
 
 @cindex @code{nil} as a list
 @cindex empty list
-  要素がないリストは@dfn{空リスト(empty
-list)}で、これはシンボル@code{nil}と同じです。言い換えると@code{nil}はシンボルであり、かつリストでもあります。
+  A list with no elements in it is the @dfn{empty list}; it is identical to
+the symbol @code{nil}.  In other words, @code{nil} is both a symbol and a
+list.
 
-  以下はリスト@code{(A ())}、または等価な@code{(A nil)}をボックスと矢印で描いたものです:
+  Here is the list @code{(A ())}, or equivalently @code{(A nil)}, depicted
+with boxes and arrows:
 
 @example
 @group
@@ -633,8 +881,9 @@ list)}で、これはシンボル@code{nil}と同じです。言い換えると@
 @end group
 @end example
 
-  以下はもっと複雑な例です。これは1番目の要素が2要素のリストであるような、3要素のリスト@code{((pine needles) oak
-maple)}を表します:
+  Here is a more complex illustration, showing the three-element list,
+@code{((pine needles) oak maple)}, the first element of which is a
+two-element list:
 
 @example
 @group
@@ -654,7 +903,7 @@ maple)}を表します:
 @end group
 @end example
 
-  同じリストを2番目のボックス表記で表すと、以下のようになります:
+  The same list represented in the second box notation looks like this:
 
 @example
 @group
@@ -674,19 +923,24 @@ maple)}を表します:
 @end example
 
 @node Dotted Pair Notation
-@subsubsection ドットペア表記
+@subsubsection Dotted Pair Notation
 @cindex dotted pair notation
 @cindex @samp{.} in lists
 
-  @dfn{ドットペア表記(dotted pair
-notation)}は、@sc{car}と@sc{cdr}が明示的に表されたコンスセルの一般的な構文です。この構文では@code{(@var{a}
-.@:
-@var{b})}が@sc{car}がオブジェクト@var{a}、@sc{cdr}がオブジェクト@var{b}という意味になります。@sc{cdr}がリストである必要がないので、ドットペア表記はより一般的なリスト構文です。しかしリスト構文が機能するような場合には、より扱いにくくなります。ドットペア表記では、リスト@samp{(1
-2 3)}は@samp{(1 .  (2 . (3
-.
-nil)))}と記述されます。@code{nil}で終端されたリストにたいしては、どちらの表記法も使用できますが、リスト表記の方が通常は明解で便利です。リストをプリントする場合には、コンスセルの@sc{cdr}がリストでないときだけドットペア表記が使用されます。
+  @dfn{Dotted pair notation} is a general syntax for cons cells that
+represents the @sc{car} and @sc{cdr} explicitly.  In this syntax,
+@code{(@var{a} .@: @var{b})} stands for a cons cell whose @sc{car} is the
+object @var{a} and whose @sc{cdr} is the object @var{b}.  Dotted pair
+notation is more general than list syntax because the @sc{cdr} does not have
+to be a list.  However, it is more cumbersome in cases where list syntax
+would work.  In dotted pair notation, the list @samp{(1 2 3)} is written as
+@samp{(1 .  (2 . (3 . nil)))}.  For @code{nil}-terminated lists, you can use
+either notation, but list notation is usually clearer and more convenient.
+When printing a list, the dotted pair notation is only used if the @sc{cdr}
+of a cons cell is not a list.
 
-  以下はボックスを使用してドットペア表記を表した例です。これはペア@code{(rose . violet)}を表します:
+  Here's an example using boxes to illustrate dotted pair notation.  This
+example shows the pair @code{(rose . violet)}:
 
 @example
 @group
@@ -699,9 +953,12 @@ nil)))}と記述されます。@code{nil}で終端されたリストにたいし
 @end group
 @end example
 
-  最後の@sc{cdr}が非@code{nil}のコンスセルのチェーンを表すので、ドットペア表記とリスト表記を組み合わせることができます。リストの最後の要素の後にドットを記述して、その後に最後のコンスセルの@sc{cdr}を記述します。たとえば@code{(rose
-violet . buttercup)}は、@code{(rose . (violet
-. buttercup))}と等価です。オブジェクトは以下のようになります:
+  You can combine dotted pair notation with list notation to represent
+conveniently a chain of cons cells with a non-@code{nil} final @sc{cdr}.
+You write a dot after the last element of the list, followed by the @sc{cdr}
+of the final cons cell.  For example, @code{(rose violet . buttercup)} is
+equivalent to @code{(rose . (violet . buttercup))}.  The object looks like
+this:
 
 @example
 @group
@@ -714,10 +971,13 @@ violet . buttercup)}は、@code{(rose . (violet
 @end group
 @end example
 
-  構文@code{(rose .@: violet .@:
-buttercup)}は無効です。なぜならこれは何も意味していないからです。何か意味があるとしても、@code{violet}のために@sc{cdr}がすでに使用されているコンスセルの@sc{cdr}に、@code{buttercup}を置くということになります。
+  The syntax @code{(rose .@: violet .@: buttercup)} is invalid because there
+is nothing that it could mean.  If anything, it would say to put
+@code{buttercup} in the @sc{cdr} of a cons cell whose @sc{cdr} is already
+used for @code{violet}.
 
-  リスト@code{(rose violet)}は@code{(rose . (violet))}と等価であり、以下のようになります:
+  The list @code{(rose violet)} is equivalent to @code{(rose . (violet))}, and
+looks like this:
 
 @example
 @group
@@ -730,10 +990,10 @@ buttercup)}は無効です。なぜならこれは何も意味していないか
 @end group
 @end example
 
-  同様に3要素のリスト@code{(rose violet buttercup)}は、@code{(rose . (violet
-. (buttercup)))}と等価です。
+  Similarly, the three-element list @code{(rose violet buttercup)} is
+equivalent to @code{(rose . (violet . (buttercup)))}.
 @ifnottex
-これは以下のようになります:
+It looks like this:
 
 @example
 @group
@@ -748,13 +1008,16 @@ buttercup)}は無効です。なぜならこれは何も意味していないか
 @end ifnottex
 
 @node Association List Type
-@subsubsection 連想リスト型
+@subsubsection Association List Type
 
-  @dfn{連想リスト(association
-list)}または@dfn{alist}は、要素がコンスセルであるように特別に構成されたリストです。各要素においては、@sc{car}が@dfn{キー(key)}で、@sc{cdr}が@dfn{連想値(associated
-value)}であると考えます(連想値が@sc{cdr}の@sc{car}に保存される場合もある)。リストの先頭への連想値の追加と削除は簡単なので、連想リストはスタック(stack)にしばしば使用されます。
+  An @dfn{association list} or @dfn{alist} is a specially-constructed list
+whose elements are cons cells.  In each element, the @sc{car} is considered
+a @dfn{key}, and the @sc{cdr} is considered an @dfn{associated value}.  (In
+some cases, the associated value is stored in the @sc{car} of the @sc{cdr}.)
+Association lists are often used as stacks, since it is easy to add or
+remove associations at the front of the list.
 
-  たとえば、
+  For example,
 
 @example
 (setq alist-of-colors
@@ -762,65 +1025,101 @@ value)}であると考えます(連想値が@sc{cdr}の@sc{car}に保存され�
 @end example
 
 @noindent
-これは変数@code{alist-of-colors}に3要素のalistをセットします。最初の要素では、@code{rose}がキーで@code{red}が値になります。
+sets the variable @code{alist-of-colors} to an alist of three elements.  In
+the first element, @code{rose} is the key and @code{red} is the value.
 
-  alistとalist関数についての詳細な説明は@ref{Association
-Lists}を参照してください。(多くのキーの操作をより高速に行なう)テーブルを照合する他の手段については@ref{Hash
-Tables}を参照してください。
+  @xref{Association Lists}, for a further explanation of alists and for
+functions that work on alists.  @xref{Hash Tables}, for another kind of
+lookup table, which is much faster for handling a large number of keys.
 
 @node Array Type
-@subsection 配列型
+@subsection Array Type
 
-  @dfn{配列(array)}は、他のLispオブジェクトを保持または参照する任意の数のスロットから構成され、メモリーの連続ブロックに配列されます。配列の任意の要素へのアクセス時間は大体同じです。対照的にリストの要素にたいするアクセスは、リスト内でのその要素の位置に比例した時間を要します(リストの最後の要素にアクセスするにはリストの最初の要素にアクセスするより長い時間が必要)。
+  An @dfn{array} is composed of an arbitrary number of slots for holding or
+referring to other Lisp objects, arranged in a contiguous block of memory.
+Accessing any element of an array takes approximately the same amount of
+time.  In contrast, accessing an element of a list requires time
+proportional to the position of the element in the list.  (Elements at the
+end of a list take longer to access than elements at the beginning of a
+list.)
 
-  Emacsは文字列(strings)、ベクター(vectors)、ブールベクター(bool-vectors)、文字テーブル(char-tables)という4種の配列を定義します。
+  Emacs defines four types of array: strings, vectors, bool-vectors, and
+char-tables.
 
-  文字列は文字の配列であり、ベクターは任意のオブジェクトの配列です。ブールベクターは@code{t}か@code{nil}だけを保持できます。この種の配列はシステムアーキテクチャー制限と利用可能なメモリーにしたがったもっとも大きいfixnumまでの任意の長さをもつことができます。文字テーブルは、任意の有効な文字コードによりインデックスづけされる疎な配列であり、任意のオブジェクトを保持することができます。
+  A string is an array of characters and a vector is an array of arbitrary
+objects.  A bool-vector can hold only @code{t} or @code{nil}.  These kinds
+of array may have any length up to the largest fixnum, subject to system
+architecture limits and available memory.  Char-tables are sparse arrays
+indexed by any valid character code; they can hold arbitrary objects.
 
-  配列の最初の要素はインデックス0、2番目の要素はインデックス1、...となります。これは@dfn{0基準(zero-origin)}のインデックスづけと呼ばれます。たとえば、4要素の配列はインデックス0、1、2、3をもちます。利用できる最大のインデックス値は、配列の長さより1つ小さくなります。▼一度配列が作成されると、長さは固定されます。
+  The first element of an array has index zero, the second element has index
+1, and so on.  This is called @dfn{zero-origin} indexing.  For example, an
+array of four elements has indices 0, 1, 2, @w{and 3}.  The largest possible
+index value is one less than the length of the array.  Once an array is
+created, its length is fixed.
 
-  Emacs
-Lispのすべての配列は、1次元です(他のほとんどのプログラミング言語は多次元配列をサポートするが、これらは必須ではない。ネストされた1次元配列により同じ効果を得ることが可能)。各種の配列は独自の入力構文をもちます。詳細は以降のセクションを参照してください。
+  All Emacs Lisp arrays are one-dimensional.  (Most other programming
+languages support multidimensional arrays, but they are not essential; you
+can get the same effect with nested one-dimensional arrays.)  Each type of
+array has its own read syntax; see the following sections for details.
 
-  配列型はシーケンス型のサブセットであり文字列型、ベクター型、ブールベクター型、文字テーブル型が含まれます。
+  The array type is a subset of the sequence type, and contains the string
+type, the vector type, the bool-vector type, and the char-table type.
 
 @node String Type
-@subsection 文字列型
+@subsection String Type
 
-  @dfn{文字列(string)}とは文字の配列です。Emacsがテキストエディターであることから予想できるように、文字列はたとえばLispシンボルの名前、ユーザーへのメッセージ、バッファーから抽出されたテキストの表現など多くの目的のために使用されます。Lispの文字列は定数です。文字列を評価すると、それと同じ文字列がリターンされます。
+  A @dfn{string} is an array of characters.  Strings are used for many
+purposes in Emacs, as can be expected in a text editor; for example, as the
+names of Lisp symbols, as messages for the user, and to represent text
+extracted from buffers.  Strings in Lisp are constants: evaluation of a
+string returns the same string.
 
-  文字列を操作する関数については@ref{Strings and Characters}を参照してください。
+  @xref{Strings and Characters}, for functions that operate on strings.
 
 @menu
-* Syntax for Strings::       Lisp文字列を指定する方法。
-* Non-ASCII in Strings::     文字列内の国際化文字。
-* Nonprinting Characters::   文字列内の印刷不可能なリテラル文字。
-* Text Props and Strings::   テキストプロパティをもつ文字列。
+* Syntax for Strings::       How to specify Lisp strings.
+* Non-ASCII in Strings::     International characters in strings.
+* Nonprinting Characters::   Literal unprintable characters in strings.
+* Text Props and Strings::   Strings with text properties.
 @end menu
 
 @node Syntax for Strings
-@subsubsection 文字列の構文
+@subsubsection Syntax for Strings
 
 @cindex @samp{"} in strings
 @cindex double-quote in strings
 @cindex @samp{\} in strings
 @cindex backslash in strings
-  文字列にたいする入力構文は@code{"like
-this"}のようにダブルクォート、任意個数の文字、もう1つのダブルクォートから構成されます。文字列内にダブルクォートを含める場合は、それの前にバックスラッシュを記述します。したがって@code{"\""}は1つのダブルクォート文字だけを含む文字列です。同様にバックスラッシュを含める場合は、@code{"this
-\\ is a single embedded backslash"}のように、それの前にもう1つのバックスラッシュを記述します。
+  The read syntax for a string is a double-quote, an arbitrary number of
+characters, and another double-quote, @code{"like this"}.  To include a
+double-quote in a string, precede it with a backslash; thus, @code{"\""} is
+a string containing just one double-quote character.  Likewise, you can
+include a backslash by preceding it with another backslash, like this:
+@code{"this \\ is a single embedded backslash"}.
 
-  文字列とは文字の配列のことなので、文字の読み取り構文を用いて先頭のクエスチョンマークなしで文字列を指定できます。これは自分自身を意味しないような文字を文字列に含める際に役に立ちます。たとえばコントロール文字はバックスラッシュで始まるエスケープシーケンスで指定できるので、@code{"foo\r"}とすれば@samp{foo}の後にキャリッジリターンを指定できます。その他のコントロール文字のエスケープシーケンスについては@ref{Basic
-Char
-Syntax}を参照してください。同様に@code{"foo\^Ibar"}のようにタブ文字を生成する特別な読み取り構文を用いて、文字列内にコントロール文字を埋め込むことができます(@ref{Ctl-Char
-Syntax}を参照)。@w{@code{"\N@{LATIN SMALL LETTER A WITH
-GRAVE@}"}}や@code{"\u00e0"}のようにして、@ref{General Escape
-Syntax}で記したような非ASCII文字用のエスケープシーケンスを用いることもできます(ただし@ref{Non-ASCII in
-Strings}の非ASCII文字にたいする注意事項を参照のこと)。
+  Since a string is an array of characters, you can specify the string
+characters using the read syntax of characters, but without the leading
+question mark.  This is useful for including in string constants characters
+that don't stand for themselves.  Thus, control characters can be specified
+as escape sequences that start with a backslash; for example, @code{"foo\r"}
+yields @samp{foo} followed by the carriage return character.  @xref{Basic
+Char Syntax}, for escape sequences of other control characters.  Similarly,
+you can use the special read syntax for control characters (@pxref{Ctl-Char
+Syntax}), as in @code{"foo\^Ibar"}, which produces a tab character embedded
+within a string.  You can also use the escape sequences for non-ASCII
+characters described in @ref{General Escape Syntax}, as in
+@w{@code{"\N@{LATIN SMALL LETTER A WITH GRAVE@}"}} and @code{"\u00e0"}
+(however, see a caveat with non-ASCII characters in @ref{Non-ASCII in
+Strings}).
 
 @cindex newline in strings
-  文字列にたいする入力構文では、改行(newline)は特別ではありません。ダブルクォートの間に改行を記述すれば、その改行は文字列内の文字となります。しかしエスケープされた改行
---- 前に@samp{\}をともなう改行 --- は文字列の一部とはなりません。同様にエスケープされたスペース@w{@samp{\ 
-}}も無視されます。
+  The newline character is not special in the read syntax for strings; if you
+write a new line between the double-quotes, it becomes a character in the
+string.  But an escaped newline---one that is preceded by @samp{\}---does
+not become part of the string; i.e., the Lisp reader ignores an escaped
+newline while reading a string.  An escaped space @w{@samp{\ }} is likewise
+ignored.
 
 @example
 "It is useful to include newlines
@@ -833,128 +1132,191 @@ but the newline is ignored if escaped."
 @end example
 
 @node Non-ASCII in Strings
-@subsubsection 文字列内の非@acronym{ASCII}文字
+@subsubsection Non-@acronym{ASCII} Characters in Strings
 
-  Emacsの文字列内の非@acronym{ASCII}文字にたいしては2つのテキスト表現 ---
-マルチバイト(multibyte)とユニバイト(unibyte)があります(@ref{Text
-Representations}を参照)。大まかに言うとユニバイト文字列にはraw(生)バイトが保存され、マルチバイト文字列には人間が読めるテキストが保存されます。ユニバイト文字列内の各文字はバイトであり、値は0から255となります。対照的にマルチバイト文字列内の各文字は、0から4194303の値をもつかもしれません(@ref{Character
-Type}を参照)。いずれも127より上の文字は非@acronym{ASCII}です。
+  There are two text representations for non-@acronym{ASCII} characters in
+Emacs strings: multibyte and unibyte (@pxref{Text Representations}).
+Roughly speaking, unibyte strings store raw bytes, while multibyte strings
+store human-readable text.  Each character in a unibyte string is a byte,
+i.e., its value is between 0 and 255.  By contrast, each character in a
+multibyte string may have a value between 0 to 4194303 (@pxref{Character
+Type}).  In both cases, characters above 127 are non-@acronym{ASCII}.
 
-  文字をリテラルとして記述することにより、文字列に非@acronym{ASCII}文字を含めることができます。マルチバイトのバッファーや文字列、あるいはマルチバイトとしてvisitされたファイル等、マルチバイトのソースから文字列定数を読み込む場合、Emacsは非@acronym{ASCII}文字をマルチバイト文字として読み取り、その文字列を自動的にマルチバイト文字列にします。ユニバイトのソースから文字列定数を読み込む場合、Emacsは非@acronym{ASCII}文字をユニバイト文字として読み取り、その文字列をユニバイト文字列にします。
+  You can include a non-@acronym{ASCII} character in a string constant by
+writing it literally.  If the string constant is read from a multibyte
+source, such as a multibyte buffer or string, or a file that would be
+visited as multibyte, then Emacs reads each non-@acronym{ASCII} character as
+a multibyte character and automatically makes the string a multibyte
+string.  If the string constant is read from a unibyte source, then Emacs
+reads the non-@acronym{ASCII} character as unibyte, and makes the string
+unibyte.
 
-  マルチバイト文字列内にリテラルとして文字を記述するかわりに、エスケープシーケンスを使用して文字コードとして記述できます。エスケープシーケンスについての詳細は、@ref{General
-Escape Syntax}を参照してください。
+  Instead of writing a character literally into a multibyte string, you can
+write it as its character code using an escape sequence.  @xref{General
+Escape Syntax}, for details about escape sequences.
 
-  文字列定数内でUnicodeスタイルのエスケープシーケンス@samp{\uNNNN}または@samp{\U00NNNNNN}を使用する場合、(たとえ@acronym{ASCII}文字であっても)Emacsは自動的に文字列をマルチバイトとみなします。
+  If you use any Unicode-style escape sequence @samp{\uNNNN} or
+@samp{\U00NNNNNN} in a string constant (even for an @acronym{ASCII}
+character), Emacs automatically assumes that it is multibyte.
 
-  文字列定数内で16進エスケープシーケンス(@samp{\x@var{n}})と8進エスケープシーケンス(@samp{\@var{n}})を使用することもできます。@strong{しかし注意してください:
-}文字列定数が8進のエスケープシーケンス、または1桁か2桁の16進エスケープシーケンスを含み、それらのエスケープシーケンスすべてがユニバイト文字(256より小)を指定していて、その文字列内に他にリテラルの非@acronym{ASCII}文字またはUnicodeスタイルのエスケープシーケンスが存在しない場合、Emacsは自動的に文字列をユニバイト文字列とみなします。つまり文字列内のすべての非@acronym{ASCII}文字は8ビットのrawバイトとみなされます。
+  You can also use hexadecimal escape sequences (@samp{\x@var{n}}) and octal
+escape sequences (@samp{\@var{n}}) in string constants.  @strong{But
+beware:} If a string constant contains octal escape sequences or one- or
+two-digit hexadecimal escape sequences, and these escape sequences all
+specify unibyte characters (i.e., codepoints less than 256), and there are
+no other literal non-@acronym{ASCII} characters or Unicode-style escape
+sequences in the string, then Emacs automatically assumes that it is a
+unibyte string.  That is to say, it assumes that all non-@acronym{ASCII}
+characters occurring in the string are 8-bit raw bytes.
 
-  16進および8進のエスケープシーケンスでは、エスケープされた文字コードに可変個の数字が含まれるかもしれないので、それに続く文字で16進および8進として有効ではない最初の文字は、そのエスケープシーケンスを終了させます。文字列内の次の文字が16進または8進として解釈できる文字の場合は、@w{@samp{\ 
-}}(バックスラッシュとスペース)を記述して、エスケープシーケンスを終了できます。たとえば@w{@samp{\xe0\ }}はgrave
-accentつきの@samp{a}という1文字を表します。文字列内の@w{@samp{\ 
-}}はバックスラッシュ改行と同様です。これは文字列内の文字とはなりませんが、先行する16進エスケープを終了します。
+  In hexadecimal and octal escape sequences, the escaped character code may
+contain a variable number of digits, so the first subsequent character which
+is not a valid hexadecimal or octal digit terminates the escape sequence.
+If the next character in a string could be interpreted as a hexadecimal or
+octal digit, write @w{@samp{\ }} (backslash and space) to terminate the
+escape sequence.  For example, @w{@samp{\xe0\ }} represents one character,
+@samp{a} with grave accent.  @w{@samp{\ }} in a string constant is just like
+backslash-newline; it does not contribute any character to the string, but
+it does terminate any preceding hex escape.
 
 @node Nonprinting Characters
-@subsubsection 文字列内の非プリント文字
+@subsubsection Nonprinting Characters in Strings
 
-  リテラル文字と同様に、文字列定数内でバックスラッシュによるエスケープシーケンスを使用できます(ただし文字定数を開始するクエスチョンマークは使用しない)。たとえば非プリント文字のタブと@kbd{C-a}を含む文字列は、@code{"\t,
-\C-a"}のように、それらの間にカンマとスペースを記述します。文字にたいするさまざまな種類の入力構文については@ref{Character
-Type}とそのサブセクションを参照してください。
+  You can use the same backslash escape-sequences in a string constant as in
+character literals (but do not use the question mark that begins a character
+constant).  For example, you can write a string containing the nonprinting
+characters tab and @kbd{C-a}, with commas and spaces between them, like
+this: @code{"\t, \C-a"}.  @xref{Character Type}, and its subsections for a
+description of the various kinds of read syntax for characters.
 
-  しかしバックスラッシュによるエスケープシーケンスとともに記述できるすべての文字が、文字列内で有効というわけではありません。文字列が保持できるコントロール文字は@acronym{ASCII}コントロール文字だけです。@acronym{ASCII}コントロール文字では、文字列のcaseは区別されません。
+  However, not all of the characters you can write with backslash
+escape-sequences are valid in strings.  The only control characters that a
+string can hold are the @acronym{ASCII} control characters.  Strings do not
+distinguish case in @acronym{ASCII} control characters.
 
-  正確に言うと、文字列はメタ文字を保持できません。しかし文字列がキーシーケンスとして使用される場合には、文字列内でメタ修飾された@acronym{ASCII}文字を表現するための方法を提供する特別な慣習があります。文字列定数内でメタ文字を示すために@samp{\M-}構文を使用した場合、これは文字列内の文字の
+  Properly speaking, strings cannot hold meta characters; but when a string is
+to be used as a key sequence, there is a special convention that provides a
+way to represent meta versions of @acronym{ASCII} characters in a string.
+If you use the @samp{\M-} syntax to indicate a meta character in a string
+constant, this sets the
 @tex
 @math{2^{7}}
 @end tex
 @ifnottex
 2**7
 @end ifnottex
-のビットをセットします。その文字列が@code{define-key}または@code{lookup-key}で使用される場合、この数字コードは等価なメタ文字に変換されます。@ref{Character
-Type}を参照してください。
+bit of the character in the string.  If the string is used in
+@code{define-key} or @code{lookup-key}, this numeric code is translated into
+the equivalent meta character.  @xref{Character Type}.
 
-  文字列はハイパー(hyper)、スーパー(super)、アルト(alt)で修飾された文字を保持できません。
+  Strings cannot hold characters that have the hyper, super, or alt modifiers.
 
 @node Text Props and Strings
-@subsubsection 文字列内のテキストプロパティ
+@subsubsection Text Properties in Strings
 
 @cindex @samp{#(} read syntax
 @cindex text properties, read syntax
-  文字列にはその文字自身に加えて、文字のプロパティも保持することができます。これにより特別なことをしなくても、文字列とバッファーとの間でテキストをコピーするプログラムが、テキストプロパティをコピーすることが可能になります。テキストプロパティが何を意味するかについては@ref{Text
-Properties}を参照してください。テキストプロパティをもつ文字列は、特別な入力構文とプリント構文を使用します。
+  A string can hold properties for the characters it contains, in addition to
+the characters themselves.  This enables programs that copy text between
+strings and buffers to copy the text's properties with no special effort.
+@xref{Text Properties}, for an explanation of what text properties mean.
+Strings with text properties use a special read and print syntax:
 
 @example
 #("@var{characters}" @var{property-data}...)
 @end example
 
 @noindent
-ここで@var{property-data}は,3個でグループ化された0個以上の要素から構成されます:
+where @var{property-data} consists of zero or more elements, in groups of
+three as follows:
 
 @example
 @var{beg} @var{end} @var{plist}
 @end example
 
 @noindent
-要素@var{beg}および@var{end}は整数で、文字列内のインデックスの範囲を指定します。@var{plist}はその範囲にたいするプロパティリストです。たとえば、
+The elements @var{beg} and @var{end} are integers, and together specify a
+range of indices in the string; @var{plist} is the property list for that
+range.  For example,
 
 @example
 #("foo bar" 0 3 (face bold) 3 4 nil 4 7 (face italic))
 @end example
 
 @noindent
-これはテキスト内容が@samp{foo
-bar}で、最初の3文字は@code{face}プロパティに値@code{bold}をもち、最後の3文字は@code{face}プロパティに値@code{italic}をもつことを表します(4番目の文字にはテキストプロパティはないので、プロパティリストは@code{nil}。実際には範囲の中の指定されていない文字はデフォルトではプロパティをもたないので、範囲のプロパティリストを@code{nil}と指定する必要ない)。
+represents a string whose textual contents are @samp{foo bar}, in which the
+first three characters have a @code{face} property with value @code{bold},
+and the last three have a @code{face} property with value @code{italic}.
+(The fourth character has no text properties, so its property list is
+@code{nil}.  It is not actually necessary to mention ranges with @code{nil}
+as the property list, since any characters not mentioned in any range will
+default to having no properties.)
 
 @node Vector Type
-@subsection ベクター型
+@subsection Vector Type
 
-  @dfn{ベクター(vector)}は任意の型の要素からなる1次元の配列です。ベクター内の任意の要素へのアクセスに要す時間は一定です(リストの場合では要素へのアクセスに要す時間は、リストの先頭からその要素までの距離に比例する)。
+  A @dfn{vector} is a one-dimensional array of elements of any type.  It takes
+a constant amount of time to access any element of a vector.  (In a list,
+the access time of an element is proportional to the distance of the element
+from the beginning of the list.)
 
-  ベクターのプリント表現は左角カッコ(left square bracket)、要素、右角カッコ(right square
-bracket)から構成されます。これは入力構文でもあります。数字や文字列と同様にベクターは評価において定数と判断されます。
+  The printed representation of a vector consists of a left square bracket,
+the elements, and a right square bracket.  This is also the read syntax.
+Like numbers and strings, vectors are considered constants for evaluation.
 
 @example
-[1 "two" (three)]      ; @r{3要素のベクター}
+[1 "two" (three)]      ; @r{A vector of three elements.}
      @result{} [1 "two" (three)]
 @end example
 
-  ベクターに作用する関数については@ref{Vectors}を参照してください。
+  @xref{Vectors}, for functions that work with vectors.
 
 @node Char-Table Type
-@subsection 文字テーブル型
+@subsection Char-Table Type
 
-  @dfn{文字テーブル(char-table)}は任意の型の要素をもつ1次元の配列であり、文字コードによりインデックスづけされます。文字テーブルは、文字コードに情報を割り当てることを必要とする多くの処理を簡単にするための、特別な追加の機能をもちます
----
-たとえば文字テーブルは継承する親、デフォルト値、特別な目的のために使用する余分なスロットをいくつかもつことができます。文字テーブルは文字セット全体にたいして1つの値を指定することもできます。
+  A @dfn{char-table} is a one-dimensional array of elements of any type,
+indexed by character codes.  Char-tables have certain extra features to make
+them more useful for many jobs that involve assigning information to
+character codes---for example, a char-table can have a parent to inherit
+from, a default value, and a small number of extra slots to use for special
+purposes.  A char-table can also specify a single value for a whole
+character set.
 
 @cindex @samp{#^} read syntax
-  文字テーブルのプリント表現はベクターと似ていますが、最初に余分な@samp{#^}があります@footnote{副文字テーブル(sub-char-tables)に使用される@samp{#^^}を目にすることがあるかもしれません。}。
+  The printed representation of a char-table is like a vector except that
+there is an extra @samp{#^} at the beginning.@footnote{You may also
+encounter @samp{#^^}, used for sub-char-tables.}
 
-  文字テーブルを操作する特別な関数については@ref{Char-Tables}を参照してください。文字テーブルの使用には以下が含まれます:
+  @xref{Char-Tables}, for special functions to operate on char-tables.  Uses
+of char-tables include:
 
 @itemize @bullet
 @item
-caseテーブル(@ref{Case Tables}を参照)。
+Case tables (@pxref{Case Tables}).
 
 @item
-文字カテゴリーテーブル(@ref{Categories}を参照)。
+Character category tables (@pxref{Categories}).
 
 @item
-ディスプレイテーブル(@ref{Display Tables}を参照)。
+Display tables (@pxref{Display Tables}).
 
 @item
-構文テーブル(@ref{Syntax Tables}を参照)。
+Syntax tables (@pxref{Syntax Tables}).
 @end itemize
 
 @node Bool-Vector Type
-@subsection ブールベクター型
+@subsection Bool-Vector Type
 
-  @dfn{ブールベクター(bool-vector)}は、要素が@code{t}か@code{nil}のいずれかでなければならない1次元の配列です。
+  A @dfn{bool-vector} is a one-dimensional array whose elements must be
+@code{t} or @code{nil}.
 
-  ブールベクターのプリント表現は文字列と似ていますが、後に長さを記述した@samp{#&}で始まります。これに続く文字列定数は、ビットマップとして実際に内容を指定するブールベクターです
----
-文字列定数内のそれぞれの``文字''は8ビットを含み、これはブールベクターの次の8要素を指定します(1は@code{t}、0は@code{nil}です)。文字の最下位ビットが、ブールベクターの最下位のインデックスに対応しています。
+  The printed representation of a bool-vector is like a string, except that it
+begins with @samp{#&} followed by the length.  The string constant that
+follows actually specifies the contents of the bool-vector as a
+bitmap---each character in the string contains 8 bits, which specify the
+next 8 elements of the bool-vector (1 stands for @code{t}, and 0 for
+@code{nil}).  The least significant bits of the character correspond to the
+lowest indices in the bool-vector.
 
 @example
 (make-bool-vector 3 t)
@@ -964,9 +1326,13 @@ caseテーブル(@ref{Case Tables}を参照)。
 @end example
 
 @noindent
-@samp{C-g}の2進コードは111、@samp{C-@@}はコード0の文字なのでこの結果は理にかなっています。
+These results make sense, because the binary code for @samp{C-g} is 111 and
+@samp{C-@@} is the character with code 0.
 
-  長さが8の倍数でなければプリント表現には余分な要素が表示されますが、これらの余分な要素に意味はありません。たとえば以下の例では、最初の3ビットだけが使用されるので2つのブールベクターは等価です:
+  If the length is not a multiple of 8, the printed representation shows extra
+elements, but these extras really make no difference.  For instance, in the
+next example, the two bool-vectors are equal, because only the first 3 bits
+are used:
 
 @example
 (equal #&3"\377" #&3"\007")
@@ -974,9 +1340,12 @@ caseテーブル(@ref{Case Tables}を参照)。
 @end example
 
 @node Hash Table Type
-@subsection ハッシュテーブル型
+@subsection Hash Table Type
 
-    ハッシュテーブルは非常に高速な照合テーブルの一種で、キーを対応する値にマップするalistと似ていますがより高速です。ハッシュテーブルのプリント表現では、以下のようにハッシュテーブルのプロパティと内容を指定します:
+    A hash table is a very fast kind of lookup table, somewhat like an alist in
+that it maps keys to corresponding values, but much faster.  The printed
+representation of a hash table specifies its properties and contents, like
+this:
 
 @example
 (make-hash-table)
@@ -984,168 +1353,246 @@ caseテーブル(@ref{Case Tables}を参照)。
 @end example
 
 @noindent
-ハッシュテーブルについての詳細は@ref{Hash Tables}を参照してください。
+@xref{Hash Tables}, for more information about hash tables.
 
 @node Function Type
-@subsection 関数型
+@subsection Function Type
 
-  他のプログラミング言語の関数と同様、Lisp関数は実行可能なコードです。他の言語と異なり、Lispの関数はLispオブジェクトでもあります。Lispのコンパイルされていない関数はラムダ式
---- つまり1番目の要素がシンボル@code{lambda}であるリストです(@ref{Lambda Expressions}を参照)。
+  Lisp functions are executable code, just like functions in other programming
+languages.  In Lisp, unlike most languages, functions are also Lisp
+objects.  A non-compiled function in Lisp is a lambda expression: that is, a
+list whose first element is the symbol @code{lambda} (@pxref{Lambda
+Expressions}).
 
-  ほとんどのプログラミング言語では名前のない関数はありません。Lispでは関数に本質的な名前はありません。名前がなくてもラムダ式を関数として呼び出すことができます。これを強調するために、わたしたちはこれを@dfn{無名関数(anonymous
-function)}とも呼びます(@ref{Anonymous
-Functions}を参照)。Lispの名前つき関数は関数セルに有効な関数がセットされた単なるシンボルです(@ref{Defining
-Functions}を参照)。
+  In most programming languages, it is impossible to have a function without a
+name.  In Lisp, a function has no intrinsic name.  A lambda expression can
+be called as a function even though it has no name; to emphasize this, we
+also call it an @dfn{anonymous function} (@pxref{Anonymous Functions}).  A
+named function in Lisp is just a symbol with a valid function in its
+function cell (@pxref{Defining Functions}).
 
-  ほとんどの場合、関数はLispプログラム内のLisp式の名前が記述されたところで呼び出されます。しかし実行時に関数オブジェクトを構築または取得してから、プリミティブ関数@code{funcall}および@code{apply}により呼び出すことができます。@ref{Calling
-Functions}を参照してください。
+  Most of the time, functions are called when their names are written in Lisp
+expressions in Lisp programs.  However, you can construct or obtain a
+function object at run time and then call it with the primitive functions
+@code{funcall} and @code{apply}.  @xref{Calling Functions}.
 
 @node Macro Type
-@subsection マクロ型
+@subsection Macro Type
 
-  @dfn{Lispマクロ(Lisp
-macro)}はLisp言語を拡張するユーザー定義の構成です。これはオブジェクトとしてではなく関数のように表現されますが、引数の渡し方の意味が異なります。Lispマクロの形式はリストです。これは最初の要素が@code{macro}で、@sc{cdr}がLisp関数オブジェクト(@code{lambda}シンボルを含む)であるようなリストです。
+  A @dfn{Lisp macro} is a user-defined construct that extends the Lisp
+language.  It is represented as an object much like a function, but with
+different argument-passing semantics.  A Lisp macro has the form of a list
+whose first element is the symbol @code{macro} and whose @sc{cdr} is a Lisp
+function object, including the @code{lambda} symbol.
 
-  Lispマクロオブジェクトは通常、ビルトインの@code{defmacro}関数で定義されますが、@code{macro}で始まる任意のリストもEmacsにとってはマクロです。マクロを記述する方法の説明は@ref{Macros}を参照してください。
+  Lisp macro objects are usually defined with the built-in @code{defmacro}
+macro, but any list that begins with @code{macro} is a macro as far as Emacs
+is concerned.  @xref{Macros}, for an explanation of how to write a macro.
 
-  @strong{警告}: Lispマクロとキーボードマクロ(@ref{Keyboard
-Macros}を参照)は完全に別の物である。修飾なしで``マクロ''という単語を使用したときは、キーボードマクロではなくLispマクロのことを指す。
+  @strong{Warning}: Lisp macros and keyboard macros (@pxref{Keyboard Macros})
+are entirely different things.  When we use the word ``macro'' without
+qualification, we mean a Lisp macro, not a keyboard macro.
 
 @node Primitive Function Type
-@subsection プリミティブ関数型
+@subsection Primitive Function Type
 @cindex primitive function
 
-  @dfn{プリミティブ関数(primitive
-function)}とは、Cプログラミング言語で記述されたLispから呼び出せる関数です。プリミティブ関数は@dfn{subrs}や@dfn{ビルトイン関数(built-in
-functions)}とも呼ばれます(単語``subr''は``サブルーチン(subroutine)''が由来)。ほとんどのプリミティブ関数は、呼び出されたときにすべての引数を評価します。すべての引数を評価しないプリミティブ関数は@dfn{スペシャルフォーム(special
-form)}と呼ばれます(@ref{Special Forms}を参照)。
+  A @dfn{primitive function} is a function callable from Lisp but written in
+the C programming language.  Primitive functions are also called @dfn{subrs}
+or @dfn{built-in functions}.  (The word ``subr'' is derived from
+``subroutine''.)  Most primitive functions evaluate all their arguments when
+they are called.  A primitive function that does not evaluate all its
+arguments is called a @dfn{special form} (@pxref{Special Forms}).
 
-  呼び出す側からすれば、その関数がプリミティブ関数かどうかは問題になりません。しかしプリミティブ関数をLispで記述された関数で再定義した場合に問題になります。理由はそのプリミティブ関数がCコードから直接呼び出されているかもしれないからです。Lispから再定義した関数を呼び出すと新しい定義を使用するでしょうが、Cコードから呼び出すとビルトインの定義が使用されるでしょう。したがって、@strong{プリミティブ関数の再定義はしないでください}。
+  It does not matter to the caller of a function whether the function is
+primitive.  However, this does matter if you try to redefine a primitive
+with a function written in Lisp.  The reason is that the primitive function
+may be called directly from C code.  Calls to the redefined function from
+Lisp will use the new definition, but calls from C code may still use the
+built-in definition.  Therefore, @strong{we discourage redefinition of
+primitive functions}.
 
-  @dfn{関数(function)}という用語で、LispやCで記述されたすべてのEmacs関数を参照します。Lispで記述された関数についての情報は@ref{Function
-Type}を参照してください。
+  The term @dfn{function} refers to all Emacs functions, whether written in
+Lisp or C@.  @xref{Function Type}, for information about the functions
+written in Lisp.
 
-  プリミティブ関数に入力構文はなく、サブルーチン名とともにハッシュ表記でプリントします。
+  Primitive functions have no read syntax and print in hash notation with the
+name of the subroutine.
 
 @example
 @group
-(symbol-function 'car)          ; @r{そのシンボルの関数セルに}
-                                ;     @r{アクセスする}
+(symbol-function 'car)          ; @r{Access the function cell}
+                                ;   @r{of the symbol.}
      @result{} #<subr car>
-(subrp (symbol-function 'car))  ; @r{これはプリミティブ関数?}
-     @result{} t                ;    @r{そのとおり}
+(subrp (symbol-function 'car))  ; @r{Is this a primitive function?}
+     @result{} t                       ; @r{Yes.}
 @end group
 @end example
 
 @node Closure Type
-@subsection クロージャ関数型
+@subsection Closure Function Type
 
-@dfn{クロージャ(Closures)}とは関数の定義を関数の値に変換する際に生成される関数オブジェクトです。クロージャはバイトコンパイルされるLisp関数とインタープリターに解釈されるLisp関数の両方で使用されています。クロージャはLispコードのバイトコンパイル(@ref{Byte
-Compilation}を参照)によって生成されるか、あるいは単にlambdaをコンパイルせずに評価するだけで生成でき、その結果として関数が解釈されるのです。内部的にはクロージャはベクターとよく似ています。しかしクロージャが関数呼び出し内に見出された際には、評価プロセスによりこのデータ型は特別に処理されます。@ref{Closure
-Objects}を参照してください。
+@dfn{Closures} are function objects produced when turning a function
+definition into a function value.  Closures are used both for byte-compiled
+Lisp functions as well as for interpreted Lisp functions.  Closures can be
+produced by byte-compiling Lisp code (@pxref{Byte Compilation}) or simply by
+evaluating a lambda expression without compiling it, resulting in an
+interpreted function.  Internally, a closure is much like a vector; however,
+the evaluator handles this data type specially when it appears in a function
+call.  @xref{Closure Objects}.
 
-バイトコード関数オブジェクトのプリント表現と入力構文はベクターのものと似ていますが、開き角カッコ@samp{[}の前に@samp{#}があります。人間による使用を意図してプリントする際には、開カッコ@samp{(}の前に@samp{#f}が付加された特殊なリストとしてプリントされます。
+The printed representation and read syntax for a byte-code function object
+is like that for a vector, with an additional @samp{#} before the opening
+@samp{[}.  When printed for human consumption, it is printed as a special
+kind of list with an additional @samp{#f} before the opening @samp{(}.
 
 @node Record Type
-@subsection レコード型
+@subsection Record Type
 
-  @dfn{レコード(record)}は@code{vector}と似ていますが、最初の要素は@code{type-of}でリターンされる型を保持するために使用されます。レコードの主要目的はプログラマーがEmacsのビルトインではない新たな型を作成することを可能にすることです。
+  A @dfn{record} is much like a @code{vector}.  However, the first element is
+used to hold its type as returned by @code{type-of}.  The purpose of records
+is to allow programmers to create objects with new types that are not built
+into Emacs.
 
-  レコードに作用する関数については@ref{Records}を参照してください。
+  @xref{Records}, for functions that work with records.
 
 @node Type Descriptors
-@subsection 型記述子
+@subsection Type Descriptors
 
-  @dfn{型記述子(type
-descriptor)}は型に関する情報を保持する@code{record}です。レコードの1つ目のスロットは型を命名するシンボルでなければならず、@code{type-of}は@code{record}オブジェクトの型をリターンするためにこれに依存しています。他の型記述子スロットをEmacsは使用しません。これらをLisp拡張が使用するのは自由です。
+  A @dfn{type descriptor} is a @code{record} which holds information about a
+type.  The first slot in the record must be a symbol naming the type, and
+@code{type-of} relies on this to return the type of @code{record} objects.
+No other type descriptor slot is used by Emacs; they are free for use by
+Lisp extensions.
 
-@code{cl-structure-class}のインスタンスはすべて型記述子の例です。
+An example of a type descriptor is any instance of
+@code{cl-structure-class}.
 
 @node Autoload Type
-@subsection autoload型
+@subsection Autoload Type
 
-  @dfn{autoloadオブジェクト(autoload
-object)}は、最初の要素がシンボル@code{autoload}のリストです。これはシンボルの関数定義として保存され、実際の定義にたいする代替としての役割をもちます。autoloadオブジェクトは、必要な時にロードされるLispコードファイルの中で実際の定義を見つけることができることを宣言します。これにはファイル名と、それに加えて実際の定義についての他のいくつかの情報が含まれます。
+  An @dfn{autoload object} is a list whose first element is the symbol
+@code{autoload}.  It is stored as the function definition of a symbol, where
+it serves as a placeholder for the real definition.  The autoload object
+says that the real definition is found in a file of Lisp code that should be
+loaded when necessary.  It contains the name of the file, plus some other
+information about the real definition.
 
-  ファイルのロード後、そのシンボルはautoloadオブジェクトではない新しい関数定義をもつはずです。新しい定義は、最初からそこにあったかのように呼び出されます。ユーザーの観点からは関数呼び出しは期待された動作、つまりロードされたファイル内の関数定義を使用します。
+  After the file has been loaded, the symbol should have a new function
+definition that is not an autoload object.  The new definition is then
+called as if it had been there to begin with.  From the user's point of
+view, the function call works as expected, using the function definition in
+the loaded file.
 
-  autoloadオブジェクトは通常、シンボルの関数セルにオブジェクトを保存する関数@code{autoload}により作成されます。詳細は@ref{Autoload}を参照してください。
+  An autoload object is usually created with the function @code{autoload},
+which stores the object in the function cell of a symbol.  @xref{Autoload},
+for more details.
 
 @node Finalizer Type
-@subsection ファイナライザー型
+@subsection Finalizer Type
 
-  @dfn{ファイナライザーオブジェクト(finalizer
-object)}は、オブジェクトがもはや必要なくなった後のLispコードのクリーンアップを助けます。ファイナライザーは、Lisp関数オブジェクトを保持します。ガーベージコレクションをパス(通過)した後にファイナライザーオブジェクトが到達不能になったとき、Emacsはそのファイナライザーに関連付けられた関数オブジェクトを呼び出します。ファイナライザーの到達可否の判定時、もしかしてファイナライザーオブジェクト自身が参照を離さないのではないかと心配することなくファイナライザーを使用できるように、Emacsはファイナラーオブジェト自身からの参照は勘定しません。
+  A @dfn{finalizer object} helps Lisp code clean up after objects that are no
+longer needed.  A finalizer holds a Lisp function object.  When a finalizer
+object becomes unreachable after a garbage collection pass, Emacs calls the
+finalizer's associated function object.  When deciding whether a finalizer
+is reachable, Emacs does not count references from finalizer objects
+themselves, allowing you to use finalizers without having to worry about
+accidentally capturing references to finalized objects themselves.
 
-ファイナラーザー内でのエラーは@code{*Messages*}にプリントされます。その関数が失敗しても、Emacsは与えられたファイナライザーオブジェクトに関連付けられた関数を正確に1回実行します。
+Errors in finalizers are printed to @code{*Messages*}.  Emacs runs a given
+finalizer object's associated function exactly once, even if that function
+fails.
 
 @defun make-finalizer function
-@var{function}を実行するファイナライザーを作成する。@var{function}はガーベージコレクション後、リターンされたファイナライザーオブジェクトが到達不能になったときに実行される。そのファイナライザーオブジェクトがファイナライザーオブジェクトからの参照を通じてのみ到達可能なら、@var{function}の実行是非の判断時の目的にたいして、それは到達可能とみなされない。@var{function}はファイナライザーオブジェクトごとに1回実行される。
+Make a finalizer that will run @var{function}.  @var{function} will be
+called after garbage collection when the returned finalizer object becomes
+unreachable.  If the finalizer object is reachable only through references
+from finalizer objects, it does not count as reachable for the purpose of
+deciding whether to run @var{function}.  @var{function} will be run once per
+finalizer object.
 @end defun
 
 @node Editing Types
-@section 編集用の型
+@section Editing Types
 @cindex editing types
 
-  前セクションの型は一般的なプログラミング目的のために使用され、これらの型のほとんどはLisp方言のほとんどで一般的です。Emacs
-Lispは編集に関する目的のために、いくつかの追加のデータ型を提供します。
+  The types in the previous section are used for general programming purposes,
+and most of them are common to most Lisp dialects.  Emacs Lisp provides
+several additional data types for purposes connected with editing.
 
 @menu
-* Buffer Type::              編集のための基本オブジェクト。
-* Marker Type::              バッファー内の位置。
-* Window Type::              バッファーはウィンドウ内に表示される。
-* Frame Type::               ウィンドウはフレームを細分化する。
-* Terminal Type::            フレームを表示する端末デバイス。
-* Window Configuration Type::  フレームが細分化された方法を記録する。
-* Frame Configuration Type::  すべてのフレームの状態を記録する。
-* Process Type::             背後のOS上で実行されるEmacsのサブプロセス。
-* Thread Type::              Emacs Lispの実行スレッド。
-* Mutex Type::               スレッド同期のための排他ロック。
-* Condition Variable Type::  スレッド同期のための状態変数。
-* Stream Type::              文字の受信と送信。
-* Keymap Type::              どのキーストロークがどの関数を呼び出すか。
-* Overlay Type::             オーバーレイが表示される方法。
-* Font Type::                テキストを表示するフォント。
-* Xwidget Type::             埋め込み可能なウィジェット。
+* Buffer Type::              The basic object of editing.
+* Marker Type::              A position in a buffer.
+* Window Type::              Buffers are displayed in windows.
+* Frame Type::               Windows subdivide frames.
+* Terminal Type::            A terminal device displays frames.
+* Window Configuration Type::  Recording the way a frame is subdivided.
+* Frame Configuration Type::  Recording the status of all frames.
+* Process Type::             A subprocess of Emacs running on the underlying 
+                               OS.
+* Thread Type::              A thread of Emacs Lisp execution.
+* Mutex Type::               An exclusive lock for thread synchronization.
+* Condition Variable Type::  Condition variable for thread synchronization.
+* Stream Type::              Receive or send characters.
+* Keymap Type::              What function a keystroke invokes.
+* Overlay Type::             How an overlay is represented.
+* Font Type::                Fonts for displaying text.
+* Xwidget Type::             Embeddable widgets.
 @end menu
 
 @node Buffer Type
-@subsection バッファー型
+@subsection Buffer Type
 
-  @dfn{バッファー(buffer)}とは、編集されるテキストを保持するオブジェクトです(@ref{Buffers}を参照)。ほとんどのバッファーはディスクファイル(@ref{Files}を参照)の内容を保持するので編集できますが、他の目的のために使用されるものもいくつかあります。ほとんどのバッファーはユーザーにより閲覧されることも意図しているので、いつかはウィンドウ内(@ref{Windows}を参照)に表示されます。しかしバッファーはウィンドウに表示される必要はありません。バッファーはそれぞれ、@dfn{ポイント(point)}と呼ばれる位置指定をもちます(@ref{Positions}を参照)。ほとんどの編集コマンドは、カレントバッファー内のポイントに隣接する内容を処理します。常に1つのバッファーが@dfn{カレントバッファー(current
-buffer)}です。
+  A @dfn{buffer} is an object that holds text that can be edited
+(@pxref{Buffers}).  Most buffers hold the contents of a disk file
+(@pxref{Files}) so they can be edited, but some are used for other
+purposes.  Most buffers are also meant to be seen by the user, and therefore
+displayed, at some time, in a window (@pxref{Windows}).  But a buffer need
+not be displayed in any window.  Each buffer has a designated position
+called @dfn{point} (@pxref{Positions}); most editing commands act on the
+contents of the current buffer in the neighborhood of point.  At any time,
+one buffer is the @dfn{current buffer}.
 
-  バッファーの内容は文字列によく似ていますが、バッファーはEmacs
-Lispの文字列と同じようには使用されず、利用可能な操作は異なります。たとえば文字列にテキストを挿入するためには部分文字列の結合が必要であり、結果が完全に新しい文字列オブジェクトになるのにたいして。バッファーでは既存のバッファーに効率的にテキストを挿入してバッファーの内容を変更できます。
+  The contents of a buffer are much like a string, but buffers are not used
+like strings in Emacs Lisp, and the available operations are different.  For
+example, you can insert text efficiently into an existing buffer, altering
+the buffer's contents, whereas inserting text into a string requires
+concatenating substrings, and the result is an entirely new string object.
 
-  標準的なEmacs関数の多くは、カレントバッファー内の文字を操作したりテストするためのものです。このマニュアルはこれらの関数の説明のために、1つのチャプターを設けています(@ref{Text}を参照)。
+  Many of the standard Emacs functions manipulate or test the characters in
+the current buffer; a whole chapter in this manual is devoted to describing
+these functions (@pxref{Text}).
 
-  他のデータ構造のいくつかは、各バッファーに関連付けられています:
+  Several other data structures are associated with each buffer:
 
 @itemize @bullet
 @item
-ローカル構文テーブル(@ref{Syntax Tables}を参照)。
+a local syntax table (@pxref{Syntax Tables});
 
 @item
-ローカルキーマップ(@ref{Keymaps}を参照)。
+a local keymap (@pxref{Keymaps}); and,
 
 @item
-バッファーローカルな変数バインディングのリスト(@ref{Buffer-Local Variables}を参照)。
+a list of buffer-local variable bindings (@pxref{Buffer-Local Variables}).
 
 @item
-オーバーレイ(@ref{Overlays}を参照)。
+overlays (@pxref{Overlays}).
 
 @item
-バッファー内のテキストにたいするテキストプロパティ(@ref{Text Properties}を参照)。
+text properties for the text in the buffer (@pxref{Text Properties}).
 @end itemize
 
 @noindent
-ローカルキーマップと変数リストは、グローバルなバインディングや値を個別にオーバーライドするためのエントリーを含みます。これらは実際にプログラムを変更することなく、異なるバッファーでプログラムの振る舞いをカスタマイズするために使用されます。
+The local keymap and variable list contain entries that individually
+override global bindings or values.  These are used to customize the
+behavior of programs in different buffers, without actually changing the
+programs.
 
-  バッファーは@dfn{インダイレクト(indirect: 間接)} --- つまり他のバッファーとテキストを共有するがそれぞれ別に表示する ---
-かもしれません。@ref{Indirect Buffers}を参照してください。
+  A buffer may be @dfn{indirect}, which means it shares the text of another
+buffer, but presents it differently.  @xref{Indirect Buffers}.
 
-  バッファーに入力構文はありません。バッファーはバッファー名を含むハッシュ表記でプリントされます。
+  Buffers have no read syntax.  They print in hash notation, showing the
+buffer name.
 
 @example
 @group
@@ -1155,13 +1602,16 @@ Lispの文字列と同じようには使用されず、利用可能な操作は�
 @end example
 
 @node Marker Type
-@subsection マーカー型
+@subsection Marker Type
 
-  @dfn{マーカー(marker)}は特定のバッファー内の位置を表します。したがってマーカーには2つの内容 --- 1つはバッファー、もう1つは位置
----
-をもちます。バッファーのテキストの変更では、マーカーが常にバッファー内の同じ2つの文字の間に位置することを確実にするために、必要に応じて自動的に位置の値が再配置されます。
+  A @dfn{marker} denotes a position in a specific buffer.  Markers therefore
+have two components: one for the buffer, and one for the position.  Changes
+in the buffer's text automatically relocate the position value as necessary
+to ensure that the marker always points between the same two characters in
+the buffer.
 
-  マーカーは入力構文をもちません。マーカーはカレントの文字位置とそのバッファー名を与える、ハッシュ表記でプリントされます。
+  Markers have no read syntax.  They print in hash notation, giving the
+current character position and the name of the buffer.
 
 @example
 @group
@@ -1170,21 +1620,29 @@ Lispの文字列と同じようには使用されず、利用可能な操作は�
 @end group
 @end example
 
-マーカーのテスト、作成、コピー、移動の方法についての情報は@ref{Markers}を参照してください。
+@xref{Markers}, for information on how to test, create, copy, and move
+markers.
 
 @node Window Type
-@subsection ウィンドウ型
+@subsection Window Type
 
-  @dfn{ウィンドウ(window)}はEmacsがバッファーを表示するために使用するスクリーンの範囲を記述します。すべての生きたウィンドウ(@ref{Basic
-Windows}を参照)には関連付けられた1つのバッファーがあり、バッファーの内容はそのウィンドウに表示されます。それとは対照的に、あるバッファーは1つのウィンドウに表示されるか表示されないか、それとも複数のウィンドウに表示されるかもしれません。ウィンドウはスクリーン上でフレームにグループ化されます。それらのウィンドウはただ1つのフレームに属します。@ref{Frame
-Type}を参照してください。
+  A @dfn{window} describes the portion of the screen that Emacs uses to
+display buffers.  Every live window (@pxref{Basic Windows}) has one
+associated buffer, whose contents appear in that window.  By contrast, a
+given buffer may appear in one window, no window, or several windows.
+Windows are grouped on the screen into frames; each window belongs to one
+and only one frame.  @xref{Frame Type}.
 
-  同時に複数のウィンドウが存在するかもしれませんが、常に1つのウィンドウが@dfn{選択されたウィンドウ(selected
-window)}になります(@ref{Selecting
-Windows}を参照)。Emacsがコマンドにたいして準備できているときは、(通常は)カーソルが表示されるウィンドウが選択されたウィンドウです。選択されたウィンドウは、通常はカレントバッファー(@ref{Current
-Buffer}を参照)を表示しますがこれは必須ではありません。
+  Though many windows may exist simultaneously, at any time one window is
+designated the @dfn{selected window} (@pxref{Selecting Windows}).  This is
+the window where the cursor is (usually) displayed when Emacs is ready for a
+command.  The selected window usually displays the current buffer
+(@pxref{Current Buffer}), but this is not necessarily the case.
 
-  ウィンドウは入力構文をもちません。ウィンドウはウィンドウ番号と表示されているバッファー名を与える、ハッシュ表記でプリントされます。与えられたウィンドウに表示されるバッファーは頻繁に変更されるかもしれないので、一意にウィンドウを識別するためにウィンドウ番号が存在します。
+  Windows have no read syntax.  They print in hash notation, giving the window
+number and the name of the buffer being displayed.  The window numbers exist
+to identify windows uniquely, since the buffer displayed in any given window
+can change frequently.
 
 @example
 @group
@@ -1193,14 +1651,17 @@ Buffer}を参照)を表示しますがこれは必須ではありません。
 @end group
 @end example
 
-  ウィンドウに作用する関数の説明は@ref{Windows}を参照してください。
+  @xref{Windows}, for a description of the functions that work on windows.
 
 @node Frame Type
-@subsection フレーム型
+@subsection Frame Type
 
-  @dfn{フレーム(frame)}とは１つ以上のEmacsウィンドウを含むスクリーン領域です。スクリーン領域を参照するためにEmacsが使用するLispオブジェクトを指す場合にも``フレーム''という用語を使用します。
+  A @dfn{frame} is a screen area that contains one or more Emacs windows; we
+also use the term ``frame'' to refer to the Lisp object that Emacs uses to
+refer to the screen area.
 
-  フレームは入力構文をもちません。フレームはフレームのタイトルとメモリー内のアドレス(フレームを一意に識別するのに有用)を与えるハッシュ表記でプリントされます。
+  Frames have no read syntax.  They print in hash notation, giving the frame's
+title, plus its address in core (useful to identify the frame uniquely).
 
 @example
 @group
@@ -1209,15 +1670,17 @@ Buffer}を参照)を表示しますがこれは必須ではありません。
 @end group
 @end example
 
-  フレームに作用する関数の説明は@ref{Frames}を参照してください。
+  @xref{Frames}, for a description of the functions that work on frames.
 
 @node Terminal Type
-@subsection 端末型
+@subsection Terminal Type
 @cindex terminal type
 
-  @dfn{端末(terminal)}は1つ以上のEmacsフレーム(@ref{Frame Type}を参照)を表示する能力があるデバイスです。
+  A @dfn{terminal} is a device capable of displaying one or more Emacs frames
+(@pxref{Frame Type}).
 
-  端末は入力構文をもちません。端末はその端末の順序番号とTTYデバイスファイル名を与える、ハッシュ表記でプリントされます。
+  Terminals have no read syntax.  They print in hash notation giving the
+terminal's ordinal number and its TTY device file name.
 
 @example
 @group
@@ -1229,33 +1692,44 @@ Buffer}を参照)を表示しますがこれは必須ではありません。
 @c FIXME: add an xref to where terminal-related primitives are described.
 
 @node Window Configuration Type
-@subsection ウィンドウ構成型
+@subsection Window Configuration Type
 @cindex window layout in a frame
 
-  @dfn{ウィンドウ構成(window
-configuration)}はフレーム内のウィンドウの位置とサイズ、内容についての情報を保持します。これにより後で同じウィンドウ配置を再作成できます。
+  A @dfn{window configuration} stores information about the positions, sizes,
+and contents of the windows in a frame, so you can recreate the same
+arrangement of windows later.
 
-  ウィンドウ構成は入力構文をもちません。ウィンドウ構成のプリント表現は@samp{#<window-configuration>}のようになります。ウィンドウ構成に関連するいくつかの関数の説明は@ref{Window
-Configurations}を参照してください。
+  Window configurations do not have a read syntax; their print syntax looks
+like @samp{#<window-configuration>}.  @xref{Window Configurations}, for a
+description of several functions related to window configurations.
 
 @node Frame Configuration Type
-@subsection フレーム構成型
+@subsection Frame Configuration Type
 @cindex screen layout
 @cindex window layout, all frames
 
-  @dfn{フレーム構成(frame
-configuration)}はすべてのフレーム内のウィンドウの位置とサイズ、内容についての情報を保持します。これは基本型ではありません ---
-実際のところ、これは@sc{car}が@code{frame-configuration}で@sc{cdr}がalistであるようなリストです。それぞれのalist要素は、その要素の@sc{car}に示される1つのフレームを記述します。
+  A @dfn{frame configuration} stores information about the positions, sizes,
+and contents of the windows in all frames.  It is not a primitive type---it
+is actually a list whose @sc{car} is @code{frame-configuration} and whose
+@sc{cdr} is an alist.  Each alist element describes one frame, which appears
+as the @sc{car} of that element.
 
-  フレーム構成に関連するいくつかの関数の説明は@ref{Frame Configurations}を参照してください。
+  @xref{Frame Configurations}, for a description of several functions related
+to frame configurations.
 
 @node Process Type
-@subsection プロセス型
+@subsection Process Type
 
-  @dfn{プロセス(process)}という単語は、通常は実行中のプログラムを意味します。Emacs自身はこの種のプロセス内で実行されます。しかしEmacs
-Lispでは、プロセスとはEmacsプロセスにより作成されたサブプロセスを表すLispオブジェクトです。シェル、GDB、ftp、コンパイラーなどのプログラムは、Emacsのサブプロセスとして実行されEmacsの能力を拡張します。さらに操作を行なうために、EmacsサブプロセスはEmacsからテキスト入力を受け取り、テキスト出力をEmacsにリターンします。Emacsがサブプロセスにシグナルを送ることもできます。
+  The word @dfn{process} usually means a running program.  Emacs itself runs
+in a process of this sort.  However, in Emacs Lisp, a process is a Lisp
+object that designates a subprocess created by the Emacs process.  Programs
+such as shells, GDB, ftp, and compilers, running in subprocesses of Emacs,
+extend the capabilities of Emacs.  An Emacs subprocess takes textual input
+from Emacs and returns textual output to Emacs for further manipulation.
+Emacs can also send signals to the subprocess.
 
-  プロセスオブジェクトは入力構文をもちません。プロセスオブジェクトはプロセス名を与えるハッシュ表記でプリントされます。
+  Process objects have no read syntax.  They print in hash notation, giving
+the name of the process:
 
 @example
 @group
@@ -1264,15 +1738,20 @@ Lispでは、プロセスとはEmacsプロセスにより作成されたサブ�
 @end group
 @end example
 
-プロセスの作成、削除、プロセスに関する情報のリターン、入力やシグナルの送信、出力の受信を行なう関数についての情報は@ref{Processes}を参照してください。
+@xref{Processes}, for information about functions that create, delete,
+return information about, send input or signals to, and receive output from
+processes.
 
 @node Thread Type
-@subsection スレッド型
+@subsection Thread Type
 
-  Emacsでの@dfn{スレッド(thread)}とはEmacs
-Lispの実行スレッドとは別のスレッドを表します。これは自身のLispプログラムを実行して、自身のカレントバッファーを所有して、そのスレッドにロックされたサブプロセスをもつことができます(サブプロセスの出力を受け取ることができるのはそのスレッドのみ)。@ref{Threads}を参照してください。
+  A @dfn{thread} in Emacs represents a separate thread of Emacs Lisp
+execution.  It runs its own Lisp program, has its own current buffer, and
+can have subprocesses locked to it, i.e.@: subprocesses whose output only
+this thread can accept.  @xref{Threads}.
 
-  スレッドオブジェクトは入力構文をもちません。スレッドオブジェクトは(名前を与えられていれば)スレッド名を与えるハッシュ表記かメモリー内のアドレスでプリントされます。
+  Thread objects have no read syntax.  They print in hash notation, giving the
+name of the thread (if it has been given a name) or its address in core:
 
 @example
 @group
@@ -1282,11 +1761,13 @@ Lispの実行スレッドとは別のスレッドを表します。これは自�
 @end example
 
 @node Mutex Type
-@subsection ミューテックス型
+@subsection Mutex Type
 
-  @dfn{ミューテックス(mutex)}とはスレッド間で同期をとるためにスレッドが所有と非所有することができる排他ロックです。@ref{Mutexes}を参照してください。
+  A @dfn{mutex} is an exclusive lock that threads can own and disown, in order
+to synchronize between them.  @xref{Mutexes}.
 
-  ミューテックスオブジェクトは入力構文をもちません。プロセスオブジェクトは(名前を与えられていれば)ミューテックス名を与えるハッシュ表記かメモリー内のアドレスでプリントされます。
+  Mutex objects have no read syntax.  They print in hash notation, giving the
+name of the mutex (if it has been given a name) or its address in core:
 
 @example
 @group
@@ -1298,12 +1779,16 @@ Lispの実行スレッドとは別のスレッドを表します。これは自�
 @end example
 
 @node Condition Variable Type
-@subsection 状態変数型
+@subsection Condition Variable Type
 
-  @dfn{状態変数(condition
-variable)}はミューテックスがサポートするよりも複雑な非同期スレッドのためのデバイスです。スレッドは別のスレッドが状態を通知したときに再開するように状態変数を待機することができます。
+  A @dfn{condition variable} is a device for a more complex thread
+synchronization than the one supported by a mutex.  A thread can wait on a
+condition variable, to be woken up when some other thread notifies the
+condition.
 
-  状態変数オブジェクトは入力構文をもちません。プロセスオブジェクトは(名前が与えられていれば)状態変数の名前を与えるハッシュ表記かメモリー内のアドレスでプリントされます。
+  Condition variable objects have no read syntax.  They print in hash
+notation, giving the name of the condition variable (if it has been given a
+name) or its address in core:
 
 @example
 @group
@@ -1313,76 +1798,104 @@ variable)}はミューテックスがサポートするよりも複雑な非同�
 @end example
 
 @node Stream Type
-@subsection ストリーム型
+@subsection Stream Type
 
-  @dfn{ストリーム(stream)}とは、文字のソースまたはシンクとして ---
-つまり入力として文字を供給したり、出力として文字を受け入れるために使用できるオブジェクトです。多くの異なるタイプ ---
-マーカー、バッファー、文字列、関数をこの方法で使用できます。ほとんどの場合、入力ストリーム(文字列ソース)はキーボード、バッファー、ファイルから文字を受け取り、出力ストリーム(文字シンク)は文字を@file{*Help*}バッファーのようなバッファーやエコーエリアに文字を送ります。
+  A @dfn{stream} is an object that can be used as a source or sink for
+characters---either to supply characters for input or to accept them as
+output.  Many different types can be used this way: markers, buffers,
+strings, and functions.  Most often, input streams (character sources)
+obtain characters from the keyboard, a buffer, or a file, and output streams
+(character sinks) send characters to a buffer, such as a @file{*Help*}
+buffer, or to the echo area.
 
-  オブジェクト@code{nil}は、他の意味に加えてストリームとして使用されることがあります。@code{nil}は変数@code{standard-input}や@code{standard-output}の値を表します。オブジェクト@code{t}も入力としてミニバッファー(@ref{Minibuffers}を参照)、出力としてエコーエリア(@ref{The
-Echo Area}を参照)の使用を指定するストリームになります。
+  The object @code{nil}, in addition to its other meanings, may be used as a
+stream.  It stands for the value of the variable @code{standard-input} or
+@code{standard-output}.  Also, the object @code{t} as a stream specifies
+input using the minibuffer (@pxref{Minibuffers}) or output in the echo area
+(@pxref{The Echo Area}).
 
-  ストリームは特別なプリント表現や入力構文をもたず、それが何であれそれらの基本型としてプリントされます。
+  Streams have no special printed representation or read syntax, and print as
+whatever primitive type they are.
 
-  パース関数およびプリント関数を含む、ストリームに関連した関数の説明は@ref{Read and Print}を参照してください。
+  @xref{Read and Print}, for a description of functions related to streams,
+including parsing and printing functions.
 
 @node Keymap Type
-@subsection キーマップ型
+@subsection Keymap Type
 
-  @dfn{キーマップ(keymap)}はユーザーがタイプした文字をコマンドにマップします。このマップはユーザーのコマンド入力が実行される方法を制御します。キーマップは、実際には@sc{car}がシンボル@code{keymap}であるようなリストです。
+  A @dfn{keymap} maps keys typed by the user to commands.  This mapping
+controls how the user's command input is executed.  A keymap is actually a
+list whose @sc{car} is the symbol @code{keymap}.
 
-  キーマップの作成、プレフィクスキーの処理、ローカルキーマップやグローバルキーマップ、キーバインドの変更についての情報は@ref{Keymaps}を参照してください。
+  @xref{Keymaps}, for information about creating keymaps, handling prefix
+keys, local as well as global keymaps, and changing key bindings.
 
 @node Overlay Type
-@subsection オーバーレイ型
+@subsection Overlay Type
 
-  @dfn{オーバーレイ(overlay)}はバッファーの一部に適用するプロパティを指定します。それぞれのオーバーレイはバッファーの指定された範囲に適用され、プロパティリスト(プロパティ名と値が交互に記述された要素のリスト)を含みます。オーバーレイプロパティは、バッファーの指定された一部を、一時的に異なるスタイルで表示するために使用されます。オーバーレイは入力構文をもたず、バッファー名と範囲の位置を与えるハッシュ表記でプリントされます。
+  An @dfn{overlay} specifies properties that apply to a part of a buffer.
+Each overlay applies to a specified range of the buffer, and contains a
+property list (a list whose elements are alternating property names and
+values).  Overlay properties are used to present parts of the buffer
+temporarily in a different display style.  Overlays have no read syntax, and
+print in hash notation, giving the buffer name and range of positions.
 
-  オーバーレイを作成したり使用する方法についての情報は@ref{Overlays}を参照してください。
+  @xref{Overlays}, for information on how you can create and use overlays.
 
 @node Font Type
-@subsection フォント型
+@subsection Font Type
 
-  @dfn{font}はグラフィカルな端末上のテキストを表示する方法を指定します。実際には異なる3つのフォント型 ---
-@dfn{フォントオブジェクト(font objects)}、@dfn{フォントスペック(font
-specs)}、@dfn{フォントエンティティー(font entities)} ---
-が存在します。これらは入力構文をもちません。これらのプリント構文は@samp{#<font-object>}、@samp{#<font-spec>}、@samp{#<font-entity>}のようになります。これらのLispオブジェクトの説明は@ref{Low-Level
-Font}を参照してください。
+  A @dfn{font} specifies how to display text on a graphical terminal.  There
+are actually three separate font types---@dfn{font objects}, @dfn{font
+specs}, and @dfn{font entities}---each of which has slightly different
+properties.  None of them have a read syntax; their print syntax looks like
+@samp{#<font-object>}, @samp{#<font-spec>}, and @samp{#<font-entity>}
+respectively.  @xref{Low-Level Font}, for a description of these Lisp
+objects.
 
 @node Xwidget Type
-@subsection Xwidget型
+@subsection Xwidget Type
 @cindex xwidget type
 @cindex xwidget-view type
 
-  @dfn{xwidget}とはバッファー内に埋め込みができる、ウェブブラウザのような特別な表示要素のことです。xwidgetを表示しているウィンドウはそれぞれ、@dfn{xwidgetビュー(xwidget
-view)}ももつことができます。Xウィンドウにおいては、ウィジェットの表示に使用される単一のウィンドウに相当するのがxwidgetビューです。
+  An @dfn{xwidget} is a special display element, such as a web browser, that
+can be embedded inside a buffer.  Each window that displays an xwidget will
+also have an @dfn{xwidget view}, which on X-Windows corresponds to a single
+X window used to display the widget.
 
-これらのオブジェクトはいずれも読み取りができません。プリント構文はそれぞれ@samp{#<xwidget>}、@samp{#<xwidget-view>}のようになります。xwidgetに関する詳細については@ref{Xwidgets}を参照してください。
+Neither of these objects are readable; their print syntaxes look like
+@samp{#<xwidget>} and @samp{#<xwidget-view>}, respectively.
+@xref{Xwidgets}, for a more detailed description of xwidgets.
 
 @node Circular Objects
-@section 循環オブジェクトの読み取り構文
+@section Read Syntax for Circular Objects
 @cindex circular structure, read syntax
 @cindex shared structure, read syntax
 @cindex @samp{#@var{n}=} read syntax
 @cindex @samp{#@var{n}#} read syntax
 
-  複雑なLispオブジェクトでの共有された構造や循環する構造を表すために、リーダー構成@samp{#@var{n}=}と@samp{#@var{n}#}を使用することができます。
+  To represent shared or circular structures within a complex of Lisp objects,
+you can use the reader constructs @samp{#@var{n}=} and @samp{#@var{n}#}.
 
-  後でオブジェクトを参照するには、オブジェクトの前で@code{#@var{n}=}を使用します。その後で、他の場所にある同じオブジェクトを参照するために、@code{#@var{n}#}を使用することができます。ここで@var{n}は任意の整数です。たとえば以下は、1番目の要素が3番目の要素にも繰り替えされるリストを作成する方法です:
+  Use @code{#@var{n}=} before an object to label it for later reference;
+subsequently, you can use @code{#@var{n}#} to refer the same object in
+another place.  Here, @var{n} is some integer.  For example, here is how to
+make a list in which the first element recurs as the third element:
 
 @example
 (#1=(a) b #1#)
 @end example
 
 @noindent
-これは、以下のような通常の構文とは異なります
+This differs from ordinary syntax such as this
 
 @example
 ((a) b (a))
 @end example
 
 @noindent
-これは1番目の要素と3番目の要素がそっくりなリストですが、これらは同じLispオブジェクトではありません。以下で違いを見ることができます:
+which would result in a list whose first and third elements look alike but
+are not the same Lisp object.  This shows the difference:
 
 @example
 (prog1 nil
@@ -1394,14 +1907,16 @@ view)}ももつことができます。Xウィンドウにおいては、ウィ�
      @result{} nil
 @end example
 
-  ``要素''として自身を含むような循環する構造を作成するために、同じ構文を使用できます。以下は例です:
+  You can also use the same syntax to make a circular structure, which appears
+as an element within itself.  Here is an example:
 
 @example
 #1=(a #1#)
 @end example
 
 @noindent
-これは2番目の要素がそのリスト自身であるリストを作成します。これが実際にうまくいくのか、以下で確認できます:
+This makes a list whose second element is the list itself.  Here's how you
+can see that it really works:
 
 @example
 (prog1 nil
@@ -1410,18 +1925,26 @@ view)}ももつことができます。Xウィンドウにおいては、ウィ�
      @result{} t
 @end example
 
-  変数@code{print-circle}を非@code{nil}値にバインドした場合、Lispプリンターは、循環および共有されるLispオブジェクトを記録するこの構文を生成することができます。@ref{Output
-Variables}を参照してください。
+  The Lisp printer can produce this syntax to record circular and shared
+structure in a Lisp object, if you bind the variable @code{print-circle} to
+a non-@code{nil} value.  @xref{Output Variables}.
 
 @node Type Predicates
-@section 型のための述語
+@section Type Predicates
 @cindex type checking
 @kindex wrong-type-argument
 
-  関数が呼び出されたとき、Emacs
-Lispインタープリター自身はその関数に渡された実際の引数の型チェックは行ないません。それが行なえないのは、Lispにおける関数の引数は他のプログラミング言語のようなデータ型宣言をもたないからです。したがって実際の引数が、その関数が使用できる型に属するかどうかをテストするのは、それぞれの関数に任されています。
+  The Emacs Lisp interpreter itself does not perform type checking on the
+actual arguments passed to functions when they are called.  It could not do
+so, since function arguments in Lisp do not have declared data types, as
+they do in other programming languages.  It is therefore up to the
+individual function to test whether each actual argument belongs to a type
+that the function can use.
 
-  すべてのビルトイン関数は適切なときに実際の引数の型チェックを行い、引数の型が違う場合は@code{wrong-type-argument}エラーをシグナルします。たとえば以下は、@code{+}の引数に@code{+}が扱うことができない引数を渡したとき何が起こるかの例です:
+  All built-in functions do check the types of their actual arguments when
+appropriate, and signal a @code{wrong-type-argument} error if an argument is
+of the wrong type.  For example, here is what happens if you pass an
+argument to @code{+} that it cannot handle:
 
 @example
 @group
@@ -1432,189 +1955,207 @@ Lispインタープリター自身はその関数に渡された実際の引数�
 
 @cindex type predicates
 @cindex testing types
-  異なる型にたいして異なる処理をプログラムに行なわせる場合は、明示的に型チェックを行なわなければなりません。オブジェクトの型をチェックするもっとも一般的な方法は@dfn{型述語(type
-predicate)}関数の呼び出しです。Emacsはそれぞれの型にたいする型述語をもち、組み合わされた型にたいする述語もあります。
+  If you want your program to handle different types differently, you must do
+explicit type checking.  The most common way to check the type of an object
+is to call a @dfn{type predicate} function.  Emacs has a type predicate for
+each type, as well as some predicates for combinations of types.
 
-  型述語関数は1つの引数をとり、その引数が適切な型であれば@code{t}、そうでなければ@code{nil}をリターンします。述語関数にたいする一般的なLisp慣習にしたがい、ほとんどの型述語の名前は@samp{p}で終わります。
+  A type predicate function takes one argument; it returns @code{t} if the
+argument belongs to the appropriate type, and @code{nil} otherwise.
+Following a general Lisp convention for predicate functions, most type
+predicates' names end with @samp{p}.
 
-  以下はリストにたいしてチェックを行なう述語@code{listp}と、シンボルにたいしてチェックを行なう述語@code{symbolp}の例です。
+  Here is an example which uses the predicates @code{listp} to check for a
+list and @code{symbolp} to check for a symbol.
 
 @example
 (defun add-on (x)
   (cond ((symbolp x)
-         ;; XがシンボルならLISTにputする
+         ;; If X is a symbol, put it on LIST.
          (setq list (cons x list)))
         ((listp x)
-         ;; Xがリストならその要素をLISTに追加
+         ;; If X is a list, add its elements to LIST.
          (setq list (append x list)))
         (t
-         ;; シンボルとリストだけを処理する
+         ;; We handle only symbols and lists.
          (error "Invalid argument %s in add-on" x))))
 @end example
 
-  以下のテーブルは事前定義された型述語(アルファベット順)と、さらに情報を得るためのリファレンスです。
+  Here is a table of predefined type predicates, in alphabetical order, with
+references to further information.
 
 @table @code
 @item atom
-@ref{List-related Predicates, atom}を参照のこと。
+@xref{List-related Predicates, atom}.
 
 @item arrayp
-@ref{Array Functions, arrayp}を参照のこと。
+@xref{Array Functions, arrayp}.
 
 @item bignump
-@ref{Predicates on Numbers, bignump}を参照のこと。
+@xref{Predicates on Numbers, bignump}.
 
 @item bool-vector-p
-@ref{Bool-Vectors, bool-vector-p}を参照のこと。
+@xref{Bool-Vectors, bool-vector-p}.
 
 @item booleanp
-@ref{nil and t, booleanp}を参照のこと。
+@xref{nil and t, booleanp}.
 
 @item bufferp
-@ref{Buffer Basics, bufferp}を参照のこと。
+@xref{Buffer Basics, bufferp}.
 
 @item byte-code-function-p
-@ref{Closure Type, byte-code-function-p}を参照のこと。
+@xref{Closure Type, byte-code-function-p}.
 
 @item case-table-p
-@ref{Case Tables, case-table-p}を参照のこと。
+@xref{Case Tables, case-table-p}.
 
 @item char-or-string-p
-@ref{Predicates for Strings, char-or-string-p}を参照のこと。
+@xref{Predicates for Strings, char-or-string-p}.
 
 @item char-table-p
-@ref{Char-Tables, char-table-p}を参照のこと。
+@xref{Char-Tables, char-table-p}.
 
 @item closurep
-@ref{What Is a Function, closurep}を参照のこと。
+@xref{What Is a Function, closurep}.
 
 @item commandp
-@ref{Interactive Call, commandp}を参照のこと。
+@xref{Interactive Call, commandp}.
 
 @item compiled-function-p
-@ref{Closure Type, compiled-function-p}を参照のこと。
+@xref{Closure Type, compiled-function-p}.
 
 @item condition-variable-p
-@ref{Condition Variables, condition-variable-p}を参照のこと。
+@xref{Condition Variables, condition-variable-p}.
 
 @item consp
-@ref{List-related Predicates, consp}を参照のこと。
+@xref{List-related Predicates, consp}.
 
 @item custom-variable-p
-@ref{Variable Definitions, custom-variable-p}を参照のこと。
+@xref{Variable Definitions, custom-variable-p}.
 
 @item fixnump
-@ref{Predicates on Numbers, fixnump}を参照のこと。
+@xref{Predicates on Numbers, fixnump}.
 
 @item floatp
-@ref{Predicates on Numbers, floatp}を参照のこと。
+@xref{Predicates on Numbers, floatp}.
 
 @item fontp
-@ref{Low-Level Font}を参照のこと。
+@xref{Low-Level Font}.
 
 @item frame-configuration-p
-@ref{Frame Configurations, frame-configuration-p}を参照のこと。
+@xref{Frame Configurations, frame-configuration-p}.
 
 @item frame-live-p
-@ref{Deleting Frames, frame-live-p}を参照のこと。
+@xref{Deleting Frames, frame-live-p}.
 
 @item framep
-@ref{Frames, framep}を参照のこと。
+@xref{Frames, framep}.
 
 @item functionp
-@ref{Functions, functionp}を参照のこと。
+@xref{Functions, functionp}.
 
 @item hash-table-p
-@ref{Other Hash, hash-table-p}を参照のこと。
+@xref{Other Hash, hash-table-p}.
 
 @item integer-or-marker-p
-@ref{Predicates on Markers, integer-or-marker-p}を参照のこと。
+@xref{Predicates on Markers, integer-or-marker-p}.
 
 @item integerp
-@ref{Predicates on Numbers, integerp}を参照のこと。
+@xref{Predicates on Numbers, integerp}.
 
 @item interpreted-function-p
-@ref{What Is a Function, interpreted-function-p}を参照のこと。
+@xref{What Is a Function, interpreted-function-p}.
 
 @item keymapp
-@ref{Creating Keymaps, keymapp}を参照のこと。
+@xref{Creating Keymaps, keymapp}.
 
 @item keywordp
-@ref{Constant Variables}を参照のこと。
+@xref{Constant Variables}.
 
 @item listp
-@ref{List-related Predicates, listp}を参照のこと。
+@xref{List-related Predicates, listp}.
 
 @item markerp
-@ref{Predicates on Markers, markerp}を参照のこと。
+@xref{Predicates on Markers, markerp}.
 
 @item mutexp
-@ref{Mutexes, mutexp}を参照のこと。
+@xref{Mutexes, mutexp}.
 
 @item nlistp
-@ref{List-related Predicates, nlistp}を参照のこと。
+@xref{List-related Predicates, nlistp}.
 
 @item number-or-marker-p
-@ref{Predicates on Markers, number-or-marker-p}を参照のこと。
+@xref{Predicates on Markers, number-or-marker-p}.
 
 @item numberp
-@ref{Predicates on Numbers, numberp}を参照のこと。
+@xref{Predicates on Numbers, numberp}.
 
 @item obarrayp
-@ref{Creating Symbols, obarrayp}を参照のこと。
+@xref{Creating Symbols, obarrayp}.
 
 @item overlayp
-@ref{Overlays, overlayp}を参照のこと。
+@xref{Overlays, overlayp}.
 
 @item processp
-@ref{Processes, processp}を参照のこと。
+@xref{Processes, processp}.
 
 @item recordp
-@ref{Record Type, recordp}を参照のこと。
+@xref{Record Type, recordp}.
 
 @item sequencep
-@ref{Sequence Functions, sequencep}を参照のこと。
+@xref{Sequence Functions, sequencep}.
 
 @item string-or-null-p
-@ref{Predicates for Strings, string-or-null-p}を参照のこと。
+@xref{Predicates for Strings, string-or-null-p}.
 
 @item stringp
-@ref{Predicates for Strings, stringp}を参照のこと。
+@xref{Predicates for Strings, stringp}.
 
 @item subrp
-@ref{Function Cells, subrp}を参照のこと。
+@xref{Function Cells, subrp}.
 
 @item symbolp
-@ref{Symbols, symbolp}を参照のこと。
+@xref{Symbols, symbolp}.
 
 @item syntax-table-p
-@ref{Syntax Tables, syntax-table-p}を参照のこと。
+@xref{Syntax Tables, syntax-table-p}.
 
 @item threadp
-@ref{Basic Thread Functions, threadp}を参照のこと。
+@xref{Basic Thread Functions, threadp}.
 
 @item vectorp
-@ref{Vectors, vectorp}を参照のこと。
+@xref{Vectors, vectorp}.
 
 @item wholenump
-@ref{Predicates on Numbers, wholenump}を参照のこと。
+@xref{Predicates on Numbers, wholenump}.
 
 @item window-configuration-p
-@ref{Window Configurations, window-configuration-p}を参照のこと。
+@xref{Window Configurations, window-configuration-p}.
 
 @item window-live-p
-@ref{Deleting Windows, window-live-p}を参照のこと。
+@xref{Deleting Windows, window-live-p}.
 
 @item windowp
-@ref{Basic Windows, windowp}を参照のこと。
+@xref{Basic Windows, windowp}.
 @end table
 
-  あるオブジェクトがどの型かチェックするもっとも一般的な方法は、関数@code{type-of}の呼び出しです。オブジェクトは、ただ1つだけの基本型に属することを思い出してください。@code{type-of}は、それがどの型かを告げます(@ref{Lisp
-Data
-Types}を参照)。しかし@code{type-of}は基本型以外の型については何も知りません。ほとんどの場合では、@code{type-of}より型述語を使用するほうが好ましいでしょう。
+  The most general way to check the type of an object is to call the function
+@code{type-of}.  Recall that each object belongs to one and only one
+primitive type; @code{type-of} tells you which one (@pxref{Lisp Data
+Types}).  But @code{type-of} knows nothing about non-primitive types.  In
+most cases, it is preferable to use type predicates than @code{type-of}.
 
 @defun type-of object
-この関数は@var{object}の基本型を名前とするシンボルをリターンする。リターン値はシンボル@code{bool-vector}、@code{buffer}、@code{char-table}、@code{compiled-function}、@code{condition-variable}、@code{cons}、@code{finalizer}、@code{float}、@code{font-entity}、@code{font-object}、@code{font-spec}、@code{frame}、@code{hash-table}、@code{integer}、@code{marker}、@code{mutex}、@code{obarray}、@code{overlay}、@code{process}、@code{string}、@code{subr}、@code{symbol}、@code{thread}、@code{vector}、@code{window}、@code{window-configuration}のいずれか。ただし@var{object}がレコードなら最初のスロットで指定された型をリターンする。@ref{Records}を参照のこと。
+This function returns a symbol naming the primitive type of @var{object}.
+The value is one of the symbols @code{bool-vector}, @code{buffer},
+@code{char-table}, @code{compiled-function}, @code{condition-variable},
+@code{cons}, @code{finalizer}, @code{float}, @code{font-entity},
+@code{font-object}, @code{font-spec}, @code{frame}, @code{hash-table},
+@code{integer}, @code{marker}, @code{mutex}, @code{obarray}, @code{overlay},
+@code{process}, @code{string}, @code{subr}, @code{symbol}, @code{thread},
+@code{vector}, @code{window}, or @code{window-configuration}.  However, if
+@var{object} is a record, the type specified by its first slot is returned;
+@ref{Records}.
 
 @example
 (type-of 1)
@@ -1622,7 +2163,7 @@ Types}を参照)。しかし@code{type-of}は基本型以外の型について�
 @group
 (type-of 'nil)
      @result{} symbol
-(type-of '())    ; @r{@code{()}は@code{nil}}
+(type-of '())    ; @r{@code{()} is @code{nil}.}
      @result{} symbol
 (type-of '(x))
      @result{} cons
@@ -1633,7 +2174,12 @@ Types}を参照)。しかし@code{type-of}は基本型以外の型について�
 @end defun
 
 @defun cl-type-of object
-この関数は@var{object}の@emph{タイプ名}を命名するシンボルをリターンする。通常は@code{type-of}のように振る舞うが、可能なかぎりもっとも正確なタイプをリターンすることを保証する点が異なる。これは関数によりリターンされる固有のタイプが、Emacsのバージョンに応じて異なるかもしれないことを暗に含む。この理由により、原則としてある固定されたタイプセットとこの関数のリターン値を比較してはならない。
+This function returns a symbol naming @emph{the} type of @var{object}.  It
+usually behaves like @code{type-of}, except that it guarantees to return the
+most precise type possible, which also implies that the specific type it
+returns may change depending on the Emacs version.  For this reason, as a
+rule you should never compare its return value against some fixed set of
+types.
 
 @example
 (cl-type-of 1)
@@ -1649,22 +2195,38 @@ Types}を参照)。しかし@code{type-of}は基本型以外の型について�
 
 
 @node Equality Predicates
-@section 同等性のための述語
+@section Equality Predicates
 @cindex equality
 
-  ここでは2つのオブジェクトの同一性をテストする関数を説明します。(たとえば文字列などの)特定の型のオブジェクト同士で内容の同一性をテストするには、別の関数を使用します。これらの述語にたいしては、そのデータ型を説明する適切なチャプターを参照してください。
+  Here we describe functions that test for equality between two objects.
+Other functions test equality of contents between objects of specific types,
+e.g., strings.  For these predicates, see the appropriate chapter describing
+the data type.
 
 @defun eq object1 object2
-この関数は@var{object1}と@var{object2}が同じオブジェクトなら@code{t}、それ以外は@code{nil}をリターンする。
+This function returns @code{t} if @var{object1} and @var{object2} are the
+same object, and @code{nil} otherwise.
 
-@var{object1}と@var{object2}が同じ名前をもつシンボルなら、通常は同じオブジェクトだが例外もある。@ref{Creating
-Symbols}を参照のこと。他の非数値型(リストやベクター、文字列などの)にたいしては、同じ内容(または要素)の2つの引数が両者@code{eq}である必要はない。これらが同じオブジェクトの場合だけ@code{eq}であり、その場合には一方の内容を変更するともう一方の内容にも同じ変更が反映される。
+If @var{object1} and @var{object2} are symbols with the same name, they are
+normally the same object---but see @ref{Creating Symbols} for exceptions.
+For other non-numeric types (e.g., lists, vectors, strings), two arguments
+with the same contents or elements are not necessarily @code{eq} to each
+other: they are @code{eq} only if they are the same object, meaning that a
+change in the contents of one will be reflected by the same change in the
+contents of the other.
 
-@var{object1}と@var{object2}が異なるタイプや値をもつ数値なら同じオブジェクトではなく、@code{eq}は@code{nil}をリターンする。同じ値をもつfixnumなら同じオブジェクトであり、@code{eq}は@code{t}をリターンする。別個に計算されてたまたま同じ値をもち、かつ非fixnumタイプの同じ数値型なら、それらは同じかもしれないし違うかもしれず、Lispインタープリターが作成したオブジェクトが1つか2つかに依存して@code{eq}は@code{t}か@code{nil}をリターンする。
+If @var{object1} and @var{object2} are numbers with differing types or
+values, then they cannot be the same object and @code{eq} returns
+@code{nil}.  If they are fixnums with the same value, then they are the same
+object and @code{eq} returns @code{t}.  If they were computed separately but
+happen to have the same value and the same non-fixnum numeric type, then
+they might or might not be the same object, and @code{eq} returns @code{t}
+or @code{nil} depending on whether the Lisp interpreter created one object
+or two.
 
-@var{object1}か@var{object2}が位置つきシンボル(symbol with
-position)の場合には、@code{symbols-with-pos-enabled}が非@code{nil}なら@code{eq}はそれをbareシンボル(bare
-symbol: 裸のシンボル)とみなす(@ref{Symbols with Position}を参照)。
+If @var{object1} or @var{object2} is a symbol with position, @code{eq}
+regards it as its bare symbol when @code{symbols-with-pos-enabled} is
+non-@code{nil} (@pxref{Symbols with Position}).
 
 @example
 @group
@@ -1679,8 +2241,8 @@ symbol: 裸のシンボル)とみなす(@ref{Symbols with Position}を参照)。
 
 @group
 (eq 3.0 3.0)
-     @result{} t @r{または} nil
-;; @r{浮動小数にたいするeqではオブジェクト同じかもしれず違うかもしれない}
+     @result{} t @r{or} nil
+;; @r{Equal floats may or may not be the same object.}
 @end group
 
 @group
@@ -1690,8 +2252,8 @@ symbol: 裸のシンボル)とみなす(@ref{Symbols with Position}を参照)。
 
 @group
 (eq "asdf" "asdf")
-     @result{} t @r{または} nil
-;; @r{文字列コンテンツにたいするeqではオブジェクト同じかもしれず違うかもしれない}
+     @result{} t @r{or} nil
+;; @r{Equal string constants or may not be the same object.}
 @end group
 
 @group
@@ -1720,8 +2282,10 @@ symbol: 裸のシンボル)とみなす(@ref{Symbols with Position}を参照)。
 @end example
 
 @noindent
-@code{make-symbol}関数はinternされていないシンボルをリターンする。これはLisp式内でその名前を記述したシンボルとは区別される。同じ名前の異なるシンボルは@code{eq}ではない。@ref{Creating
-Symbols}を参照のこと。
+The @code{make-symbol} function returns an uninterned symbol, distinct from
+the symbol that is used if you write the name in a Lisp expression.
+Distinct symbols with the same name are not @code{eq}.  @xref{Creating
+Symbols}.
 
 @example
 @group
@@ -1733,12 +2297,25 @@ Symbols}を参照のこと。
 @noindent
 @cindex identical-contents objects, and byte-compiler
 @cindex objects with identical contents, and byte-compiler
-Emacs Lispバイトコンパイラーはリテラル文字列のような等価なリテラルオブジェクトを同一オブジェクトにたいする参照に落し込む(collapse
-into)かもしれない。バイトコンパイルされたコードはそのようなオブジェクトを@code{eq}で比較するだろうが、そうでないコードは異なるという効果がある。したがってコードではオブジェクトのリテラルコンテンツが@code{eq}か否かではなく、以下に説明する@code{equal}のような関数でオブジェクトの関数を使用すること。同様にコードではリテラルオブジェクトを変更(たとえばリテラル文字列へのテキストプロパティのput)しないこと。バイトコンパイラーがそれらの落し込みを行っていたら、同一コンテンツをもつ別のリテラルオブジェクトに影響があるかもしれない。
+The Emacs Lisp byte compiler may collapse identical literal objects, such as
+literal strings, into references to the same object, with the effect that
+the byte-compiled code will compare such objects as @code{eq}, while the
+interpreted version of the same code will not.  Therefore, your code should
+never rely on objects with the same literal contents being either @code{eq}
+or not @code{eq}, it should instead use functions that compare object
+contents such as @code{equal}, described below.  Similarly, your code should
+not modify literal objects (e.g., put text properties on literal strings),
+since doing that might affect other literal objects of the same contents, if
+the byte compiler collapses them.
 @end defun
 
 @defun equal object1 object2
-この関数は@var{object1}と@var{object2}が同じ構成要素をもつなら@code{t}、それ以外は@code{nil}をリターンする。@code{eq}が引数が同じオブジェクトなのかテストするのにたいして、@code{equal}は同一でない引数の内部を調べて、それらの要素または内容が同一化をテストする。したがって2つのオブジェクトが@code{eq}ならばそれらは@code{equal}だが、その逆は常に真ではない。
+This function returns @code{t} if @var{object1} and @var{object2} have equal
+components, and @code{nil} otherwise.  Whereas @code{eq} tests if its
+arguments are the same object, @code{equal} looks inside nonidentical
+arguments to see if their elements or contents are the same.  So, if two
+objects are @code{eq}, they are @code{equal}, but the converse is not always
+true.
 
 @example
 @group
@@ -1796,9 +2373,12 @@ function objects (closures)@footnote{However, equality of distinct function
 objects cannot be guaranteed in general.} are compared recursively by using
 @code{equal} on their constituent parts.
 
-文字列の比較はcaseを区別するがテキストプロパティは考慮しない --- これは文字列内の文字だけを比較する。@ref{Text
-Properties}を参照のこと。テキストプロパティも比較する場合には、@code{equal-including-properties}を使用すること。技術的な理由によりユニバイト文字列とマルチバイト文字列は、それらが同じ文字コードのシーケンスを含み、それらのコードがすべて0から127(@acronym{ASCII})の場合に限り@code{equal}となる(@ref{Text
-Representations}を参照)。
+Comparison of strings is case-sensitive, but does not take account of text
+properties---it compares only the characters in the strings.  @xref{Text
+Properties}.  Use @code{equal-including-properties} to also compare text
+properties.  For technical reasons, a unibyte string and a multibyte string
+are @code{equal} if and only if they contain the same sequence of character
+codes and all these codes are in the range 0 through 127 (@acronym{ASCII}).
 
 @example
 @group
@@ -1807,27 +2387,33 @@ Representations}を参照)。
 @end group
 @end example
 
-@var{object1}か@var{object2}に位置つきシンボルが含まれる場合には、@code{symbols-with-pos-enabled}が非@code{nil}なら@code{equal}はそれらをbare
-シンボルとして扱う。それ以外の場合には、コンポーネントを比較することで2つの位置つきシンボルを比較する。@ref{Symbols with
-Position}を参照のこと。
+If @var{object1} or @var{object2} contains symbols with position,
+@code{equal} treats them as if they were their bare symbols when
+@code{symbols-with-pos-enabled} is non-@code{nil}.  Otherwise @code{equal}
+compares two symbols with position by comparing their components.
+@xref{Symbols with Position}.
 
-その他のオブジェクトは、それらが@code{eq}の場合のみ@code{equal}とみなされる。たとえば個別の2つのバッファーは、たとえバッファーのテキスト的なコンテンツが同一であっても@code{equal}とみなされることはない。
+Other objects are considered @code{equal} only if they are @code{eq}.  For
+example, two distinct buffers are never considered @code{equal}, even if
+their textual contents are the same.
 @end defun
 
-  @code{equal}では等価性は再帰的に定義されています。たとえば2つのコンスセル@var{x}と@var{y}を与えると、@code{(equal
-@var{x} @var{y})}は、以下の式の両方が@code{t}をリターンする場合だけ@code{t}をリターンします:
+  For @code{equal}, equality is defined recursively; for example, given two
+cons cells @var{x} and @var{y}, @code{(equal @var{x} @var{y})} returns
+@code{t} if and only if both the expressions below return @code{t}:
 
 @example
 (equal (car @var{x}) (car @var{y}))
 (equal (cdr @var{x}) (cdr @var{y}))
 @end example
 
-したがって循環リストの比較はエラーとなるような深い再帰を引き起こすかもしれず、@code{(equal a
-b)}は@code{t}をリターンするにも関わらず@code{(equal b
-a)}はエラーをシグナルするといった直感に反する結果となることがあります。
+Comparing circular lists may therefore cause deep recursion that leads to an
+error, and this may result in counterintuitive behavior such as @code{(equal
+a b)} returning @code{t} whereas @code{(equal b a)} signals an error.
 
 @defun equal-including-properties object1 object2
-この関数はすべてのケースにおいて@code{equal}と同様に振る舞うが、2つの文字列が@code{equal}になるためには、それらが同じテキストプロパティをもつ必要がある。
+This function behaves like @code{equal} in all cases but also requires that
+for two strings to be equal, they have the same text properties.
 
 @example
 @group
@@ -1843,50 +2429,76 @@ a)}はエラーをシグナルするといった直感に反する結果とな�
 @end defun
 
 @node Mutability
-@section 可変性
+@section Mutability
 @cindex mutable objects
 
-  変更されるべきではないLispオブジェクトがいくつかあります。たとえばLisp式@code{"aaa"}では文字列を生成しますが、そのコンテンツを変更するべきではありません。いくつかのオブジェクトは変更できません。たとえばある数値を計算して新たな数値を作成できたとしても、Lispは既存の数値を変更する操作を提供しません。
+  Some Lisp objects should never change.  For example, the Lisp expression
+@code{"aaa"} yields a string, but you should not change its contents.  And
+some objects cannot be changed; for example, although you can create a new
+number by calculating one, Lisp provides no operation to change the value of
+an existing number.
 
-  その他のLispオブジェクトは@dfn{mutable(可変)}オブジェクトで、副作用をともなう破壊的な操作を通じて値を変更しても安全です。たとえばマーカーを別のポイントを指すマーカーに移動することにより、既存のマーカーを変更することができます。
+  Other Lisp objects are @dfn{mutable}: it is safe to change their values via
+destructive operations involving side effects.  For example, an existing
+marker can be changed by moving the marker to point to somewhere else.
 
-  数値は変更不可でマーカーはすべてmutableだとしても、mutableと非mutableのメンバーをもつタイプがいくつかあります。これらのタイプにはコンス、ベクター、文字列が含まれます。たとえば@code{"cons"}と@code{(symbol-name
-'cons)}は変更するべきではない文字列を生成しますが、@code{(copy-sequence
-"cons")}と@code{(make-string 3
-?a)}は後から@code{aset}を呼び出すことを通じて変更可能なmutable文字列を生成します。
+  Although numbers never change and all markers are mutable, some types have
+members some of which are mutable and others not.  These types include
+conses, vectors, and strings.  For example, although @code{"cons"} and
+@code{(symbol-name 'cons)} both yield strings that should not be changed,
+@code{(copy-sequence "cons")} and @code{(make-string 3 ?a)} both yield
+mutable strings that can be changed via later calls to @code{aset}.
 
-  mutableオブジェクトは評価される式の一部となったときにmutableであることを止めます。たとえば:
+  A mutable object stops being mutable if it is part of an expression that is
+evaluated.  For example:
 
 @example
 (let* ((x (list 0.5))
        (y (eval (list 'quote x))))
-  (setcar x 1.5) ;; プログラムはこれを行うべきではない
+  (setcar x 1.5) ;; The program should not do this.
   y)
 @end example
 
 @noindent
-作成時にリスト@code{(0.5)}がmutableでも、それは@code{eval}に与えられたので@code{setcar}を通じて変更するべきではありません。変更するべきではないオブジェクトが後からmutableになることは決してないので逆はあり得ません。
+Although the list @code{(0.5)} was mutable when it was created, it should
+not have been changed via @code{setcar} because it was given to
+@code{eval}.  The reverse does not occur: an object that should not be
+changed never becomes mutable afterwards.
 
-  変更するべきではないオブジェクトの変更をプログラムが試みた際の動作は未定義です。Lispインタープリターがエラーをシグナルするかもしれず、クラッシュしたり他の方法で予測不能な振る舞いを引き起こすかもしれません@footnote{これはCommon
-LispやCのような言語が定数にたいして指定する挙動であり、プログラムによるimmutableオブジェクト変更の試みにエラーのシグナルを要求するJavaScriptやPythonのようなインタープリターとは異なる。理想的にはEmacs
-Lispインタープリターは後者を目指して進化するであろう。}。
+  If a program attempts to change objects that should not be changed, the
+resulting behavior is undefined: the Lisp interpreter might signal an error,
+or it might crash or behave unpredictably in other ways.@footnote{This is
+the behavior specified for languages like Common Lisp and C for constants,
+and this differs from languages like JavaScript and Python where an
+interpreter is required to signal an error if a program attempts to change
+an immutable object.  Ideally the Emacs Lisp interpreter will evolve in
+latter direction.}
 
-  プログラムの一部として類似した定数が出現する際には、既存の定数やそのコンポーネントの再利用によってLispが時間やスペースを節約できるかもしれません。たとえば@code{(eq
-"abc"
-"abc")}はインタープリターが文字列リテラル@code{"abc"}の1つのインスタンスを作成したら@code{t}、2つのインスタンスを作成したら@code{nil}をリターンします。したがってこの最適化使用の有無に関わらず機能するようにLispプログラムを記述する必要があります。
+  When similar constants occur as parts of a program, the Lisp interpreter
+might save time or space by reusing existing constants or their components.
+For example, @code{(eq "abc" "abc")} returns @code{t} if the interpreter
+creates only one instance of the string literal @code{"abc"}, and returns
+@code{nil} if it creates two instances.  Lisp programs should be written so
+that they work regardless of whether this optimization is in use.
 
 @node Type Hierarchy
-@section Emacs Lispオブジェクトの型階層
+@section Type Hierarchy of Emacs Lisp Objects
 
-Lispオブジェクトのタイプは階層によって組織化されており、これはタイプが他のタイプを継承できることを意味しています。(タイプAから派生した)タイプBのオブジェクトは、タイプAのすべての特徴を継承します。これはタイプBのオブジェクトはすべて、同時にその派生元であるタイプAのオブジェクトであることも意味しています。
+Lisp object types are organized in a hierarchy, which means that types can
+derive from other types.  Objects of type B (which derives from type A)
+inherit all the characteristics of type A@.  This also means that every
+object of type B is at the same time an object of type A from which it
+derives.
 
-すべてのタイプはタイプ@code{t}を継承します。
+Every type derives from type @code{t}.
 
-@code{defclass}や@code{cl-defstruct}を通じて、新たなタイプをユーザーが定義できます。
+New types can be defined by the user through @code{defclass} or
+@code{cl-defstruct}.
 
-プリミティブタイプにたいするLispタイプ階層は、以下のように表すことができます:
+The Lisp Type Hierarchy for primitive types can be represented as follows:
 
 @noindent
 @image{elisp_type_hierarchy,,,,.jpg}
 
-たとえばタイプ@code{list}は、それ自体が@code{t}を継承する(特殊な)タイプ@code{sequence}を継承しています。
+For example type @code{list} derives from (is a special kind of) type
+@code{sequence} which itself derives from @code{t}.

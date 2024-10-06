@@ -20,81 +20,98 @@
 @section Edebug
 @cindex Edebug debugging facility
 
-  EdebugはEmacs Lispプログラムにたいするソースレベルデバッガです。これにより以下のことができます:
+  Edebug is a source-level debugger for Emacs Lisp programs, with which you
+can:
 
 @itemize @bullet
 @item
-式の前後でストップして評価をステップで実行する。
+Step through evaluation, stopping before and after each expression.
 
 @item
-条件付きまたは無条件のbreakpointのセット。
+Set conditional or unconditional breakpoints.
 
 @item
-指定された条件がtrueならストップする(グローバルbreakpoint)。
+Stop when a specified condition is true (the global break event).
 
 @item
-ストップポイントごとに停止したり、breakpointごとに簡単に停止して低速または高速にトレースを行う。
+Trace slow or fast, stopping briefly at each stop point, or at each
+breakpoint.
 
 @item
-Edebug外部であるかのように式の結果を表示して、式を評価する。
+Display expression results and evaluate expressions as if outside of Edebug.
 
 @item
-式のリストを自動的に再評価して、Edebugがディスプレイを更新するたびにそれらの結果を表示する。
+Automatically re-evaluate a list of expressions and display their results
+each time Edebug updates the display.
 
 @item
-関数呼び出しとリターンのトレース情報を出力する。
+Output trace information on function calls and returns.
 
 @item
-エラー発生時にストップする。
+Stop when an error occurs.
 
 @item
-Edebug自身のフレームを除外してbacktraceを表示する。
+Display a backtrace, omitting Edebug's own frames.
 
 @item
-マクロとフォームの定義で引数の評価を指定する。
+Specify argument evaluation for macros and defining forms.
 
 @item
-初歩的なカバレッジテストと頻度数の取得。
+Obtain rudimentary coverage testing and frequency counts.
 @end itemize
 
-以下の初めの3つのセクションは、Edebugの使用を開始するために十分な説明を行います。
+The first three sections below should tell you enough about Edebug to start
+using it.
 
 @menu
-* Using Edebug::             Edebug使用のための手引き。
-* Instrumenting::            Edebugでデバッグするために、コードをインストルメント(計装)しなければならないe
-* Modes: Edebug Execution Modes.  多かれ少なかれ、ストップする実行モード。
-* Jumping::                  特定の位置にジャンプするコマンド。
-* Misc: Edebug Misc.         さまざまなコマンド。
-* Breaks::                   プログラムをストップさせるbreakpointのセット。
-* Trapping Errors::          Edebugでのエラーのトラップ。
-* Views: Edebug Views.       Edebugの内側と外側のビュー。
-* Eval: Edebug Eval.         Edebugでの式の評価。
-* Eval List::                Edebugにエンターするたびに値が表示される式。
-* Printing in Edebug::       プリントのカスタマイズ。
-* Trace Buffer::             バッファー内で採れを生成する方法。
-* Coverage Testing::         評価をカバレッジテストする方法。
-* The Outside Context::      Edebugが保存およびリストアするデータ。
-* Edebug and Macros::        マクロ呼び出しをハンドルする方法の指定。
-* Options: Edebug Options.   Edebugをカスタマイズするオプション変数。
+* Using Edebug::             Introduction to use of Edebug.
+* Instrumenting::            You must instrument your code in order to debug 
+                               it with Edebug.
+* Modes: Edebug Execution Modes.  Execution modes, stopping more or less 
+                                    often.
+* Jumping::                  Commands to jump to a specified place.
+* Misc: Edebug Misc.         Miscellaneous commands.
+* Breaks::                   Setting breakpoints to make the program stop.
+* Trapping Errors::          Trapping errors with Edebug.
+* Views: Edebug Views.       Views inside and outside of Edebug.
+* Eval: Edebug Eval.         Evaluating expressions within Edebug.
+* Eval List::                Expressions whose values are displayed each 
+                               time you enter Edebug.
+* Printing in Edebug::       Customization of printing.
+* Trace Buffer::             How to produce trace output in a buffer.
+* Coverage Testing::         How to test evaluation coverage.
+* The Outside Context::      Data that Edebug saves and restores.
+* Edebug and Macros::        Specifying how to handle macro calls.
+* Options: Edebug Options.   Option variables for customizing Edebug.
 @end menu
 
 @node Using Edebug
-@subsection Edebugの使用
+@subsection Using Edebug
 
-  EdebugでLispプログラムをデバッグするには、最初にデバッグしたいLispコードを@dfn{インストルメント(instrument:
-計装)}しなければなりません。これを行なうもっともシンプルな方法は、関数またはマクロの定義に移動して@kbd{C-u
-C-M-x}(プレフィクス引数を指定した@code{eval-defun})を行います。コードをインストルメントする他の手段については、@ref{Instrumenting}を参照してください。
+  To debug a Lisp program with Edebug, you must first @dfn{instrument} the
+Lisp code that you want to debug.  A simple way to do this is to first move
+point into the definition of a function or macro and then do @kbd{C-u C-M-x}
+(@code{eval-defun} with a prefix argument).  See @ref{Instrumenting}, for
+alternative ways to instrument code.
 
-  一度関数をインストルメントすると、その関数にたいする任意の呼び出しによってEdebugがアクティブになります。Edebugがアクティブになると、どのEdebug実行モードを選択したかに依存して、その関数をステップ実行できるように実行がストップされるか、ディスプレイを更新してデバッグコマンドにたいするチェックの間、実行が継続されます。デフォルトの実行モードstepで、これは実行をストップします。@ref{Edebug
-Execution Modes}を参照してください。
+  Once a function is instrumented, any call to the function activates Edebug.
+Depending on which Edebug execution mode you have selected, activating
+Edebug may stop execution and let you step through the function, or it may
+update the display and continue execution while checking for debugging
+commands.  The default execution mode is step, which stops execution.
+@xref{Edebug Execution Modes}.
 
-  Edebugでは通常は、デバッグしているLispコードをEmacsバッファーで閲覧します。これを@dfn{ソースコードバッファー(source code
-buffer)}と呼び、バッファーは一時的に読み取り専用になります。
+  Within Edebug, you normally view an Emacs buffer showing the source of the
+Lisp code you are debugging.  This is referred to as the @dfn{source code
+buffer}, and it is temporarily read-only.
 
-  左フリンジの矢印は、その関数で実行されている行を示します。ポイントは最初はその関数の実行されている行にありますが、ポイントを移動するとこれは真ではなくなります。
+  An arrow in the left fringe indicates the line where the function is
+executing.  Point initially shows where within the line the function is
+executing, but this ceases to be true if you move point yourself.
 
-  以下は@code{fac}の定義(以下を参照)をインストルメントして@code{(fac
-3)}を実行した場合に通常目にするものです。ポイントは@code{if}の前の開きカッコにあります。
+  If you instrument the definition of @code{fac} (shown below) and then
+execute @code{(fac 3)}, here is what you would normally see.  Point is at
+the open-parenthesis before @code{if}.
 
 @example
 (defun fac (n)
@@ -104,8 +121,10 @@ buffer)}と呼び、バッファーは一時的に読み取り専用になりま
 @end example
 
 @cindex stop points
-関数内でEdebugが実行をストップできる位置のことを、@dfn{ストップポイント(stop
-points)}と呼びます。ストップポイントはリストであるような部分式の前後、および変数参照の後でも発生します。以下は関数@code{fac}内のストップポイントをピリオドで示したものです:
+The places within a function where Edebug can stop execution are called
+@dfn{stop points}.  These occur both before and after each subexpression
+that is a list, and also after each variable reference.  Here we use periods
+to show the stop points in the function @code{fac}:
 
 @example
 (defun fac (n)
@@ -114,8 +133,10 @@ points)}と呼びます。ストップポイントはリストであるような
     1).)
 @end example
 
-Emacs
-Lispモードのコマンドに加えて、ソースコードバッファーではEdebugのスペシャルコマンドが利用できます。たとえばEdebugコマンド@key{SPC}で次のストップポイントまで実行することができます。@code{fac}にエントリーした後に一度@key{SPC}とタイプした場合は、以下のように表示されるでしょう:
+The special commands of Edebug are available in the source code buffer in
+addition to the commands of Emacs Lisp mode.  For example, you can type the
+Edebug command @key{SPC} to execute until the next stop point.  If you type
+@key{SPC} once after entry to @code{fac}, here is the display you will see:
 
 @example
 (defun fac (n)
@@ -124,285 +145,442 @@ Lispモードのコマンドに加えて、ソースコードバッファーで�
     1))
 @end example
 
-式の後でEdebugが実行をストップしたときは、エコーエリアにその式の値が表示されます。
+When Edebug stops execution after an expression, it displays the
+expression's value in the echo area.
 
-他にも頻繁に使用されるコマンドとして、ストップポイントにbreakpointをセットする@kbd{b}、breakpointに達するまで実行する@kbd{g}、Edebugをexitしてトップレベルのコマンドループにリターンする@kbd{q}があります。また@kbd{?}とタイプするとすべてのEdebugコマンドがリストされます。
+Other frequently used commands are @kbd{b} to set a breakpoint at a stop
+point, @kbd{g} to execute until a breakpoint is reached, and @kbd{q} to exit
+Edebug and return to the top-level command loop.  Type @kbd{?} to display a
+list of all Edebug commands.
 
 @node Instrumenting
-@subsection Edebugのためのインストルメント
+@subsection Instrumenting for Edebug
 @cindex instrumenting for Edebug
 
-  LispコードのデバッグにEdebugを使用するためには、最初にそのコードを@dfn{インストルメント(instrument:
-計装)}しなければなりません。コードをインストルメントすると、適切な位置でEdebugを呼び出すために追加コードが挿入されます。
+  In order to use Edebug to debug Lisp code, you must first @dfn{instrument}
+the code.  Instrumenting code inserts additional code into it, to invoke
+Edebug at the proper places.
 
 @kindex C-M-x
 @findex eval-defun @r{(Edebug)}
-  関数定義でプレフィクス引数とともにコマンド@kbd{C-M-x}
-(@code{eval-defun})を呼び出すと、それを評価する前にその定義をインストルメントします(ソースコード自体は変更しない)。変数@code{edebug-all-defs}が非@code{nil}ならプレフィクス引数の意味を反転します。この場合は、@kbd{C-M-x}はプレフィクス引数が@emph{なければ}その定義をインストルメントします。@code{edebug-all-defs}のデフォルト値は@code{nil}です。コマンド@kbd{M-x
-edebug-all-defs}は変数@code{edebug-all-defs}の値を切り替えます。
+  When you invoke command @kbd{C-M-x} (@code{eval-defun}) with a prefix
+argument on a function definition, it instruments the definition before
+evaluating it.  (This does not modify the source code itself.)  If the
+variable @code{edebug-all-defs} is non-@code{nil}, that inverts the meaning
+of the prefix argument: in this case, @kbd{C-M-x} instruments the definition
+@emph{unless} it has a prefix argument.  The default value of
+@code{edebug-all-defs} is @code{nil}.  The command @kbd{M-x edebug-all-defs}
+toggles the value of the variable @code{edebug-all-defs}.
 
 @findex eval-region @r{(Edebug)}
 @findex eval-buffer @r{(Edebug)}
-  @code{edebug-all-defs}が非@code{nil}なら@code{eval-region}、@code{eval-buffer}もそれらが評価する定義をインストルメントします。同様に@code{edebug-all-forms}は、@code{eval-region}が(非定義フォームさえ含む@emph{あらゆる}フォームをインストルメントするべきかを制御します。これはミニバッファー内でのロードや評価には適用されません。コマンド@kbd{M-x
-edebug-all-forms}はこのオプションを切り替えます。
+  If @code{edebug-all-defs} is non-@code{nil}, then the commands
+@code{eval-region}, and @code{eval-buffer} also instrument any definitions
+they evaluate.  Similarly, @code{edebug-all-forms} controls whether
+@code{eval-region} should instrument @emph{any} form, even non-defining
+forms.  This doesn't apply to loading or evaluations in the minibuffer.  The
+command @kbd{M-x edebug-all-forms} toggles this option.
 
 @findex edebug-eval-top-level-form
 @findex edebug-defun
-  他にもコマンド@kbd{M-x
-edebug-eval-top-level-form}が利用でき、これは@code{edebug-all-defs}や@code{edebug-all-forms}の値に関わらずトップレベルのすべてのフォームをインストルメントします。@code{edebug-defun}は@code{edebug-eval-top-level-form}のエイリアスです。
+  Another command, @kbd{M-x edebug-eval-top-level-form}, is available to
+instrument any top-level form regardless of the values of
+@code{edebug-all-defs} and @code{edebug-all-forms}.  @code{edebug-defun} is
+an alias for @code{edebug-eval-top-level-form}.
 
-  Edebugがアクティブのの間、コマンド@kbd{I}(@code{edebug-instrument-callee})はポイント後のリストフォームに呼び出される関数およびマクロ定義がまだインストルメントされていなければ、それらをインストルメントします。これはそのファイルのソースの場所をEdebugが知っている場合だけ可能です。この理由によりEdebugロード後は、たとえ評価する定義をインストルメントしない場合でも、@code{eval-region}は評価するすべての定義の位置を記録します。インストルメント済み関数呼び出しにステップインする@kbd{i}コマンドも参照してください(@ref{Jumping}を参照)。
+  While Edebug is active, the command @kbd{I}
+(@code{edebug-instrument-callee}) instruments the definition of the function
+or macro called by the list form after point, if it is not already
+instrumented.  This is possible only if Edebug knows where to find the
+source for that function; for this reason, after loading Edebug,
+@code{eval-region} records the position of every definition it evaluates,
+even if not instrumenting it.  See also the @kbd{i} command
+(@pxref{Jumping}), which steps into the call after instrumenting the
+function.
 
-  Edebugはすべての標準スペシャルフォーム、式引数をもつ@code{interactive}フォーム、無名ラムダ式、およびその他の定義フォームのインストルメント方法を知っています。しかしEdebugはユーザー定義マクロが引数にたいして何を行うかを判断できないので、Edebug仕様を使用してその情報を与えなければなりません。詳細は@ref{Edebug
-and Macros}を参照してください。
+  Edebug knows how to instrument all the standard special forms,
+@code{interactive} forms with an expression argument, anonymous lambda
+expressions, and other defining forms.  However, Edebug cannot determine on
+its own what a user-defined macro will do with the arguments of a macro
+call, so you must provide that information using Edebug specifications; for
+details, @pxref{Edebug and Macros}.
 
-  Edebugがセッション内で最初にコードをインストルメントしようとするときは、フック@code{edebug-setup-hook}を実行してからそれに@code{nil}をセットします。使おうとしているパッケージに結びつけてEdebug仕様をロードするためにこれを使用できますが、それはEdebugを使用するときだけ機能します。
+  When Edebug is about to instrument code for the first time in a session, it
+runs the hook @code{edebug-setup-hook}, then sets it to @code{nil}.  You can
+use this to load Edebug specifications associated with a package you are
+using, but only when you use Edebug.
 
 @cindex edebug, failure to instrument
 @c FIXME?  I can't see that it "leaves point at the erroneous code".
-  Edebugがインストルメント中にシンタックスエラー(syntax error:
-構文エラー)を検知した場合には、以下のように間違ったコードの箇所にポイントを残して@code{invalid-read-syntax}エラーをシグナルします:
+  If Edebug detects a syntax error while instrumenting, it leaves point at the
+erroneous code and signals an @code{invalid-read-syntax} error.  Example:
 
 @example
 @error{} Invalid read syntax: "Expected lambda expression"
 @end example
 
-  このようにインストルメントに失敗する可能性の1つとして、いくつかのマクロ定義をEmacsが把握していない場合があります。これに対処するためには、インストルメントしようとしている関数を定義しているファイルをロードしてください。
+  One potential reason for such a failure to instrument is that some macro
+definitions are not yet known to Emacs.  To work around this, load the file
+which defines the function you are about to instrument.
 
 @findex eval-expression @r{(Edebug)}
-  定義からインストルメントを削除するには、単にインストルメントを行わない方法でその定義を再評価するだけです。フォームを絶対にインストルメントせずに評価するには2つの方法があります。それはファイルからの@code{load}による評価と、ミニバッファーからの@code{eval-expression}(@kbd{M-:})による評価です。
+  To remove instrumentation from a definition, simply re-evaluate its
+definition in a way that does not instrument.  There are two ways of
+evaluating forms that never instrument them: from a file with @code{load},
+and from the minibuffer with @code{eval-expression} (@kbd{M-:}).
 
 @findex edebug-remove-instrumentation
-  定義からインストルメントを削除する別の方法は@code{edebug-remove-instrumentation}コマンドの使用です。これはインストルメントしたすべてからインストルメントを削除することもできます。
+  A different way to remove the instrumentation from a definition is to use
+the @code{edebug-remove-instrumentation} command.  It also allows removing
+the instrumentation from everything that has been instrumented.
 
-  Edebug内で利用可能な他の評価関数については、@ref{Edebug Eval}を参照してください。
+  @xref{Edebug Eval}, for other evaluation functions available inside of
+Edebug.
 
 @node Edebug Execution Modes
-@subsection Edebugの実行モード
+@subsection Edebug Execution Modes
 
 @cindex Edebug execution modes
-Edebugはデバッグするプログラムの実行にたいして、いくつかの実行モードをサポートします。これらの実行モードを@dfn{Edebug実行モード(Edebug
-execution
-modes)}と呼びます。これらをメジャーモードやマイナーモードと混同しないでください。カレントのEdebug実行モードは、プログラムをストップする前にEdebugがどれだけ実行を継続するか
---- たとえばストップポイントごとにストップ、あるいは次のbreakpointまで継続など ---
-、およびストップする前にEdebugがどれだけ進捗を表示するかを決定します。
+Edebug supports several execution modes for running the program you are
+debugging.  We call these alternatives @dfn{Edebug execution modes}; do not
+confuse them with major or minor modes.  The current Edebug execution mode
+determines how far Edebug continues execution before stopping---whether it
+stops at each stop point, or continues to the next breakpoint, for
+example---and how much Edebug displays the progress of the evaluation before
+it stops.
 
-Edebug実行モードは、通常はある特定のモードでプログラムを継続させるコマンドをタイプすることによって指定します。以下はそれらのコマンドのテーブルです。@kbd{S}以外のコマンドはプログラムの実行を再開して、少なくともある長さの間だけは実行を継続します。
+Normally, you specify the Edebug execution mode by typing a command to
+continue the program in a certain mode.  Here is a table of these commands;
+all except for @kbd{S} resume execution of the program, at least for a
+certain distance.
 
 @table @kbd
 @item S
 @c FIXME Does not work. https://debbugs.gnu.org/9764
-Stop(ストップ): これ以上プログラムを実行しないでEdebugのコマンドを待つ(@code{edebug-stop})。
+Stop: don't execute any more of the program, but wait for more Edebug
+commands (@code{edebug-stop}).
 
 @item @key{SPC}
-Step(ステップ): 次のストップポイントでストップする(@code{edebug-step-mode})。
+Step: stop at the next stop point encountered (@code{edebug-step-mode}).
 
 @item n
-Next(次へ):
-式の後にある次のストップポイントでストップする(@code{edebug-next-mode})。@ref{Jumping}の@code{edebug-forward-sexp}も参照のこと。
+Next: stop at the next stop point encountered after an expression
+(@code{edebug-next-mode}).  Also see @code{edebug-forward-sexp} in
+@ref{Jumping}.
 
 @item t
-Trace(トレース): Edebugのストップポイントごとにpause(通常は1秒)する(@code{edebug-trace-mode})。
+Trace: pause (normally one second) at each Edebug stop point
+(@code{edebug-trace-mode}).
 
 @item T
-Rapid
-trace(高速でトレース):ストップポイントごとに表示を更新するが、実際にpauseはしない(@code{edebug-Trace-fast-mode})。
+Rapid trace: update the display at each stop point, but don't actually pause
+(@code{edebug-Trace-fast-mode}).
 
 @item g
-Go(進む): 次のbreakpointまで実行する(@code{edebug-go-mode})。@ref{Breakpoints}を参照のこと。
+Go: run until the next breakpoint (@code{edebug-go-mode}).
+@xref{Breakpoints}.
 
 @item c
-Continue(継続): breakpointごとにpauseしてから継続する(@code{edebug-continue-mode})。
+Continue: pause one second at each breakpoint, and then continue
+(@code{edebug-continue-mode}).
 
 @item C
-Rapid continue(高速で継続):
-ポイントを各breakpointへ移動するがpauseしない(@code{edebug-Continue-fast-mode})。
+Rapid continue: move point to each breakpoint, but don't pause
+(@code{edebug-Continue-fast-mode}).
 
 @item G
-Go non-stop(ストップせず進む):
-breakpointを無視する(@code{edebug-Go-nonstop-mode})。まだ@kbd{S}やその他の編集コマンドでプログラムをストップするのは可能。
+Go non-stop: ignore breakpoints (@code{edebug-Go-nonstop-mode}).  You can
+still stop the program by typing @kbd{S}, or any editing command.
 @end table
 
-一般的に上記リストの最初のほうにある実行モードは後のほうの実行モードに比べて、プログラムをより低速に実行するか、すぐにストップさせます。
+In general, the execution modes earlier in the above list run the program
+more slowly or stop sooner than the modes later in the list.
 
-新たなEdebugレベルにエンターしたとき、Edebugは通常は最初に遭遇したインストルメント済みの関数でストップするでしょう。breakpointでのみストップするか、(たとえばカバレッジデータ収集時など)ストップさせないようにするには、@code{edebug-initial-mode}の値をデフォルトの@code{step}から@code{go}か@code{Go-nonstop}、あるいはその他の値に変更してください(@ref{Edebug
-Options}を参照)。@kbd{C-x C-a C-m}
-(@code{edebug-set-initial-mode})でこれを容易に行うことができます:
+When you enter a new Edebug level, Edebug will normally stop at the first
+instrumented function it encounters.  If you prefer to stop only at a break
+point, or not at all (for example, when gathering coverage data), change the
+value of @code{edebug-initial-mode} from its default @code{step} to
+@code{go}, or @code{Go-nonstop}, or one of its other values (@pxref{Edebug
+Options}).  You can do this readily with @kbd{C-x C-a C-m}
+(@code{edebug-set-initial-mode}):
 
 @deffn Command edebug-set-initial-mode
 @kindex C-x C-a C-m
-@kbd{C-x C-a
-C-m}にバインドされるこのコマンドは@code{edebug-initial-mode}をセットする。これはモードを示すキーの入力を求める。対応するモードをセットする上述8つのキーのいずれかを入力すること。
+This command, bound to @kbd{C-x C-a C-m}, sets @code{edebug-initial-mode}.
+It prompts you for a key to indicate the mode.  You should enter one of the
+eight keys listed above, which sets the corresponding mode.
 @end deffn
 
-たとえば１つのコマンドからインストルメント済みの関数が複数回呼び出されたら、同じEdebugレベルに再エンターするかもしれないことに注意してください。
+Note that you may reenter the same Edebug level several times if, for
+example, an instrumented function is called several times from one command.
 
-実行中とトレース中は、任意のEdebugコマンドをタイプすることによって実行をインタラプト(interrupt:
-中断、割り込み)できます。Edebugは次のストップポイントでプログラムをストップしてからタイプされたコマンドを実行します。たとえば実行中に@kbd{t}をタイプすると、次のストップポイントでトレースモードに切り替えます。@kbd{S}を使用すれば他に何も行わずに実行をストップできます。
+While executing or tracing, you can interrupt the execution by typing any
+Edebug command.  Edebug stops the program at the next stop point and then
+executes the command you typed.  For example, typing @kbd{t} during
+execution switches to trace mode at the next stop point.  You can use
+@kbd{S} to stop execution without doing anything else.
 
-関数でたまたま読み取り入力が発生した場合には、実行のインタラプトを意図してタイプされた文字は、かわりにその関数により読み取られます。そのプログラムが入力を欲するタイミングに注意を払うことで、そのような意図せぬ結果を避けることができます。
+If your function happens to read input, a character you type intending to
+interrupt execution may be read by the function instead.  You can avoid such
+unintended results by paying attention to when your program wants input.
 
 @cindex keyboard macros (Edebug)
-このセクションのコマンドを含むキーボードマクロは、完全には機能しません。プログラムを再開するためにEdebugからexitすると、キーボードマクロの追跡記録は失われます。これに対処するのは簡単ではありません。またEdebug外部でキーボードマクロを定義または実行しても、Edebug内部のコマンドに影響しません。通常これは利点です。@ref{Edebug
-Options}内の@code{edebug-continue-kbd-macro}オプションも参照してください。
+Keyboard macros containing the commands in this section do not completely
+work: exiting from Edebug, to resume the program, loses track of the
+keyboard macro.  This is not easy to fix.  Also, defining or executing a
+keyboard macro outside of Edebug does not affect commands inside Edebug.
+This is usually an advantage.  See also the @code{edebug-continue-kbd-macro}
+option in @ref{Edebug Options}.
 
 @defopt edebug-sit-for-seconds
-このオプションはtraceモードとcontinueモードで実行ステップの間を何秒待つか指定する。デフォルトは1秒。
+This option specifies how many seconds to wait between execution steps in
+trace mode or continue mode.  The default is 1 second.
 @end defopt
 
 @node Jumping
-@subsection ジャンプ
+@subsection Jumping
 
-  このセクションで説明するコマンドは、指定された場所に達するまで実行を続けます。@kbd{i}を除くすべてのコマンドは、ストップ場所を確立するために一時的なbreakpointを作成してからgoモードにスイッチします。意図されたストップポイントの前にある他のストップポイントに達した場合にも実行はストップします。breakpointの詳細は、@ref{Breakpoints}を参照してください。
+  The commands described in this section execute until they reach a specified
+location.  All except @kbd{i} make a temporary breakpoint to establish the
+place to stop, then switch to go mode.  Any other breakpoint reached before
+the intended stop point will also stop execution.  @xref{Breakpoints}, for
+the details on breakpoints.
 
-  以下のコマンドでは、非ローカルexitはプログラムのストップを望む一時的なbreakpointをバイパスできるので、期待どおり機能しないかもしれません。
+  These commands may fail to work as expected in case of nonlocal exit, as
+that can bypass the temporary breakpoint where you expected the program to
+stop.
 
 @table @kbd
 @item h
-ポイントがある場所の近くのストップポイントへ実行を進める(@code{edebug-goto-here})。
+Proceed to the stop point near where point is (@code{edebug-goto-here}).
 
 @item f
-プログラムの式を1つ実行する(@code{edebug-forward-sexp})。
+Run the program for one expression (@code{edebug-forward-sexp}).
 
 @item o
-sexpを含む終端までプログラムを実行する(@code{edebug-step-out})。
+Run the program until the end of the containing sexp
+(@code{edebug-step-out}).
 
 @item i
-ポイントの後のフォームから呼び出された関数かマクロにステップインする(@code{edebug-step-in})。
+Step into the function or macro called by the form after point
+(@code{edebug-step-in}).
 @end table
 
-@kbd{h}コマンドは一時的なbreakpointを使用してポイントのカレント位置、またはその後のストップポイントまで処理を進めます。
+The @kbd{h} command proceeds to the stop point at or after the current
+location of point, using a temporary breakpoint.
 
-@kbd{f}コマンドは式を1つ飛び越してプログラムを実行します。より正確には@code{forward-sexp}により到達できる位置に一時的なbreakpointをセットしてからgoモードで実行するので、プログラムはそのbreakpointでストップすることになります。
+The @kbd{f} command runs the program forward over one expression.  More
+precisely, it sets a temporary breakpoint at the position that
+@code{forward-sexp} would reach, then executes in go mode so that the
+program will stop at breakpoints.
 
-プレフィクス引数@var{n}とともに使用すると、ポイントから@var{n}個のsexp(s-expression:
-S式)を超えた場所に一時的なbreakpointをセットします。ポイントを含むリストが@var{n}より少ない要素で終わるような場合には、ストップ箇所はポイントが含まれる式の後になります。
+With a prefix argument @var{n}, the temporary breakpoint is placed @var{n}
+sexps beyond point.  If the containing list ends before @var{n} more
+elements, then the place to stop is after the containing expression.
 
-@code{forward-sexp}が見つける位置が、プログラムを実際にストップさせたい位置なのかチェックしなければなりません。たとえば@code{cond}内ではこれは正しくないかもしれません。
+You must check that the position @code{forward-sexp} finds is a place that
+the program will really get to.  In @code{cond}, for example, this may not
+be true.
 
-@kbd{f}コマンドは柔軟性を与えるために、@code{forward-sexp}をストップポイントではなくポイント位置から開始します。@emph{カレントのストップポイント}から1つの式を実行したい場合には、まずそこにポイントを移動するために@kbd{w}(@code{edebug-where})をタイプして、それから@kbd{f}をタイプしてください。
+For flexibility, the @kbd{f} command does @code{forward-sexp} starting at
+point, rather than at the stop point.  If you want to execute one expression
+@emph{from the current stop point}, first type @kbd{w} (@code{edebug-where})
+to move point there, and then type @kbd{f}.
 
-@kbd{o}コマンドは、式の外側で実行を継続します。これはポイントを含む式の最後に一時的なbreakpointを配置します。ポイントを含むsexpが関数定義なら@kbd{o}はその定義内の最後のsexpの直前まで実行を継続します。もし定義内の最後のsexpの直前にポイントがある場合は、その関数からリターンしてからストップします。言い換えるとこのコマンドは最後のsexpの後にポイントがなければ、カレントで実行中の関数からexitしません。
+The @kbd{o} command continues out of an expression.  It places a temporary
+breakpoint at the end of the sexp containing point.  If the containing sexp
+is a function definition itself, @kbd{o} continues until just before the
+last sexp in the definition.  If that is where you are now, it returns from
+the function and then stops.  In other words, this command does not exit the
+currently executing function unless you are positioned after the last sexp.
 
-コマンド@kbd{h}、@kbd{f}、@kbd{o}は通常は``Break''を表示して、正に評価した結果を表示する前に@code{edebug-sit-for-seconds}の間、一時停止します。@code{edebug-sit-on-break}を@code{nil}にセットすることによりこの一時停止を回避できます。@ref{Edebug
-Options}を参照してください。
+Normally, the @kbd{h}, @kbd{f}, and @kbd{o} commands display ``Break'' and
+pause for @code{edebug-sit-for-seconds} before showing the result of the
+form just evaluated.  You can avoid this pause by setting
+@code{edebug-sit-on-break} to @code{nil}.  @xref{Edebug Options}.
 
-@kbd{i}コマンドは、ポイントの後のリストフォームに呼び出された関数やマクロにステップインします。そのフォームは評価されようとしているものの1つである必要はないことに注意してください。しかしそのフォームが評価されようとしている関数呼び出しなら、引数が何も評価されないうちにこのコマンドを使用しないと、遅すぎることを覚えておいてください。
+The @kbd{i} command steps into the function or macro called by the list form
+after point, and stops at its first stop point.  Note that the form need not
+be the one about to be evaluated.  But if the form is a function call about
+to be evaluated, remember to use this command before any of the arguments
+are evaluated, since otherwise it will be too late.
 
-@kbd{i}コマンドはステップインしようとしている関数やマクロがまだインストルメントされていなければ、それらをインストルメントします。これは便利かもしれませんが、それらを明示的に非インストルメントしなければ、その関数やマクロはインストルメントされたままになることを覚えておいてください。
+The @kbd{i} command instruments the function or macro it's supposed to step
+into, if it isn't instrumented already.  This is convenient, but keep in
+mind that the function or macro remains instrumented unless you explicitly
+arrange to deinstrument it.
 
 @node Edebug Misc
-@subsection その他のEdebugコマンド
+@subsection Miscellaneous Edebug Commands
 
-  ここではその他のEdebugコマンドを説明します。
+  Some miscellaneous Edebug commands are described here.
 
 @table @kbd
 @item ?
-Edebugのヘルプメッセージを表示する(@code{edebug-help})。
+Display the help message for Edebug (@code{edebug-help}).
 
 @item a
 @itemx C-]
-1レベルを中断して以前のコマンドレベルへ戻る(@code{abort-recursive-edit})。
+Abort one level back to the previous command level
+(@code{abort-recursive-edit}).
 
 @item q
-エディターのトップレベルのコマンドループにリターンする(@code{top-level})。これはすべてのレベルのEdebugアクティビティを含むすべての再帰編集レベルをexitする。しかしフォーム@code{unwind-protect}か@code{condition-case}で保護されたインストルメント済みのコードはデバッグを再開するかもしれない。
+Return to the top level editor command loop (@code{top-level}).  This exits
+all recursive editing levels, including all levels of Edebug activity.
+However, instrumented code protected with @code{unwind-protect} or
+@code{condition-case} forms may resume debugging.
 
 @item Q
-@kbd{q}と同様だが、保護されたコードでもストップしない(@code{edebug-top-level-nonstop})。
+Like @kbd{q}, but don't stop even for protected code
+(@code{edebug-top-level-nonstop}).
 
 @item r
-エコーエリアにもっとも最近の既知のコマンドを再表示する(@code{edebug-previous-result})。
+Redisplay the most recently known expression result in the echo area
+(@code{edebug-previous-result}).
 
 @item d
-backtraceを表示するが、明確であるようにEdebug自身の関数は除外される(@code{edebug-pop-to-backtrace})。
+Display a backtrace, excluding Edebug's own functions for clarity
+(@code{edebug-pop-to-backtrace}).
 
-backtraceとbacktraceに作用するコマンドの説明は@ref{Backtraces}を参照のこと。
+@xref{Backtraces}, for a description of backtraces and the commands which
+work on them.
 
 @findex edebug-backtrace-show-instrumentation
 @findex edebug-backtrace-hide-instrumentation
-backtrace内でEdebugの関数を確認したければ@kbd{M-x
-edebug-backtrace-show-instrumentation}、それらを再び隠すには@kbd{M-x
-edebug-backtrace-hide-instrumentation}を使用する。
+If you would like to see Edebug's functions in the backtrace, use @kbd{M-x
+edebug-backtrace-show-instrumentation}.  To hide them again use @kbd{M-x
+edebug-backtrace-hide-instrumentation}.
 
-backtraceのフレームの先頭が@samp{>}なら、そのフレームにたいするソースコードの場所をEdebugが知っていることを意味する。カレントフレームのソースコードにジャンプするには@kbd{s}を使用する。
+If a backtrace frame starts with @samp{>} that means that Edebug knows where
+the source code for the frame is located.  Use @kbd{s} to jump to the source
+code for the current frame.
 
-実行を継続したときにbacktraceバッファーは自動的にkillされる。
+The backtrace buffer is killed automatically when you continue execution.
 @end table
 
-Edebugから再帰的にEdebugをアクティブにするコマンドを呼び出すことができます。Edebugがアクティブなときは常に@kbd{q}によトップレベルの終了、または@kbd{C-]}による再帰編集1レベルの中断ができます。@kbd{d}によってすべての未解決な評価のbacktraceを表示できます。
+You can invoke commands from Edebug that activate Edebug again recursively.
+Whenever Edebug is active, you can quit to the top level with @kbd{q} or
+abort one recursive edit level with @kbd{C-]}.  You can display a backtrace
+of all the pending evaluations with @kbd{d}.
 
 @node Breaks
-@subsection ブレーク
+@subsection Breaks
 
-Edebugのstepモードは、次のストップポイントに達したときに実行をストップします。一度開始されたEdebugの実行をストップするには、他に3つの方法があります。それはbreakpoint、グローバルbreak条件、およびソースbreakpointです。
+Edebug's step mode stops execution when the next stop point is reached.
+There are three other ways to stop Edebug execution once it has started:
+breakpoints, the global break condition, and source breakpoints.
 
 @menu
-* Breakpoints::              ストップポイントのbreakpoint。
-* Global Break Condition::   イベントによるbreak。
-* Source Breakpoints::       ソースコードに埋め込まれたbreakpoint。
+* Breakpoints::              Breakpoints at stop points.
+* Global Break Condition::   Breaking on an event.
+* Source Breakpoints::       Embedding breakpoints in source code.
 @end menu
 
 @node Breakpoints
-@subsubsection Edebugのブレークポイント
+@subsubsection Edebug Breakpoints
 
 @cindex breakpoints (Edebug)
-Edebugを使用しているときは、テスト中のプログラム内に@dfn{breakpoint}を指定できます。breakpointとは実行がストップされる場所のことです。@ref{Using
-Edebug}で定義されている任意のストップポイントにbreakpointをセットできます。breakpointのセットと解除で影響を受けるストップポイントは、ソースコードバッファー内でポイント位置、またはポイント位置の後の最初のストップポイントです。以下はEdebugのbreakpoint用のコマンドです:
+While using Edebug, you can specify @dfn{breakpoints} in the program you are
+testing: these are places where execution should stop.  You can set a
+breakpoint at any stop point, as defined in @ref{Using Edebug}.  For setting
+and unsetting breakpoints, the stop point that is affected is the first one
+at or after point in the source code buffer.  Here are the Edebug commands
+for breakpoints:
 
 @table @kbd
 @item b
-ポイント位置、またはポイント位置の後のストップポイントにbreakpointをセットする(@code{edebug-set-breakpoint})。プレフィクス引数を使用すると、それは一時的なbreakpointとなり、プログラムが最初にそこで停止したときに解除される。breakpoint位置には@code{edebug-enabled-breakpoint}または@code{edebug-disabled-breakpoint}フェイスのオーバーレイが配置される。
+Set a breakpoint at the stop point at or after point
+(@code{edebug-set-breakpoint}).  If you use a prefix argument, the
+breakpoint is temporary---it turns off the first time it stops the program.
+An overlay with the @code{edebug-enabled-breakpoint} or
+@code{edebug-disabled-breakpoint} faces is put at the breakpoint.
 
 @item u
-(もしあれば)ポイント位置、またはポイント位置の後のストップポイントにあるbreakpointを解除(unset)する(@code{edebug-unset-breakpoint})。
+Unset the breakpoint (if any) at the stop point at or after point
+(@code{edebug-unset-breakpoint}).
 
 @item U
-カレントフォーム内のすべてのbreakpointにポイントのセットを解除する(@code{edebug-unset-breakpoints})。
+Unset any breakpoints in the current form (@code{edebug-unset-breakpoints}).
 
 @item D
-ポイント付近のbreakpointの有効と無効を切り替える(@code{edebug-toggle-disable-breakpoint})。このコマンドは主にbreakpointが条件つきであり、そのコンディションの再作成に幾分かの作業を要する場合に有用。
+Toggle whether to disable the breakpoint near point
+(@code{edebug-toggle-disable-breakpoint}).  This command is mostly useful if
+the breakpoint is conditional and it would take some work to recreate the
+condition.
 
 @item x @var{condition} @key{RET}
-@var{condition}を評価して非@code{nil}値になる場合だけプログラムをストップする条件付きbreakpointをセットする(@code{edebug-set-conditional-breakpoint})。プレフィクス引数を指定すると一時的なbreakpointになる。
+Set a conditional breakpoint which stops the program only if evaluating
+@var{condition} produces a non-@code{nil} value
+(@code{edebug-set-conditional-breakpoint}).  With a prefix argument, the
+breakpoint is temporary.
 
 @item B
-カレント定義内の次のbreakpointにポイントを移動する(@code{edebug-next-breakpoint})。
+Move point to the next breakpoint in the current definition
+(@code{edebug-next-breakpoint}).
 @end table
 
-Edebug内では@kbd{b}でbreakpointをセットして、@kbd{u}でそれを解除できます。最初に望ましいストップポイントにポイントを移動してから、そこにbreakpointをセットまたは解除するために@kbd{b}または@kbd{u}をタイプします。breakpointがない場所でbreakpointを解除しても影響はありません。
+While in Edebug, you can set a breakpoint with @kbd{b} and unset one with
+@kbd{u}.  First move point to the Edebug stop point of your choice, then
+type @kbd{b} or @kbd{u} to set or unset a breakpoint there.  Unsetting a
+breakpoint where none has been set has no effect.
 
-ある定義の再評価や再インストルメントを行うと、以前のbreakpointはすべて削除されます。
+Re-evaluating or reinstrumenting a definition removes all of its previous
+breakpoints.
 
-@dfn{条件付きbreakpoint(conditional
-breakpoint)}は、プログラムがそこに達するたびに条件をテストします。条件を評価した結果エラーが発生した場合、エラーは無視されて結果は@code{nil}になります。条件付きbreakpointをセットするには@kbd{x}を使用して、ミニバッファーで条件式を指定します。以前にセットされた条件付きbreakpointがあるストップポイントに条件付きbreakpointをセットすると、以前の条件式がミニバッファーに配置されるのでそれを編集できます。
+A @dfn{conditional breakpoint} tests a condition each time the program gets
+there.  Any errors that occur as a result of evaluating the condition are
+ignored, as if the result were @code{nil}.  To set a conditional breakpoint,
+use @kbd{x}, and specify the condition expression in the minibuffer.
+Setting a conditional breakpoint at a stop point that has a previously
+established conditional breakpoint puts the previous condition expression in
+the minibuffer so you can edit it.
 
-プレフィクス引数を指定してbreakpointをセットするコマンドを使用することによって、@dfn{一時的}な条件付きbreakpoint、および無条件のbreakpointを作成できます。一時的なbreakpointによりプログラムがストップしたとき、そのbreakpointは自動的に解除されます。
+You can make a conditional or unconditional breakpoint @dfn{temporary} by
+using a prefix argument with the command to set the breakpoint.  When a
+temporary breakpoint stops the program, it is automatically unset.
 
-Go-nonstopモードを除き、Edebugは常にbreakpointでストップ、またはpauseします。Go-nonstopモードではbreakpointは完全に無視されます。
+Edebug always stops or pauses at a breakpoint, except when the Edebug mode
+is Go-nonstop.  In that mode, it ignores breakpoints entirely.
 
-breakpointがどこにあるか探すには@kbd{B}コマンドを使用します。このコマンドは同じ関数内からポイント以降にある次のbreakpoint(ポイント以降にbreakpointが存在しなければ最初のbreakpoint)にポイントを移動します。このコマンドは実行を継続せずに、単にバッファー内のポイントを移動します。
+To find out where your breakpoints are, use the @kbd{B} command, which moves
+point to the next breakpoint following point, within the same function, or
+to the first breakpoint if there are no following breakpoints.  This command
+does not continue execution---it just moves point in the buffer.
 
 @node Global Break Condition
-@subsubsection グローバルなブレーク条件
+@subsubsection Global Break Condition
 
 @cindex stopping on events
 @cindex global break condition
-  @dfn{グローバルbreak条件(global break
-condition)}は指定された条件が満たされたとき、それがどこで発生したかによらず、実行をストップします。Edebugは、すべてのストップポイントでグローバルbreak条件を評価します。これが非@code{nil}値に評価された場合は、あたかもそのストップポイントにbreakpointがあったかのように、実行をストップまたはpauseします(実行モードによる)。条件の評価でエラーを取得した場合は、実行をストップしません。
+  A @dfn{global break condition} stops execution when a specified condition is
+satisfied, no matter where that may occur.  Edebug evaluates the global
+break condition at every stop point; if it evaluates to a non-@code{nil}
+value, then execution stops or pauses depending on the execution mode, as if
+a breakpoint had been hit.  If evaluating the condition gets an error,
+execution does not stop.
 
 @findex edebug-set-global-break-condition
-  条件式は@code{edebug-global-break-condition}に格納されます。Edebugがアクティブなときにソースバッファーから@kbd{X}コマンドを使用するか、Edebugがロードされている間は任意のバッファーから任意のタイミングで@kbd{C-x
-X X}(@code{edebug-set-global-break-condition})を使用して新たな式を指定できます。
+  The condition expression is stored in @code{edebug-global-break-condition}.
+You can specify a new expression using the @kbd{X} command from the source
+code buffer while Edebug is active, or using @kbd{C-x X X} from any buffer
+at any time, as long as Edebug is loaded
+(@code{edebug-set-global-break-condition}).
 
-  グローバルbreak条件は、コード内のどこでイベントが発生したかを見つけるもっともシンプルな方法ですが、コードの実行は遅くなります。そのため使用しないときは条件を@code{nil}にリセットするべきです。
+  The global break condition is the simplest way to find where in your code
+some event occurs, but it makes code run much more slowly.  So you should
+reset the condition to @code{nil} when not using it.
 
 @node Source Breakpoints
-@subsubsection ソースブレークポイント
+@subsubsection Source Breakpoints
 
 @findex edebug
 @cindex source breakpoints
-  定義内のすべてのbreakpointは、それをインストルメントするたびに失われます。breakpointが失われないようにしたければソースコード内で単に関数@code{edebug}を呼び出す@dfn{ソースbreakpoint(source
-breakpoint)}を記述できます。もちろんそのような呼び出しを条件付きすることにもできます。たとえば@code{fac}関数内に以下のような行を1行目に挿入して、引数が0になったときストップさせることができます:
+  All breakpoints in a definition are forgotten each time you reinstrument
+it.  If you wish to make a breakpoint that won't be forgotten, you can write
+a @dfn{source breakpoint}, which is simply a call to the function
+@code{edebug} in your source code.  You can, of course, make such a call
+conditional.  For example, in the @code{fac} function, you can insert the
+first line as shown below, to stop when the argument reaches zero:
 
 @example
 (defun fac (n)
@@ -412,133 +590,201 @@ breakpoint)}を記述できます。もちろんそのような呼び出しを�
     1))
 @end example
 
-  @code{fac}の定義がインストルメントされて呼び出されたとき、@code{edebug}呼び出しはbreakpointとして振る舞います。実行モードに応じてEdebugはそこでストップまたはpauseします。
+  When the @code{fac} definition is instrumented and the function is called,
+the call to @code{edebug} acts as a breakpoint.  Depending on the execution
+mode, Edebug stops or pauses there.
 
 @c This may not be a good idea anymore.
-  @code{edebug}が呼び出されたときにインストルメント済みのコードが実行されていなければ、この関数は@code{debug}を呼び出します。
+  If no instrumented code is being executed when @code{edebug} is called, that
+function calls @code{debug}.
 
 @node Trapping Errors
-@subsection エラーのトラップ
+@subsection Trapping Errors
 
-  エラーがシグナルされて、それが@code{condition-case}でハンドルされていないとき、Emacsは通常はエラーメッセージを表示します。Edebugがアクティブでインストルメント済みコードの実行中は、ハンドルされていないエラーには通常はEdebugが対応します。オプション@code{edebug-on-error}と@code{edebug-on-quit}でこれをカスタマイズできます。@ref{Edebug
-Options}を参照してください。
+  Emacs normally displays an error message when an error is signaled and not
+handled with @code{condition-case}.  While Edebug is active and executing
+instrumented code, it normally responds to all unhandled errors.  You can
+customize this with the options @code{edebug-on-error} and
+@code{edebug-on-quit}; see @ref{Edebug Options}.
 
-  Edebugがエラーに対応するときは、エラー発生箇所の前にある最後のストップポイントを表示します。この場所はインストルメントされていない関数の呼び出しであったり、その関数内で実際にエラーが発生したのかもしれません。バインドされていない変数に関するエラーの場合は、最後の既知のストップポイントは、その不正な変数参照から遠く離れた場所にあるかもしれません。そのような場合には完全なbacktraceを表示したいと思うでしょう(@ref{Edebug
-Misc}を参照)。
+  When Edebug responds to an error, it shows the last stop point encountered
+before the error.  This may be the location of a call to a function which
+was not instrumented, and within which the error actually occurred.  For an
+unbound variable error, the last known stop point might be quite distant
+from the offending variable reference.  In that case, you might want to
+display a full backtrace (@pxref{Edebug Misc}).
 
 @c Edebug should be changed for the following: -- dan
-  Edebugがアクティブの間に@code{debug-on-error}か@code{debug-on-quit}を変更すると、それらの変更はEdebugが非アクティブになったとき失われます。さらにEdebugの再帰編集の間、これらの変数はEdebugの外部でもっていた値にバインドされます。
+  If you change @code{debug-on-error} or @code{debug-on-quit} while Edebug is
+active, these changes will be forgotten when Edebug becomes inactive.
+Furthermore, during Edebug's recursive edit, these variables are bound to
+the values they had outside of Edebug.
 
 @node Edebug Views
-@subsection Edebugのビュー
+@subsection Edebug Views
 
-  これらのEdebugコマンドは、Edebugにエントリーする前のバッファーの外観とウィンドウの状態を調べるコマンドです。外部のウィンドウ構成はウィンドウのコレクションとその内容であり、それらは実際にはEdebugの外部にあります。
+  These Edebug commands let you view aspects of the buffer and window status
+as they were before entry to Edebug.  The outside window configuration is
+the collection of windows and contents that were in effect outside of
+Edebug.
 
 @table @kbd
 @item P
 @itemx v
-外部のウィンドウ構成ビューに切り替える(@code{edebug-view-outside})。Edebugにリターンするには@kbd{C-x X
-w}をタイプする。
+Switch to viewing the outside window configuration
+(@code{edebug-view-outside}).  Type @kbd{C-x X w} to return to Edebug.
 
 @item p
-一時的に外部のカレントバッファーを表示して、ポイントもその外部の位置になる(@code{edebug-bounce-point})。Edebugにリターンする前に1秒
-pauseする。プレフィクス引数@var{n}を指定すると、かわりに@var{n}秒 pauseする。
+Temporarily display the outside current buffer with point at its outside
+position (@code{edebug-bounce-point}), pausing for one second before
+returning to Edebug.  With a prefix argument @var{n}, pause for @var{n}
+seconds instead.
 
 @item w
-ソースコードバッファー内のカレントストップポイントにポイントを戻す(@code{edebug-where})。
+Move point back to the current stop point in the source code buffer
+(@code{edebug-where}).
 
-このコマンドを同じバッファーを表示する異なるウィンドウで使用すると、そのウィンドウは将来カレント定義を表示するために代用される。
+If you use this command in a different window displaying the same buffer,
+that window will be used instead to display the current definition in the
+future.
 
 @item W
 @c Its function is not simply to forget the saved configuration -- dan
-Edebugが外部のウィンドウ構成の保存とリストアを行うかどうかを切り替える(@code{edebug-toggle-save-windows})。
+Toggle whether Edebug saves and restores the outside window configuration
+(@code{edebug-toggle-save-windows}).
 
-プレフィクス引数を指定すると、@kbd{W}は選択されたウィンドウの保存とリストアだけを切り替える。ソースコードバッファーを表示していないウィンドウを指定するには、グローバルキーマップから@kbd{C-x
-X W}を使用しなければならない。
+With a prefix argument, @kbd{W} only toggles saving and restoring of the
+selected window.  To specify a window that is not displaying the source code
+buffer, you must use @kbd{C-x X W} from the global keymap.
 @end table
 
-  @kbd{v}、または単に@kbd{p}でカレントバッファーにポイントを反跳させれば、たとえ通常は表示されないウィンドウでも外部のウィンドウ構成を調べることができます。
+  You can view the outside window configuration with @kbd{v} or just bounce to
+the point in the current buffer with @kbd{p}, even if it is not normally
+displayed.
 
-  ポイントを移動した後にストップポイントに戻りたいときがあるかもしれません。これはソースコードバッファーから@kbd{w}で行うことができます。どのバッファーにいても@kbd{C-x
-X w}を使用すれば、ソースコードバッファー内のストップポイントに戻ることができます。
+  After moving point, you may wish to jump back to the stop point.  You can do
+that with @kbd{w} from a source code buffer.  You can jump back to the stop
+point in the source code buffer from any buffer using @kbd{C-x X w}.
 
-  保存を@emph{オフ}にするために@kbd{W}を使用するたびに、Edebugは外部のウィンドウ構成を忘れます。そのためたとえ保存を@emph{オン}に戻しても、(プログラムを実行することによって)次にEdebugをexitしたとき、カレントウィンドウ構成は変更されないまま残ります。しかし十分な数のウィンドウをオープンしていない場合には、@file{*edebug*}と@file{*edebug-trace*}の再表示があなたが見たいバッファーと競合するかもしれません。
+  Each time you use @kbd{W} to turn saving @emph{off}, Edebug forgets the
+saved outside window configuration---so that even if you turn saving back
+@emph{on}, the current window configuration remains unchanged when you next
+exit Edebug (by continuing the program).  However, the automatic redisplay
+of @file{*edebug*} and @file{*edebug-trace*} may conflict with the buffers
+you wish to see unless you have enough windows open.
 
 @node Edebug Eval
-@subsection 評価
+@subsection Evaluation
 
-  Edebug内では、まるでEdebugが実行されていないかのように式を評価できます。式の評価とプリントに際して、Edebugは不可視になるよう試みます。副作用をもつ式の評価は、Edebugが明示的に保存とリストアを行うデータへの変更を除いて期待したとおり機能するでしょう。このプロセスの詳細は、@ref{The
-Outside Context}を参照してください。
+  While within Edebug, you can evaluate expressions as if Edebug were not
+running.  Edebug tries to be invisible to the expression's evaluation and
+printing.  Evaluation of expressions that cause side effects will work as
+expected, except for changes to data that Edebug explicitly saves and
+restores.  @xref{The Outside Context}, for details on this process.
 
 @table @kbd
 @item e @var{exp} @key{RET}
-Edebugのコンテキスト外で式@var{exp}を評価する(@code{edebug-eval-expression})。つまり、Edebugはその式への干渉を最小限にしようと努める。評価した結果はエコーエリア、プレフィックス引数を与えられた場合には新たにバッファーをポップアップしてそこに結果を見栄えよくプリントする。
+Evaluate expression @var{exp} in the context outside of Edebug
+(@code{edebug-eval-expression}).  That is, Edebug tries to minimize its
+interference with the evaluation.  The result is shown in the echo area, or,
+if this command is given a prefix, pop up a new buffer and pretty-print the
+result there.
 
-このコマンドはデフォルトでは評価の間はデバッガを抑制する。これにより評価される式内のエラーが新たなエラーとして既存のエラーの最上位に追加されることはなくなる。ユーザーオプション@code{debug-allow-recursive-debug}を非@code{nil}にセットすれば、これをオーバーライドできる。
+By default, this command suppresses the debugger during evaluation, so that
+an error in the evaluated expression won't add a new error on top of the
+existing one.  Set the @code{debug-allow-recursive-debug} user option to a
+non-@code{nil} value to override this.
 
 @item M-: @var{exp} @key{RET}
-Edebug自身のコンテキスト内で式@var{exp}を評価する(@code{eval-expression})。
+Evaluate expression @var{exp} in the context of Edebug itself
+(@code{eval-expression}).
 
 @item C-x C-e
-ポイントの前の式をEdebugのコンテキスト外で評価する(@code{edebug-eval-last-sexp})。プレフィックス引数が0(@kbd{C-u
-0 C-x C-e})なら、(文字列やリストのような)長いアイテムを短縮しない。それ以外のプレフィックスなら別のバッファーに値を見栄えよくプリントする。
+Evaluate the expression before point, in the context outside of Edebug
+(@code{edebug-eval-last-sexp}).  With the prefix argument of zero (@kbd{C-u
+0 C-x C-e}), don't shorten long items (like strings and lists).  Any other
+prefix will result in the value being pretty-printed in a separate buffer.
 @end table
 
 @cindex lexical binding (Edebug)
 @c FIXME?  What about lexical-binding = t?
-  Edebugは@file{cl.el}内の構文(@code{lexical-let}、@code{macrolet}、@code{symbol-macrolet})によって作成された、レキシカル(lexical)にバインドされたシンボルへの参照を含む式の評価をサポートします。
+  Edebug supports evaluation of expressions containing references to lexically
+bound symbols created by the following constructs in @file{cl.el}:
+@code{lexical-let}, @code{macrolet}, and @code{symbol-macrolet}.
 
 @node Eval List
-@subsection 評価 List Buffer
+@subsection Evaluation List Buffer
 
-  式をインタラクティブに評価するために、@file{*edebug*}と呼ばれる@dfn{評価リストバッファー(evaluation list
-buffer)}を使用できます。Edebugがディスプレイを更新するたびに自動的に評価される、式の@dfn{評価リスト(evaluation
-list)}もセットアップできます。
+  You can use the @dfn{evaluation list buffer}, called @file{*edebug*}, to
+evaluate expressions interactively.  You can also set up the @dfn{evaluation
+list} of expressions to be evaluated automatically each time Edebug updates
+the display.
 
 @table @kbd
 @item E
-評価リストバッファー@file{*edebug*}に切り替える(@code{edebug-visit-eval-list})。
+Switch to the evaluation list buffer @file{*edebug*}
+(@code{edebug-visit-eval-list}).
 @end table
 
-  @file{*edebug*}バッファーでは、以下の特別なコマンドと同様にLisp Interactionモード(@ref{Lisp
-Interaction,,, emacs, The GNU Emacs Manual}を参照)のコマンドも使用できます。
+  In the @file{*edebug*} buffer you can use the commands of Lisp Interaction
+mode (@pxref{Lisp Interaction,,, emacs, The GNU Emacs Manual}) as well as
+these special commands:
 
 @table @kbd
 @item C-j
-ポイントの前の式をコンテキスト外で評価して、その値をバッファーに挿入する(@code{edebug-eval-print-last-sexp})。プレフィクス引数が0(@kbd{C-u
-0 C-j})なら、(文字列やリストのような)長いアイテムを短縮しない。
+Evaluate the expression before point, in the outside context, and insert the
+value in the buffer (@code{edebug-eval-print-last-sexp}).  With prefix
+argument of zero (@kbd{C-u 0 C-j}), don't shorten long items (like strings
+and lists).
 
 @item C-x C-e
-Edebugのコンテキスト外でポイントの前の式を評価する(@code{edebug-eval-last-sexp})。
+Evaluate the expression before point, in the context outside of Edebug
+(@code{edebug-eval-last-sexp}).
 
 @item C-c C-u
-バッファー内のコンテンツから新たに評価リストを構築する(@code{edebug-update-eval-list})。
+Build a new evaluation list from the contents of the buffer
+(@code{edebug-update-eval-list}).
 
 @item C-c C-d
-ポイントのある評価リストグループを削除する(@code{edebug-delete-eval-item})。
+Delete the evaluation list group that point is in
+(@code{edebug-delete-eval-item}).
 
 @item C-c C-w
-ソースコードバッファーに切り替えてカレントストップポイントに戻る(@code{edebug-where})。
+Switch back to the source code buffer at the current stop point
+(@code{edebug-where}).
 @end table
 
-  評価リストウィンドウ内では、@file{*scratch*}にいるときと同様に@kbd{C-j}や@kbd{C-x
-C-e}で式を評価できますが、それらはEdebugのコンテキスト外で評価されます。
+  You can evaluate expressions in the evaluation list window with @kbd{C-j} or
+@kbd{C-x C-e}, just as you would in @file{*scratch*}; but they are evaluated
+in the context outside of Edebug.
 
-  インタラクティブに入力した式(と結果)は、実行を継続すると失われます。しかし実行がストップされるたびに評価されるように、式から構成される@dfn{評価リスト}をセットアップできます。
+  The expressions you enter interactively (and their results) are lost when
+you continue execution; but you can set up an @dfn{evaluation list}
+consisting of expressions to be evaluated each time execution stops.
 
 @cindex evaluation list group
-  これを行なうには、評価リストバッファー内で1つ以上の@dfn{評価リストグループ(evaluation list
-group)}を記述します。評価リストグループは1つ以上のLisp式から構成されます。グループはコメント行で区切られます。
+  To do this, write one or more @dfn{evaluation list groups} in the evaluation
+list buffer.  An evaluation list group consists of one or more Lisp
+expressions.  Groups are separated by comment lines.
 
-  コマンド@kbd{C-c
-C-u}(@code{edebug-update-eval-list})はバッファーをスキャンして、各グループの最初の式を使用して評価リストを再構築します(これはグループの2つ目の式は以前に計算、表示されている値だという発想からである)。
+  The command @kbd{C-c C-u} (@code{edebug-update-eval-list}) rebuilds the
+evaluation list, scanning the buffer and using the first expression of each
+group.  (The idea is that the second expression of the group is the value
+previously computed and displayed.)
 
-  Edebugにエントリーするたびに、評価リストの各式(および式の後に式のカレント値)をバッファーに挿入して再表示します。これはコメント行も挿入するので、各式はそのグループの一員となります。したがってバッファーのテキストを変更せずに@kbd{C-c
-C-u}とタイプすると、評価リストは実際には変更されません。
+  Each entry to Edebug redisplays the evaluation list by inserting each
+expression in the buffer, followed by its current value.  It also inserts
+comment lines so that each expression becomes its own group.  Thus, if you
+type @kbd{C-c C-u} again without changing the buffer text, the evaluation
+list is effectively unchanged.
 
-  評価リストからの評価の間にエラーが発生すると、それが式の結果であるかのようにエラーメッセージが文字列で表示されます。したがってカレントで無効な変数を使用する式によって、デバッグが中断されることはありません。
+  If an error occurs during an evaluation from the evaluation list, the error
+message is displayed in a string as if it were the result.  Therefore,
+expressions using variables that are not currently valid do not interrupt
+your debugging.
 
-  以下はいくつかの式を評価リストウィンドウに追加したとき、どのように見えるかの例です:
+  Here is an example of what the evaluation list window looks like after
+several expressions have been added to it:
 
 @smallexample
 (current-buffer)
@@ -561,35 +807,44 @@ eval-last-sexp
 ;---------------------------------------------------------------
 @end smallexample
 
-グループを削除するにはグループ内にポイントを移動して@kbd{C-c C-d}をタイプするか、単にグループのテキストを削除して@kbd{C-c
-C-u}で評価リストを更新します。評価リストに新たな式を追加するには、適切な箇所にその式を挿入して新たなコメント行を挿入してから@kbd{C-c
-C-u}をタイプします。コメント行にダッシュを挿入する必要はありません --- 内容は関係ないのです。
+To delete a group, move point into it and type @kbd{C-c C-d}, or simply
+delete the text for the group and update the evaluation list with @kbd{C-c
+C-u}.  To add a new expression to the evaluation list, insert the expression
+at a suitable place, insert a new comment line, then type @kbd{C-c C-u}.
+You need not insert dashes in the comment line---its contents don't matter.
 
-@file{*edebug*}を選択した後に@kbd{C-c
-C-w}でソースコードバッファーにリターンできます。@file{*edebug*}は実行を継続したときにkillされて、次回必要となったときに再作成されます。
+After selecting @file{*edebug*}, you can return to the source code buffer
+with @kbd{C-c C-w}.  The @file{*edebug*} buffer is killed when you continue
+execution, and recreated next time it is needed.
 
 @node Printing in Edebug
-@subsection Edebugでのプリント
+@subsection Printing in Edebug
 
 @cindex printing (Edebug)
 @cindex printing circular structures
-  プログラム内の式が循環リスト構造(circular list
-structure)を含む値を生成する場合は、Edebugがそれをプリントしようとしたときエラーとなるかもしれません。
+  If an expression in your program produces a value containing circular list
+structure, you may get an error when Edebug attempts to print it.
 
-  循環構造への対処の1つとして、@code{print-length}と@code{print-level}にプリントの切り詰めをセットする方法があります。Edebugは変数@code{edebug-print-length}と@code{edebug-print-level}の値(非@code{nil}値なら)を、これらの変数にバインドします。@ref{Output
-Variables}を参照してください。
+  One way to cope with circular structure is to set @code{print-length} or
+@code{print-level} to truncate the printing.  Edebug does this for you; it
+binds @code{print-length} and @code{print-level} to the values of the
+variables @code{edebug-print-length} and @code{edebug-print-level} (so long
+as they have non-@code{nil} values).  @xref{Output Variables}.
 
 @defopt edebug-print-length
-非@code{nil}なら結果をプリントするときEdebugは@code{print-length}をこの値にバインドする。デフォルト値は@code{50}。
+If non-@code{nil}, Edebug binds @code{print-length} to this value while
+printing results.  The default value is @code{50}.
 @end defopt
 
 @defopt edebug-print-level
-非@code{nil}なら結果をプリントするときEdebugは@code{print-level}をこの値にバインドする。デフォルト値は@code{50}。
+If non-@code{nil}, Edebug binds @code{print-level} to this value while
+printing results.  The default value is @code{50}.
 @end defopt
 
-  @code{print-circle}を非@code{nil}値にバインドして、循環構造や要素を共有する構造にたいして、より参考になる情報をプリントするよういにすることもできます。
+  You can also print circular structures and structures that share elements
+more informatively by binding @code{print-circle} to a non-@code{nil} value.
 
-  以下は循環構造を作成するコードの例です:
+  Here is an example of code that creates a circular structure:
 
 @example
 (setq a (list 'x 'y))
@@ -597,73 +852,118 @@ Variables}を参照してください。
 @end example
 
 @noindent
-@code{print-circle}が非@code{nil}なら、プリント関数(@code{prin1}等)は@code{a}を@samp{#1=(#1#
-y)}のようにプリントします。@samp{#1=}という表記はその後の構造をラベル@samp{1}とラベル付けして、@samp{#1#}表記はその前にラベル付けされた構造を参照しています。この表記はリストとベクターの任意の共有要素に使用されます。
+If @code{print-circle} is non-@code{nil}, printing functions (e.g.,
+@code{prin1}) will print @code{a} as @samp{#1=(#1# y)}.  The @samp{#1=}
+notation labels the structure that follows it with the label @samp{1}, and
+the @samp{#1#} notation references the previously labeled structure.  This
+notation is used for any shared elements of lists or vectors.
 
 @defopt edebug-print-circle
-非@code{nil}なら結果をプリントするときEdebugは@code{print-circle}をこの値にバインドする。デフォルト値は@code{t}。
+If non-@code{nil}, Edebug binds @code{print-circle} to this value while
+printing results.  The default value is @code{t}.
 @end defopt
 
-  プリントをどのようにカスタマイズできるかに関する詳細は@ref{Output Functions}を参照してください。
+  For further details about how printing can be customized, see @pxref{Output
+Functions}.
 
 @node Trace Buffer
-@subsection トレースバッファー
+@subsection Trace Buffer
 @cindex trace buffer
 
-  Edebugは実行トレースを@file{*edebug-trace*}という名前のバッファーに格納して記録できます。実行トレースとは関数呼び出しとリターンのログのことで関数名と引数、および値を確認できます。トレースレコードを有効にするには、@code{edebug-trace}を非@code{nil}値にセットしてください。
+  Edebug can record an execution trace, storing it in a buffer named
+@file{*edebug-trace*}.  This is a log of function calls and returns, showing
+the function names and their arguments and values.  To enable trace
+recording, set @code{edebug-trace} to a non-@code{nil} value.
 
-  トレースバッファーの作成は実行モードのトレースの使用(@ref{Edebug Execution Modes}を参照)と同じではありません。
+  Making a trace buffer is not the same thing as using trace execution mode
+(@pxref{Edebug Execution Modes}).
 
-  トレースレコードが有効なときは、関数へのエントリーとexitのたびにトレースバッファーに行が追加されます。関数エントリーレコードは@samp{::::@{}、および関数名と引数の値によって構成されます。関数のexitレコードは@samp{::::@}}、および関数名と関数の結果によって構成されます。
+  When trace recording is enabled, each function entry and exit adds lines to
+the trace buffer.  A function entry record consists of @samp{::::@{},
+followed by the function name and argument values.  A function exit record
+consists of @samp{::::@}}, followed by the function name and result of the
+function.
 
-  @samp{:}の数は関数エントリーの再帰レベルを表します。トレースバッファーでは関数呼び出しの開始と終了の検索に@samp{@{}と@samp{@}}を使用できます。
+  The number of @samp{:}s in an entry shows its recursion depth.  You can use
+the braces in the trace buffer to find the matching beginning or end of
+function calls.
 
 @findex edebug-print-trace-before
 @findex edebug-print-trace-after
-  関数@code{edebug-print-trace-before}と@code{edebug-print-trace-after}を再定義することによって、関数エントリーと関数exitのトレースレコードをカスタマイズできます。
+  You can customize trace recording for function entry and exit by redefining
+the functions @code{edebug-print-trace-before} and
+@code{edebug-print-trace-after}.
 
 @defmac edebug-tracing string body@dots{}
-このマクロは@var{body}フォームの実行活動にたいして追加のトレース情報をリクエストする。引数@var{string}はトレースバッファーに配置する@samp{@{}と@samp{@}}の後のテキストを指定する。すべての引数は評価されて、@code{edebug-tracing}は@var{body}内の最後のフォームの値をリターンする。
+This macro requests additional trace information around the execution of the
+@var{body} forms.  The argument @var{string} specifies text to put in the
+trace buffer, after the @samp{@{} or @samp{@}}.  All the arguments are
+evaluated, and @code{edebug-tracing} returns the value of the last form in
+@var{body}.
 @end defmac
 
 @defun edebug-trace format-string &rest format-args
-この関数はトレースバッファーにテキストを挿入する。テキストは@code{(apply 'format @var{format-string}
-@var{format-args})}によって計算される。エントリー間の区切りとして改行も付け加える。
+This function inserts text in the trace buffer.  It computes the text with
+@code{(apply 'format @var{format-string} @var{format-args})}.  It also
+appends a newline to separate entries.
 @end defun
 
-  @code{edebug-tracing}と@code{edebug-trace}は、たとえEdebugが非アクティブでも、呼び出されたときは常にトレースバッファーに行を挿入します。トレースバッファーへのテキストの追加により、挿入された最後の行が見えるようにウィンドウもスクロールします。
+  @code{edebug-tracing} and @code{edebug-trace} insert lines in the trace
+buffer whenever they are called, even if Edebug is not active.  Adding text
+to the trace buffer also scrolls its window to show the last lines inserted.
 
 @node Coverage Testing
-@subsection カバレッジテスト
+@subsection Coverage Testing
 
 @cindex coverage testing (Edebug)
 @cindex frequency counts
 @cindex performance analysis (Edebug)
-  Edebugは基本的なカバレッジテスト(coverage test)と実行頻度(execution frequency)の表示を提供します。
+  Edebug provides rudimentary coverage testing and display of execution
+frequency.
 
-  カバレッジテストは、すべての式の結果と以前の結果を比較することによって機能します。プログラム内の各フォームがカレントEmacsセッション内でカバレッジテストを開始して以降に、2つの異なる値をリターンしたら、それらのフォームはカバーされたと判断されます。したがってプログラムにカバレッジテストを行なうには、そのプログラムをさまざまなコンディション下で実行して、プログラムが正しく振る舞うかに注目します。異なるコンディション下で十分にテストして、すべてのフォームが異なる2つの値をリターンしたとき、Edebugはそのことを告げるでしょう。
+  Coverage testing works by comparing the result of each expression with the
+previous result; each form in the program is considered covered if it has
+returned two different values since you began testing coverage in the
+current Emacs session.  Thus, to do coverage testing on your program,
+execute it under various conditions and note whether it behaves correctly;
+Edebug will tell you when you have tried enough different conditions that
+each form has returned two different values.
 
-  カバレッジテストにより実行速度が低下するので、@code{edebug-test-coverage}が非@code{nil}のときだけカバレッジテストが行なわれます。頻度計数(frequency
-count)はたとえ実行モードがGo-nonstopでも、カバレッジテストが有効か無効かに関わらずすべての式にたいして行われます。
+  Coverage testing makes execution slower, so it is only done if
+@code{edebug-test-coverage} is non-@code{nil}.  Frequency counting is
+performed for all executions of an instrumented function, even if the
+execution mode is Go-nonstop, and regardless of whether coverage testing is
+enabled.
 
 @kindex C-x X =
 @findex edebug-temp-display-freq-count
-  定義にたいするカバレッジ情報と頻度数の両方を表示するには@kbd{C-x X =}
-(@code{edebug-display-freq-count})を使用します。単に@kbd{=}
-(@code{edebug-temp-display-freq-count})とすると、他のキーをタイプするまでの間だけ一時的に同様の情報を表示します。
+  Use @kbd{C-x X =} (@code{edebug-display-freq-count}) to display both the
+coverage information and the frequency counts for a definition.  Just
+@kbd{=} (@code{edebug-temp-display-freq-count}) displays the same
+information temporarily, only until you type another key.
 
 @deffn Command edebug-display-freq-count
-このコマンドはカレント定義の各行の頻度数を表示する。
+This command displays the frequency count data for each line of the current
+definition.
 
-このコマンドはコードの各行の下にコメント行として頻度数を挿入する。1回の@code{undo}コマンドですべての挿入をアンドゥできる。頻度数は式の前の@samp{(}か式の後の@samp{)}、または変数の最後の文字の下に表示される。表示をシンプルにするために同一行にたいして式の以前頻度数と頻度数が同じ場合は表示しない。
+It inserts frequency counts as comment lines after each line of code.  You
+can undo all insertions with one @code{undo} command.  The counts appear
+under the @samp{(} before an expression or the @samp{)} after an expression,
+or on the last character of a variable.  To simplify the display, a count is
+not shown if it is equal to the count of an earlier expression on the same
+line.
 
-ある式にたいする頻度数の後に文字@samp{=}がある場合は、その式が評価されるたびに同じ値を毎回リターンしていることを表す。言い換えるとカバレッジテストの目的からは、その式はまだカバーされていないということである。
+The character @samp{=} following the count for an expression says that the
+expression has returned the same value each time it was evaluated.  In other
+words, it is not yet covered for coverage testing purposes.
 
-ある定義にたいして頻度数とカバレッジデータを明確にするには、単に@code{eval-defun}で再インストルメントすればよい。
+To clear the frequency count and coverage data for a definition, simply
+reinstrument it with @code{eval-defun}.
 @end deffn
 
-たとえばソースのbreakpointで@code{(fac
-5)}を評価した後に@code{edebug-test-coverage}を@code{t}にセットすると、breakpointに達したときの頻度データは以下のようになります:
+For example, after evaluating @code{(fac 5)} with a source breakpoint, and
+setting @code{edebug-test-coverage} to @code{t}, when the breakpoint is
+reached, the frequency data looks like this:
 
 @example
 (defun fac (n)
@@ -677,126 +977,185 @@ count)はたとえ実行モードがGo-nonstopでも、カバレッジテスト�
 ;#   0
 @end example
 
-コメント行は@code{fac}が6回呼び出されたことを表しています。最初の@code{if}命令は毎回同じ結果を5回リターンしています。同じ結果という意味では2つ目の@code{if}の条件にも当てはまります。@code{fac}の再帰呼び出しは結局リターンしません。
+The comment lines show that @code{fac} was called 6 times.  The first
+@code{if} statement returned 5 times with the same result each time; the
+same is true of the condition on the second @code{if}.  The recursive call
+of @code{fac} did not return at all.
 
 
 @node The Outside Context
-@subsection コンテキスト外部
+@subsection The Outside Context
 
-Edebugはデバッグ中のプログラムにたいして透過的であろうと努めますが完全には達成されません。Edebugは@kbd{e}や評価リストバッファーで式を評価するときにも、一時的に外部のコンテキストをリストアして透明化を試みます。このセクションではEdebugがリストアするコンテキストと、Edebugが完全に透過的になるのに失敗する理由を正確に説明します。
+Edebug tries to be transparent to the program you are debugging, but it does
+not succeed completely.  Edebug also tries to be transparent when you
+evaluate expressions with @kbd{e} or with the evaluation list buffer, by
+temporarily restoring the outside context.  This section explains precisely
+what context Edebug restores, and how Edebug fails to be completely
+transparent.
 
 @menu
-* Checking Whether to Stop::  何を行うかをEdebugが決定するタイミング。
-* Edebug Display Update::    Edebugがディスプレイを更新するタイミング。
-* Edebug Recursive Edit::    Edebugが実行をストップするタイミング。
+* Checking Whether to Stop::  When Edebug decides what to do.
+* Edebug Display Update::    When Edebug updates the display.
+* Edebug Recursive Edit::    When Edebug stops execution.
 @end menu
 
 @node Checking Whether to Stop
-@subsubsection 停止するかどうかのチェック
+@subsubsection Checking Whether to Stop
 
-Edebugにエンターするときは常に特定のデータの保存とリストアを行なう必要があり、それはトレース情報を作成するか、あるいはプログラムを停止するかを決定する前に行なう必要があります。
+Whenever Edebug is entered, it needs to save and restore certain data before
+even deciding whether to make trace information or stop the program.
 
 @itemize @bullet
 @item
 @vindex edebug-max-depth
-@code{max-lisp-eval-depth}
-(@ref{Eval}を参照)はEdebugがスタックに与える影響の低減効果を高める。しかしそれでもEdebug使用時にスタック空間を使い切ってしまうことがあり得る。非常に大きいクォートされたリストを含むコードをインストルメントすることによってEdebugが再帰深さの制限に達してしまうようなら、@code{edebug-max-depth}の値を大きくすることもできる。
+@code{max-lisp-eval-depth} (@pxref{Eval}) is increased to reduce Edebug's
+impact on the stack.  You could, however, still run out of stack space when
+using Edebug.  You can also enlarge the value of @code{edebug-max-depth} if
+Edebug reaches the limit of recursion depth instrumenting code that contains
+very large quoted lists.
 
 @item
-キーボードマクロの実行状態の保存とリストアが行われる。Edebugがアクティブの間、@code{edebug-continue-kbd-macro}が@code{nil}なら@code{executing-kbd-macro}が@code{nil}にバインドされる。
+The state of keyboard macro execution is saved and restored.  While Edebug
+is active, @code{executing-kbd-macro} is bound to @code{nil} unless
+@code{edebug-continue-kbd-macro} is non-@code{nil}.
 @end itemize
 
 
 @node Edebug Display Update
-@subsubsection Edebugの表示の更新
+@subsubsection Edebug Display Update
 
 @c This paragraph is not filled, because LaLiberte's conversion script
 @c needs an xref to be on just one line.
-(たとえばtraceモードなどで)Edebugが何かを表示する必要があるときは、Edebugの外部からカレントウィンドウ構成(@ref{Window
-Configurations}を参照)を保存します。Edebugをexitするときに、以前のウィンドウ構成がリストアされます。
+When Edebug needs to display something (e.g., in trace mode), it saves the
+current window configuration from outside Edebug (@pxref{Window
+Configurations}).  When you exit Edebug, it restores the previous window
+configuration.
 
-Emacsはpause時だけ再表示を行います。通常は実行を継続すると、そのプログラムはbreakpointかステップ実行後にEdebugに再エンターして、その間にpauseや入力の読み取りはありません。そのような場合、Emacsが外部の構成を再表示する機会は決してありません。結果としてユーザーが目にするウィンドウ構成は、前回Edebugが中断なしでアクティブだったときのウィンドウ構成と同じになります。
+Emacs redisplays only when it pauses.  Usually, when you continue execution,
+the program re-enters Edebug at a breakpoint or after stepping, without
+pausing or reading input in between.  In such cases, Emacs never gets a
+chance to redisplay the outside configuration.  Consequently, what you see
+is the same window configuration as the last time Edebug was active, with no
+interruption.
 
-何かを表示するためにEdebugにエントリーすることにより、(たとえこれらのうちのいくつかは、エラーやquitがシグナルされたときは故意にリストアしないデータだとしても)以下のデータも保存とリストアが行われます。
+Entry to Edebug for displaying something also saves and restores the
+following data (though some of them are deliberately not restored if an
+error or quit signal occurs).
 
 @itemize @bullet
 @item
 @cindex current buffer point and mark (Edebug)
-カレントバッファー、およびカレントバッファー内のポイントとマークの位置が保存およびリストアされる。
+Which buffer is current, and the positions of point and the mark in the
+current buffer, are saved and restored.
 
 @item
 @cindex window configuration (Edebug)
-@code{edebug-save-windows}が非@code{nil}なら、外部のウィンドウ構成の保存とリストアが行われる(@ref{Edebug
-Options}を参照)。@code{edebug-save-windows}の値がリストの場合には、保存とリストアはリストされたウィンドウにたいしてのみ行われる。
+The outside window configuration is saved and restored if
+@code{edebug-save-windows} is non-@code{nil} (@pxref{Edebug Options}).  If
+the value of @code{edebug-save-windows} is a list, only the listed windows
+are saved and restored.
 
-エラーやquitではウィンドウ構成はリストアされないが、@code{save-excursion}がアクティブなら、たとえエラーやquitのときでも外部の選択されたウィンドウが@emph{再選択される}。
+The window configuration is not restored on error or quit, but the outside
+selected window @emph{is} reselected even on error or quit in case a
+@code{save-excursion} is active.
 
-ただしソースコードバッファーのウィンドウの開始位置と水平スクロールはリストアされないので、表示はEdebug内で整合性が保たれたままとなる。
+The window start and horizontal scrolling of the source code buffer are not
+restored, however, so that the display remains coherent within Edebug.
 
 @cindex buffer point changed by Edebug
 @cindex edebug overwrites buffer point position
-外部のウィンドウ構成の保存やリストアによってデバッグ中のLispプログラムが作用するバッファーのポイントが変更されてしまうときがある(特にプログラムがポイントを移動する場合)。もしこれが発生してデバッグに干渉するようなら、@code{edebug-save-windows}に@code{nil}をセットすることをお勧めする(@ref{Edebug
-Options}を参照)。
+Saving and restoring the outside window configuration can sometimes change
+the positions of point in the buffers on which the Lisp program you are
+debugging operates, especially if your program moves point.  If this happens
+and interferes with your debugging, we recommend to set
+@code{edebug-save-windows} to @code{nil} (@pxref{Edebug Options}).
 
 @item
-@code{edebug-save-displayed-buffer-points}が非@code{nil}なら、表示されているそれぞれのバッファー内のポイント値は保存およびリストアされる。
+The value of point in each displayed buffer is saved and restored if
+@code{edebug-save-displayed-buffer-points} is non-@code{nil}.
 
 @item
-変数@code{overlay-arrow-position}と@code{overlay-arrow-string}は保存とリストアが行われるので、同じバッファー内の他の場所の再帰編集から安全にEdebugを呼び出せる。
+The variables @code{overlay-arrow-position} and @code{overlay-arrow-string}
+are saved and restored, so you can safely invoke Edebug from the recursive
+edit elsewhere in the same buffer.
 
 @item
-@code{cursor-in-echo-area}は@code{nil}にローカルにバインドされるのでカーソルはそのウィンドウ内に現れる。
+@code{cursor-in-echo-area} is locally bound to @code{nil} so that the cursor
+shows up in the window.
 @end itemize
 
 @node Edebug Recursive Edit
-@subsubsection Edebugの再帰編集
+@subsubsection Edebug Recursive Edit
 
-Edebugにエンターしてユーザーのコマンドが実際に読み取られるとき、Edebugは以下の追加データを保存(および後でリストア)します:
+When Edebug is entered and actually reads commands from the user, it saves
+(and later restores) these additional data:
 
 @itemize @bullet
 @item
-カレントマッチデータ。@ref{Match Data}を参照のこと。
+The current match data.  @xref{Match Data}.
 
 @item
-変数@code{last-command}、@code{this-command}、@code{last-command-event}、@code{last-input-event}、@code{last-event-frame}、@code{last-nonmenu-event}、@code{track-mouse}。Edebug内のコマンドはEdebug外部のこれらの変数に影響をあたえない。
+The variables @code{last-command}, @code{this-command},
+@code{last-command-event}, @code{last-input-event}, @code{last-event-frame},
+@code{last-nonmenu-event}, and @code{track-mouse}.  Commands in Edebug do
+not affect these variables outside of Edebug.
 
-Edebug内でのコマンド実行は@code{this-command-keys}によりリターンされるキーシーケンスを変更でき、Lispからそのキーシーケンスをリセットする方法はない。
+Executing commands within Edebug can change the key sequence that would be
+returned by @code{this-command-keys}, and there is no way to reset the key
+sequence from Lisp.
 
-Edebugは@code{unread-command-events}の値の保存とリストアができない。この変数が重要な値をもつときにEdebugにエンターすると、デバッグ中のプログラムの実行に干渉する可能性がある。
-
-@item
-Edebug内で実行された複雑なコマンドは変数@code{command-history}に追加される。これは稀に実行に影響を与える。
-
-@item
-Edebug内では再帰の深さがEdebug外部の再帰の深さより1つ深くなる。これは自動的に更新される評価リストウィンドウでは異なる。
-
-@item
-@code{standard-output}と@code{standard-input}は、@code{recursive-edit}によって@code{nil}にバインドされるがEdebugは評価の間それらを一時的にリストアする。
+Edebug cannot save and restore the value of @code{unread-command-events}.
+Entering Edebug while this variable has a nontrivial value can interfere
+with execution of the program you are debugging.
 
 @item
-キーボードマクロ定義の状態は保存およびリストアされる。Edebugがアクティブの間、@code{defining-kbd-macro}は@code{edebug-continue-kbd-macro}にバインドされる。
+Complex commands executed while in Edebug are added to the variable
+@code{command-history}.  In rare cases this can alter execution.
+
+@item
+Within Edebug, the recursion depth appears one deeper than the recursion
+depth outside Edebug.  This is not true of the automatically updated
+evaluation list window.
+
+@item
+@code{standard-output} and @code{standard-input} are bound to @code{nil} by
+the @code{recursive-edit}, but Edebug temporarily restores them during
+evaluations.
+
+@item
+The state of keyboard macro definition is saved and restored.  While Edebug
+is active, @code{defining-kbd-macro} is bound to
+@code{edebug-continue-kbd-macro}.
 @end itemize
 
 @node Edebug and Macros
-@subsection Edebugとマクロ
+@subsection Edebug and Macros
 
-Edebugが正しくマクロを呼び出す式をインストルメントするには、いくつかの特定な配慮が必要になります。このサブセクションでは、その詳細を説明します。
+To make Edebug properly instrument expressions that call macros, some extra
+care is needed.  This subsection explains the details.
 
 @menu
-* Instrumenting Macro Calls::  基本的な問題点。
-* Specification List::       式の複雑なパターンを指定する方法。
-* Backtracking::             マッチに失敗したときEdebugが行なうこと。
-* Specification Examples::   Edebug仕様を理解するために。
+* Instrumenting Macro Calls::  The basic problem.
+* Specification List::       How to specify complex patterns of evaluation.
+* Backtracking::             What Edebug does when matching fails.
+* Specification Examples::   To help understand specifications.
 @end menu
 
 @node Instrumenting Macro Calls
-@subsubsection マクロ呼び出しのインストルメント
+@subsubsection Instrumenting Macro Calls
 
-  EdebugがLispマクロを呼び出す式をインストルメントするときは、正しくインストルメントを行なうために、そのマクロに関して追加の情報が必要になります。これはマクロ呼び出しのどの部分式(subexpression)が評価されるフォームなのか推測する方法がないからです(評価はマクロのbodyで明示的に発生するかもしれないし、展開結果が評価されるとき、または任意のタイミングで行われるかもしれない)。
+  When Edebug instruments an expression that calls a Lisp macro, it needs
+additional information about the macro to do the job properly.  This is
+because there is no a-priori way to tell which subexpressions of the macro
+call are forms to be evaluated.  (Evaluation may occur explicitly in the
+macro body, or when the resulting expansion is evaluated, or any time
+later.)
 
-  したがってEdebugが処理するかもしれないすべてのマクロにたいして、そのマクロの呼び出しフォーマットを説明するためのEdebug仕様(Edebug
-specification)を定義しなければなりません。これを行なうにはマクロ定義に@code{debug}宣言を追加します。以下はマクロ例@code{for}(@ref{Argument
-Evaluation}を参照)にたいする簡単な仕様の例です。
+  Therefore, you must define an Edebug specification for each macro that
+Edebug will encounter, to explain the format of calls to that macro.  To do
+this, add a @code{debug} declaration to the macro definition.  Here is a
+simple example that shows the specification for the @code{for} example macro
+(@pxref{Argument Evaluation}).
 
 @smallexample
 (defmacro for (var from init to final do &rest body)
@@ -806,227 +1165,359 @@ For example, (for i from 1 to 10 do (print i))."
   ...)
 @end smallexample
 
-  このEdebug仕様はマクロ呼び出しのどの部分が評価されるフォームなのかを示しています。単純なマクロにたいするEdebug仕様は、そのマクロ定義の正式な引数リストに酷似している場合がありますが、Edebug仕様はマクロ引数に比べてより汎的です。@code{declare}フォームの詳細は@ref{Defining
-Macros}を参照してください。
+  The Edebug specification says which parts of a call to the macro are forms
+to be evaluated.  For simple macros, the specification often looks very
+similar to the formal argument list of the macro definition, but
+specifications are much more general than macro arguments.  @xref{Defining
+Macros}, for more explanation of the @code{declare} form.
 
 @c See, e.g., https://debbugs.gnu.org/10577
 @c FIXME  Maybe there should be an Edebug option to get it to
 @c automatically load the entire source file containing the function
 @c being instrumented.  That would avoid this.
-  コードをインストルメントするときEdebugに仕様が確実に解るように留意してください。別ファイルで定義されたマクロを使用する関数をインストルメントする場合には、関数を含むファイル内の@code{require}フォームを評価するか、あるいはマクロを含むファイルを明示的にロードする必要があるかもしれません。マクロの定義が@code{eval-when-compile}でラップされていれば、それを評価する必要があるでしょう。
+  Take care to ensure that the specifications are known to Edebug when you
+instrument code.  If you are instrumenting a function which uses a macro
+defined in another file, you may first need to either evaluate the
+@code{require} forms in the file containing your function, or explicitly
+load the file containing the macro.  If the definition of a macro is wrapped
+by @code{eval-when-compile}, you may need to evaluate it.
 
-  @code{def-edebug-spec}によりマクロ定義から個々のマクロにたいしてEdebug仕様を定義することもできます。Lispで記述されたマクロ定義にたいしては@code{debug}宣言を追加するほうが好ましく便利でもありますが、@code{def-edebug-spec}ではCで実装されたスペシャルフォームにたいしてEdebug仕様を定義することが可能になります。
+  You can also define an edebug specification for a macro separately from the
+macro definition with @code{def-edebug-spec}.  Adding @code{debug}
+declarations is preferred, and more convenient, for macro definitions in
+Lisp, but @code{def-edebug-spec} makes it possible to define Edebug
+specifications for special forms implemented in C.
 
 @defmac def-edebug-spec macro specification
-マクロ@var{macro}呼び出しのどの式が評価される式かを指定する。@var{specification}はEdebug仕様である。どちらの引数も評価されない。
+Specify which expressions of a call to macro @var{macro} are forms to be
+evaluated.  @var{specification} should be the Edebug specification.  Neither
+argument is evaluated.
 
-引数@var{macro}には単なるマクロ名ではない、任意の実シンボルを指定できる。
+The @var{macro} argument can actually be any symbol, not just a macro name.
 @end defmac
 
-以下は@var{specification}に指定できるシンボルと、引数を処理する方法のテーブルです。
+Here is a table of the possibilities for @var{specification} and how each
+directs processing of arguments.
 
 @table @asis
 @item @code{t}
-すべての引数は評価のためにインストルメントされる。@code{(body)}の省略形。
+All arguments are instrumented for evaluation.  This is short for
+@code{(body)}.
 
-@item シンボル
-そのシンボルはかわりに使用されるEdebug仕様をもたなければならない。このインダイレクションは他の種類の仕様が見つかるまで繰り返される。これによって他のマクロの仕様を継承できる。
+@item a symbol
+The symbol must have an Edebug specification, which is used instead.  This
+indirection is repeated until another kind of specification is found.  This
+allows you to inherit the specification from another macro.
 
-@item リスト
-リストの要素はフォーム呼び出しの引数の型を記述する。仕様リストに指定できる要素については以降のセクションを参照のこと。
+@item a list
+The elements of the list describe the types of the arguments of a calling
+form.  The possible elements of a specification list are described in the
+following sections.
 @end table
 
-マクロがEdebug仕様をもたなければ、@code{debug}宣言および@code{def-edebug-spec}呼び出しのどちらを介しても、変数@code{edebug-eval-macro-args}が効果を発揮します。
+If a macro has no Edebug specification, neither through a @code{debug}
+declaration nor through a @code{def-edebug-spec} call, the variable
+@code{edebug-eval-macro-args} comes into play.
 
 @defopt edebug-eval-macro-args
-これはEdebugが明示的なEdebug仕様をもたないマクロ引数を扱う方法を制御する。@code{nil}(デフォルト)なら引数は評価のためにインストルメントされない。それ以外ならすべての引数がインストルメントされる。
+This controls the way Edebug treats macro arguments with no explicit Edebug
+specification.  If it is @code{nil} (the default), none of the arguments is
+instrumented for evaluation.  Otherwise, all arguments are instrumented.
 @end defopt
 
 @node Specification List
-@subsubsection 仕様リスト
+@subsubsection Specification List
 
 @cindex Edebug specification list
-あるマクロ呼び出しにおいて、いくつかの引数は評価されても、それ以外の引数は評価されないような場合には、Edebug仕様のために@dfn{仕様リスト(specification
-list)}が必要となります。仕様リスト内のいくつかの要素は1つ以上の引数にマッチしますが、それ以外の要素は以降に続くすべての引数の処理を変更します。後者は@dfn{仕様キーワード(specification
-keywords)}と呼ばれ、(@code{&optional}のように)@samp{&}で始まるシンボルです。
+A @dfn{specification list} is required for an Edebug specification if some
+arguments of a macro call are evaluated while others are not.  Some elements
+in a specification list match one or more arguments, but others modify the
+processing of all following elements.  The latter, called @dfn{specification
+keywords}, are symbols beginning with @samp{&} (such as @code{&optional}).
 
-仕様リストはそれ自身がリストであるような引数にマッチする部分リスト(sublist)、あるいはグループ化に使用されるベクターを含むかもしれません。したがって部分式とグループは仕様リストをレベル階層に細分化します。仕様キーワードは部分式やグループを含むものの残りに適用されます。
+A specification list may contain sublists, which match arguments that are
+themselves lists, or it may contain vectors used for grouping.  Sublists and
+groups thus subdivide the specification list into a hierarchy of levels.
+Specification keywords apply only to the remainder of the sublist or group
+they are contained in.
 
-仕様リストに選択肢や繰り返しが含まれる場合は、実際のマクロの呼び出しのマッチでバックトラックが要求されるかもしれません。詳細は@ref{Backtracking}を参照してください。
+When a specification list involves alternatives or repetition, matching it
+against an actual macro call may require backtracking.  For more details,
+@pxref{Backtracking}.
 
-Edebug仕様は釣り合いのとれたカッコで括られた部分式へのマッチ、フォームの再帰処理、インダイレクト仕様を通じた再帰等の、正規表現によるマッチングとコンテキストに依存しない文法構成を提供します。
+Edebug specifications provide the power of regular expression matching, plus
+some context-free grammar constructs: the matching of sublists with balanced
+parentheses, recursive processing of forms, and recursion via indirect
+specifications.
 
-以下は仕様リストに使用できる要素と、その意味についてのテーブルです(使用例は@ref{Specification Examples}を参照):
+Here's a table of the possible elements of a specification list, with their
+meanings (@pxref{Specification Examples}, for the referenced examples):
 
 @table @code
 @item sexp
 @c an "expression" is not necessarily intended for evaluation.
-評価されない単一のLispオブジェクト。インストルメントされない。マクロ展開時にマクロが引数を評価する場合には、@code{form}ではなく@code{sexp}を使うこと。
+A single unevaluated Lisp object, which is not instrumented.  If the macro
+evaluates an argument at macro-expansion time, you should use @code{sexp}
+for it rather than @code{form}.
 
 @item form
-評価される単一の式。インストルメントされる。評価前にマクロが式のを@code{lambda}でラップしていれば、かわりに@code{def-form}を使用すること(以下の@code{def-form}を参照)。
+A single evaluated expression, which is instrumented.  If your macro wraps
+the expression with @code{lambda} before it is evaluated, use
+@code{def-form} instead.  See @code{def-form} below.
 
 @item place
-汎変数(generalized variable)。@ref{Generalized Variables}を参照のこと。
+A generalized variable.  @xref{Generalized Variables}.
 
 @item body
-@code{&rest
-form}の短縮形(以下の@code{&rest}を参照)。評価前にマクロが式のを@code{lambda}でラップしていれば、かわりに@code{def-form}を使用すること(以下の@code{def-form}を参照)。
+Short for @code{&rest form}.  See @code{&rest} below.  If your macro wraps
+its body of code with @code{lambda} before it is evaluated, use
+@code{def-body} instead.  See @code{def-body} below.
 
 @item lambda-expr
-クォートされないラムダ式。
+A lambda expression with no quoting.
 
 @item &optional
 @c @kindex &optional @r{(Edebug)}
-仕様リスト内の後続の要素はオプション。マッチしない要素が出現するとEdebugはこのレベルのマッチングを停止する。
+All following elements in the specification list are optional; as soon as
+one does not match, Edebug stops matching at this level.
 
-後続が非オプションの要素であるような数個の要素をオプションにするだけなら、@code{[&optional
-@var{specs}@dots{}]}を使用する。複数の要素すべてのマッチや非マッチを指定するには、@code{&optional
-[@var{specs}@dots{}]}を使用する。@code{defun}の例を参照のこと。
+To make just a few elements optional, followed by non-optional elements, use
+@code{[&optional @var{specs}@dots{}]}.  To specify that several elements
+must all match or none, use @code{&optional [@var{specs}@dots{}]}.  See the
+@code{defun} example.
 
 @item &rest
 @c @kindex &rest @r{(Edebug)}
-仕様リスト内の後続のすべての要素は0回以上繰り返される。しかし最後の繰り返しでは、仕様リスト内のすべての要素にたいするマッチングの前に式が終了しても問題はない。
+All following elements in the specification list are repeated zero or more
+times.  In the last repetition, however, it is not a problem if the
+expression runs out before matching all of the elements of the specification
+list.
 
-数個の要素を繰り返すには@code{[&rest
-@var{specs}@dots{}]}を使用する。各繰り返しにおいてすべてマッチしなければならない複数要素を指定するには、@code{&rest
-[@var{specs}@dots{}]}を使用する。
+To repeat only a few elements, use @code{[&rest @var{specs}@dots{}]}.  To
+specify several elements that must all match on every repetition, use
+@code{&rest [@var{specs}@dots{}]}.
 
 @item &or
 @c @kindex &or @r{(Edebug)}
-仕様リスト内の後続の各要素は選択肢である。選択肢の1つがマッチしなければならず、マッチしなければ@code{&or}仕様は失敗する。
+Each of the following elements in the specification list is an alternative.
+One of the alternatives must match, or the @code{&or} specification fails.
 
-@code{&or}に続く各リスト要素は単一の選択肢である。複数のリスト要素を単一の選択肢にグループ化するには、それらを@code{[@dots{}]}で括る。
+Each list element following @code{&or} is a single alternative.  To group
+two or more list elements as a single alternative, enclose them in
+@code{[@dots{}]}.
 
 @item &not
 @c @kindex &not @r{(Edebug)}
-後続の各要素は@code{&or}が使用されたときのように選択肢にマッチするが、要素がマッチしたら失敗となる。マッチする要素がなければ何もマッチされないが@code{&not}仕様は成功となる。
+Each of the following elements is matched as alternatives as if by using
+@code{&or}, but if any of them match, the specification fails.  If none of
+them match, nothing is matched, but the @code{&not} specification succeeds.
 
 @c FIXME &key?
 
 @item &define
 @c @kindex &define @r{(Edebug)}
-フォームを定義する仕様であることを示す。フォームを定義するEdebugの定義は、後刻(フォーム定義の実行後に)保存および実行される1つ以上のコードを含んだフォーム。
+Indicates that the specification is for a defining form.  Edebug's
+definition of a defining form is a form containing one or more code forms
+which are saved and executed later, after the execution of the defining
+form.
 
-フォーム定義自体はインストルメントされない(つまりEdebugはフォーム定義の前後でストップしない)が、フォーム内部は通常はインストルメントされるであろう。@code{&define}キーワードはリスト仕様の最初の要素であること。
+The defining form itself is not instrumented (that is, Edebug does not stop
+before and after the defining form), but forms inside it typically will be
+instrumented.  The @code{&define} keyword should be the first element in a
+list specification.
 
 @item nil
-カレント引数レベルでマッチさせる引数が存在しなければ成功し、それ以外は失敗する。部分リスト仕様とバッククォートの例を参照のこと。
+This is successful when there are no more arguments to match at the current
+argument list level; otherwise it fails.  See sublist specifications and the
+backquote example.
 
 @item gate
 @cindex preventing backtracking
-引数はマッチされないがgateを通じたバックトラックは、このレベルの仕様の残りをマッチングする間は無効にされる。これは主に特定の構文エラーメッセージを一般化するために使用される。詳細は@ref{Backtracking}、および@code{let}の例も参照のこと。
+No argument is matched but backtracking through the gate is disabled while
+matching the remainder of the specifications at this level.  This is
+primarily used to generate more specific syntax error messages.  See
+@ref{Backtracking}, for more details.  Also see the @code{let} example.
 
 @item &error
-@code{&error}の後にはedebug仕様のエラーメッセージ(文字列)が続くこと。これはインストルメントをabortして、メッセージをミニバッファーに表示する。
+@code{&error} should be followed by a string, an error message, in the
+edebug-spec; it aborts the instrumentation, displaying the message in the
+minibuffer.
 
 @item &interpose
-残りのコードのパースを関数に制御させる。これは@code{&interpose @var{spec} @var{fun}
-@var{args...}}のような形式をとり、Edebugがコードにたいして最初に@var{spec}をマッチして、それから@code{spec}にマッチしたコードとともに@var{fun}、パース関数@var{pf}、最後に@var{args...}を呼び出すことを意味する。パース関数は、残りのコードのパースに使用するための仕様リストを単一の引数として期待する。これは正確に1回呼び出されて、@var{fun}がリターンすることを期待されるインストルメント済みコードをリターンすること。たとえば@code{(&interpose
-symbolp
-pcase--match-pat-args)}は最初の要素がシンボルであるようなsexpにマッチしてから、@code{pcase--match-pat-args}は@code{pcase--match-pat-args}に照らしてheadとなるシンボルに対応するspecを照合、その後にそれらを引数として受け取る@var{pf}に渡す。
+Lets a function control the parsing of the remaining code.  It takes the
+form @code{&interpose @var{spec} @var{fun} @var{args...}} and means that
+Edebug will first match @var{spec} against the code and then call @var{fun}
+with the code that matched @code{spec}, a parsing function @var{pf}, and
+finally @var{args...}.  The parsing function expects a single argument
+indicating the specification list to use to parse the remaining code.  It
+should be called exactly once and returns the instrumented code that
+@var{fun} is expected to return.  For example @code{(&interpose symbolp
+pcase--match-pat-args)} matches sexps whose first element is a symbol and
+then lets @code{pcase--match-pat-args} lookup the specs associated with that
+head symbol according to @code{pcase--match-pat-args} and pass them to the
+@var{pf} it received as argument.
 
 @item @var{other-symbol}
 @cindex indirect specifications
-仕様リスト内のその他の要素は、述語(predicate)かインダイレクト仕様(indirect specification)である。
+Any other symbol in a specification list may be a predicate or an indirect
+specification.
 
-シンボルがEdebug仕様をもつなら、@dfn{インダイレクト仕様(indirect
-specification)}はシンボル位置に使用されるリスト仕様か、引数を処理するための関数のいずれかである。この仕様は@code{def-edebug-spec}で定義できる。
+If the symbol has an Edebug specification, this @dfn{indirect specification}
+should be either a list specification that is used in place of the symbol,
+or a function that is called to process the arguments.  The specification
+may be defined with @code{def-edebug-elem-spec}:
 
 @defun def-edebug-elem-spec element specification
-シンボル@var{element}の箇所で使用する@var{specification}を定義する。@var{specification}はリストでなければ鳴らす。
+Define the @var{specification} to use in place of the symbol @var{element}.
+@var{specification} has to be a list.
 @end defun
 
-それ以外ならシンボルは述語(predicate)である。述語は引数とともに呼び出されて@code{nil}をリターンしたら、その仕様は失敗して引数はインストルメントされない。
+Otherwise, the symbol should be a predicate.  The predicate is called with
+the argument, and if the predicate returns @code{nil}, the specification
+fails and the argument is not instrumented.
 
-適切な述語としては@code{symbolp}、@code{integerp}、@code{stringp}、@code{vectorp}、@code{atom}が含まれる。
+Some suitable predicates include @code{symbolp}, @code{integerp},
+@code{stringp}, @code{vectorp}, and @code{atom}.
 
 @item [@var{elements}@dots{}]
 @cindex [@dots{}] (Edebug)
-要素のベクターは要素を単一の@dfn{グループ仕様(group
-specification)}にグループ化する。このグループ仕様はベクター自体には何も行わない。
+A vector of elements groups the elements into a single @dfn{group
+specification}.  Its meaning has nothing to do with vectors.
 
 @item "@var{string}"
-引数は@var{string}という名前のシンボルである。この仕様は@var{symbol}の名前が@var{string}であるようなクォートされたシンボル@code{'@var{symbol}}と等価だが、文字列形式のほうが好ましい。
+The argument should be a symbol named @var{string}.  This specification is
+equivalent to the quoted symbol, @code{'@var{symbol}}, where the name of
+@var{symbol} is the @var{string}, but the string form is preferred.
 
 @item (vector @var{elements}@dots{})
-引数は要素が仕様内の@var{elements}にマッチするようなベクターである。バッククォートの例を参照のこと。
+The argument should be a vector whose elements must match the @var{elements}
+in the specification.  See the backquote example.
 
 @item (@var{elements}@dots{})
-他のリストは@dfn{部分リスト仕様(sublist
-specification)}であり、引数は要素が仕様の@var{elements}にマッチするリストでなければならない。
+Any other list is a @dfn{sublist specification} and the argument must be a
+list whose elements match the specification @var{elements}.
 
 @cindex dotted lists (Edebug)
-部分リスト仕様はドットリスト(dotted
-list)かもしれず、その場合対応するリスト引数はドットリストである。かわりにドットリスト仕様の最後の@sc{cdr}が、(グループ化やインダイレクト仕様による)他の部分リスト仕様かもしれない(たとえば要素が非ドットリストにマッチする@code{(spec
-. [(more
-specs@dots{})])}))。これはバッククォートの例のような再帰仕様に有用。このような再帰を終了させるには上述の@code{nil}仕様も参照のこと。
+A sublist specification may be a dotted list and the corresponding list
+argument may then be a dotted list.  Alternatively, the last @sc{cdr} of a
+dotted list specification may be another sublist specification (via a
+grouping or an indirect specification, e.g., @code{(spec .  [(more
+specs@dots{})])}) whose elements match the non-dotted list arguments.  This
+is useful in recursive specifications such as in the backquote example.
+Also see the description of a @code{nil} specification above for terminating
+such recursion.
 
-@code{(specs .  nil)}のように記述された部分リスト仕様は@code{(specs)}、@code{(specs .
-(sublist-elements@dots{}))}は@code{(specs
-sublist-elements@dots{})}と等価であることに注意。
+Note that a sublist specification written as @code{(specs .  nil)} is
+equivalent to @code{(specs)}, and @code{(specs .
+(sublist-elements@dots{}))} is equivalent to @code{(specs
+sublist-elements@dots{})}.
 @end table
 
 @c Need to document extensions with &symbol and :symbol
 
-以下は@code{&define}の後だけに出現する追加仕様のリストです。@code{defun}の例を参照してください。
+Here is a list of additional specifications that may appear only after
+@code{&define}.  See the @code{defun} example.
 
 @table @code
 @item &name
-コードからカレントで定義しているフォーム名を抽出する。これは@code{&name [@var{prestring}] @var{spec}
-[@var{poststring}] @var{fun}
-@var{args...}}という形式をとり、Edebugがコードにたいして@var{spec}をマッチしてから結合したカレント名、@var{args...}、@var{prestring}、@code{spec}にマッチしたコード、@var{poststring}とともに@var{fun}を呼び出すことを意味する。@var{fun}が未指定なら、、デフォルトは引数を(前の名前と新しい名前の間に@code{@@}を置いて)結合する関数。
+Extracts the name of the current defining form from the code.  It takes the
+form @code{&name [@var{prestring}] @var{spec} [@var{poststring}] @var{fun}
+@var{args...}} and means that Edebug will match @var{spec} against the code
+and then call @var{fun} with the concatenation of the current name,
+@var{args...}, @var{prestring}, the code that matched @code{spec}, and
+@var{poststring}.  If @var{fun} is absent, it defaults to a function that
+concatenates the arguments (with an @code{@@} between the previous name and
+the new).
 
 @item name
-引数(シンボル)は定義フォームの名前。@code{[&name symbolp]}の省略形。
+The argument, a symbol, is the name of the defining form.  Shorthand for
+@code{[&name symbolp]}.
 
-定義フォームは名前フィールドをもつ必要はなく、複数の名前フィールドをもつかもしれない。
+A defining form is not required to have a name field; and it may have
+multiple name fields.
 
 @item arg
-引数(シンボル)は定義フォームの引数の名前である。しかしlambda-listキーワード(@samp{&}で始まるシンボル)は許されない。
+The argument, a symbol, is the name of an argument of the defining form.
+However, lambda-list keywords (symbols starting with @samp{&})  are not
+allowed.
 
 @item lambda-list
 @cindex lambda-list (Edebug)
-これはラムダリスト(ラムダ式の引数リスト)にマッチする。
+This matches a lambda list---the argument list of a lambda expression.
 
 @item def-body
-引数は定義内のコードのbodyである。これは上述の@code{body}と似ているが、定義のbodyはその定義に関連する情報を照会する別のEdebug呼び出しでインストルメントされていなければならない。定義内のより高位レベルのフォームリストには@code{def-body}を使用する。
+The argument is the body of code in a definition.  This is like @code{body},
+described above, but a definition body must be instrumented with a different
+Edebug call that looks up information associated with the definition.  Use
+@code{def-body} for the highest level list of forms within the definition.
 
 @item def-form
-引数は定義内のもっとも高位レベルの単一フォームである。これは@code{def-body}と似ているが、フォームリストではなく単一フォームのマッチに使用される。特別なケースとして@code{def-form}はフォームが実行されるときトレース情報を出力しないことも意味する。@code{interactive}の例を参照のこと。
+The argument is a single, highest-level form in a definition.  This is like
+@code{def-body}, except it is used to match a single form rather than a list
+of forms.  As a special case, @code{def-form} also means that tracing
+information is not output when the form is executed.  See the
+@code{interactive} example.
 @end table
 
 @node Backtracking
-@subsubsection 仕様でのバックトレース
+@subsubsection Backtracking in Specifications
 
 @cindex backtracking
 @cindex syntax error (Edebug)
-あるポイント位置で仕様がマッチに失敗しても、構文エラーがシグナルされるとは限りません。そのかわり@dfn{バックトラッッキング(backtracking)}が開始されます。バックトラックはすべての選択肢をマッチングするまで行なわれます。最終的に引数リストのすべての要素は仕様内の要素のいずれかとマッチしなければならず、仕様内の必須要素は引数のいずれかとマッチしなければなりません。
+If a specification fails to match at some point, this does not necessarily
+mean a syntax error will be signaled; instead, @dfn{backtracking} will take
+place until all alternatives have been exhausted.  Eventually every element
+of the argument list must be matched by some element in the specification,
+and every required element in the specification must match some argument.
 
-構文エラーが検出されてもその時点では報告されず、より高位レベルの選択肢のマッチングが終わった後、実際のエラー箇所から離れたポイント位置でエラーが報告されるかもしれません。しかしエラー発生時にバックトラックが無効ならエラーは即座に報告されるでしょう。ある状況ではバックトラックも自動的に再有効化されることに注意してください。@code{&optional}、@code{&rest}、@code{&or}により新たな選択肢が設定されたとき、または部分リスト、グループ、インダイレクト仕様が開始されたときはバックトラックが自動的に有効になります。バックトラックを有効、または無効にした場合の影響は、現在処理中のレベルの残り要素と低位レベルに限定されます。
+When a syntax error is detected, it might not be reported until much later,
+after higher-level alternatives have been exhausted, and with the point
+positioned further from the real error.  But if backtracking is disabled
+when an error occurs, it can be reported immediately.  Note that
+backtracking is also reenabled automatically in several situations; when a
+new alternative is established by @code{&optional}, @code{&rest}, or
+@code{&or}, or at the start of processing a sublist, group, or indirect
+specification.  The effect of enabling or disabling backtracking is limited
+to the remainder of the level currently being processed and lower levels.
 
-何らかのフォーム仕様(すなわち@code{form}、@code{body}、@code{def-form}、@code{def-body})をマッチングする間、バックトラックは無効になっています。これらの仕様は任意のフォームにマッチするので、何らかのエラーが発生するとしたらそれは高位レベルではなく、そのフォーム自体の内部でなければなりません。
+Backtracking is disabled while matching any of the form specifications (that
+is, @code{form}, @code{body}, @code{def-form}, and @code{def-body}).  These
+specifications will match any form so any error must be in the form itself
+rather than at a higher level.
 
-バックトラックはクォートされたシンボル、文字列仕様、または@code{&define}キーワードとのマッチに成功した後にも無効になります。なぜなら通常これは構文が認識されたことを示すからです。しかし同じシンボルで始まる一連の選択肢構文がある場合には、たとえば@code{["foo"
-&or [first case] [second case]
-...]}のように、通常は選択肢の外部にそのシンボルをファクタリングすることによりこの制約に対処できます。
+Backtracking is also disabled after successfully matching a quoted symbol,
+string specification, or @code{&define} keyword, since this usually
+indicates a recognized construct.  But if you have a set of alternative
+constructs that all begin with the same symbol, you can usually work around
+this constraint by factoring the symbol out of the alternatives, e.g.,
+@code{["foo" &or [first case] [second case] ...]}.
 
-ほとんどのニーズは、バックトラックを自動的に無効にする、これら2つの方法で満足させることができますが、@code{gate}仕様を使用して明示的にバックトラックを無効にするほうが便利なときもあります。これは高位に適用可能な選択肢が存在しないことが分かっている場合に有用です。@code{let}仕様の例を参照してください。
+Most needs are satisfied by these two ways that backtracking is
+automatically disabled, but occasionally it is useful to explicitly disable
+backtracking by using the @code{gate} specification.  This is useful when
+you know that no higher alternatives could apply.  See the example of the
+@code{let} specification.
 
 @node Specification Examples
-@subsubsection 仕様の例
+@subsubsection Specification Examples
 
-以下で提供する例から学ぶことにより、Edebug仕様の理解が容易になるでしょう。
+It may be easier to understand Edebug specifications by studying the
+examples provided here.
 
-与えられたデータりすとにテストを実行する架空ｎマクロ@code{my-test-generator}を考えてみましょう。@code{edebug-eval-macro-args}
-(@ref{Instrumenting Macro
-Calls}を参照)によって制御されるようにEdebugのデフォルトの振る舞いでは引数をコードとしてインストルメントしませんが、引数がデータであることをドキュメントするのは役に立つかもしれません。
+Consider a hypothetical macro @code{my-test-generator} that runs tests on
+supplied lists of data.  Although it is Edebug's default behavior to not
+instrument arguments as code, as controlled by @code{edebug-eval-macro-args}
+(@pxref{Instrumenting Macro Calls}), it can be useful to explicitly document
+that the arguments are data:
 
 @example
 (def-edebug-spec my-test-generator (&rest sexp))
 @end example
 
-スペシャルフォーム@code{let}は、バインディングとbodyのシーケンスをもちます。各バインディングはそシンボル、またはシンボルとオプションの部分リストです。以下の仕様では部分リストを見つけたらバックトラックを抑止するために、部分リスト内の@code{gate}があることに注目してください。
+A @code{let} special form has a sequence of bindings and a body.  Each of
+the bindings is either a symbol or a sublist with a symbol and optional
+expression.  In the specification below, notice the @code{gate} inside of
+the sublist to prevent backtracking once a sublist is found.
 
 @ignore
 @c FIXME?  The actual definition in edebug.el looks like this (and always
@@ -1044,12 +1535,17 @@ Calls}を参照)によって制御されるようにEdebugのデフォルトの�
    body))
 @end example
 
-Edebugは@code{defun}および関連する引数リスト、@code{interactive}仕様にたいして以下の仕様を使用します。式の引数はその関数bodyの外部で実際に評価されるので、interactiveフォームは特別に処理する必要があります。(@code{defmacro}にたいする仕様は@code{defun}にたいする仕様と酷似するが@code{declare}命令文が許される)
+Edebug uses the following specifications for @code{defun} and the associated
+argument list and @code{interactive} specifications.  It is necessary to
+handle interactive forms specially since an expression argument is actually
+evaluated outside of the function body.  (The specification for
+@code{defmacro} is very similar to that for @code{defun}, but allows for the
+@code{declare} statement.)
 
 @smallexample
 (def-edebug-spec defun
   (&define name lambda-list
-           [&optional stringp]   ; @r{ドキュメント文字列が与えられた場合はマッチする。}
+           [&optional stringp]   ; @r{Match the doc string, if present.}
            [&optional ("interactive" interactive)]
            def-body))
 
@@ -1060,13 +1556,17 @@ Edebugは@code{defun}および関連する引数リスト、@code{interactive}�
      )))
 
 (def-edebug-elem-spec 'interactive
-  '(&optional &or stringp def-form))    ; @r{@code{def-form}に注目}
+  '(&optional &or stringp def-form))    ; @r{Notice: @code{def-form}}
 @end smallexample
 
-以下のバッククォートにたいする仕様はドットリストにマッチさせる方法と、@code{nil}を使用して再帰を終了させる方法を説明するための例です。またベクターのコンポーネントをマッチさせる方法も示しています(Edebugにより定義される実際の仕様は少し異なり、失敗するかもしれない非常に深い再帰を引き起こすためドットリストについてはサポートしない)。
+The specification for backquote below illustrates how to match dotted lists
+and use @code{nil} to terminate recursion.  It also illustrates how
+components of a vector may be matched.  (The actual specification defined by
+Edebug is a little different, and does not support dotted lists because
+doing so causes very deep recursion that could fail.)
 
 @smallexample
-(def-edebug-spec \` (backquote-form))   ; @r{単なる明確化用エイリアス}
+(def-edebug-spec \` (backquote-form))   ; @r{Alias just for clarity.}
 
 (def-edebug-elem-spec 'backquote-form
   '(&or ([&or "," ",@@"] &or ("quote" backquote-form) form)
@@ -1077,90 +1577,131 @@ Edebugは@code{defun}および関連する引数リスト、@code{interactive}�
 
 
 @node Edebug Options
-@subsection Edebugのオプション
+@subsection Edebug Options
 
 @c Previously defopt'd:
 @c edebug-sit-for-seconds, edebug-print-length, edebug-print-level
 @c edebug-print-circle, edebug-eval-macro-args
-  以下のオプションはEdebugの動作に影響を与えます:
+  These options affect the behavior of Edebug:
 
 @defopt edebug-setup-hook
-Edebugが使用される前に呼び出される関数。この関数は毎回新たな値をセットする。Edebugはこれらの関数を一度呼び出したら、その後に@code{edebug-setup-hook}を@code{nil}にリセットする。使用するパッケージに関係するEdebug仕様をロードするために使用でｄきるがそれはEdebugを使用するときだけである。@ref{Instrumenting}を参照のこと。
+Functions to call before Edebug is used.  Each time it is set to a new
+value, Edebug will call those functions once and then reset
+@code{edebug-setup-hook} to @code{nil}.  You could use this to load up
+Edebug specifications associated with a package you are using, but only when
+you also use Edebug.  @xref{Instrumenting}.
 @end defopt
 
 @defopt edebug-all-defs
-これが非@code{nil}の場合に@code{defun}や@code{defmacro}のような定義フォームの普通に評価すると、Edebug用にインストルメントされる。これは@code{eval-defun}、@code{eval-region}、@code{eval-buffer}に適用される。
+If this is non-@code{nil}, normal evaluation of defining forms such as
+@code{defun} and @code{defmacro} instruments them for Edebug.  This applies
+to @code{eval-defun}, @code{eval-region} and @code{eval-buffer}.
 
-このオプションの切り替えにはコマンド@kbd{M-x edebug-all-defs}を使用する。@ref{Instrumenting}を参照のこと。
+Use the command @kbd{M-x edebug-all-defs} to toggle the value of this
+option.  @xref{Instrumenting}.
 @end defopt
 
 @defopt edebug-all-forms
-これが非@code{nil}の場合には@code{eval-defun}、@code{eval-region}、@code{eval-buffer}はたとえフォームが何も定義していなくても、すべてのフォームをインストルメントする。これはロードとミニバッファー内の評価には適用されない。
+If this is non-@code{nil}, the commands @code{eval-defun},
+@code{eval-region} and @code{eval-buffer} instrument all forms, even those
+that don't define anything.  This doesn't apply to loading or evaluations in
+the minibuffer.
 
-このオプションの切り替えにはコマンド@kbd{M-x edebug-all-forms}を使用する。@ref{Instrumenting}を参照のこと。
+Use the command @kbd{M-x edebug-all-forms} to toggle the value of this
+option.  @xref{Instrumenting}.
 @end defopt
 
 @defopt edebug-eval-macro-args
-これが非@code{nil}なら、すべてのマクロ引数が生成されるコード内にインストルメントされる。@code{debug}宣言はこのオプションをオーバーライドする。ある引数を評価して他の引数は評価しないマクロにたいする例外を指定するためには、@code{debug}宣言を指定するためはEdebugフォーム仕様を使用すること。
+When this is non-@code{nil}, all macro arguments will be instrumented in the
+generated code.  For any macro, the @code{debug} declaration overrides this
+option.  So to specify exceptions for macros that have some arguments
+evaluated and some not, use the @code{debug} declaration specify an Edebug
+form specification.
 @end defopt
 
 @defopt edebug-save-windows
-このオプションが非@code{nil}なら、Edebugはウィンドウ構成の保存とリストアを行う。これには幾分時間を要するので、あなたのプログラムがウィンドウ構成に何が起こったかを気にしないようなら、この変数には@code{nil}をセットしたほうがよい。このオプションがデフォルト値のままだとウィンドウ構成の保存やリストアの結果として、デバッグ中のプログラムに含まれるバッファーのポイント位置がEdebugに上書きされてしまう場合も@code{nil}にセットすることをお勧めする。これはあなたのプログラムがこのようなバッファーの1つ以上でポイントを移動した場合に起こり得る。他にも後述の@code{edebug-save-displayed-buffer-points}のカスタマイズを試してみるという手もある。
+If this is non-@code{nil}, Edebug saves and restores the window
+configuration.  That takes some time, so if your program does not care what
+happens to the window configurations, it is better to set this variable to
+@code{nil}.  We also recommend to set this to @code{nil} if the default
+value causes Edebug to overwrite the positions of point in buffers that are
+involved in the program you are debugging, as result of saving and restoring
+the window configuration; this could happen if your program moves point in
+one or more of those buffers.  Another option to try to customize in this
+case is @code{edebug-save-displayed-buffer-points}, described below.
 
-@code{edebug-save-windows}の値がリストなら、リストされたウィンドウだけが保存およびリストアされる。
+If the value of @code{edebug-save-windows} is a list, only the listed
+windows are saved and restored.
 
-Edebug内ではこの変数をインタラクティブに変更するために@kbd{W}コマンドを使用できる。@ref{Edebug Display
-Update}を参照のこと。
+You can use the @kbd{W} command in Edebug to change this variable
+interactively.  @xref{Edebug Display Update}.
 @end defopt
 
 @defopt edebug-save-displayed-buffer-points
-これが非@code{nil}ならEdebugは表示されているすべてのバッファー内のポイントを保存およびリストアする。
+If this is non-@code{nil}, Edebug saves and restores point in all displayed
+buffers.
 
-選択されていないウィンドウ内に表示されているバッファーのポイントを変更するコードをデバッグしている場合は、他のバッファーのポイントを保存およびリストアする必要がある。その後にEdebugまたはユーザーがそのウィンドウを選択した場合は、そのバッファー内のポイントはそのウィンドウのポイント値に移動される。
+Saving and restoring point in other buffers is necessary if you are
+debugging code that changes the point of a buffer that is displayed in a
+non-selected window.  If Edebug or the user then selects the window, point
+in that buffer will move to the window's value of point.
 
-すべてのバッファー内のポイントの保存とリストアは、それぞれのウィンドウを2回選択する必要があり高価な処理なので、必要なときだけ有効にする。@ref{Edebug
-Display Update}を参照のこと。
+Saving and restoring point in all buffers is expensive, since it requires
+selecting each window twice, so enable this only if you need it.
+@xref{Edebug Display Update}.
 @end defopt
 
 @defopt edebug-initial-mode
-この変数が非@code{nil}なら、Edebugが最初にアクティブになったときのEdebugの最初の実行モードを指定する。指定できる値は@code{step}、@code{next}、@code{go}、@code{Go-nonstop}、@code{trace}、@code{Trace-fast}、@code{continue}、@code{Continue-fast}。
+If this variable is non-@code{nil}, it specifies the initial execution mode
+for Edebug when it is first activated.  Possible values are @code{step},
+@code{next}, @code{go}, @code{Go-nonstop}, @code{trace}, @code{Trace-fast},
+@code{continue}, and @code{Continue-fast}.
 
-デフォルト値は@code{step}。この変数は@kbd{C-x C-a C-m}でインタラクティブにセットできる。@ref{Edebug
-Execution Modes}を参照のこと。
+The default value is @code{step}.  This variable can be set interactively
+with @kbd{C-x C-a C-m} (@code{edebug-set-initial-mode}).  @xref{Edebug
+Execution Modes}.
 @end defopt
 
 @defopt edebug-trace
-これが非@code{nil}なら各関数のエントリーとexitをトレースする。トレース出力は関数のエントリーとexitを行ごとに、再帰レベルにしたがって@file{*edebug-trace*}という名前のバッファーに表示される。
+If this is non-@code{nil}, trace each function entry and exit.  Tracing
+output is displayed in a buffer named @file{*edebug-trace*}, one function
+entry or exit per line, indented by the recursion level.
 
-@ref{Trace Buffer}の@code{edebug-tracing}も参照されたい。
+Also see @code{edebug-tracing}, in @ref{Trace Buffer}.
 @end defopt
 
 @defopt edebug-test-coverage
-非@code{nil}ならEdebugはデバッグされるすべての式のカバレッジをテストする。@ref{Coverage Testing}を参照のこと。
+If non-@code{nil}, Edebug tests coverage of all expressions debugged.
+@xref{Coverage Testing}.
 @end defopt
 
 @defopt edebug-continue-kbd-macro
-非@code{nil}ならEdebug外部で実行されている任意のキーボードマクロの定義または実行を継続する。これはデバッグされないので慎重に使用すること。@ref{Edebug
-Execution Modes}を参照されたい。
+If non-@code{nil}, continue defining or executing any keyboard macro that is
+executing outside of Edebug.  Use this with caution since it is not
+debugged.  @xref{Edebug Execution Modes}.
 @end defopt
 
 @defopt edebug-print-length
-非@code{nil}なら、それはEdebugでの結果プリントにおける@code{print-length}のデフォルト値。@ref{Output
-Variables}を参照のこと。
+If non-@code{nil}, the default value of @code{print-length} for printing
+results in Edebug.  @xref{Output Variables}.
 @end defopt
 
 @defopt edebug-print-level
-非@code{nil}なら、それはEdebugでの結果プリントにおける@code{print-level}のデフォルト値。@ref{Output
-Variables}を参照のこと。
+If non-@code{nil}, the default value of @code{print-level} for printing
+results in Edebug.  @xref{Output Variables}.
 @end defopt
 
 @defopt edebug-print-circle
-非@code{nil}なら、それはEdebugでの結果プリントにおける@code{print-circle}のデフォルト値。@ref{Output
-Variables}を参照のこと。
+If non-@code{nil}, the default value of @code{print-circle} for printing
+results in Edebug.  @xref{Output Variables}.
 @end defopt
 
 @defopt edebug-unwrap-results
-非@code{nil}ならEdebugは式の結果を表示するときに、その式自体のインストルメント結果の削除を試みる。マクロをデバッグするときは、式の結果自体がインストルメントされた式になるということに関連するオプションである。実際的な例ではないが、サンプル例の関数@code{fac}がインストルメントされたとき、そのフォームのマクロを考えてみるとよい。
+If non-@code{nil}, Edebug tries to remove any of its own instrumentation
+when showing the results of expressions.  This is relevant when debugging
+macros where the results of expressions are themselves instrumented
+expressions.  As a very artificial example, suppose that the example
+function @code{fac} has been instrumented, and consider a macro of the form:
 
 @c FIXME find a less silly example.
 @smallexample
@@ -1169,47 +1710,72 @@ Variables}を参照のこと。
       @dots{}))
 @end smallexample
 
-@code{test}マクロをインストルメントしてステップ実行すると、デフォルトでは@code{symbol-function}呼び出しは多数の@code{edebug-after}フォームと@code{edebug-before}フォームをもつことになり、それにより実際の結果の確認が難しくなり得る。@code{edebug-unwrap-results}が非@code{nil}ならEdebugは結果からこれらのフォームの削除を試みる。
+If you instrument the @code{test} macro and step through it, then by default
+the result of the @code{symbol-function} call has numerous
+@code{edebug-after} and @code{edebug-before} forms, which can make it
+difficult to see the actual result.  If @code{edebug-unwrap-results} is
+non-@code{nil}, Edebug tries to remove these forms from the result.
 @end defopt
 
 @defopt edebug-on-error
-@code{debug-on-error}が以前@code{nil}だったら、Edebugは@code{debug-on-error}をこの値にバインドする。@ref{Trapping
-Errors}を参照のこと。
+Edebug binds @code{debug-on-error} to this value, if @code{debug-on-error}
+was previously @code{nil}.  @xref{Trapping Errors}.
 @end defopt
 
 @defopt edebug-on-quit
-@code{debug-on-quit}の以前の値が@code{nil}なら、Edebugは@code{debug-on-quit}にこの値をバインドする。@ref{Trapping
-Errors}を参照のこと。
+Edebug binds @code{debug-on-quit} to this value, if @code{debug-on-quit} was
+previously @code{nil}.  @xref{Trapping Errors}.
 @end defopt
 
 @c Not necessarily a deeper command level.
 @c A new command is not precisely true, but that is close enough -- dan
-  Edebugがアクティブな間に@code{edebug-on-error}か@code{edebug-on-quit}の値を変更したら、@emph{次回}に新たなコマンドを通じてEdebugが呼び出されるまでこれらの値は使用されない。
+  If you change the values of @code{edebug-on-error} or @code{edebug-on-quit}
+while Edebug is active, their values won't be used until the @emph{next}
+time Edebug is invoked via a new command.
 
 @defopt edebug-global-break-condition
-非@code{nil}なら、値はすべてのステップポイントでテストされる式である。式の結果が@code{nil}ならbreakする。エラーは無視される。@ref{Global
-Break Condition}を参照のこと。
+If non-@code{nil}, an expression to test for at every stop point.  If the
+result is non-@code{nil}, then break.  Errors are ignored.  @xref{Global
+Break Condition}.
 @end defopt
 
 @defopt edebug-sit-for-seconds
-実行モードがtraceかcontinueでbreakpointに達した際に一時停止する秒数。@ref{Edebug Execution
-Modes}を参照のこと。
+Number of seconds to pause when a breakpoint is reached and the execution
+mode is trace or continue.  @xref{Edebug Execution Modes}.
 @end defopt
 
 @defopt edebug-sit-on-break
-breakpointに達したときに@code{edebug-sit-for-seconds}の間、一時停止するかどうか。@code{nil}で一時停止の抑止、非@code{nil}なら一時停止を許可。
+Whether or not to pause for @code{edebug-sit-for-seconds} on reaching a
+breakpoint.  Set to @code{nil} to prevent the pause, non-@code{nil} to allow
+it.
 @end defopt
 
 @defopt edebug-behavior-alist
-デフォルトでは、このalistにはキーが@code{edebug}で3つの関数@code{edebug-enter}、@code{edebug-before}、@code{edebug-after}からなるリストという1つのエントリーが含まれる。これらの関数はインストルメントされるコードに挿入される関数のデフォルト実装である。Edebugの全般的な挙動を変更するためには、このデフォルトエントリーを変更する。
+By default, this alist contains one entry with the key @code{edebug} and a
+list of three functions, which are the default implementations of the
+functions inserted in instrumented code: @code{edebug-enter},
+@code{edebug-before} and @code{edebug-after}.  To change Edebug's behavior
+globally, modify the default entry.
 
-Edebugの挙動はこのalistにエントリーにユーザーが選択したキーと3つの関数を追加することにより、定義ごとにもとづいて変更もできる。それからインストルメントされた定義のシンボルプロパティ@code{edebug-behavior}に新たなエントリーのキーをセットすれば、Edebugはその定義にたいして自身の関数を呼び出す箇所で新たな関数を呼び出す。
+Edebug's behavior may also be changed on a per-definition basis by adding an
+entry to this alist, with a key of your choice and three functions.  Then
+set the @code{edebug-behavior} symbol property of an instrumented definition
+to the key of the new entry, and Edebug will call the new functions in place
+of its own for that definition.
 @end defopt
 
 @defopt edebug-new-definition-function
-定義やクロージャのbodyをラップした後にEdebugが実行する関数。Edebugが自身のデータを初期化後に、この関数は定義に関連付けられたシンボル(Edebugが定義または生成した実際のシンボルかもしれない)を単一の引数として呼び出される。この関数はEdebugによりインストルメントされる各定義のシンボルプロパティ@code{edebug-behavior}をセットするために使用されるかもしれない。
+A function run by Edebug after it wraps the body of a definition or
+closure.  After Edebug has initialized its own data, this function is called
+with one argument, the symbol associated with the definition, which may be
+the actual symbol defined or one generated by Edebug.  This function may be
+used to set the @code{edebug-behavior} symbol property of each definition
+instrumented by Edebug.
 @end defopt
 
 @defopt edebug-after-instrumentation-function
-使用前にEdebugのインストルメントの検査や修正を行うには、インストルメントするトップレベルのフォームを単一の引数として受け取り、その後にEdebugがインストルメントの最終結果として使用することになる同一フォームあるいは置換フォームをリターンする関数をこの変数にセットする。
+To inspect or modify Edebug's instrumentation before it is used, set this
+variable to a function which takes one argument, an instrumented top-level
+form, and returns either the same or a replacement form, which Edebug will
+then use as the final result of instrumentation.
 @end defopt

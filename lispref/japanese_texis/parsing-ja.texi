@@ -9,126 +9,173 @@
 @c Copyright (C) 2021--2024 Free Software Foundation, Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node Parsing Program Source
-@chapter プログラムソースの解析
+@chapter Parsing Program Source
 @cindex parsing program source
 
 @cindex syntax tree, from parsing program source
-Emacsではプログラムソースのテキストのパース(parse: 解析)や@dfn{構文ツリーまたは構文木(syntax
-tree)}を生成するためにさまざまな方法が提供されています。構文ツリーにおけるテキストはもはや1次元の文字ストリームではなく、ノードというそれぞれがテキストの一部を表現するようなものを構造化したツリーとみなされます。つまり構文ツリーによって正確なフォント表示(fontification)、インデント、ナビゲーション、構造化された編集等といった興味深い機能を有効にできるのです。
+Emacs provides various ways to parse program source text and produce a
+@dfn{syntax tree}.  In a syntax tree, text is no longer considered a
+one-dimensional stream of characters, but a structured tree of nodes, where
+each node represents a piece of text.  Thus, a syntax tree can enable
+interesting features like precise fontification, indentation, navigation,
+structured editing, etc.
 
-Emacsには釣り合いのとれた式をパースするシンプルな機能があります(@ref{Parsing
-Expressions}を参照)。一般的なナビゲーションとインデントにたいするSMIEというライブラリーもあります(@ref{SMIE}を参照)。
+Emacs has a simple facility for parsing balanced expressions (@pxref{Parsing
+Expressions}).  There is also the SMIE library for generic navigation and
+indentation (@pxref{SMIE}).
 
-これらに加えて@uref{https://tree-sitter.github.io/tree-sitter,
-tree-sitterライブラリー}にたいするサポートがコンパイルされていれば、Emacsはtree-sitterとの統合も提供します。tree-sitterライブラリーはインクリメンタルパーサー(incremental
-parser: 増分解析ライブラリー)であり、幅広いプログラミング言語をサポートしています。
+In addition to those, Emacs also provides integration with
+@uref{https://tree-sitter.github.io/tree-sitter, the tree-sitter library} if
+support for it was compiled in.  The tree-sitter library implements an
+incremental parser and has support for a wide range of programming
+languages.
 
 @defun treesit-available-p
-この関数はカレントのEmacsセッションにおいてtree-sitter機能が利用可能なら非@code{nil}をリターンする。
+This function returns non-@code{nil} if tree-sitter features are available
+for the current Emacs session.
 @end defun
 
-tree-sitterライブラリーを用いたプログラムソースのパースとプログラムの構文ツリーへのアクセスを可能にするためには、Lispプログラムがその言語のグラマーライブラリーをロードするとともにその言語とカレントバッファーにたいするパーサーを作成する必要があります。Lispプログラムがこれを行った後に、構文ツリーの特定のノードに関してパーサーへの問い合わせを行うことができるのです。その後はそれぞれのノードに関するさまざまな種類の情報にアクセスして、強力なパターンマッチングを用いたノードの検索が可能になります。このチャプターではこれらすべてをどのように行うのか、そして複数のプログラミング言語がミックスされているソースファイルにたいしてLispプログラムが処理する方法についても説明します。
+To be able to parse the program source using the tree-sitter library and
+access the syntax tree of the program, a Lisp program needs to load a
+language grammar library, and create a parser for that language and the
+current buffer.  After that, the Lisp program can query the parser about
+specific nodes of the syntax tree.  Then, it can access various kinds of
+information about each node, and search for nodes using a powerful
+pattern-matching syntax.  This chapter explains how to do all this, and also
+how a Lisp program can work with source files that mix multiple programming
+languages.
 
 @menu
-* Language Grammar::         tree-sitter言語グラマーのロード。
-* Using Parser::             パーサー入門。
-* Retrieving Nodes::         構文ツリーからのノードの取得。
-* Accessing Node Information::  ノード情報へのアクセス。
-* Pattern Matching::         パターン問い合わせによるパターンマッチング。
-* User-defined Things::      ユーザー定義の``Things''およびナビゲーション。
-* Multiple Languages::       複数言語で記述されたテキストのパース。
-* Tree-sitter Major Modes::  tree-sitterを使用するメジャーモードの開発。
-* Tree-sitter C API::        C用APIとELisp用APIの比較。
+* Language Grammar::         Loading tree-sitter language grammar.
+* Using Parser::             Introduction to parsers.
+* Retrieving Nodes::         Retrieving nodes from a syntax tree.
+* Accessing Node Information::  Accessing node information.
+* Pattern Matching::         Pattern matching with query patterns.
+* User-defined Things::      User-defined ``Things'' and Navigation.
+* Multiple Languages::       Parse text written in multiple languages.
+* Tree-sitter Major Modes::  Develop major modes using tree-sitter.
+* Tree-sitter C API::        Compare the C API and the ELisp API.
 @end menu
 
 @node Language Grammar
-@section Tree-sitter言語グラマー
+@section Tree-sitter Language Grammar
 @cindex language grammar, for tree-sitter
 
-@heading 言語グラマーのロード
+@heading Loading a language grammar
 @cindex loading language grammar for tree-sitter
 
 @cindex language argument, for tree-sitter
-ある言語で記述されたテキストをパースするために、tree-sitterはその言語のグラマー(grammar:
-文法)に依存します。Emacsにおける言語グラマーはシンボルによって表現されます。たとえばC言語のグラマーはシンボル@code{c}として表現されます。この@code{c}というシンボルはtree-sitter関数の@var{language}引数として渡すことができます。
+Tree-sitter relies on language grammar to parse text in that language.  In
+Emacs, a language grammar is represented by a symbol.  For example, the C
+language grammar is represented as the symbol @code{c}, and @code{c} can be
+passed to tree-sitter functions as the @var{language} argument.
 
 @vindex treesit-extra-load-path
 @vindex treesit-load-language-error
-tree-sitterの言語グラマーはダイナミックライブラリーとして配布されています。ある言語のグラマーをEmacsで使用するためには、そのダイナミックライブラリーがシステム上にインストール済みかを確認する必要があります。Emacsは以下の順序で複数の場所から言語グラマーを探します:
+Tree-sitter language grammars are distributed as dynamic libraries.  In
+order to use a language grammar in Emacs, you need to make sure that the
+dynamic library is installed on the system.  Emacs looks for language
+grammars in several places, in the following order:
 
 @itemize @bullet
 @item
-まず変数@code{treesit-extra-load-path}で指定されたディレクトリーのリストから;
+first, in the list of directories specified by the variable
+@code{treesit-extra-load-path};
 @item
-それから@code{user-emacs-directory}で指定されるディレクトリーのサブディレクトリー@file{tree-sitter}から(@ref{Init
-File}を参照);
+then, in the @file{tree-sitter} subdirectory of the directory specified by
+@code{user-emacs-directory} (@pxref{Init File});
 @item
-最後にシステムのダイナミックライブラリー用のデフォルト位置。
+and finally, in the system's default locations for dynamic libraries.
 @end itemize
 
-これらのディレクトリーそれぞれにおいて、Emacsは変数@code{dynamic-library-suffixes}が指定するファイル名拡張子をもつファイルを探すのです。
+In each of these directories, Emacs looks for a file with file-name
+extensions specified by the variable @code{dynamic-library-suffixes}.
 
-Emacsがライブラリーを見つけられなかったりロードに問題がある場合には、Emacsが@code{treesit-load-language-error}エラーをシグナルします。このシグナルのデータは以下のいずれかです:
+If Emacs cannot find the library or has problems loading it, Emacs signals
+the @code{treesit-load-language-error} error.  The data of that signal could
+be one of the following:
 
 @table @code
 @item (not-found @var{error-msg} @dots{})
-その言語のグラマーライブラリーをEmacsが見つけられなかったという意味。
+This means that Emacs could not find the language grammar library.
 @item (symbol-error @var{error-msg})
-すべての言語のグラマーライブラリーでエクスポートされているべき関数を、そのライブラリーではEmacsが見つけられなかったという意味。
+This means that Emacs could not find in the library the expected function
+that every language grammar library should export.
 @item (version-mismatch @var{error-msg})
-その言語のグラマーライブラリーとtree-sitterライブラリーのバージョンに互換性がないという意味。
+This means that the version of the language grammar library is incompatible
+with that of the tree-sitter library.
 @end table
 
 @noindent
-上記すべてのケースにおいて、@var{error-msg}により失敗に関する追加の詳細が提供されるかもしれません。
+In all of these cases, @var{error-msg} might provide additional details
+about the failure.
 
 @defun treesit-language-available-p language &optional detail
-この関数は@var{language}にたいする言語グラマーが存在して、それがロード可能であれば非@code{nil}をリターンする。
+This function returns non-@code{nil} if the language grammar for
+@var{language} exists and can be loaded.
 
-@var{detail}が非@code{nil}の場合には、@var{language}が利用可能なら@code{(t
-. nil)}、利用不可なら@code{(nil
-. @var{data})}をリターンする。@var{data}は@code{treesit-load-language-error}のシグナルデータ。
+If @var{detail} is non-@code{nil}, return @code{(t . nil)} when
+@var{language} is available, and @code{(nil . @var{data})} when it's
+unavailable.  @var{data} is the signal data of
+@code{treesit-load-language-error}.
 @end defun
 
 @vindex treesit-load-name-override-list
-慣例により@var{language}用ダイナミックライブラリーのファイル名は@file{libtree-sitter-@var{language}.@var{ext}}です。ここで@var{ext}はダイナミックライブラリー用のシステム固有な拡張子です。同じく慣例により、そのライブラリーが提供する関数の名前は@code{tree_sitter_@var{language}}です。この慣例にしたがっていない言語グラマーライブラリーの場合には、
+By convention, the file name of the dynamic library for @var{language} is
+@file{libtree-sitter-@var{language}.@var{ext}}, where @var{ext} is the
+system-specific extension for dynamic libraries.  Also by convention, the
+function provided by that library is named
+@code{tree_sitter_@var{language}}.  If a language grammar library doesn't
+follow this convention, you should add an entry
 
 @example
 (@var{language} @var{library-base-name} @var{function-name})
 @end example
 
-上記エントリーを変数@code{treesit-load-name-override-list}のリストに追加する必要があります。ここで@var{library-base-name}はダイナミックライブラリーのファイル名のベースネーム(basename:
-先行するディレクトリー部分を除外したファイル名のことで、通常だと@file{libtree-sitter-@var{language}})、@var{function-name}はそのライブラリーが提供する関数(通常だと@code{tree_sitter_@var{language}})です。たとえば、
+to the list in the variable @code{treesit-load-name-override-list}, where
+@var{library-base-name} is the basename of the dynamic library's file name
+(usually, @file{libtree-sitter-@var{language}}), and @var{function-name} is
+the function provided by the library (usually,
+@code{tree_sitter_@var{language}}).  For example,
 
 @example
 (cool-lang "libtree-sitter-coool" "tree_sitter_cooool")
 @end example
 
 @noindent
-これは慣例に屈するには自分があまりにも``cool''に過ぎると考える言語の例です。
+for a language that considers itself too ``cool'' to abide by conventions.
 
 @cindex language grammar version, compatibility
 @defun treesit-library-abi-version &optional min-compatible
-この関数はtree-sitterライブラリーがサポートしている言語グラマーの@acronym{ABI} (Application Binary
-Interface:
-アプリケーションバイナリーインターフェイス)のバージョンをリターンする。デフォルトではそのライブラリーがサポートする最新のABIバージョンをリターンするが、@var{min-compatible}が非@code{nil}の場合にはそのライブラリーでまだサポートできる最古のABIバージョンをリターンする。言語グラマーライブラリーはtree-sitterライブラリーがサポートする最古と最新の間にあるABIバージョンにたいしてビルドしなければ、tree-sitterライブラリーがそれらをロードできなくなる。
+This function returns the version of the language grammar Application Binary
+Interface (@acronym{ABI}) supported by the tree-sitter library.  By default,
+it returns the latest ABI version supported by the library, but if
+@var{min-compatible} is non-@code{nil}, it returns the oldest ABI version
+which the library still can support.  Language grammar libraries must be
+built for ABI versions between the oldest and the latest versions supported
+by the tree-sitter library, otherwise the library will be unable to load
+them.
 @end defun
 
 @defun treesit-language-abi-version language
-この関数はEmacsがロードした@var{language}用の言語グラマーライブラリーの@acronym{ABI}バージョンをリターンする。@var{language}が利用できなければ@code{nil}をリターンする。
+This function returns the @acronym{ABI} version of the language grammar
+library loaded by Emacs for @var{language}.  If @var{language} is
+unavailable, this function returns @code{nil}.
 @end defun
 
-@heading 構文ツリーの具体例
+@heading Concrete syntax tree
 @cindex syntax tree, concrete
 
-構文ツリーはパーサーによって生成されます。構文ツリーにおけるノードはそれぞれがテキストのある部分を表し、お互いが親子関係というリレーションシップによって接続されています。たとえば以下のようなソーステキストがあるとします
+A syntax tree is what a parser generates.  In a syntax tree, each node
+represents a piece of text, and is connected to each other by a parent-child
+relationship.  For example, if the source text is
 
 @example
 1 + 2
 @end example
 
 @noindent
-これは以下のような構文ツリーになるかもしれません
+its syntax tree could be
 
 @example
 @group
@@ -146,13 +193,13 @@ Interface:
 @end group
 @end example
 
-これを以下のようにS式で表すことも可能です:
+We can also represent it as an s-expression:
 
 @example
 (root (expression (number) (operator) (number)))
 @end example
 
-@subheading ノードタイプ
+@subheading Node types
 @cindex node types, in a syntax tree
 
 @cindex type of node, tree-sitter
@@ -160,19 +207,21 @@ Interface:
 @cindex named node, tree-sitter
 @anchor{tree-sitter named node}
 @cindex anonymous node, tree-sitter
-@code{root}、@code{expression}、@code{number}、@code{operator}のような名前はノードの@dfn{タイプ(type:
-型)}を指定します。ただし構文ツリーのすべてのノードがタイプをもつ訳ではありません。タイプをもっていないノードは@dfn{無名ノード(anonymous
-nodes)}、タイプをもつノードは@dfn{名前つきノード(named
-nodes)}と呼ばれています。無名ノードは角カッコ@samp{]}のような区切り文字や@code{return}のようなキーワードを含む、固定化された綴りのトークン(token:
-字句単位)です。
+Names like @code{root}, @code{expression}, @code{number}, and
+@code{operator} specify the @dfn{type} of the nodes.  However, not all nodes
+in a syntax tree have a type.  Nodes that don't have a type are known as
+@dfn{anonymous nodes}, and nodes with a type are @dfn{named nodes}.
+Anonymous nodes are tokens with fixed spellings, including punctuation
+characters like bracket @samp{]}, and keywords like @code{return}.
 
-@subheading フィールド名
+@subheading Field names
 
 @cindex field name, tree-sitter
 @cindex tree-sitter node field name
 @anchor{tree-sitter node field name}
-構文ツリーの分析を容易にするために、多くの言語グラマーは子ノードに@dfn{フィールド名(field
-names)}を割り当てています。たとえば@code{function_definition}ノードは@code{declarator}と@code{body}のフィールド名をもつかもしれません:
+To make the syntax tree easier to analyze, many language grammar assign
+@dfn{field names} to child nodes.  For example, a @code{function_definition}
+node could have a @code{declarator} and a @code{body}:
 
 @example
 @group
@@ -182,43 +231,59 @@ names)}を割り当てています。たとえば@code{function_definition}ノ�
 @end group
 @end example
 
-@heading 構文ツリーの調査
+@heading Exploring the syntax tree
 @cindex explore tree-sitter syntax tree
 @cindex inspection of tree-sitter parse tree nodes
 
-言語の構文の理解、および構文ツリー割り当て使用するLispプログラムのデバッグ支援のために、Emacsはカレントバッファーのソースの構文ツリーをリアルタイムで表示する``explore''モードを提供しています。更にEmacsにはポイント位置にあるノードの情報をモードラインに表示する``inspect''モードも付属しています。
+To aid in understanding the syntax of a language and in debugging Lisp
+programs that use the syntax tree, Emacs provides an ``explore'' mode, which
+displays the syntax tree of the source in the current buffer in real time.
+Emacs also comes with an ``inspect mode'', which displays information of the
+nodes at point in the mode-line.
 
 @deffn Command treesit-explore-mode
-このモードはカレントバッファーのソースの構文ツリーを表示するウィンドウをポップアップする。ソースバッファーでテキストを選択することによって、表示されている構文ツリーの対応する部分がハイライトされる。構文ツリーでノードをクリックすれば、ソースバッファーの対応するテキストがハイライトされる。
+This mode pops up a window displaying the syntax tree of the source in the
+current buffer.  Selecting text in the source buffer highlights the
+corresponding nodes in the syntax tree display.  Clicking on nodes in the
+syntax tree highlights the corresponding text in the source buffer.
 @end deffn
 
 @deffn Command treesit-inspect-mode
-このマイナーモードはポイント位置で@emph{始まる}ノードをモードラインに表示する。たとえばモードラインに以下のように表示されるかもしれない
+This minor mode displays on the mode-line the node that @emph{starts} at
+point.  For example, the mode-line can display
 
 @example
 @var{parent} @var{field}: (@var{node} (@var{child} (@dots{})))
 @end example
 
 @noindent
-ここで@var{node}、@var{child}、...等はポイント位置で始まるノード、@var{parent}は@var{node}の親である。@var{node}はbold書体で表示される。@var{field-name}は@var{node}、@var{child}、...等のフィールド名である。
+where @var{node}, @var{child}, etc., are nodes which begin at point.
+@var{parent} is the parent of @var{node}.  @var{node} is displayed in a bold
+typeface.  @var{field-name}s are field names of @var{node} and of
+@var{child}, etc.
 
-ポイント位置で始まるノードがない(ポイントがノードの中間にある)場合には、ポイントを跨ぐ(span)もっとも前のノード、およびそのノードの直近の親ノードがモードラインに表示される。
+If no node starts at point, i.e., point is in the middle of a node, then the
+mode line displays the earliest node that spans point, and its immediate
+parent.
 
-このマイナーモード自身はパーサーを作成せず、@code{(treesit-parser-list)}の最初のパーサーを使用する(@ref{Using
-Parser}を参照)。
+This minor mode doesn't create parsers on its own.  It uses the first parser
+in @code{(treesit-parser-list)} (@pxref{Using Parser}).
 @end deffn
 
-@heading グラマー定義を読む
+@heading Reading the grammar definition
 @cindex reading grammar definition, tree-sitter
 
-言語グラマーの製作者はプログラミング言語の@dfn{グラマー(grammar:
-文法)}を定義します。パーサーがどのようにしてプログラムテキストから具体的な構文ツリーを構築するかを決めるのがグラマーです。構文ツリーを効果的に使用するためには、@dfn{グラマーファイル(grammar
-file)}を調べる必要があります。
+Authors of language grammars define the @dfn{grammar} of a programming
+language, which determines how a parser constructs a concrete syntax tree
+out of the program text.  In order to use the syntax tree effectively, you
+need to consult the @dfn{grammar file}.
 
-グラマーファイルは通常だと言語グラマーのプロジェクトレポジトリにある@file{grammar.js}です。言語グラマーのホームページへのリンクは@uref{https://tree-sitter.github.io/tree-sitter,
-tree-sitter's homepage}で見つけることができるでしょう。
+The grammar file is usually @file{grammar.js} in a language grammar's
+project repository.  The link to a language grammar's home page can be found
+on @uref{https://tree-sitter.github.io/tree-sitter, tree-sitter's homepage}.
 
-グラマー定義はJavaScriptによって記述されます。たとえば@code{function_definition}ノードにマッチするようなルールは以下のようなものかもしれません
+The grammar definition is written in JavaScript.  For example, the rule
+matching a @code{function_definition} node may look like
 
 @example
 @group
@@ -231,8 +296,12 @@ function_definition: $ => seq(
 @end example
 
 @noindent
-ルールは単一の引数@var{$}を受け取る関数によって表現されます。この関数がグラマー全体を表すのです。この関数自体は他の関数によって構築されています。一連の子ノードをまとめるのが@code{seq}関数、子ノードにフィールド名の注釈をつけるのが@code{field}関数です。上記の定義を俗に@acronym{BNF}
-(@dfn{Backus-Naur Form: バッカス・ナウア記法})と呼ばれる構文で表せば以下のようになるでしょう
+The rules are represented by functions that take a single argument @var{$},
+representing the whole grammar.  The function itself is constructed by other
+functions: the @code{seq} function puts together a sequence of children; the
+@code{field} function annotates a child with a field name.  If we write the
+above definition in the so-called @dfn{Backus-Naur Form} (@acronym{BNF})
+syntax, it would look like
 
 @example
 @group
@@ -242,7 +311,7 @@ function_definition :=
 @end example
 
 @noindent
-そしてパーサーがリターンするノードは以下のようになります
+and the node returned by the parser would look like
 
 @example
 @group
@@ -253,198 +322,284 @@ function_definition :=
 @end group
 @end example
 
-以下はグラマー定義で目にするかもしれない関数のリストです。これらの関数はいずれも引数として他のルールを受け取り新たなルールをリターンします。
+Below is a list of functions that one can see in a grammar definition.  Each
+function takes other rules as arguments and returns a new rule.
 
 @table @code
 @item seq(@var{rule1}, @var{rule2}, @dots{})
-すべてのルールに逐一マッチする。
+matches each rule one after another.
 @item choice(@var{rule1}, @var{rule2}, @dots{})
-引数のルールいずれかにマッチする。
+matches one of the rules in its arguments.
 @item repeat(@var{rule})
-@var{rule}に@emph{0回以上}マッチする。正規表現の演算子@samp{*}に似ている。
+matches @var{rule} @emph{zero or more} times.  This is like the @samp{*}
+operator in regular expressions.
 @item repeat1(@var{rule})
-@var{rule}に@emph{1回以上}マッチする。正規表現の演算子@samp{+}に似ている。
+matches @var{rule} @emph{one or more} times.  This is like the @samp{+}
+operator in regular expressions.
 @item optional(@var{rule})
-@var{rule}に@emph{0回または1回}マッチする。正規表現の演算子@samp{?}に似ている。
+matches @var{rule} @emph{zero or one} times.  This is like the @samp{?}
+operator in regular expressions.
 @item field(@var{name}, @var{rule})
-@var{rule}にマッチする子ノードにフィールド名@var{name}を割り当てる。
+assigns field name @var{name} to the child node matched by @var{rule}.
 @item alias(@var{rule}, @var{alias})
-@var{rule}にマッチしたノードをパーサーが生成する構文ツリーで@var{alias}として表示する。たとえば、
+makes nodes matched by @var{rule} appear as @var{alias} in the syntax tree
+generated by the parser.  For example,
 
 @example
 alias(preprocessor_call_exp, call_expression)
 @end example
 
 @noindent
-これにより@code{preprocessor_call_exp}がマッチしたノードが@code{call_expression}と表示される。
+makes any node matched by @code{preprocessor_call_exp} appear as
+@code{call_expression}.
 @end table
 
-以下は言語グラマーを読むにあたってそれほど重要ではないグラマー関数です。
+Below are grammar functions of lesser importance for reading a language
+grammar.
 
 @table @code
 @item token(@var{rule})
-単一の葉ノード(leaf
-node)として@var{rule}をマークする。つまり個別の子ノードをもつ親ノードではなく、その単一の葉ノードにすべてが収斂されるようなノードを生成する。@ref{Retrieving
-Nodes}を参照のこと。
+marks @var{rule} to produce a single leaf node.  That is, instead of
+generating a parent node with individual child nodes under it, everything is
+combined into a single leaf node.  @xref{Retrieving Nodes}.
 @item token.immediate(@var{rule})
-通常のグラマールールは先行する空白を無視するが、これは空白が前置されていない@var{rule}だけにマッチするよう変更する。
+Normally, grammar rules ignore preceding whitespace; this changes @var{rule}
+to match only when there is no preceding whitespace.
 @item prec(@var{n}, @var{rule})
-@var{rule}にたいしてレベル@var{n}の優先度を与える。
+gives @var{rule} the level-@var{n} precedence.
 @item prec.left([@var{n},] @var{rule})
-@var{rule}にたいしてオプションとしてレベル@var{n}を付与して左結合(left-associative)とマークする。
+marks @var{rule} as left-associative, optionally with level @var{n}.
 @item prec.right([@var{n},] @var{rule})
-@var{rule}にたいしてオプションとしてレベル@var{n}を付与して右結合(right-associative)とマークする。
+marks @var{rule} as right-associative, optionally with level @var{n}.
 @item prec.dynamic(@var{n}, @var{rule})
-@code{prec}と似ているが優先度は実行時に適用される。
+this is like @code{prec}, but the precedence is applied at runtime instead.
 @end table
 
-tree-sitterプロジェクトには@uref{https://tree-sitter.github.io/tree-sitter/creating-parsers,
-more about writing a grammar}というドキュメントがあります。特に``The Grammar
-DSL''というセクションを読んでください。
+The documentation of the tree-sitter project has
+@uref{https://tree-sitter.github.io/tree-sitter/creating-parsers, more about
+writing a grammar}.  Read especially ``The Grammar DSL'' section.
 
 @node Using Parser
-@section Tree-sitterパーサーの使用
+@section Using Tree-sitter Parser
 @cindex tree-sitter parser, using
 
-このセクションではtree-sitterパーサーをどのようにして作成して構成するかについて説明します。Emacsにおけるtree-sitterパーサーはそれぞれバッファーに関連付けられます。ユーザーによるバッファーの編集にしたがって、関連付けられているパーサーと構文ツリーは自動的に最新に保たれるのです。
+This section describes how to create and configure a tree-sitter parser.  In
+Emacs, each tree-sitter parser is associated with a buffer.  As the user
+edits the buffer, the associated parser and syntax tree are automatically
+kept up-to-date.
 
 @defvar treesit-max-buffer-size
-この変数にはtree-sitterをアクティブにし得るバッファーの最大サイズが含まれる。メジャーモードはtree-sitter機能を有効にするかどうかを判断する際にはこの変数をチェックすること。
+This variable contains the maximum size of buffers in which tree-sitter can
+be activated.  Major modes should check this value when deciding whether to
+enable tree-sitter features.
 @end defvar
 
 @cindex creating tree-sitter parsers
 @cindex tree-sitter parser, creating
 @defun treesit-parser-create language &optional buffer no-reuse tag
-指定された@var{buffer}および@var{language} (@ref{Language
-Grammar}を参照)にたいして、@var{tag}としてパーサーを作成する。バッファーが省略または@code{nil}の場合にはカレントバッファーを意味する。
+Create a parser for the specified @var{buffer} and @var{language}
+(@pxref{Language Grammar}), with @var{tag}.  If @var{buffer} is omitted or
+@code{nil}, it stands for the current buffer.
 
-この関数は@var{buffer}の@var{language}にたいする@var{tag}というパーサーがすでに存在していれば、デフォルトではそれを再利用するが@var{no-reuse}が非@code{nil}の場合には常に新たなパーサーを作成する。
+By default, this function reuses a parser if one already exists for
+@var{language} with @var{tag} in @var{buffer}, but if @var{no-reuse} is
+non-@code{nil}, this function always creates a new parser.
 
-@var{tag}は@code{t}を除く任意のシンボルで、デフォルトは@code{nil}。異なるパーサーが同じタグを保有し得る。
+@var{tag} can be any symbol except @code{t}, and defaults to @code{nil}.
+Different parsers can have the same tag.
 
-そのバッファーがインダイレクトバッファーなら、かわりにベースバッファーを使用する。つまりインダイレクトバッファーではそのベースバッファーのパーサーが使用される。ベースバッファーがナローイングされていると、インダイレクトバッファーがベースバッファーで不可視なバッファーテキスト部分の情報を取得できないかもしれない。Lispプログラムがインダイレクトバッファーでパーサーを使用するためには、必要に応じてwiden(訳注:
-カレントバッファーからナローイングによる制限を取り去る関数)する必要がある。
+If that buffer is an indirect buffer, its base buffer is used instead.  That
+is, indirect buffers use their base buffer's parsers.  If the base buffer is
+narrowed, an indirect buffer might not be able to retrieve information of
+the portion of the buffer text that is invisible in the base buffer.  Lisp
+programs should widen as necessary should they want to use a parser in an
+indirect buffer.
 @end defun
 
-パーサーが与えられれば、それに関する情報を問い合わせることができます。
+Given a parser, we can query information about it.
 
 @defun treesit-parser-buffer parser
-この関数は@var{parser}に関連付けられているバッファーをリターンする。
+This function returns the buffer associated with @var{parser}.
 @end defun
 
 @defun treesit-parser-language parser
-この関数は@var{parser}が使用する言語をリターンする。
+This function returns the language used by @var{parser}.
 @end defun
 
 @defun treesit-parser-p object
-この関数は@var{object}をチェックしてtree-sitterパーサーなら非@code{nil}、そうでなければ@code{nil}をリターンする。
+This function checks if @var{object} is a tree-sitter parser, and returns
+non-@code{nil} if it is, and @code{nil} otherwise.
 @end defun
 
-パースは自動的かつ遅延して行われるので、明示的にバッファーをパースする必要はありません。パーサーがパースを行うのは、Lispプログラムがパーサーの構文ツリーのノードにたいして問い合わせを行ったときだけです。したがって最初にパーサーが作成された際にはバッファーのパースは行われず、Lispプログラムがノードにたいする問い合わせを最初に行うまで待機します。同様に何らかの変更をバッファーに行った際にも、パーサーが即座に再パースする訳ではありません。
+There is no need to explicitly parse a buffer, because parsing is done
+automatically and lazily.  A parser only parses when a Lisp program queries
+for a node in its syntax tree.  Therefore, when a parser is first created,
+it doesn't parse the buffer; it waits until the Lisp program queries for a
+node for the first time.  Similarly, when some change is made in the buffer,
+a parser doesn't re-parse immediately.
 
 @vindex treesit-buffer-too-large
-パーサーがパースを行う際にはバッファーのサイズをチェックします。tree-sitterが処理できるのはおよそ4GBまでです。サイズがそれを超えると、Emacsはそのバッファーサイズをシグナルデータとして@code{treesit-buffer-too-large}エラーをシグナルするでしょう。
+When a parser does parse, it checks for the size of the buffer.  Tree-sitter
+can only handle buffers no larger than about 4GB@.  If the size exceeds
+that, Emacs signals the @code{treesit-buffer-too-large} error with signal
+data being the buffer size.
 
-一度パーサーを作成すると、Emacsが自動的にそれを内部のパーサーリストに追加します。バッファーにたいして変更が行われるたびに、パーサーがインクリメンタルに構文ツリーを更新できるように、Emacsがこのリストにあるパーサーを更新するのです。
+Once a parser is created, Emacs automatically adds it to the internal parser
+list.  Every time a change is made to the buffer, Emacs updates parsers in
+this list so they can update their syntax tree incrementally.
 
 @defun treesit-parser-list &optional buffer language tag
-この関数は@var{language}と@var{tag}で絞り込んだ@var{buffer}のパーサーリストをリターンする。@var{buffer}が@code{nil}または省略の場合のデフォルトはカレントバッファー。そのバッファーがインダイレクトバッファーなら、かわりにベースバッファーを使用する。つまりインダイレクトバッファーではそのベースバッファーのパーサーが使用される。
+This function returns the parser list of @var{buffer}, filtered by
+@var{language} and @var{tag}.  If @var{buffer} is @code{nil} or omitted, it
+defaults to the current buffer.  If that buffer is an indirect buffer, its
+base buffer is used instead.  That is, indirect buffers use their base
+buffer's parsers.
 
-@var{language}が非@var{nil}ならその言語にたいするパーサーで@var{tag}というパーサーのみが含まれる。@var{tag}のデフォルトは@code{nil}。@code{nil}が@code{t}ならリターンされるリストには含まれるパーサーはすべてのタグが含まれる。
+If @var{language} is non-@var{nil}, only include parsers for that language,
+and only include parsers with @var{tag}.  @var{tag} defaults to @code{nil}.
+If @var{tag} is @code{t}, include parsers in the returned list regardless of
+their tag.
 @end defun
 
 @defun treesit-parser-delete parser
-この関数は@var{parser}を削除する。
+This function deletes @var{parser}.
 @end defun
 
 @cindex tree-sitter narrowing
 @anchor{tree-sitter narrowing}
-パーサーは通常はバッファー全体を``見ている''ものですが、バッファーがナローイング(@ref{Narrowing}を参照)されているとパーサーが見るのはバッファーのアクセス可能範囲だけになります。パーサーが見る限りでは、隠されているリージョンは削除されたことになります。後刻バッファーがワイドニングされた際には、先頭と終端にテキストが挿入されたとパーサーは考えるでしょう。パーサーがナローイングを尊重するにしても、複数言語のバッファーを処理するという意味合いでモードはナローイングを使用するべきではありません。そのかわりにパーサーが処理する必要がある範囲をセットするべきです。@ref{Multiple
-Languages}を参照してください。
+Normally, a parser ``sees'' the whole buffer, but when the buffer is
+narrowed (@pxref{Narrowing}), the parser will only see the accessible
+portion of the buffer.  As far as the parser can tell, the hidden region was
+deleted.  When the buffer is later widened, the parser thinks text is
+inserted at the beginning and at the end.  Although parsers respect
+narrowing, modes should not use narrowing as a means to handle a
+multi-language buffer; instead, set the ranges in which the parser should
+operate.  @xref{Multiple Languages}.
 
-パーサーはパースを遅延させるので、ユーザーやLispプログラムがバッファーをナローイングしてもパーサーはすぐに影響を受けないのです。バッファーをナローイングしていても、モードがノードについて問い合わせをするまでパーサーはナローイングを認識しません。
+Because a parser parses lazily, when the user or a Lisp program narrows the
+buffer, the parser is not affected immediately; as long as the mode doesn't
+query for a node while the buffer is narrowed, the parser is oblivious of
+the narrowing.
 
 @cindex tree-sitter parse string
 @cindex parse string, tree-sitter
-バッファーにたいしてパーサーを作成するだけではなく、Lispプログラムが文字列のパースを行うことも可能です。バッファーと違い文字列のパースは一度かぎりの操作であり、結果を更新する手段はありません。
+Besides creating a parser for a buffer, a Lisp program can also parse a
+string.  Unlike a buffer, parsing a string is a one-off operation, and there
+is no way to update the result.
 
 @defun treesit-parse-string string language
-この関数は@var{language}を使用して@var{string}のパースを行い、生成された構文ツリーのルートノードをリターンする。
+This function parses @var{string} using @var{language}, and returns the root
+node of the generated syntax tree.
 @end defun
 
-@heading パースツリーへの変更による通知
+@heading Be notified by changes to the parse tree
 @cindex update callback, for tree-sitter parse-tree
 @cindex after-change notifier, for tree-sitter parse-tree
 @cindex tree-sitter parse-tree, update and after-change callback
 @cindex notifiers, tree-sitter
 
-Lispプログラムはインクリメンタルなパースによって影響を受けるテキストにたいして通知してほしい場合があるかもしれません。たとえばコメントを閉じるtokenの挿入によって、そのtokenの手前にあるテキストを変換する場合です。たとえテキストが直接変更されなくても、それは``変更''とみなされるのです。
+A Lisp program might want to be notified of text affected by incremental
+parsing.  For example, inserting a comment-closing token converts text
+before that token into a comment.  Even though the text is not directly
+edited, it is deemed to be ``changed'' nevertheless.
 
-Emacsではこれらの類いの変更にたいして、Lispプログラムにコールバック関数(別名@dfn{notifier})を登録できます。notifier関数は@var{ranges}、@var{parser}という2つの引数を受け取ります。@var{ranges}は@w{@code{(@var{start}
-.
-@var{end})}}という形式をもつコンスセルのリストです。ここで@var{start}、@var{end}は範囲の開始と終了をマークします。@var{parser}は通知を発行するパーサーです。
+Emacs lets a Lisp program register callback functions (a.k.a.@:
+@dfn{notifiers}) for these kinds of changes.  A notifier function takes two
+arguments: @var{ranges} and @var{parser}.  @var{ranges} is a list of cons
+cells of the form @w{@code{(@var{start} . @var{end})}}, where @var{start}
+and @var{end} mark the start and the end positions of a range.  @var{parser}
+is the parser issuing the notification.
 
-パーサーはバッファーを再パースするたびに構文ツリーの新旧を比較して、変更されたノード範囲の計算を行いその範囲をnotifier関数に引き渡します。最初のパースも``変更''とみなされるので、最初のパースではバッファー全体を範囲としてnotifier関数が呼び出されることに注意してください。
+Every time a parser reparses a buffer, it compares the old and new
+parse-tree, computes the ranges in which nodes have changed, and passes the
+ranges to notifier functions.  Note that the initial parse is also
+considered a ``change'', so notifier functions are called on the initial
+parse, with range being the whole buffer.
 
 @defun treesit-parser-add-notifier parser function
-この関数は@var{parser}のnotifier関数のafter-changeリストに@var{function}を追加する。@var{function}はlambda関数ではなく、関数シンボルでなければならない(@ref{Anonymous
-Functions}を参照)。
+This function adds @var{function} to @var{parser}'s list of after-change
+notifier functions.  @var{function} must be a function symbol, not a lambda
+function (@pxref{Anonymous Functions}).
 @end defun
 
 @defun treesit-parser-remove-notifier parser function
-この関数は@var{parser}のnotifier関数のafter-changeリストから@var{function}を削除する。@var{function}はlambda関数ではなく、関数シンボルでなければならない(@ref{Anonymous
-Functions}を参照)。
+This function removes @var{function} from the list of @var{parser}'s
+after-change notifier functions.  @var{function} must be a function symbol,
+rather than a lambda function.
 @end defun
 
 @defun treesit-parser-notifiers parser
-この関数は@var{parser}のnotifier関数のリストをリターンする。
+This function returns the list of @var{parser}'s notifier functions.
 @end defun
 
 @node Retrieving Nodes
-@section ノードの取得
+@section Retrieving Nodes
 @cindex retrieve node, tree-sitter
 @cindex tree-sitter, find node
 @cindex get node, tree-sitter
 
 @cindex terminology, for tree-sitter functions
-以下はわたしたちがtree-sitter関数を文書化する際に用いる用語と慣習についてです。
+Here are some terms and conventions we use when documenting tree-sitter
+functions.
 
-構文ツリーのノードは、バッファーのプログラムテキストのある部分に跨ります(span)。あるノードの跨ぐバッファーテキスト部分が、他のノードのそれより小さい(または大きい)場合には、わたしたちはそのノードが他のノードより``小さい''(または``大きい'')と表現します。ツリーにおいてより深い(``下位''の)ノードは、そのツリーのより``上位''ノードの子となるので、そのノード階層において下位のノードは常に上位のノードより小さくなります。構文ツリーの上位のノードには、その子として1つ以上の小さいノードが含まれており、したがってバッファーテキストのより大きい部分を跨ぐことになるのです。
+A node in a syntax tree spans some portion of the program text in the
+buffer.  We say that a node is ``smaller'' or ``larger'' than another if it
+spans, respectively, a smaller or larger portion of buffer text than the
+other node.  Since nodes that are deeper (``lower'') in the tree are
+children of the nodes that are ``higher'' in the tree, it follows that a
+lower node will always be smaller than a node that is higher in the node
+hierarchy.  A node that is higher up in the syntax tree contains one or more
+smaller nodes as its children, and therefore spans a larger portion of
+buffer text.
 
-関数がノードを見つけられなかった場合には@code{nil}をリターンします。利便性のために、引数としてノードを受け取ってノードをリターンするすべての関数も@code{nil}の引数を許し、そのような場合には単に@code{nil}をリターンするようになっています。
+When a function cannot find a node, it returns @code{nil}.  For convenience,
+all functions that take a node as argument and return a node, also accept
+the node argument of @code{nil} and in that case just return @code{nil}.
 
 @vindex treesit-node-outdated
-関連付けられているバッファーが更新された際にノードが自動的に更新されることはなく、一度取得したノードを更新する術は存在しません。古くなってしまったノードを使用すると@code{treesit-node-outdated}エラーがシグナルされるでしょう。
+Nodes are not automatically updated when the associated buffer is modified,
+and there is no way to update a node once it is retrieved.  Using an
+outdated node signals the @code{treesit-node-outdated} error.
 
-@heading 構文ツリーからのノードの取得
+@heading Retrieving nodes from syntax tree
 @cindex retrieving tree-sitter nodes
 @cindex syntax tree, retrieving nodes
 
 @cindex leaf node, of tree-sitter parse tree
 @cindex tree-sitter parse tree, leaf node
 @defun treesit-node-at pos &optional parser-or-lang named
-この関数はバッファー位置@var{pos}にある@dfn{葉ノード(leaf
-node)}をリターンする。葉ノードとは子ノードを何ももたないノードのこと。
+This function returns a @dfn{leaf} node at buffer position @var{pos}.  A
+leaf node is a node that doesn't have any child nodes.
 
-この関数は@var{pos}を跨がって覆う(cover)ようなノードのリターンを試みる。これは開始位置が@var{pos}以下、かつ終了位置が@var{pos}以上であるノードのこと。
+This function tries to return a node whose span covers @var{pos}: the node's
+beginning position is less than or equal to @var{pos}, and the node's end
+position is greater than or equal to @var{pos}.
 
-@var{pos}を跨いで覆うような葉ノードがない(たとえば@var{pos}が2つの葉ノードの間にある空白にある)場合には、この関数は@var{pos}の後にある最初の葉ノードをリターンする。
+If no leaf node's span covers @var{pos} (e.g., @var{pos} is in the
+whitespace between two leaf nodes), this function returns the first leaf
+node after @var{pos}.
 
-最後にもし@var{pos}の後に葉ノードがなければ、@var{pos}の前にある最初の葉ノードをリターンする。
+Finally, if there is no leaf node after @var{pos}, return the first leaf
+node before @var{pos}.
 
-@var{parser-or-lang}がパーサーオブジェクトなら、この関数はそのパーサーを使用する。@var{parser-or-lang}が言語の場合には、この関数はカレントバッファーにおいてその言語用の最初のパーサー、もし存在しなければパーサーを作成してそれを使用する。@var{parser-or-lang}が@code{nil}なら、この関数は@code{treesit-language-at}
-(@ref{Multiple Languages}を参照)を呼び出して、@var{pos}の言語の推測を試みる。
+If @var{parser-or-lang} is a parser object, this function uses that parser;
+if @var{parser-or-lang} is a language, this function uses the first parser
+for that language in the current buffer, or creates one if none exists; if
+@var{parser-or-lang} is @code{nil}, this function tries to guess the
+language at @var{pos} by calling @code{treesit-language-at} (@pxref{Multiple
+Languages}).
 
-リターンする適切なノードが見つけられなかった場合には、この関数は@code{nil}をリターンする。
+If this function cannot find a suitable node to return, it returns
+@code{nil}.
 
-@var{named}が非@code{nil}の場合には、この関数は名前つきのノードだけを探す(@ref{tree-sitter named node,
-named node}を参照)。
+If @var{named} is non-@code{nil}, this function looks only for named nodes
+(@pxref{tree-sitter named node, named node}).
 
-例:
+Example:
 
 @example
 @group
-;; Cパーサーの構文ツリーでポイント位置のノードを探す
+;; Find the node at point in a C parser's syntax tree.
 (treesit-node-at (point) 'c)
   @result{} #<treesit-node (primitive_type) in 23-27>
 @end group
@@ -452,115 +607,164 @@ named node}を参照)。
 @end defun
 
 @defun treesit-node-on beg end &optional parser-or-lang named
-この関数は@var{beg}と@var{end}の間にあるバッファーテキストのリージョンを覆うような、@emph{もっとも小さい}ノードをリターンする。言い換えると開始が@var{beg}以前、かつ終了が@var{end}以降であるようなノードのこと。
+This function returns the @emph{smallest} node that covers the region of
+buffer text between @var{beg} and @var{end}.  In other words, the start of
+the node is before or at @var{beg}, and the end of the node is at or after
+@var{end}.
 
-@emph{注意せよ:}
-トップレベル構文(関数定義等)の内部ではない空行でこの関数を呼び出すと、恐らくルートノードが取得される場合がほとんどだろう。その空行を覆うもっとも小さいノードがルートノードだというのがその理由だが、あなたが使いたいと望んでいる機能は、ほとんどの場合は@code{treesit-node-at}のほうだろう。
+@emph{Beware:} calling this function on an empty line that is not inside any
+top-level construct (function definition, etc.@:) most probably will give
+you the root node, because the root node is the smallest node that covers
+that empty line.  Most of the time, you want to use @code{treesit-node-at}
+instead.
 
-@var{parser-or-lang}がパーサーオブジェクトなら、この関数はそのパーサーを使用する。@var{parser-or-lang}が言語の場合には、この関数はカレントバッファーにおいてその言語用の最初のパーサー、もし存在しなければパーサーを作成してそれを使用する。@var{parser-or-lang}が@code{nil}なら、この関数は@code{treesit-language-at}
-(@ref{Multiple Languages}を参照)を呼び出して、@var{beg}の言語の推測を試みる。
+If @var{parser-or-lang} is a parser object, this function uses that parser;
+if @var{parser-or-lang} is a language, this function uses the first parser
+for that language in the current buffer, or creates one if none exists; if
+@var{parser-or-lang} is @code{nil}, this function tries to guess the
+language at @var{beg} by calling @code{treesit-language-at}.
 
-@var{named}が非@code{nil}の場合には、この関数は名前つきのノードだけを探す(@ref{tree-sitter named node,
-named node}を参照)。
+If @var{named} is non-@code{nil}, this function looks for a named node only
+(@pxref{tree-sitter named node, named node}).
 @end defun
 
 @defun treesit-parser-root-node parser
-この関数は@var{parser}が生成した構文ツリーのルートノードをリターンする。
+This function returns the root node of the syntax tree generated by
+@var{parser}.
 @end defun
 
 @defun treesit-buffer-root-node &optional language
-この関数はカレントバッファーで@var{language}用の最初のパーサー、パーサーが存在しなければ作成して、そのパーサーが生成したルートノードをリターンする。@var{language}が省略された場合にはパーサーリストの最初のパーサーを使用する。適切なパーサーが見つからなければ@code{nil}をリターンする。
+This function finds the first parser for @var{language} in the current
+buffer, or creates one if none exists, and returns the root node generated
+by that parser.  If @var{language} is omitted, it uses the first parser in
+the parser list.  If it cannot find an appropriate parser, it returns
+@code{nil}.
 @end defun
 
-Lispプログラムはノードが与えられれば、そこから始まる他のノードを取得したり、そのノードに関する情報を問い合わせることができます。
+Given a node, a Lisp program can retrieve other nodes starting from it, or
+query for information about this node.
 
-@heading ノードからの他ノードの取得
+@heading Retrieving nodes from other nodes
 @cindex syntax tree nodes, retrieving from other nodes
 
-@subheading 親族関係から
+@subheading By kinship
 @cindex kinship, syntax tree nodes
 @cindex nodes, by kinship
 @cindex syntax tree nodes, by kinship
 
 @defun treesit-node-parent node
-この関数は@var{node}の直近の親をリターンする。
+This function returns the immediate parent of @var{node}.
 
-パースツリー(parse tree:
-解析木)において@var{node}が1000を超える深さのレベルにある場合のリターン値は未定義。現在のところ@code{nil}をリターンするが、将来変更されるかもしれない。
+If @var{node} is more than 1000 levels deep in a parse tree, the return
+value is undefined.  Currently it returns @code{nil}, but that could change
+in the future.
 @end defun
 
 @defun treesit-node-child node n &optional named
-この関数は@var{node}の@var{n}番目の子をリターンする。@var{named}が非@code{nil}なら名前つきのノードだけを考慮する(@ref{tree-sitter
-named node, named node}を参照)。
+This function returns the @var{n}'th child of @var{node}.  If @var{named} is
+non-@code{nil}, it counts only named nodes (@pxref{tree-sitter named node,
+named node}).
 
-たとえば文字列@code{"text"}を表すノードの場合には開クォート@code{"}、文字列テキストの@code{text}、それに閉クォート@code{"}という3つの子ノードが存在する。これら3つのノードの中で最初の子は開クォート@code{"}、最初の名前つきの子は文字列テキストとなる。
+For example, in a node that represents a string @code{"text"}, there are
+three children nodes: the opening quote @code{"}, the string text
+@code{text}, and the closing quote @code{"}.  Among these nodes, the first
+child is the opening quote @code{"}, and the first named child is the string
+text.
 
-この関数は@var{n}番目の子が存在しなければ@code{nil}をリターンする。@var{n}は負でも可(@minus{}1は最後の子を表す)。
+This function returns @code{nil} if there is no @var{n}'th child.  @var{n}
+could be negative, e.g., @minus{}1 represents the last child.
 @end defun
 
 @defun treesit-node-children node &optional named
-この関数は@var{node}のすべての子をリストでリターンする。@var{named}が非@code{nil}なら名前つきのノードだけを取得する。
+This function returns all of @var{node}'s children as a list.  If
+@var{named} is non-@code{nil}, it retrieves only named nodes.
 @end defun
 
 @defun treesit-node-next-sibling node &optional named
-この関数は@var{node}の次の兄弟を探す。@var{named}が非@code{nil}なら次の名前つきの兄弟を探す。
+This function finds the next sibling of @var{node}.  If @var{named} is
+non-@code{nil}, it finds the next named sibling.
 @end defun
 
 @defun treesit-node-prev-sibling node &optional named
-この関数は@var{node}の前の兄弟を探す。@var{named}が非@code{nil}なら前の名前つきの兄弟を探す。
+This function finds the previous sibling of @var{node}.  If @var{named} is
+non-@code{nil}, it finds the previous named sibling.
 @end defun
 
-@subheading フィールド名から
+@subheading By field name
 @cindex nodes, by field name
 @cindex syntax tree nodes, by field name
 
-構文ツリーの分析をより容易にするために、多くの言語ではグラマーで子ノードに@dfn{フィールド名(field
-names)}を割り当てています(@ref{tree-sitter node field name, field
-name}を参照)。たとえば@code{function_definition}ノードには@code{declarator}や@code{body}という子ノードがあるかもしれません。
+To make the syntax tree easier to analyze, many language grammars assign
+@dfn{field names} to child nodes (@pxref{tree-sitter node field name, field
+name}).  For example, a @code{function_definition} node could have a
+@code{declarator} child and a @code{body} child.
 
 @defun treesit-node-child-by-field-name node field-name
-この関数はフィールド名が@var{field-name}(文字列)であるような@var{node}の子を探す。
+This function finds the child of @var{node} whose field name is
+@var{field-name}, a string.
 
 @example
 @group
-;; フィールド名が"body"という子を取得
+;; Get the child that has "body" as its field name.
 (treesit-node-child-by-field-name node "body")
   @result{} #<treesit-node (compound_statement) in 45-89>
 @end group
 @end example
 @end defun
 
-@subheading 位置から
+@subheading By position
 @cindex nodes, by position
 @cindex syntax tree nodes, by position
 
 @defun treesit-node-first-child-for-pos node pos &optional named
-この関数はバッファー位置@var{pos}を超えて広がるような@var{node}の最初の子をリターンする。``超えて広がる(extends
-beyond)''とは子ノードの終端が@var{pos}以降であることを意味する。この関数は@var{node}の直接の子だけを調べる(孫は調べない)。@var{named}が非@code{nil}の場合には最初の名前つきの子を探す(@ref{tree-sitter
-named node, named node}を参照)。
+This function finds the first child of @var{node} that extends beyond buffer
+position @var{pos}.  ``Extends beyond'' means the end of the child node is
+greater or equal to @var{pos}.  This function only looks for immediate
+children of @var{node}, and doesn't look in its grandchildren.  If
+@var{named} is non-@code{nil}, it looks for the first named child
+(@pxref{tree-sitter named node, named node}).
 @end defun
 
 @defun treesit-node-descendant-for-range node beg end &optional named
-これは位置@var{beg}と@var{end}の間にあるテキストリージョンを跨ぐような、@emph{もっとも小さい}@var{node}の子孫ノードを探す、@code{treesit-node-at}と似た関数。@var{named}が非@code{nil}の場合には、もっとも小さい名前つきの子を探す。
+This function finds the @emph{smallest} descendant node of @var{node} that
+spans the region of text between positions @var{beg} and @var{end}.  It is
+similar to @code{treesit-node-at}.  If @var{named} is non-@code{nil}, it
+looks for the smallest named child.
 @end defun
 
-@heading ノードの検索
+@heading Searching for node
 
 @defun treesit-search-subtree node predicate &optional backward all depth
-この関数は@var{node}のサブツリー(@var{node}自体を含む)を横断(traverse)して、@var{predicate}が非@code{nil}をリターンするようなノードを探す。@var{predicate}はノードそれぞれのタイプにたいしてマッチさせるregexp、あるいはノードを受け取りそのノードがマッチしたら非@code{nil}をリターンするような述語関数。@var{predicate}はthingシンボルかthing定義でもよい(@ref{User-defined
-Things}を参照)。未定義のthingを使用してもエラーは起こらず、この関数は単に@code{nil}をリターンする。
+This function traverses the subtree of @var{node} (including @var{node}
+itself), looking for a node for which @var{predicate} returns
+non-@code{nil}.  @var{predicate} is a regexp that is matched against each
+node's type, or a predicate function that takes a node and returns
+non-@code{nil} if the node matches.  @var{predicate} can also be a thing
+symbol or thing definition (@pxref{User-defined Things}).  Using an
+undefined thing doesn't raise an error, the function simply returns
+@code{nil}.
 
 This function returns the first node that matches, or @code{nil} if none
 matches @var{predicate}.
 
-この関数が検索するのはデフォルトでは名前つきノードだけだが、@var{all}が非@code{nil}ならすべてのノードを横断して検索を行う。@var{backward}が非@code{nil}の場合には後方に横断して検索する(ツリーを下降して横断していく際に最後の子を最初に調べる)。@var{depth}が非@code{nil}なら、それはツリーを横断して下降できるレベル数を制限する数値でなければならない。@var{depth}が@code{nil}の場合のデフォルトは1000。
+By default, this function only traverses named nodes, but if @var{all} is
+non-@code{nil}, it traverses all the nodes.  If @var{backward} is
+non-@code{nil}, it traverses backwards (i.e., it visits the last child first
+when traversing down the tree).  If @var{depth} is non-@code{nil}, it must
+be a number that limits the tree traversal to that many levels down the
+tree.  If @var{depth} is @code{nil}, it defaults to 1000.
 @end defun
 
 @defun treesit-search-forward start predicate &optional backward all
-この関数は(@var{start}を除けば)@code{treesit-search-subtree}と同じようにパースツリーを横断して、@var{predicate}によりそれぞれのノードをマッチする(@var{predicate}はregexpまたは述語関数)。@var{predicate}はthingシンボル、あるいはthing定義でもよい(@ref{User-defined
-Things}を参照)。未定義のthingを使用してもエラーは起こらず、関数は単に@code{nil}をリターンする。
+Like @code{treesit-search-subtree}, this function also traverses the parse
+tree and matches each node with @var{predicate} (except for @var{start}),
+where @var{predicate} can be a regexp or a predicate function.
+@var{predicate} can also be a thing symbol or thing definition
+(@pxref{User-defined Things}).  Using an undefined thing doesn't raise an
+error, the function simply returns @code{nil}.
 
-以下のようなツリー(@samp{S}マークは@var{start})の場合には、この関数は1から12の順に横断していく:
+For a tree like the one below where @var{start} is marked @samp{S}, this
+function traverses as numbered from 1 to 12:
 
 @example
 @group
@@ -576,31 +780,52 @@ o  o                +-+-+   +--+--+
 @end group
 @end example
 
-この関数は@var{start}のサブツリーを横断せず、常に上方に移動する前にまず葉ノードを横断することに注意。
+Note that this function doesn't traverse the subtree of @var{start}, and it
+always traverses leaf nodes first, before moving upwards.
 
-この関数が検索するのは@code{treesit-search-subtree}と同じようにデフォルトでは名前つきノードだけだが、@var{all}が非@code{nil}ならすべてのノードを検索する。@var{backward}が非@code{nil}の場合には後方に検索する。
+Like @code{treesit-search-subtree}, this function only searches for named
+nodes by default, but if @var{all} is non-@code{nil}, it searches for all
+nodes.  If @var{backward} is non-@code{nil}, it searches backwards.
 
-@code{treesit-search-subtree}はノードのサブツリーを横断するが、この関数はノード@var{start}から開始してバッファーの位置順でその後にあるすべてのノード(開始位置が@var{start}の終了位置より大きいノード)を横断する。
+While @code{treesit-search-subtree} traverses the subtree of a node, this
+function starts with node @var{start} and traverses every node that comes
+after it in the buffer position order, i.e., nodes with start positions
+greater than the end position of @var{start}.
 
-上図で示すツリーにおいて、@code{treesit-search-subtree}はノード@samp{S}
-(@var{start})および@code{o}のマークがついたノードを横断するが、この関数は数字のマークがついたノードを横断する。この関数は``バッファーで@var{start}の後にあり何らかの条件を満足する最初のノードはどれ?''、のような問いの答えを求めるのに役に立つ。
+In the tree shown above, @code{treesit-search-subtree} traverses node
+@samp{S} (@var{start}) and nodes marked with @code{o}, whereas this function
+traverses the nodes marked with numbers.  This function is useful for
+answering questions like ``what is the first node after @var{start} in the
+buffer that satisfies some condition?''
 @end defun
 
 @defun treesit-search-forward-goto node predicate &optional start backward all
-この関数はバッファーで@var{node}の後にあり@var{predicate}にマッチする次のノードの開始または終了にポイントを移動する。@var{start}が非@code{nil}なら、ノードの終了ではなく開始で停止する。
+This function moves point to the start or end of the next node after
+@var{node} in the buffer that matches @var{predicate}.  If @var{start} is
+non-@code{nil}, stop at the beginning rather than the end of a node.
 
-この関数がリターンするマッチしたノードは、バッファー位置という点において進行方向にある(リターンされたノードの開始/終了は@var{node}のそれより常に大きい)ことが保証されている。
+This function guarantees that the matched node it returns makes progress in
+terms of buffer position: the start/end position of the returned node is
+always greater than that of @var{node}.
 
-引数@var{predicate}、@var{backward}、@var{all}は@code{treesit-search-forward}の場合と同じ。
+Arguments @var{predicate}, @var{backward}, and @var{all} are the same as in
+@code{treesit-search-forward}.
 @end defun
 
 @defun treesit-induce-sparse-tree root predicate &optional process-fn depth
-この関数は@var{root}のサブツリーからsparseツリー(疎らなツリー)を作成する。
+This function creates a sparse tree from @var{root}'s subtree.
 
-この関数は@var{root}配下のサブツリーを受け取って、@var{predicate}にマッチするノードだけが残るように間引く。前の関数と同じように@var{predicate}はノードそれぞれのタイプにマッチさせるためのregexp文字列、またはノードを受け取ってマッチした場合には非@code{nil}をリターンする。@var{predicate}はthingシンボル、あるいはthing定義でもよい(@ref{User-defined
-Things}を参照)。未定義のthingを使用してもエラーは起こらず、関数は単に@code{nil}をリターンする。
+It takes the subtree under @var{root}, and combs it so only the nodes that
+match @var{predicate} are left.  Like previous functions, the
+@var{predicate} can be a regexp string that matches against each node's
+type, or a function that takes a node and returns non-@code{nil} if it
+matches.  @var{predicate} can also be a thing symbol or thing definition
+(@pxref{User-defined Things}).  Using an undefined thing doesn't raise an
+error, the function simply returns @code{nil}.
 
-たとえば数字と文字の両方で構成される左側のサブツリーが与えられた場合に、``文字のみ''という@var{predicate}でリターンされるのが右側のツリー。
+For example, given the subtree on the left that consists of both numbers and
+letters, if @var{predicate} is ``letter only'', the returned tree is the one
+on the right.
 
 @example
 @group
@@ -618,16 +843,24 @@ b   1   2         b   |   |      b   c   d
 @end group
 @end example
 
-この関数は@var{process-fn}が非@code{nil}の場合には、マッチしたノードではなくノードをそれぞれ@var{process-fn}に渡してリターン値を使用する。@var{depth}が非@code{nil}なら、それは@var{root}から下降できるレベル数制限であること。@var{depth}が@code{nil}の場合のデフォルトは1000。
+If @var{process-fn} is non-@code{nil}, instead of returning the matched
+nodes, this function passes each node to @var{process-fn} and uses the
+returned value instead.  If non-@code{nil}, @var{depth} limits the number of
+levels to go down from @var{root}.  If @var{depth} is @code{nil}, it
+defaults to 1000.
 
-リターンされるツリーのノードはそれぞれ@w{@code{(@var{tree-sitter-node} . (@var{child}
-@dots{}))}}のようになる。このツリーのルートである@var{tree-sitter-node}は、@var{root}が@var{predicate}にマッチしなければ@code{nil}になる。@var{predicate}にマッチするノードがなければ、この関数は@code{nil}をリターンする。
+Each node in the returned tree looks like @w{@code{(@var{tree-sitter-node}
+. (@var{child} @dots{}))}}.  The @var{tree-sitter-node} of the root of this
+tree will be @code{nil} if @var{root} doesn't match @var{predicate}.  If no
+node matches @var{predicate}, the function returns @code{nil}.
 @end defun
 
-@heading より便利な関数
+@heading More convenience functions
 
 @defun treesit-node-get node instructions
-これは複数のノードアクセッサ関数を連鎖する利便性のための関数である。たとえば@var{node}の親の次の兄弟の2つ目の子のテキストは:
+This is a convenience function that chains together multiple node accessor
+functions together.  For example, to get @var{node}'s parent's next
+sibling's second child's text:
 
 @example
 @group
@@ -639,39 +872,44 @@ b   1   2         b   |   |      b   c   d
 @end group
 @end example
 
-@var{instruction}は@w{@code{(@var{fn}
-@var{arg}...)}}という形式のINSTRUCTIONのリスト。以下の@var{fn}がサポートされている:
+@var{instruction} is a list of INSTRUCTIONs of the form @w{@code{(@var{fn}
+@var{arg}...)}}.  The following @var{fn}'s are supported:
 
 @table @code
 @item (child @var{idx} @var{named})
-@var{idx}番目の子を取得。
+Get the @var{idx}'th child.
 
 @item (parent @var{n})
-@var{n}代目の親に移動。
+Go to parent @var{n} times.
 
 @item (field-name)
-カレントノードのフィールド名を取得。
+Get the field name of the current node.
 
 @item (type)
-カレントノードのタイプを取得。
+Get the type of the current node.
 
 @item (text @var{no-property})
-カレントノードのテキストを取得。
+Get the text of the current node.
 
 @item (children @var{named})
-子のリストを取得。
+Get a list of children.
 
 @item (sibling @var{step} @var{named})
-指定した個数分前または後の兄弟を取得。負の@var{step}は前の兄弟、正なら後の兄弟を意味する。
+Get the nth prev/next sibling, negative @var{step} means prev sibling,
+positive means next sibling.
 @end table
 
-元となる関数とは異なり、@var{named}や@var{no-property}のような引数は省略できないことに注意。
+Note that arguments like @var{named} and @var{no-property} can't be omitted,
+unlike in their original functions.
 @end defun
 
 @defun treesit-filter-child node predicate &optional named
-この関数は@var{predicate}を満足する@var{node}の直接の子を探す。
+This function finds immediate children of @var{node} that satisfy
+@var{predicate}.
 
-@var{predicate}は引数としてノードを受け取り、そのノードを候補に残すべきなら非@code{nil}をリターンする関数であること。@var{named}が非@code{nil}なら、この関数は名前つきのノードだけを調べる。
+The @var{predicate} function takes a node as argument and should return
+non-@code{nil} to indicate that the node should be kept.  If @var{named} is
+non-@code{nil}, this function only examines named nodes.
 @end defun
 
 @defun treesit-parent-until node predicate &optional include-node
@@ -682,204 +920,268 @@ or a regexp matching node type names, or other valid predicates described in
 @code{treesit-thing-settings}.  If no parent satisfies @var{predicates},
 this function returns @code{nil}.
 
-この関数は通常だと@var{node}自体ではなく@var{node}の親だけを調べる。しかし、@var{include-node}が非@code{nil}の場合には、@var{node}が@var{predicate}を満足すれば@var{node}をリターンする。
+Normally this function only looks at the parents of @var{node} but not
+@var{node} itself.  But if @var{include-node} is non-@code{nil}, this
+function returns @var{node} if @var{node} satisfies @var{predicate}.
 @end defun
 
 @defun treesit-parent-while node predicate
-この関数は@var{node}を開始点としてノードが@var{predicate}
-(引数としてノードを受け取る関数)を満足するかぎりツリーを上方に移動する。つまりこの関数は@var{predicate}を満足するもっとも高位にある@var{node}の親をリターンする。@var{node}が@var{pred}を満足して、かつ直近の親は@var{predicate}を満足しなければ、@var{node}自体がリターンされることに注意。
+This function goes up the tree starting from @var{node}, and keeps doing so
+as long as the nodes satisfy @var{predicate}, a function that takes a node
+as argument.  That is, this function returns the highest parent of
+@var{node} that still satisfies @var{predicate}.  Note that if @var{node}
+satisfies @var{predicate} but its immediate parent doesn't, @var{node}
+itself is returned.
 @end defun
 
 @defun treesit-node-top-level node &optional predicate include-node
-この関数は@var{node}と同じタイプをもつ、もっとも高くにある親をリターンする。そのような親がいなければ@code{nil}をリターンする。したがってこの関数は@var{node}がトップレベルかどうかをテストするためにも役に立つ。
+This function returns the highest parent of @var{node} that has the same
+type as @var{node}.  If no such parent exists, it returns @code{nil}.
+Therefore this function is also useful for testing whether @var{node} is
+top-level.
 
-この関数は@var{predicate}が@code{nil}なら@var{node}のタイプを用いて親を探し、@var{predicate}が非@code{nil}なら@var{predicate}を満足する親を検索する。@var{include-node}が非@code{nil}の場合には、この関数は@var{predicate}を満足する@var{node}をリターンする。
+If @var{predicate} is @code{nil}, this function uses @var{node}'s type to
+find the parent.  If @var{predicate} is non-@code{nil}, this function
+searches the parent that satisfies @var{predicate}.  If @var{include-node}
+is non-@code{nil}, this function returns @var{node} if @var{node} satisfies
+@var{predicate}.
 @end defun
 
 @node Accessing Node Information
-@section ノード情報へのアクセス
+@section Accessing Node Information
 @cindex information of node, syntax trees
 @cindex syntax trees, node information
 
-@heading ノードの基本的な情報
+@heading Basic information of Node
 
-すべてのノードはパーサーに関連付けられていて、そのパーサーが関連付けられているのがバッファーです。以下はそれらを取得する関数です。
+Every node is associated with a parser, and that parser is associated with a
+buffer.  The following functions retrieve them.
 
 @defun treesit-node-parser node
-この関数は@var{node}に関連付けられているパーサーをリターンする。
+This function returns @var{node}'s associated parser.
 @end defun
 
 @defun treesit-node-buffer node
-この関数は@var{node}のパーサーに関連付けられているバッファーをリターンする。
+This function returns @var{node}'s parser's associated buffer.
 @end defun
 
 @defun treesit-node-language node
-この関数は@var{node}に関連付けられている言語をリターンする。
+This function returns @var{node}'s parser's associated language.
 @end defun
 
-それぞれのノードはバッファー内のテキストのある範囲を表しています。そのテキストに関する情報を探すのが以下の関数です。
+Each node represents a portion of text in the buffer.  Functions below find
+relevant information about that text.
 
 @defun treesit-node-start node
-@var{node}の開始位置をリターンする。
+Return the start position of @var{node}.
 @end defun
 
 @defun treesit-node-end node
-@var{node}の終了位置をリターンする。
+Return the end position of @var{node}.
 @end defun
 
 @defun treesit-node-text node &optional object
-@var{node}が表しているバッファーテキストを文字列としてリターンする(@var{node}が文字列をパースすることによって取得されたものであれば、その文字列のテキストをリターンする)。
+Return the buffer text that @var{node} represents, as a string.  (If
+@var{node} is retrieved from parsing a string, it will be the text from that
+string.)
 @end defun
 
 @cindex predicates for syntax tree nodes
-以下はtree-sitterのノード用の述語の一部です:
+Here are some predicates on tree-sitter nodes:
 
 @defun treesit-node-p object
-@var{object}がtree-sitterの構文ノードかをチェックする。
+Checks if @var{object} is a tree-sitter syntax node.
 @end defun
 
 @cindex compare tree-sitter syntax nodes
 @cindex tree-sitter nodes, comparing
 @defun treesit-node-eq node1 node2
-tree-sitterの構文ツリーにおいて@var{node1}と@var{node2}が同じノードを参照しているかをチェックする。この関数は@code{equal}と等価なメトリックを用いる。@code{equal}を使用してノードを比較することも可能(@ref{Equality
-Predicates}を参照)。
+Checks if @var{node1} and @var{node2} refer to the same node in a
+tree-sitter syntax tree.  This function uses the same equivalence metric as
+@code{equal}.  You can also compare nodes using @code{equal}
+(@pxref{Equality Predicates}).
 @end defun
 
-@heading プロパティ情報
+@heading Property information
 
-具体的な構文ツリーにおけるノードは一般的に@dfn{名前つきノード(named nodes)}と@dfn{無名ノード(anonymous
-nodes)}という2つのカテゴリーに大別されます。あるノードが名前つきか、それとも無名なのかは言語グラマーによって判断されます(@ref{tree-sitter
-named node, named node}を参照)。
+In general, nodes in a concrete syntax tree fall into two categories:
+@dfn{named nodes} and @dfn{anonymous nodes}.  Whether a node is named or
+anonymous is determined by the language grammar (@pxref{tree-sitter named
+node, named node}).
 
 @cindex tree-sitter missing node
 @cindex missing node, tree-sitter
-ノードが名前つきか、あるいは無名かというプロパティに加えて、ノードは他のプロパティをもつことができます。ノードが``欠落(missing)''していることもあり得ます。このようなノードは特定の類の構文エラー(たとえばグラマーに照らせば恐らくそこにあるべき何らかが存在しない)から復帰するためにパーサーによって挿入されます。これはプログラムソースの編集中において、そのソースがまだ最終形になっていないときに発生し得るエラーです。
+Apart from being named or anonymous, a node can have other properties.  A
+node can be ``missing'': such nodes are inserted by the parser in order to
+recover from certain kinds of syntax errors, i.e., something should probably
+be there according to the grammar, but is not there.  This can happen during
+editing of the program source, when the source is not yet in its final form.
 
 @cindex tree-sitter extra node
 @cindex extra node, tree-sitter
-``余分(extra)''というノードもあります。このようなノードはテキスト内の任意の場所に出現し得る、コメントのようなオブジェクトを表しています。
+A node can be ``extra'': such nodes represent things like comments, which
+can appear anywhere in the text.
 
 @cindex tree-sitter outdated node
 @cindex outdated node, tree-sitter
-パーサーがノードを作成した後に少なくとも1回再パースされた場合には、``期限切れ(outdated)''のノードになることがあります。
+A node can be ``outdated'', if its parser has reparsed at least once after
+the node was created.
 
 @cindex tree-sitter node that has error
 @cindex has error, tree-sitter node
-ノードが跨ぐテキストに構文エラーが含まれていれば、``エラーあり(has
-error)''のノードです。ノード自体にエラーがあったり、子孫のいずれかのノードにエラーがあるのかもしれません。
+A node ``has error'' if the text it spans contains a syntax error.  It can
+be that the node itself has an error, or one of its descendants has an
+error.
 
 @cindex tree-sitter, live parsing node
 @cindex live node, tree-sitter
-ノードはそのノードのパーサーが削除されておらず、更にそのノードが生きているバッファー(@ref{Killing
-Buffers}を参照)であれば@dfn{生きている(live)}とみなされます。
+A node is considered @dfn{live} if its parser is not deleted, and the buffer
+to which it belongs is a live buffer (@pxref{Killing Buffers}).
 
 @defun treesit-node-check node property
-この関数は@var{node}が指定された@var{property}をもっていれば非@code{nil}をリターンする。@var{property}は@code{named}、@code{missing}、@code{extra}、@code{outdated}、@code{has-error}、@code{live}のいずれか。
+This function returns non-@code{nil} if @var{node} has the specified
+@var{property}.  @var{property} can be @code{named}, @code{missing},
+@code{extra}, @code{outdated}, @code{has-error}, or @code{live}.
 @end defun
 
 @defun treesit-node-type node
-名前つきノードは``タイプ(type)''をもつことができる(@ref{tree-sitter node type, node
-type}を参照)。たとえば名前つきノード@code{string_literal}のタイプを@code{string_literal}にすることができる。無名ノードは、単にそのノードが表すテキストがタイプとなる(たとえば@samp{,}ノードのタイプは単に@samp{,})。
+Named nodes have ``types'' (@pxref{tree-sitter node type, node type}).  For
+example, a named node can be a @code{string_literal} node, where
+@code{string_literal} is its type.  The type of an anonymous node is just
+the text that the node represents; e.g., the type of a @samp{,} node is just
+@samp{,}.
 
-この関数は@var{node}のタイプを文字列としてリターンする。
+This function returns @var{node}'s type as a string.
 @end defun
 
-@heading 子や親としての情報
+@heading Information as a child or parent
 
 @defun treesit-node-index node &optional named
-この関数は親から@var{node}を子ノードとして見た場合のインデックスをリターンする。@var{named}が非@code{nil}の場合には名前つきノードだけを考慮する(@ref{tree-sitter
-named node, named node}を参照)。
+This function returns the index of @var{node} as a child node of its
+parent.  If @var{named} is non-@code{nil}, it only counts named nodes
+(@pxref{tree-sitter named node, named node}).
 @end defun
 
 @defun treesit-node-field-name node
-親をもつ子ノードはフィールド名をもつことができる(@ref{tree-sitter node field name, field
-name}を参照)。この関数は親から@var{node}を子ノードとして見た場合のフィールド名をリターンする。
+A child of a parent node could have a field name (@pxref{tree-sitter node
+field name, field name}).  This function returns the field name of
+@var{node} as a child of its parent.
 @end defun
 
 @defun treesit-node-field-name-for-child node n
-この関数は@var{node}の@var{n}番目の子のフィールド名をリターンする。@var{n}番目の子がいない、または@var{n}番目の子にフィールド名がなければ@code{nil}をリターンする。
+This function returns the field name of the @var{n}'th child of @var{node}.
+It returns @code{nil} if there is no @var{n}'th child, or the @var{n}'th
+child doesn't have a field name.
 
-@var{n}は名前つきの子と無名の子の両方を考慮することに注意。また@var{n}は負でもよい(@minus{}1は最後の子を表す)。
+Note that @var{n} counts both named and anonymous children, and @var{n} can
+be negative, e.g., @minus{}1 represents the last child.
 @end defun
 
 @defun treesit-node-child-count node &optional named
-この関数は@var{node}の子の数をリターンする。@var{named}が非@code{nil}の場合には名前つきの子だけを考慮する(@ref{tree-sitter
-named node, named node}を参照)。
+This function returns the number of children of @var{node}.  If @var{named}
+is non-@code{nil}, it only counts named children (@pxref{tree-sitter named
+node, named node}).
 @end defun
 
-@heading 便利な関数
+@heading Convenience functions
 
 @defun treesit-node-enclosed-p smaller larger &optional strict
-この関数は@var{smaller}が@var{larger}に囲まれていれば非@code{nil}をリターンする。@var{smaller}と@var{larger}は@code{(@var{beg}
-. @var{end})}のようなコンス、あるいはノードのいずれか。
+This function returns non-@code{nil} if @var{smaller} is enclosed in
+@var{larger}.  @var{smaller} and @var{larger} can be either a cons
+@code{(@var{beg} . @var{end})} or a node.
 
-@var{larger}の開始が@var{smaller}の開始以下、かつ@var{larger}の終端が@var{smaller}の終端以下なら非@code{nil}をリターンする。
+Return non-@code{nil} if @var{larger}'s start <= @var{smaller}'s start and
+@var{larger}'s end <= @var{smaller}'s end.
 
-@var{strict}が@code{t}なら以下(<=)ではなくより小さい(<)で比較する。
+If @var{strict} is @code{t}, compare with < rather than <=.
 
-@var{strict}が@code{partial}なら少なくとも一端が厳密に囲われている場合には@var{smaller}が@var{larger}に囲まれているとみなす。
+If @var{strict} is @code{partial}, consider @var{larger} encloses
+@var{smaller} when at least one side is strictly enclosing.
 @end defun
 
 @node Pattern Matching
-@section tree-sitterノードにたいするパターンマッチング
+@section Pattern Matching Tree-sitter Nodes
 @cindex pattern matching with tree-sitter nodes
 
 @cindex capturing, tree-sitter node
-tree-sitterでは小さな宣言型言語を用いてLispプログラムによるパターンのマッチングができます。このパターンマッチングは2つのステップから構成されています。まずtree-sitterが構文ツリーのノードにたいする@dfn{パターン(pattern)}のマッチを行い、その後にパターンにマッチした特定のノードを@dfn{キャプチャー(capture)}してそのノードをリターンするのです。
+Tree-sitter lets Lisp programs match patterns using a small declarative
+language.  This pattern matching consists of two steps: first tree-sitter
+matches a @dfn{pattern} against nodes in the syntax tree, then it
+@dfn{captures} specific nodes that matched the pattern and returns the
+captured nodes.
 
-まずはもっとも基本的なクエリーパターンを記述してパターン内のノードをキャプチャーする方法、それからパターンマッチング関数、そして最後により上級のパターン構文について説明していきます。
+We describe first how to write the most basic query pattern and how to
+capture nodes in a pattern, then the pattern-matching function, and finally
+the more advanced pattern syntax.
 
-@heading 基本的なクエリー構文
+@heading Basic query syntax
 
 @cindex tree-sitter query pattern syntax
 @cindex pattern syntax, tree-sitter query
 @cindex query, tree-sitter
-@dfn{クエリー(query:
-問い合わせ)}は複数の@dfn{パターン(patterns)}によって構成されます。パターンはそれぞれ構文ノード内の特定ノードにマッチするS式です。パターンは@w{@code{(@var{type}
-(@var{child}@dots{}))}}という形式をもっています。
+A @dfn{query} consists of multiple @dfn{patterns}.  Each pattern is an
+s-expression that matches a certain node in the syntax node.  A pattern has
+the form @w{@code{(@var{type} (@var{child}@dots{}))}}.
 
-たとえば子ノードを含んだノード@code{binary_expression}にマッチするのは以下のようなパターンでしょう
+For example, a pattern that matches a @code{binary_expression} node that
+contains @code{number_literal} child nodes would look like
 
 @example
 (binary_expression (number_literal))
 @end example
 
-上記のクエリーパターンを用いてノードを@dfn{キャプチャー(capture)}するためには、キャプチャーしたいノードパターンの後に@code{@@@var{capture-name}}を追加します。たとえば、
+To @dfn{capture} a node using the query pattern above, append
+@code{@@@var{capture-name}} after the node pattern you want to capture.  For
+example,
 
 @example
 (binary_expression (number_literal) @@number-in-exp)
 @end example
 
 @noindent
-これはノード@code{binary_expression}にあるノード@code{number_literal}をキャプチャー名でキャプチャーします。
+captures @code{number_literal} nodes that are inside a
+@code{binary_expression} node with the capture name @code{number-in-exp}.
 
-同じようにして、たとえばキャプチャー名@code{biexp}でノード@code{binary_expression}をキャプチャーできます:
+We can capture the @code{binary_expression} node as well, with, for example,
+the capture name @code{biexp}:
 
 @example
 (binary_expression
  (number_literal) @@number-in-exp) @@biexp
 @end example
 
-@heading クエリー関数
+@heading Query function
 
 @cindex query functions, tree-sitter
-これで@dfn{クエリー関数(query functions)}を説明する準備ができました。
+Now we can introduce the @dfn{query functions}.
 
 @defun treesit-query-capture node query &optional beg end node-only
-この関数は@var{query}のパターンを@var{node}とマッチする。引数@var{query}はS式、文字列、またはコンパイル済みクエリーオブジェクトのいずれか。ここではS式構文に焦点を当てる。文字列構文およびコンパイル済みクエリーについては、このセクションの最後で説明しよう。
+This function matches patterns in @var{query} within @var{node}.  The
+argument @var{query} can be either an s-expression, a string, or a compiled
+query object.  For now, we focus on the s-expression syntax; string syntax
+and compiled queries are described at the end of the section.
 
-引数@var{node}はパーサー、あるいは言語シンボルでもよい。パーサーの場合にはそのルートノードを、言語シンボルならまずカレントバッファーでその言語用のパーサーを探すか作成してそのルートノードを使用する。
+The argument @var{node} can also be a parser or a language symbol.  A parser
+means use its root node, a language symbol means find or create a parser for
+that language in the current buffer, and use the root node.
 
-この関数はキャプチャーしたすべてのノードを、@w{@code{(@var{capture_name}
-.
-@var{node})}}という要素をもつalistでリターンする。@var{node-only}が非@code{nil}の場合には、かわりに@var{node}のリストをリターンする。デフォルトでは@var{node}のテキスト全体を検索するが、@var{beg}と@var{end}がいずれも非@code{nil}であれば、それはこの関数がノードをマッチするべきバッファーテキストのリージョンを指定する。@var{beg}と@var{end}の間のリージョンを跨いで重なるようなノードがマッチすればすべてキャプチャーされる(完全にそのリージョンに含まれている必要はない)。
+The function returns all the captured nodes in an alist with elements of the
+form @w{@code{(@var{capture_name} . @var{node})}}.  If @var{node-only} is
+non-@code{nil}, it returns the list of @var{node}s instead.  By default the
+entire text of @var{node} is searched, but if @var{beg} and @var{end} are
+both non-@code{nil}, they specify the region of buffer text where this
+function should match nodes.  Any matching node whose span overlaps with the
+region between @var{beg} and @var{end} is captured; it doesn't have to be
+completely contained in the region.
 
 @vindex treesit-query-error
 @findex treesit-query-validate
-この関数は@var{query}が不正な形式であれば@code{treesit-query-error}エラーraiseする。シグナルデータには、その特定。エラーに関する説明が含まれている。クエリーの検証とデバッグには@code{treesit-query-validate}を使うことができる。
+This function raises the @code{treesit-query-error} error if @var{query} is
+malformed.  The signal data contains a description of the specific error.
+You can use @code{treesit-query-validate} to validate and debug the query.
 @end defun
 
-たとえば@var{node}のテキストが@code{1 + 2}で、以下のクエリーを考えてみましょう
+For example, suppose @var{node}'s text is @code{1 + 2}, and @var{query} is
 
 @example
 @group
@@ -889,7 +1191,7 @@ tree-sitterでは小さな宣言型言語を用いてLispプログラムによ�
 @end group
 @end example
 
-このクエリーをマッチングすると以下がリターンされます
+Matching that query would return
 
 @example
 @group
@@ -900,7 +1202,8 @@ tree-sitterでは小さな宣言型言語を用いてLispプログラムによ�
 @end group
 @end example
 
-前に言及したように、@var{query}に複数のパターンを含めることができます。たとえば以下のようにトップレベルのパターンを2つもつことができます:
+As mentioned earlier, @var{query} could contain multiple patterns.  For
+example, it could have two top-level patterns:
 
 @example
 @group
@@ -911,32 +1214,40 @@ tree-sitterでは小さな宣言型言語を用いてLispプログラムによ�
 @end example
 
 @defun treesit-query-string string query language
-この関数は@var{language}として@var{string}をパースして、そのルートノードにたいして@var{query}をマッチ、その結果をリターンする。
+This function parses @var{string} as @var{language}, matches its root node
+with @var{query}, and returns the result.
 @end defun
 
-@heading その他のクエリー構文
+@heading More query syntax
 
-ノードのタイプとキャプチャー名以外にも、tree-sitterのパターン構文により無名ノード、フィールド名、ワイルドカード、量化、グルーピング、選択、アンカー、述語を表現することができます。
+Besides node type and capture name, tree-sitter's pattern syntax can express
+anonymous node, field name, wildcard, quantification, grouping, alternation,
+anchor, and predicate.
 
-@subheading 無名ノード
+@subheading Anonymous node
 
-無名ノードはクォートで括ることで逐語的に記述されます。キーワード@code{return}にマッチ(してキャプチャー)するパターンは以下のようになるでしょう 
+An anonymous node is written verbatim, surrounded by quotes.  A pattern
+matching (and capturing) keyword @code{return} would be
 
 @example
 "return" @@keyword
 @end example
 
-@subheading ワイルドカード
+@subheading Wild card
 
-パターンにおいて@samp{(_)}は任意の名前つきノード、@samp{_}は名前つきノードや無名ノードのすべてにマッチします。たとえば@code{binary_expression}ノードの名前つきの子をすべてキャプチャーするパターンは以下のようになるでしょう
+In a pattern, @samp{(_)} matches any named node, and @samp{_} matches any
+named or anonymous node.  For example, to capture any named child of a
+@code{binary_expression} node, the pattern would be
 
 @example
 (binary_expression (_) @@in-biexp)
 @end example
 
-@subheading フィールド名
+@subheading Field name
 
-特定のフィールド名をもつ子ノードをキャプチャーすることは可能です。以下のパターンでは、フィールド名であることを示すコロンが後置されている@code{declarator}と@code{body}がフィールド名です。
+It is possible to capture child nodes that have specific field names.  In
+the pattern below, @code{declarator} and @code{body} are field names,
+indicated by the colon following them.
 
 @example
 @group
@@ -946,41 +1257,50 @@ tree-sitterでは小さな宣言型言語を用いてLispプログラムによ�
 @end group
 @end example
 
-特定のフィールドをもたないノード、たとえば@code{body}フィールドのない@code{function_definition}をキャプチャーすることも可能です:
+It is also possible to capture a node that doesn't have a certain field,
+say, a @code{function_definition} without a @code{body} field:
 
 @example
 (function_definition !body) @@func-no-body
 @end example
 
-@subheading ノードの量化
+@subheading Quantify node
 
 @cindex quantify node, tree-sitter
-tree-sitterは量化演算子(quantification
-operator)の@samp{:*}、@samp{:+},@samp{:?}を認識します。これらの演算子の意味は正規表現の場合と同じです。@samp{:*}と@samp{:+}はそれぞれ前にあるパターンの0個以またはは1個以上の繰り返し、@samp{:?}は前のパターンの0個または1個の繰り返しにマッチします。
+Tree-sitter recognizes quantification operators @samp{:*}, @samp{:+}, and
+@samp{:?}.  Their meanings are the same as in regular expressions: @samp{:*}
+matches the preceding pattern zero or more times, @samp{:+} matches one or
+more times, and @samp{:?} matches zero or one times.
 
-たとえば以下は@code{long}というキーワードの@emph{0個以上}の繰り返しにマッチするパターンです。
+For example, the following pattern matches @code{type_declaration} nodes
+that have @emph{zero or more} @code{long} keywords.
 
 @example
 (type_declaration "long" :*) @@long-type
 @end example
 
-こちらは@code{long}というキーワードをもつか、あるいはもたないかというタイプ宣言用のパターンです:
+The following pattern matches a type declaration that may or may not have a
+@code{long} keyword:
 
 @example
 (type_declaration "long" :?) @@long-type
 @end example
 
-@subheading グルーピング
+@subheading Grouping
 
-正規表現におけるグループと同じように、パターンをグループにまとめたり量化演算子を適用することができます。たとえばカンマで区切られた識別子を表現するには、以下のように記述できるでしょう
+Similar to groups in regular expressions, we can bundle patterns into groups
+and apply quantification operators to them.  For example, to express a
+comma-separated list of identifiers, one could write
 
 @example
 (identifier) ("," (identifier)) :*
 @end example
 
-@subheading 選択
+@subheading Alternation
 
-繰り返しになりますが正規表現と同じように、パターンにおいて``これらのパターンのいずれかにマッチ''と表現することができます。この構文はパターンのベクターです。たとえばCのいくつかのキーワードをキャプチャーするパターンは、以下のように記述できるでしょう
+Again, similar to regular expressions, we can express ``match any one of
+these patterns'' in a pattern.  The syntax is a vector of patterns.  For
+example, to capture some keywords in C, the pattern would be
 
 @example
 @group
@@ -993,23 +1313,27 @@ operator)の@samp{:*}、@samp{:+},@samp{:?}を認識します。これらの演�
 @end group
 @end example
 
-@subheading アンカー
+@subheading Anchor
 
-たとえば2つのオブジェクトを隣接させるといったように、アンカー演算子@code{:anchor}を用いて並置させることができます。2つの``オブジェクト''には2つのノードや子ノードと最後の親などを指定できます。たとえば最初最後の子、あるいは2つの隣接した子をキャプチャーするには:
+The anchor operator @code{:anchor} can be used to enforce juxtaposition,
+i.e., to enforce two things to be directly next to each other.  The two
+``things'' can be two nodes, or a child and the end of its parent.  For
+example, to capture the first child, the last child, or two adjacent
+children:
 
 @example
 @group
-;; 子と最後で親をアンカー
+;; Anchor the child with the end of its parent.
 (compound_expression (_) @@last-child :anchor)
 @end group
 
 @group
-;; 子と最初の親をアンカー
+;; Anchor the child with the beginning of its parent.
 (compound_expression :anchor (_) @@first-child)
 @end group
 
 @group
-;; 隣接する2つの子をアンカー
+;; Anchor two adjacent children.
 (compound_expression
  (_) @@prev-child
  :anchor
@@ -1017,11 +1341,12 @@ operator)の@samp{:*}、@samp{:+},@samp{:?}を認識します。これらの演�
 @end group
 @end example
 
-並置させる際には無名ノードは無視されることに注意してください。
+Note that the enforcement of juxtaposition ignores any anonymous nodes.
 
-@subheading 述語
+@subheading Predicate
 
-パターンに述語による制約を追加することができます。たとえば以下のパターンでは:
+It is possible to add predicate constraints to a pattern.  For example, with
+the following pattern:
 
 @example
 @group
@@ -1033,27 +1358,40 @@ operator)の@samp{:*}、@samp{:+},@samp{:?}を認識します。これらの演�
 @end example
 
 @noindent
-tree-sitterは配列の最初と最後の要素が等しい場合だけマッチします。パターンに述語を付加するためには、それらをグループにまとめる必要があります。現在のところ@code{:equal}、@code{:match}、@code{:pred}という3つの述語があります。
+tree-sitter only matches arrays where the first element is equal to the last
+element.  To attach a predicate to a pattern, we need to group them
+together.  Currently there are three predicates: @code{:equal},
+@code{:match}, and @code{:pred}.
 
 @deffn Predicate :equal arg1 arg2
-@var{arg1}と@var{arg2}が等しければマッチ。引数は文字列またはキャプチャー名のいずれか。キャプチャー名とは、バッファーにおいてキャプチャーされたノードが跨ぐテキストを表す。
+Matches if @var{arg1} is equal to @var{arg2}.  Arguments can be either
+strings or capture names.  Capture names represent the text that the
+captured node spans in the buffer.
 @end deffn
 
 @deffn Predicate :match regexp capture-name
-バッファーにおいて@var{capture-name}のノードが跨ぐテキストと、文字列リテラルとして与えられた正規表現@var{regexp}がマッチすればマッチ。マッチは大文字小文字を区別する。
+Matches if the text that @var{capture-name}'s node spans in the buffer
+matches regular expression @var{regexp}, given as a string literal.
+Matching is case-sensitive.
 @end deffn
 
 @deffn Predicate :pred fn &rest nodes
-関数@var{fn}に@var{nodes}内のノードそれぞれを渡して非@code{nil}がリターンされたらマッチ。この関数はノードの問い合わせが行われたバッファーをカレントバッファーにセットして実行される。
+Matches if function @var{fn} returns non-@code{nil} when passed each node in
+@var{nodes} as arguments.  The function runs with the current buffer set to
+the buffer of node being queried.
 @end deffn
 
-述語が参照できるのは、同じパターン内に出現するキャプチャー名だけであることに注意してください。実際問題として別のパターンからキャプチャー名を参照しても、意味はほとんどありません。
+Note that a predicate can only refer to capture names that appear in the
+same pattern.  Indeed, it makes little sense to refer to capture names in
+other patterns.
 
-@heading 文字列パターン
+@heading String patterns
 
 @cindex tree-sitter patterns as strings
 @cindex patterns, tree-sitter, in string form
-S式の他にも、Emacsでは使用するtree-sitterのネイティブクエリー構文を文字列として記述することができます。これはS式の構文とよく似ています。たとえば以下のクエリーは
+Besides s-expressions, Emacs allows the tree-sitter's native query syntax to
+be used by writing them as strings.  It largely resembles the s-expression
+syntax.  For example, the following query
 
 @example
 @group
@@ -1068,7 +1406,7 @@ S式の他にも、Emacsでは使用するtree-sitterのネイティブクエリ
 @end example
 
 @noindent
-以下と等価です
+is equivalent to
 
 @example
 @group
@@ -1082,22 +1420,25 @@ S式の他にも、Emacsでは使用するtree-sitterのネイティブクエリ
 @end group
 @end example
 
-ほとんどのパターンは文字列内部のS式として直接記述できます。変更が必要になるのはごく少数のパターンだけです:
+Most patterns can be written directly as s-expressions inside a string.
+Only a few of them need modification:
 
 @itemize
 @item
-アンカー@code{:anchor}は@samp{.}と記述。
+Anchor @code{:anchor} is written as @samp{.}.
 @item
-@samp{:?}は@samp{?}と記述。
+@samp{:?} is written as @samp{?}.
 @item
-@samp{:*}は@samp{*}と記述。
+@samp{:*} is written as @samp{*}.
 @item
-@samp{:+}は@samp{+}と記述。
+@samp{:+} is written as @samp{+}.
 @item
-@code{:equal}、@code{:match}、@code{:pred}はそれぞれ@code{#equal}、@code{#match}、@code{#pred}と記述。一般的には述語の@samp{:}を@samp{#}に変更する。
+@code{:equal}, @code{:match} and @code{:pred} are written as @code{#equal},
+@code{#match} and @code{#pred}, respectively.  In general, predicates change
+their @samp{:} to @samp{#}.
 @end itemize
 
-たとえば、
+For example,
 
 @example
 @group
@@ -1109,7 +1450,7 @@ S式の他にも、Emacsでは使用するtree-sitterのネイティブクエリ
 @end example
 
 @noindent
-文字列形式では以下のように記述します
+is written in string form as
 
 @example
 @group
@@ -1120,57 +1461,81 @@ S式の他にも、Emacsでは使用するtree-sitterのネイティブクエリ
 @end group
 @end example
 
-@heading クエリーのコンパイル
+@heading Compiling queries
 
 @cindex compiling tree-sitter queries
 @cindex queries, compiling
-繰り返し使うことを意図したクエリー、とりわけタイトなループ(訳注
-:少ない命令を含み多数回実行されるループ)では、クエリーのコンパイルが重要になります。なぜならコンパイル済みのクエリーは、コンパイルされていないものと比較して非常に高速だからです。クエリーの使用が許されている場所ならどこでもコンパイル済みクエリーを使うことができます。
+If a query is intended to be used repeatedly, especially in tight loops, it
+is important to compile that query, because a compiled query is much faster
+than an uncompiled one.  A compiled query can be used anywhere a query is
+accepted.
 
 @defun treesit-query-compile language query
-この関数は@var{language}の@var{query}をコンパイル済みクエリーオブジェクトにコンパイルして、それをリターンする。
+This function compiles @var{query} for @var{language} into a compiled query
+object and returns it.
 
-この関数は@var{query}が不正な形式であれば@code{treesit-query-error}エラーraiseする。シグナルデータには、その特定。エラーに関する説明が含まれている。クエリーの検証とデバッグには@code{treesit-query-validate}を使うことができる。
+This function raises the @code{treesit-query-error} error if @var{query} is
+malformed.  The signal data contains a description of the specific error.
+You can use @code{treesit-query-validate} to validate and debug the query.
 @end defun
 
 @defun treesit-query-language query
-この関数は@var{query}の言語をリターンする。
+This function returns the language of @var{query}.
 @end defun
 
 @defun treesit-query-expand query
-この関数はS式の@var{query}を文字列フォーマットに変換する。
+This function converts the s-expression @var{query} into the string format.
 @end defun
 
 @defun treesit-pattern-expand pattern
-この関数はS式の@var{pattern}を文字列フォーマットに変換する。
+This function converts the s-expression @var{pattern} into the string
+format.
 @end defun
 
-パターンマッチングに関する詳細については、@uref{https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries}にあるtree-sitterプロジェクトのドキュメントを参照してください。
+For more details, read the tree-sitter project's documentation about
+pattern-matching, which can be found at
+@uref{https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries}.
 
 @node User-defined Things
-@section ユーザー定義の``Things''とナビゲーション
+@section User-defined ``Things'' and Navigation
 @cindex user-defined things, with tree-sitter parsing
 
-バッファーにおいて関数やクラスの定義、ステートメント、コードブロック、文字列、コメント等といった特定の@dfn{things(物、オブジェクト)}を識別して探せれば便利なときが多々あります。Emacsではどんな種類のtree-sitterノードが``thing''に相当するかをユーザーが定義できます。これにより次の関数へのジャンプ、ポイント位置にあるコードブロックのマーク、2つの関数の引数の入れ替えといった便利な機能が有効になります。
+It's often useful to be able to identify and find certain @dfn{things} in a
+buffer, like function and class definitions, statements, code blocks,
+strings, comments, etc.  Emacs allows users to define what kind of
+tree-sitter node corresponds to a ``thing''.  This enables handy features
+like jumping to the next function, marking the code block at point, or
+transposing two function arguments.
 
-Emacsの``things''機能はtree-sitterのパターンマッチング機能とは独立した機能であり、パワーは比較的劣るもののパースツリーのナビゲーションと横断にはより適しています。
+The ``things'' feature in Emacs is independent of the pattern matching
+feature of tree-sitter, and comparatively less powerful, but more suitable
+for navigation and traversing the parse tree.
 
 You can define things with @code{treesit-thing-settings}.
 
 @defvar treesit-thing-settings
-これは言語それぞれにたいするthing定義のalistである。各エントリーのキーは言語シンボル、値は@w{@code{(@var{thing}
-@var{pred})}}という形式のthing定義のリスト。ここで@var{thing}は@code{defun}、@code{sexp}、@code{sentence}のようにthingを表すシンボル、@var{pred}はこの@var{thing}がtree-sitterの何の種類のノードかを指定する。
+This is an alist of thing definitions for each language.  The key of each
+entry is a language symbol, and the value is a list of thing definitions of
+the form @w{@code{(@var{thing} @var{pred})}}, where @var{thing} is a symbol
+representing the thing, like @code{defun}, @code{sexp}, or @code{sentence};
+and @var{pred} specifies what kind of tree-sitter node is this @var{thing}.
 
-@var{pred}はノードのタイプにマッチするregexp文字列、ノードを引数としてそのノードがthingとして適格かを示すブーリアン値をリターンする関数、あるいは@w{@code{(@var{regexp}
-.
-@var{fn})}}というコンスでもよい。これは正規表現@var{regexp}と関数@var{fn}からなるコンスであり、ノードは@var{regexp}とthingとしての適格性を調べる@var{fn}の両方を満足する必要がある。
+@var{pred} can be a regexp string that matches the type of the node; it can
+be a function that takes a node as the argument and returns a boolean that
+indicates whether the node qualifies as the thing; or it can be a cons
+@w{@code{(@var{regexp} . @var{fn})}}, which is a combination of a regular
+expression @var{regexp} and a function @var{fn}---the node has to match both
+the @var{regexp} and to satisfy @var{fn} to qualify as the thing.
 
-@var{pred}は再帰的に定義することもできる。@w{@code{(or
-@var{pred}@dots{})}}と記述すると、@var{pred}のいずれかが満たされればノードがthingとして適格であることを意味する。@w{@code{(not
-@var{pred})}}と記述すれば、@var{pred}が満たされないことでノードが適格であることを意味する。
+@var{pred} can also be recursively defined.  It can be @w{@code{(or
+@var{pred}@dots{})}}, meaning that satisfying any one of the @var{pred}s
+qualifies the node as the thing.  It can be @w{@code{(not @var{pred})}},
+meaning that not satisfying @var{pred} qualifies the node.
 
-最後に@var{pred}はこのリスト内で定義された他の@var{pred}を参照できる。たとえば@w{@code{(or sexp
-sentence)}}はこのあist内の他のルールとして定義された@code{sexp}か@code{sentence}いずれかのthingであることを定義している。
+Finally, @var{pred} can refer to other @var{thing}s defined in this list.
+For example, @w{@code{(or sexp sentence)}} defines something that's either a
+@code{sexp} thing or a @code{sentence} thing, as defined by some other rule
+in the alist.
 
 Here's an example @code{treesit-thing-settings} for C and C++:
 
@@ -1194,36 +1559,68 @@ Note that this example is modified for didactic purposes, and isn't exactly
 how C and C@t{++} modes define things.
 @end defvar
 
-このセクションの残りの部分では、thing定義の恩恵を受ける関数をいくつか紹介します。以下の関数の他にもthing機能を利用する、たとえば@code{treesit-search-forward}や@code{treesit-induce-sparse-tree}等のツリー横断関数のような他の関数も別の場所で紹介されています。@ref{Retrieving
-Nodes}を参照してください。
+The rest of this section lists a few functions that take advantage of the
+thing definitions.  Besides the functions below, some other functions listed
+elsewhere also utilize the thing feature, e.g., tree-traversing functions
+like @code{treesit-search-forward}, @code{treesit-induce-sparse-tree}, etc.
+@xref{Retrieving Nodes}.
 
 @defun treesit-thing-prev position thing
-この関数は@var{position}の前にある指定された@var{thing}であるような最初のノードをリターンする。そのようなノードがなければ@code{nil}をリターンする。ノードがリターンされた場合には、ノード終端位置は@var{position}以前であることが保証されている。言い換えると、この関数が@var{position}を取り囲むようなノードをリターンすることはあり得ない
+This function returns the first node before @var{position} that is the
+specified @var{thing}.  If no such node exists, it returns @code{nil}.  It's
+guaranteed that, if a node is returned, the node's end position is less or
+equal to @var{position}.  In other words, this function never returns a node
+that encloses @var{position}.
 
-@var{thing}は@code{defun}のようなthingシンボル、あるいは@code{"function_definition"}のように単なるthing定義でもよい。
+@var{thing} can be either a thing symbol like @code{defun}, or simply a
+thing definition like @code{"function_definition"}.
 @end defun
 
 @defun treesit-thing-next position thing
-この関数は@code{treesit-thing-prev}と似ているが@var{position}とり@emph{後}にある@var{thing}であるような最初のノードだけをリターンする点が異なる。ノードがリターンされた場合には、ノード先頭位置は@var{position}以降であることが保証されている。
+This function is similar to @code{treesit-thing-prev}, only it returns the
+first node @emph{after} @var{position} that's the @var{thing}.  It also
+guarantees that if a node is returned, the node's start position is greater
+or equal to @var{position}.
 @end defun
 
 @defun treesit-navigate-thing position arg side thing &optional tactic
-この関数は@code{treesit-thing-prev}と@code{treesit-thing-next}上に構築されており、ナビゲーションコマンドにおいて役に立つと思われる機能を提供する。この関数は@var{position}から@var{arg}個の@var{thing}インスタンスを横断して移動した後の位置をリターンする。横断するだけの十分なthingが存在しなければnilをリターンする。この関数はポイントを移動しない。
+This function builds upon @code{treesit-thing-prev} and
+@code{treesit-thing-next} and provides functionality that a navigation
+command would find useful.  It returns the position after moving across
+@var{arg} instances of @var{thing} from @var{position}.  If there aren't
+enough things to navigate across, it returns nil.  The function doesn't move
+point.
 
-正の@var{arg}は@var{thing}のその個数のインスタンス分前方への移動、負の@var{arg}は後方への移動を意味する。この関数は@var{side}が@code{beg}なら@var{thing}の先頭で停止、@code{end}なら@var{thing}の終端で停止する。
+A positive @var{arg} means moving forward that many instances of
+@var{thing}; negative @var{arg} means moving backward.  If @var{side} is
+@code{beg}, this function stops at the beginning of @var{thing}; if
+@code{end}, stop at the end of @var{thing}.
 
 Like in @code{treesit-thing-prev}, @var{thing} can be a thing symbol defined
 in @code{treesit-thing-settings}, or a thing definition.
 
-@var{tactic}はこの関数がthing間を移動する方法を決定する。@code{nested}、@code{top-level}、@code{restricted}、@code{nil}のいずれか。@code{nested}と@code{nil}は通常のネストされたナビゲーションを意味する。まず兄弟を横断しての移動を試み、カレントレベルに兄弟がなければ親に移動してその兄弟を横断、のように移動する。@code{top-level}はネストされたthingを無視してトップレベルのthingだけを横断した移動、@code{restricted}は@var{position}を囲い込むようなthingがあればその中に制限された移動を意味する。このtactic(戦術)はカレントネストレベルに留まって上位に移動したくないようなコマンドにたいして有用。
+@var{tactic} determines how this function moves between things.  It can be
+@code{nested}, @code{top-level}, @code{restricted}, or @code{nil}.
+@code{nested} or @code{nil} means normal nested navigation: first try to
+move across siblings; if there aren't any siblings left in the current
+level, move to the parent, then its siblings, and so on.  @code{top-level}
+means only navigate across top-level things and ignore nested things.
+@code{restricted} means movement is restricted within the thing that
+encloses @var{position}, if there is such a thing.  This tactic is useful
+for commands that want to stop at the current nesting level and not move up.
 @end defun
 
 @defun treesit-thing-at position thing &optional strict
-この関数は@var{position}を囲い込む@var{thing}であるような最小のノードをリターンする。そのようなノードがなければ@code{nil}をリターンする。
+This function returns the smallest node that's the @var{thing} and encloses
+@var{position}; if there's no such node, it returns @code{nil}.
 
-リターンされるノードは@var{position}を囲い込んでいなければならない。すなわちノード開始位置が@var{position}以前、ノード終端位置が@var{position}以降であること。
+The returned node must enclose @var{position}, i.e., its start position is
+less or equal to @var{position}, and it's end position is greater or equal
+to @var{position}.
 
-@var{strict}が非@code{nil}なら、この関数は厳格な比較を使用する。すなわち開始位置は@var{position}より厳密に前、終端位置は@var{position}より厳密に後でなければならない。
+If @var{strict} is non-@code{nil}, this function uses strict comparison,
+i.e., start position must be strictly greater than @var{position}, and end
+position must be strictly less than @var{position}.
 
 @var{thing} can be either a thing symbol defined in
 @code{treesit-thing-settings}, or a thing definition.
@@ -1232,7 +1629,10 @@ in @code{treesit-thing-settings}, or a thing definition.
 @findex treesit-beginning-of-thing
 @findex treesit-end-of-thing
 @findex treesit-thing-at-point
-便利なラッパー関数もあります。@code{treesit-beginning-of-thing}はthing先頭にポイントを移動、@code{treesit-end-of-thing}はthing終端にポイントを移動、@code{treesit-thing-at-point}はポイント位置にあるthingをリターンします。
+There are also some convenient wrapper functions.
+@code{treesit-beginning-of-thing} moves point to the beginning of a thing,
+@code{treesit-end-of-thing} moves to the end of a thing, and
+@code{treesit-thing-at-point} returns the thing at point.
 
 There are also defun commands that specifically use the @code{defun}
 definition (as a fallback of @code{treesit-defun-type-regexp}), like
@@ -1242,14 +1642,17 @@ definition (as a fallback of @code{treesit-defun-type-regexp}), like
 more detail in other sections (@pxref{Tree-sitter Major Modes}).
 
 @node Multiple Languages
-@section 複数言語のパース
+@section Parsing Text in Multiple Languages
 @cindex multiple languages, parsing with tree-sitter
 @cindex parsing multiple languages with tree-sitter
-プログラミング言語のソースの一部に他の言語のソースが含まれているときがあります。一例としては@acronym{HTML} + @acronym{CSS}
-+
-JavaScriptが挙げられます。このような場合には、別の言語によって記述されたテキストセグメントには別のパーサーを割り当てる必要があります。伝統的にこれはナローイングの使用によって達成されてきました。tree-sitterはナローイング(@ref{tree-sitter
-narrowing,
-narrowing}を参照)とともに機能しますが、推奨される方法はバッファーテキストのリージョン(範囲)にそれを操作するパーサーを指定する方法です。このセクションではパーサーにたいして範囲のセットや取得を行う関数について説明します。
+Sometimes, the source of a programming language could contain snippets of
+other languages; @acronym{HTML} + @acronym{CSS} + JavaScript is one
+example.  In that case, text segments written in different languages need to
+be assigned different parsers.  Traditionally, this is achieved by using
+narrowing.  While tree-sitter works with narrowing (@pxref{tree-sitter
+narrowing, narrowing}), the recommended way is instead to specify regions of
+buffer text (i.e., ranges) in which a parser will operate.  This section
+describes functions for setting and getting ranges for a parser.
 
 @cindex primary parser
 Generally when there are multiple languages at play, there is a ``primary'',
@@ -1278,13 +1681,15 @@ In short, multi-language major modes should set
 @code{treesit-language-at-point-function} before calling
 @code{treesit-major-mode-setup}.
 
-@heading 範囲の取得とセット
+@heading Getting and setting ranges
 
 @defun treesit-parser-set-included-ranges parser ranges
-この関数は@var{ranges}にたいして処理を行なうために@var{parser}をセットアップする。@var{parser}が読み込むのは指定された範囲のテキストのみ。@var{ranges}内の範囲はそれぞれ@w{@code{(@var{beg}
-. @var{end})}}という形式のペアーである。
+This function sets up @var{parser} to operate on @var{ranges}.  The
+@var{parser} will only read the text of the specified ranges.  Each range in
+@var{ranges} is a pair of the form @w{@code{(@var{beg} . @var{end})}}.
 
-@var{ranges}の範囲は、以下の疑似コードのように重複せず順番に並んでいなければならない。
+The ranges in @var{ranges} must come in order and must not overlap.  That
+is, in pseudo code:
 
 @example
 @group
@@ -1297,11 +1702,14 @@ In short, multi-language major modes should set
 @end example
 
 @vindex treesit-range-invalid
-@var{ranges}がこの制約に違反したり、何か他の問題が発生した場合には、この関数は@code{treesit-range-invalid}エラーをシグナルする。シグナルデータには特定のエラーメッセージ、セットを試みた範囲が含まれている。
+If @var{ranges} violates this constraint, or something else went wrong, this
+function signals the @code{treesit-range-invalid} error.  The signal data
+contains a specific error message and the ranges we are trying to set.
 
-この関数は範囲を無効にするためにも使うことができる。@var{ranges}が@code{nil}の場合には、パーサーはバッファー全体をパースするようにセットされる。
+This function can also be used for disabling ranges.  If @var{ranges} is
+@code{nil}, the parser is set to parse the whole buffer.
 
-例:
+Example:
 
 @example
 @group
@@ -1312,8 +1720,11 @@ In short, multi-language major modes should set
 @end defun
 
 @defun treesit-parser-included-ranges parser
-この関数は@var{parser}にセットされている範囲をリターンする。リターン値は@code{treesit-parser-included-ranges}の@var{ranges}引数と同じく@w{@code{(@var{beg}
-. @var{end})}}という形式のコンスセルのリスト。@var{parser}が範囲を何ももっていなければリターン値は@code{nil}。
+This function returns the ranges set for @var{parser}.  The return value is
+the same as the @var{ranges} argument of
+@code{treesit-parser-included-ranges}: a list of cons cells of the form
+@w{@code{(@var{beg} . @var{end})}}.  If @var{parser} doesn't have any
+ranges, the return value is @code{nil}.
 
 @example
 @group
@@ -1324,42 +1735,69 @@ In short, multi-language major modes should set
 @end defun
 
 @defun treesit-query-range source query &optional beg end
-この関数は@var{source}を@var{query}でマッチングしてキャプチャーされたノードをリターンする。リターン値は@w{@code{(@var{beg}
-. @var{end})}}という形式のコンスセルのリスト。ここで@var{beg}と@var{end}はそれぞれテキスト範囲の開始と終了をする。
+This function matches @var{source} with @var{query} and returns the ranges
+of captured nodes.  The return value is a list of cons cells of the form
+@w{@code{(@var{beg} . @var{end})}}, where @var{beg} and @var{end} specify
+the beginning and the end of a region of text.
 
-利便性のために@var{source}は言語シンボル、パーサー、あるいはノードでもよい。この関数はそれが言語シンボルならその言語を使用する最初のパーサーのルートノード、パーサーならそのパーサーのルートノード、ノードならそのノードでマッチを行なう。
+For convenience, @var{source} can be a language symbol, a parser, or a
+node.  If it's a language symbol, this function matches in the root node of
+the first parser using that language; if a parser, this function matches in
+the root node of that parser; if a node, this function matches in that node.
 
-引数@var{query}はノードのキャプチャーに用いるクエリー(@ref{Pattern
-Matching}を参照)。引数@var{beg}と@var{end}がどちらも非@code{nil}なら、それはこの関数がクエリーを行なう範囲を制限する。
+The argument @var{query} is the query used to capture nodes (@pxref{Pattern
+Matching}).  The capture names don't matter.  The arguments @var{beg} and
+@var{end}, if both non-@code{nil}, limit the range in which this function
+queries.
 
-他のクエリー関数と同じように、この関数は@var{query}が不正であれば@code{treesit-query-error}エラーをraiseする。
+Like other query functions, this function raises the
+@code{treesit-query-error} error if @var{query} is malformed.
 @end defun
 
-@heading Lispプログラムで複数言語をサポートするには
+@heading Supporting multiple languages in Lisp programs
 
-一般的なLispプログラムにおいて言語が複数ミックスされたプログラムをサポートするには、以下の2つの関数を呼び出すだけで十分です。
+It should suffice for general Lisp programs to call the following two
+functions in order to support program sources that mix multiple languages.
 
 @defun treesit-update-ranges &optional beg end
-この関数はバッファーのパーサーの範囲を更新する。この関数はパーサーの範囲が@var{beg}と@var{end}の間に正しくセットされているかを@code{treesit-range-settings}に照らして確認する。省略された場合のデフォルトは@var{beg}がバッファー先頭、@var{end}がバッファー終端となる。
+This function updates ranges for parsers in the buffer.  It makes sure the
+parsers' ranges are set correctly between @var{beg} and @var{end}, according
+to @code{treesit-range-settings}.  If omitted, @var{beg} defaults to the
+beginning of the buffer, and @var{end} defaults to the end of the buffer.
 
-たとえばフォント表示(fontification)を行なう関数は、リージョン内のノードにクエリーを行う前にこの関数を使用する。
+For example, fontification functions use this function before querying for
+nodes in a region.
 @end defun
 
 @defun treesit-language-at pos
-この関数はバッファー位置@var{pos}にあるテキストの言語をリターンする。その背後では@code{treesit-language-at-point-function}を呼び出して、そのリターンされた値をリターンしている。@code{treesit-language-at-point-function}が@code{nil}の場合には、この関数は@code{treesit-parser-list}のリターン値から最初のパーサーの言語をリターンする。バッファーにパーサーがなければ@code{nil}をリターンする。
+This function returns the language of the text at buffer position
+@var{pos}.  Under the hood it calls
+@code{treesit-language-at-point-function} and returns its return value.  If
+@code{treesit-language-at-point-function} is @code{nil}, this function
+returns the language of the first parser in the returned value of
+@code{treesit-parser-list}.  If there is no parser in the buffer, it returns
+@code{nil}.
 @end defun
 
-@heading メジャーモードで複数の言語をサポートするには
+@heading Supporting multiple languages in major modes
 
 @cindex host language, tree-sitter
 @cindex tree-sitter host and embedded languages
 @cindex embedded language, tree-sitter
-ミックスされているかもしれない一連の言語では、@dfn{ホスト言語(host language)}と1つ以上の@dfn{埋め込み言語(embedded
-languages)}が存在することが珍しくありません。Lispプログラムはまずホスト言語のパーサーでドキュメント全体をパースすることで情報を得てから、それを用いて埋め込み言語の範囲をセット、その後に埋め込み言語をパースするのです。
+Normally, in a set of languages that can be mixed together, there is a
+@dfn{host language} and one or more @dfn{embedded languages}.  A Lisp
+program usually first parses the whole document with the host language's
+parser, retrieves some information, sets ranges for the embedded languages
+with that information, and then parses the embedded languages.
 
-@acronym{HTML}、@acronym{CSS}、それにJavaScriptを含むバッファーを例にとります。Lispプログラムはまず@acronym{HTML}パーサーでバッファー全体をパースして、それからパーサーに@acronym{CSS}とJavaScriptに相当する@code{style_element}と@code{script_element}のノードをクエリーするのです。その後に@acronym{CSS}とJavaScriptそれぞれにたいして、対応するノードが跨がる範囲をセットします。
+Take a buffer containing @acronym{HTML}, @acronym{CSS}, and JavaScript as an
+example.  A Lisp program will first parse the whole buffer with an
+@acronym{HTML} parser, then query the parser for @code{style_element} and
+@code{script_element} nodes, which correspond to @acronym{CSS} and
+JavaScript text, respectively.  Then it sets the range of the @acronym{CSS}
+and JavaScript parsers to the range which their corresponding nodes span.
 
-シンプルな@acronym{HTML}ドキュメントが与えられると:
+Given a simple @acronym{HTML} document:
 
 @example
 @group
@@ -1371,18 +1809,19 @@ languages)}が存在することが珍しくありません。Lispプログラ�
 @end example
 
 @noindent
-Lispプログラムはまず@acronym{HTML}パーサーでパースを行い、それから@acronym{CSS}とJavaScriptそれぞれのパーサーにたいして範囲をセットします:
+a Lisp program will first parse with a @acronym{HTML} parser, then set
+ranges for @acronym{CSS} and JavaScript parsers:
 
 @example
 @group
-;; パーサーの作成
+;; Create parsers.
 (setq html (treesit-parser-create 'html))
 (setq css (treesit-parser-create 'css))
 (setq js (treesit-parser-create 'javascript))
 @end group
 
 @group
-;; CSSの範囲をセット
+;; Set CSS ranges.
 (setq css-range
       (treesit-query-range
        'html
@@ -1391,7 +1830,7 @@ Lispプログラムはまず@acronym{HTML}パーサーでパースを行い、�
 @end group
 
 @group
-;; JavaScriptの範囲をセット
+;; Set JavaScript ranges.
 (setq js-range
       (treesit-query-range
        'html
@@ -1400,7 +1839,13 @@ Lispプログラムはまず@acronym{HTML}パーサーでパースを行い、�
 @end group
 @end example
 
-@code{treesit-update-ranges}によってEmacsがこのプロセスを自動化します。@code{treesit-update-ranges}がプロセスを自動化する方法を解決するためには、複数言語のメジャーモードが@code{treesit-range-settings}をセットする必要があります。@code{treesit-range-settings}に割り当てられる値を生成するためには、メジャーモードがヘルパー関数@code{treesit-range-rules}を使う必要があります。この操作を直接コード化したのが以下のセッティング例になります。
+Emacs automates this process in @code{treesit-update-ranges}.  A
+multi-language major mode should set @code{treesit-range-settings} so that
+@code{treesit-update-ranges} knows how to perform this process
+automatically.  Major modes should use the helper function
+@code{treesit-range-rules} to generate a value that can be assigned to
+@code{treesit-range-settings}.  The settings in the following example
+directly translate into operations shown above.
 
 @example
 @group
@@ -1437,26 +1882,51 @@ Lispプログラムはまず@acronym{HTML}パーサーでパースを行い、�
 @end example
 
 @defun treesit-range-rules &rest query-specs
-この関数は@code{treesit-range-settings}をセットするために用いる。クエリーのコンパイルやその他の後処理に注意を払い、@code{treesit-range-settings}にセットできるような値を出力する。
+This function is used to set @code{treesit-range-settings}.  It takes care
+of compiling queries and other post-processing, and outputs a value that
+@code{treesit-range-settings} can have.
 
-この関数は引数として一連の@var{query-spec}を受け取る。ここで@var{query-spec}とは0個以上の@var{keyword}/@var{value}ペアーが前置された@var{query}のこと。@var{query}はそれぞれ文字列、S式、コンパイル済みフォーム、あるいは関数のいずれかによるtree-sitterクエリーである。
+It takes a series of @var{query-spec}s, where each @var{query-spec} is a
+@var{query} preceded by zero or more @var{keyword}/@var{value} pairs.  Each
+@var{query} is a tree-sitter query in either the string, s-expression, or
+compiled form, or a function.
 
-@var{query}がtree-sitterクエリーなら@var{:keyword}/@var{value}のペアーを2つを前置すること(@var{:keyword}が@code{:embed}は埋め込み言語、@code{:host}はホスト言語)。
+If @var{query} is a tree-sitter query, it should be preceded by two
+@var{keyword}/@var{value} pairs, where the @code{:embed} keyword specifies
+the embedded language, and the @code{:host} keyword specifies the host
+language.
 
 @cindex local parser
-値が@code{t}であるような@code{:local}キーワードを与えられたクエリーでは、クエリーによってセットされた範囲に専用のローカルパーサーが適用され、それ以外の場合には範囲に同じ言語にたいする他の範囲のパーサーが共有される。
+If the query is given the @code{:local} keyword whose value is @code{t}, the
+range set by this query has a dedicated local parser; otherwise the range
+shares a parser with other ranges for the same language.
 
-デフォルトではパーサーは範囲を個別の独立したセグメントではなく、連続的なものとして認識する。したがって埋め込まれた範囲が意味論的に独立したセグメントの場合には、以降で説明するローカルパーサーによって処理する必要がある。
+By default, a parser sees its ranges as a continuum, rather than treating
+them as separate independent segments.  Therefore, if the embedded ranges
+are semantically independent segments, they should be processed by local
+parsers, described below.
 
-範囲にセットされたローカルパーサーは@code{treesit-local-parsers-at}および@code{treesit-local-parsers-on}で取得できる。
+Local parser set to a range can be retrieved by
+@code{treesit-local-parsers-at} and @code{treesit-local-parsers-on}.
 
-@code{treesit-update-ranges}は埋め込み言語用のパーサーにたいして範囲をセットする方法の解決に@var{query}を使用する。ホスト言語パーサーに@var{query}を問い合わせてキャプチャーされたノードが跨ぐ範囲を計算、それらの範囲を埋め込み言語パーサーに適用するのである。
+@code{treesit-update-ranges} uses @var{query} to figure out how to set the
+ranges for parsers for the embedded language.  It queries @var{query} in a
+host language parser, computes the ranges which the captured nodes span, and
+applies these ranges to embedded language parsers.
 
-@var{query}が関数の場合には@var{keyword}と@var{value}のペアーは必要ない。関数の場合には@var{start}、@var{end}という2つの引数を受け取り、カレントバッファーで@var{start}と@var{end}の間にあるリージョンでパーサー用の範囲をセットすること。その関数が@var{start}と@var{end}の間のリージョンを包むような広いリージョンに範囲をセットしても問題はない。
+If @var{query} is a function, it doesn't need any @var{keyword} and
+@var{value} pair.  It should be a function that takes 2 arguments,
+@var{start} and @var{end}, and sets the ranges for parsers in the current
+buffer in the region between @var{start} and @var{end}.  It is fine for this
+function to set ranges in a larger region that encompasses the region
+between @var{start} and @var{end}.
 @end defun
 
 @defvar treesit-range-settings
-これはバッファーで@code{treesit-update-ranges}がパーサーにたいする範囲を更新する際の助けとなる変数である。@var{setting}のリストであり、その正確なフォーマットは内部的な使用を意図している。この変数が保持できる値を生成するには@code{treesit-range-rules}を使うこと。
+This variable helps @code{treesit-update-ranges} in updating the ranges for
+parsers in the buffer.  It is a list of @var{setting}s where the exact
+format of a @var{setting} is considered internal.  You should use
+@code{treesit-range-rules} to generate a value that this variable can have.
 
 @c Because the format is internal, we don't document them here.  Though
 @c we do have it explained in the docstring.  We also expose the fact
@@ -1466,28 +1936,39 @@ Lispプログラムはまず@acronym{HTML}パーサーでパースを行い、�
 
 
 @defvar treesit-language-at-point-function
-この変数の値はバッファー位置@var{pos}を単一の引数として受け取り、@var{pos}にあるテキストの言語をリターンする関数であること。この変数は@code{treesit-language-at}により使用される。
+This variable's value should be a function that takes a single argument,
+@var{pos}, which is a buffer position, and returns the language of the
+buffer text at @var{pos}.  This variable is used by
+@code{treesit-language-at}.
 @end defvar
 
 @defun treesit-local-parsers-at &optional pos language
-この関数はカレントバッファーの@var{pos}にセットされたすべてのローカルパーサーをリターンする。@var{pos}のデフォルトはポイント位置。
+This function returns all the local parsers at @var{pos} in the current
+buffer.  @var{pos} defaults to point.
 
-ローカルパーサーは非@code{nil}の@code{treesit-parser}プロパティをもつオーバーレイによってマークされた、限定された範囲だけをパースする。@var{language}が非@code{nil}なら、その言語用のパーサーだけがリターンされる。
+Local parsers are those which only parse a limited region marked by an
+overlay with a non-@code{nil} @code{treesit-parser} property.  If
+@var{language} is non-@code{nil}, only return parsers for that language.
 @end defun
 
 @defun treesit-local-parsers-on &optional beg end language
-この関数は@code{treesit-local-parsers-at}と同様だが、ポイント位置ではなく@var{beg}と@var{end}の間の範囲にセットされたローカルパーサーをリターンする点が異なる。
+This function is the same as @code{treesit-local-parsers-at}, but it returns
+the local parsers in the range between @var{beg} and @var{end} instead of at
+point.
 
-@var{beg}と@var{end}のデフォルトは、そのバッファーのアクセス可能範囲全体。
+@var{beg} and @var{end} default to the entire accessible portion of the
+buffer.
 @end defun
 
 @node Tree-sitter Major Modes
-@section Tree-sitterとのメジャーモード開発
+@section Developing major modes with tree-sitter
 @cindex major mode, developing with tree-sitter
 
-このセクションではメジャーモード用にtree-sitterを統合した開発における一般的なガイドラインの一部について説明します。
+This section covers some general guidelines on developing tree-sitter
+integration for a major mode.
 
-tree-sitter機能をサポートするメジャーモードは、大枠では以下のようなパターンにしたがう必要があります:
+A major mode supporting tree-sitter features should roughly follow this
+pattern:
 
 @example
 @group
@@ -1500,9 +1981,11 @@ tree-sitter機能をサポートするメジャーモードは、大枠では以
 @end group
 @end example
 
-@code{treesit-ready-p}はtree-sitterを有効にする条件が揃っていなければ、自動的に警告を発します。
+@code{treesit-ready-p} automatically emits a warning if conditions for
+enabling tree-sitter aren't met.
 
-tree-sitterを使うメジャーモードは、その``ネイティブ''な相手先モードとセットアップを共有する場合には、以下のように共通のセットアップを含んだ``ベースモード''を作成することができます:
+If a tree-sitter major mode shares setup with its ``native'' counterpart,
+one can create a ``base mode'' that contains the common setup, like this:
 
 @example
 @group
@@ -1530,22 +2013,27 @@ tree-sitterを使うメジャーモードは、その``ネイティブ''な相�
 @end example
 
 @defun treesit-ready-p language &optional quiet
-この関数はtree-sitterをアクティブにするための条件をチェックする。tree-sitterとともにEmacsがビルドされているか、tree-sitterが処理するにあたってカレントバッファーのサイズが大き過ぎないか、そのシステムで@var{language}にたいするグラマー(@ref{Language
-Grammar}を参照)が利用できるかどうかをチェックする。
+This function checks for conditions for activating tree-sitter.  It checks
+whether Emacs was built with tree-sitter, whether the buffer's size is not
+too large for tree-sitter to handle, and whether the grammar for
+@var{language} is available on the system (@pxref{Language Grammar}).
 
-この関数はtree-sitterをアクティブにできなければ警告を発する。@var{quiet}が@code{message}なら、警告をメッセージに変更する。@var{quiet}が@code{t}の場合には警告やメッセージは何も表示されない。
+This function emits a warning if tree-sitter cannot be activated.  If
+@var{quiet} is @code{message}, the warning is turned into a message; if
+@var{quiet} is @code{t}, no warning or message is displayed.
 
-この関数は必要とされる条件すべてが適えば非@code{nil}、そうでなければ@code{nil}をリターンする。
+If all the necessary conditions are met, this function returns
+non-@code{nil}; otherwise it returns @code{nil}.
 @end defun
 
 @defun treesit-major-mode-setup
-この関数はメジャーモードにたいしてtree-sitterに一部機能をアクティブにする。
+This function activates some tree-sitter features for a major mode.
 
-現在のところ以下の機能のセットアップを行う:
+Currently, it sets up the following features:
 @itemize
 @item
-@code{treesit-font-lock-settings} (@ref{Parser-based Font
-Lock}を参照)が非@code{nil}ならフォント表示(fontification)をセットアップ。
+If @code{treesit-font-lock-settings} (@pxref{Parser-based Font Lock})  is
+non-@code{nil}, it sets up fontification.
 
 @item
 If either @code{treesit-simple-indent-rules} or
@@ -1553,90 +2041,116 @@ If either @code{treesit-simple-indent-rules} or
 non-@code{nil}, it sets up indentation.
 
 @item
-@code{treesit-defun-type-regexp}が非@code{nil}なら、@code{beginning-of-defun}と@code{end-of-defun}にたいしてナビゲーション関数をセットアップ。
+If @code{treesit-defun-type-regexp} is non-@code{nil}, it sets up navigation
+functions for @code{beginning-of-defun} and @code{end-of-defun}.
 
 @item
-@code{treesit-defun-name-function}が非@code{nil}なら、@code{add-log-current-defun}によって使用されるadd-log関数をセットアップ。
+If @code{treesit-defun-name-function} is non-@code{nil}, it sets up add-log
+functions used by @code{add-log-current-defun}.
 
 @item
-@code{treesit-simple-imenu-settings}
-(@ref{Imenu}を参照)が非@code{nil}ならImenuをセットアップ。
+If @code{treesit-simple-imenu-settings} (@pxref{Imenu}) is non-@code{nil},
+it sets up Imenu.
 
 @item
-@code{treesit-outline-predicate} (@ref{Outline Minor
-Mode}を参照)が非@code{nil}なら、Outlineマイナーモードをセットアップ。
+If @code{treesit-outline-predicate} (@pxref{Outline Minor Mode}) is
+non-@code{nil}, it sets up Outline minor mode.
 
 @item
-@code{sexp}および/または@code{sentence}が@code{treesit-thing-settings}
-(@ref{User-defined
-Things}を参照)で定義されていれば、@code{forward-sexp-function}や@code{forward-sentence-function}のような変数を定義することによってsexpやsentence単位で移動するナビゲーションコマンドが有効になる。
+If @code{sexp} and/or @code{sentence} are defined in
+@code{treesit-thing-settings} (@pxref{User-defined Things}), it enables
+navigation commands that move, respectively, by sexps and sentences by
+defining variables such as @code{forward-sexp-function} and
+@code{forward-sentence-function}.
 @end itemize
 
 @c TODO: Add treesit-thing-settings stuff once we finalize it.
 @end defun
 
-これらtree-sitter組み込み機能の詳細については@ref{Parser-based Font Lock}、@ref{Parser-based
-Indentation}、@ref{List Motion}を参照してください。
+For more information on these built-in tree-sitter features,
+@pxref{Parser-based Font Lock}, @pxref{Parser-based Indentation}, and
+@pxref{List Motion}.
 
-メジャーモードにおける複数言語のミックスのサポートについては@ref{Multiple Languages}を参照してください。
+For supporting mixing of multiple languages in a major mode, @pxref{Multiple
+Languages}.
 
-@code{beginning-of-defun}や@code{end-of-defun}の他にも、Emacsはdefunにたいして処理を行う追加の関数をいくつか提供します。@code{treesit-defun-at-point}はポイント位置のdefunノード、@code{treesit-defun-name}はdefunノードの名前をリターンする関数です。
+Besides @code{beginning-of-defun} and @code{end-of-defun}, Emacs provides
+some additional functions for working with defuns:
+@code{treesit-defun-at-point} returns the defun node at point, and
+@code{treesit-defun-name} returns the name of a defun node.
 
 @c FIXME: Cross-reference to treesit-defun-tactic once we have it in
 @c the user manual.
 @defun treesit-defun-at-point
-この関数はポイント位置のdefunノードを、defunが見つからなければ@code{nil}をリターンする。この関数は@code{treesit-defun-tactic}に注意を払う。この変数の値が@code{top-level}ならトップレベルのdefunを、値が@code{nested}ならすぐ外側のdefunをリターンする。
+This function returns the defun node at point, or @code{nil} if none is
+found.  It respects @code{treesit-defun-tactic}: if its value is
+@code{top-level}, this function returns the top-level defun, and if its
+value is @code{nested}, it returns the immediate enclosing defun.
 
-この関数が機能するためには@code{treesit-defun-type-regexp}が必要となる。この変数の値が@code{nil}であれば、この関数は単に@code{nil}をリターンする。
+This function requires @code{treesit-defun-type-regexp} to work.  If it is
+@code{nil}, this function simply returns @code{nil}.
 @end defun
 
 @defun treesit-defun-name node
-この関数は@var{node}のdefun名をリターンする。@var{node}にたいするdefun名が存在しない、@var{node}がdefunノードではない、あるいは@var{node}が@code{nil}の場合は@code{nil}をリターンする。
+This function returns the defun name of @var{node}.  It returns @code{nil}
+if there is no defun name for @var{node}, or if @var{node} is not a defun
+node, or if @var{node} is @code{nil}.
 
-言語とメジャーモードに応じて関数、クラス、構造体等の名前がdefun名となる。
+Depending on the language and major mode, the defun names are names like
+function name, class name, struct name, etc.
 
-@code{treesit-defun-name-function}が@code{nil}の場合には、この関数は常に@code{nil}をリターンする。
+If @code{treesit-defun-name-function} is @code{nil}, this function always
+returns @code{nil}.
 @end defun
 
 @defvar treesit-defun-name-function
-この変数の値が非@code{nil}の場合には、ノードを引数として呼び出されてそのノードの名前をリターンする関数であること。この関数は意味合いとしては@code{treesit-defun-name}と同じである必要がある。つまりそのノードがdefunノードではない、defunノードだが名前がない、あるいはノードが@code{nil}の場合には@code{nil}をリターンすること。
+If non-@code{nil}, this variable's value should be a function that is called
+with a node as its argument, and returns the defun name of the node.  The
+function should have the same semantics as @code{treesit-defun-name}: if the
+node is not a defun node, or the node is a defun node but doesn't have a
+name, or the node is @code{nil}, it should return @code{nil}.
 @end defvar
 
 @node Tree-sitter C API
-@section Tree-sitterのC言語API対応表
+@section Tree-sitter C API Correspondence
 
 Emacs's tree-sitter integration doesn't expose every feature provided by
 tree-sitter's C API@.  Missing features include:
 
 @itemize
 @item
-ツリーカーソル(tree cursor)の作成、およびそれを用いた構文ツリーのナビゲーション。
+Creating a tree cursor and navigating the syntax tree with it.
 @item
-パーサーにたいするタイムアウトおよびキャンセルのフラグのセッティング。
+Setting timeout and cancellation flag for a parser.
 @item
-パーサー用のロガー(logger: ログ機能)のセッティング。
+Setting the logger for a parser.
 @item
-@acronym{DOT}グラフによるファイルへの構文ツリーのプリント。
+Printing a @acronym{DOT} graph of the syntax tree to a file.
 @item
-構文ツリーのコピーや変更(Emacsではツリーオブジェクトは非公開)。
+Copying and modifying a syntax tree.  (Emacs doesn't expose a tree object.)
 @item
-位置としての座標(行と列)の使用。
+Using (row, column) coordinates as position.
 @item
-変更によるノードの更新(Emacsでは既存ノードは更新せずに新たにノードを取得)。
+Updating a node with changes.  (In Emacs, retrieve a new node instead of
+updating the existing one.)
 @item
-言語グラマーの統計問い合わせ。
+Querying statics of a language grammar.
 @end itemize
 
-更にEmacsでは、APIがより使いやすく慣れ親しんだ用語を用いるようにCのAPIの一部を変更しています:
+In addition, Emacs makes some changes to the C API to make the API more
+convenient and idiomatic:
 
 @itemize
 @item
-Emacs LispのAPIではバイト位置ではなく文字位置を使用。
+Instead of using byte positions, the Emacs Lisp API uses character
+positions.
 @item
-Nullノードを@code{nil}に変換。
+Null nodes are converted to @code{nil}.
 @end itemize
 
-CのすべてのAPIとELisp側での相方の対応を以下にまとめました。1つのElispがCの複数の関数に対応する場合もあるし、Elisp側の相方がいないC関数も沢山あります。
+Below is the correspondence between all C API functions and their ELisp
+counterparts.  Sometimes one ELisp function corresponds to multiple C
+functions, and many C functions don't have an ELisp counterpart.
 
 @example
 ts_parser_new                           treesit-parser-create
