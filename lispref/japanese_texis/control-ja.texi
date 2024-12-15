@@ -259,23 +259,68 @@ clauseは以下のようにも見えるかもしれない:
 このテーマにはバリエーションがいくつかあり、以下にそれらを概略します。
 
 @defmac if-let* varlist then-form else-forms...
-@var{varlist}内のバインディングを、@code{let*} (@ref{Local
-Variables}を参照)のようにそれぞれ順番に評価して、値が@code{nil}になるバインディングがあれば停止する。すべて非@code{nil}なら@var{then-form}、それ以外では@var{else-forms}の最後のフォームの値をリターンする。
+Evaluate each binding in @var{varlist}, stopping if a binding value is
+@code{nil}.  If all are non-@code{nil}, return the value of @var{then-form},
+otherwise the last form in @var{else-forms}.
+
+Each element of @code{varlist} has the form @w{@code{(@var{symbol}
+@var{value-form})}}: @var{value-form} is evaluated and @var{symbol} is
+locally bound to the result.  Bindings are sequential, as in @code{let*}
+(@pxref{Local Variables}).  As a special case, @var{symbol} can be omitted
+if only the test result of @var{value-form} is of interest: @var{value-form}
+is evaluated and checked for @code{nil}, but its value is not bound.
 @end defmac
 
 @defmac when-let* varlist then-forms...
-@code{if-let*}と同様だが@var{else-forms}がない。
+Evaluate each binding in @var{varlist}, stopping if a binding value is
+@code{nil}.  If all are non-@code{nil}, return the value of the last form in
+@var{then-forms}.
+
+@var{varlist} has the same form as in @code{if-let*}: Each element of
+@code{varlist} has the form @w{@code{(@var{symbol} @var{value-form})}}, in
+which @var{value-form} is evaluated and @var{symbol} is locally bound to the
+result.  Bindings are sequential, as in @code{let*} (@pxref{Local
+Variables}).  As a special case, @var{symbol} can be omitted if only the
+test result of @var{value-form} is of interest: @var{value-form} is
+evaluated and checked for @code{nil}, but its value is not bound.
 @end defmac
 
 @defmac and-let* varlist then-forms...
-@code{when-let*}と同様だが、もし@var{then-forms}がなくすべてのバインディングが非@code{nil}に評価された場合には、最後のバインディングの値をリターンする点が異なる。
-@end defmac
+Evaluate each binding in @var{varlist}, stopping if a binding value is
+@code{nil}.  If all are non-@code{nil}, return the value of the last form in
+@var{then-forms}, or, if there are no @var{then-forms}, return the value of
+the last binding.
 
-@defmac while-let spec then-forms...
-@code{when-let}と同様だが、@var{spec}内のバインディングが@code{nil}になるまで繰り返す。リターン値は常に@code{nil}。
+@var{varlist} has the same form as in @code{if-let*}: Each element of
+@code{varlist} has the form @w{@code{(@var{symbol} @var{value-form})}}, in
+which @var{value-form} is evaluated and @var{symbol} is locally bound to the
+result.  Bindings are sequential, as in @code{let*} (@pxref{Local
+Variables}).  As a special case, @var{symbol} can be omitted if only the
+test result of @var{value-form} is of interest: @var{value-form} is
+evaluated and checked for @code{nil}, but its value is not bound.
 @end defmac
 
 フォームを評価したリターン値が目的の場合には@code{and}と@code{and-let*}、フォーム評価による副作用が目的であってリターン値は無視する場合には@code{when}か@code{when-let*}という慣習にしたがうLispプログラマーもいます。
+
+A similar macro exists to run a loop until one binding evaluates to
+@code{nil}:
+
+@defmac while-let spec then-forms...
+Evaluate each binding in @var{spec} in turn, stopping if a binding value is
+@code{nil}.  If all are non-@code{nil}, execute @var{then-forms}, then
+repeat the loop.  Note that when the loop is repeated, the @var{value-forms}
+in @var{spec} are re-evaluated and the bindings are established anew.
+
+@var{varlist} has the same form as in @code{if-let*}: Each element of
+@code{varlist} has the form @w{@code{(@var{symbol} @var{value-form})}}, in
+which @var{value-form} is evaluated and @var{symbol} is locally bound to the
+result.  Bindings are sequential, as in @code{let*} (@pxref{Local
+Variables}).  As a special case, @var{symbol} can be omitted if only the
+test result of @var{value-form} is of interest: @var{value-form} is
+evaluated and checked for @code{nil}, but its value is not bound.
+
+The return value of @code{while-let} is always @code{nil}.
+@end defmac
 
 @node Combining Conditions
 @section 組み合わせ条件の構築
