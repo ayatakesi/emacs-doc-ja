@@ -194,7 +194,7 @@ Lispに固有です。
 * Closure Type::             Lispで記述された関数。
 * Record Type::              プログラーが定義する合成オブジェクト型。
 * Type Descriptors::         型に関する情報を保持するオブジェクト。
-* Type Specifiers::          Expressions which describe types.
+* Type Specifiers::          型を記述する式。
 * Autoload Type::            頻繁に使用されない関数を自動的にロードするために使用される型。
 * Finalizer Type::           オブジェクトが到達不能になった際に実行するコード。
 
@@ -1065,83 +1065,67 @@ descriptor)}は型に関する情報を保持する@code{record}です。レコ�
 @subsection Type Specifiers
 @cindex type specifier
 
-A type specifier is an expression that denotes a type.  A type represents a
-set of possible values.  Type specifiers can be classified into primitive
-types and compound types.
+型指定子(type
+specifier)とは型を記述するための式のことです。型、つまりタイプは可能な値のセットを表します。型指定子はプリミティブ型と複合型に分類することができます。
 
-Type specifiers are in use for several purposes, including: documenting
-function interfaces through declaration (@pxref{Declare Form}), specifying
-structure slot values (@pxref{Structures,,, cl, Common Lisp Extensions for
-GNU Emacs Lisp}), type-checking through @code{cl-the}
-(@pxref{Declarations,,, cl, Common Lisp Extensions for GNU Emacs Lisp}), and
-others.
+型指定子は宣言を通じた関数インターフェイスの文書化(@ref{Declare
+Form}を参照)、構造体のスロット値の指定(@ref{Structures,,, cl, Common Lisp Extensions for GNU
+Emacs Lisp}を参照)、@code{cl-the}による型チェック(@ref{Declarations,,, cl, Common Lisp
+Extensions for GNU Emacs Lisp}を参照)など、いくつかの目的のために使用されます。
 
 @table @asis
 @item Primitive type specifiers
-Primitive types specifiers are the basic types (i.e.@: not composed by other
-type specifiers).
+プリミティブ型指定子は基本的な型指定子用(他の型指定子と複合されていない型)。
 
-Built-in primitive types (like @code{integer}, @code{float}, @code{string}
-etc.@:) are listed in @ref{Type Hierarchy}.
+ビルトインのプリミティブタイプ(@code{integer}、@code{float}、@code{string}など)は@ref{Type
+Hierarchy}にリストされている。
 
-@item Compound type specifiers
-Compound types serve the purpose of defining more complex or precise type
-specifications by combining or modifying simpler types.
+@item 複合型指定子
+複合型はよりシンプルな型を組み合わせたり変更することによって、より複雑な型を定義したり的確な型仕様を定義する目的のために用いられる。
 
-List of compound type specifiers:
+以下は複合型指定子のリスト:
 
 @table @code
 @item (or @var{type-1} @dots{} @var{type-n})
-The @code{or} type specifier describes a type that satisfies at least one of
-the given types.
+型指定子@code{or}は与えられたタイプのうち少なくとも1つを満たすような型の記述に用いられる。
 
 @item (and @var{type-1} @dots{} @var{type-n})
-Similarly the @code{and} type specifier describes a type that satisfies all
-of the given types.
+型指定子@code{and}は与えられたタイプすべてを満たすような型を記述する。
 
 @item (not @var{type})
-The @code{not} type specifier defines any type except the specified one.
+型指定子@code{not}は指定されたタイプ以外の任意のタイプを定義する。
 
 @item (member @var{value-1} @dots{} @var{value-n})
-The @code{member} type specifier allows to specify a type that includes only
-the explicitly listed values.
+型指定子@code{member}は明示的にリストされた値だけを含んだ型の指定ができる。
 
 @item (function (@var{arg-1-type} @dots{} @var{arg-n-type}) @var{return-type})
-The @code{function} type specifier is used to describe the argument types
-and the return type of a function.  Argument types can be interleaved with
-symbols @code{&optional} and @code{&rest} to match the function's arguments
-(@pxref{Argument List}).
+型指定子@code{function}は関数の引数とリターン値の型の記述に用いられる。引数タイプには関数の引数に合わせるために、シンボル@code{&optional}や@code{&rest}を織り交ぜることもできる(@ref{Argument
+List}を参照)。
 
-The type specifier represent a function whose first parameter is of type
-@code{symbol}, the second optional parameter is of type @code{float}, and
-which returns an @code{integer}:
+以下の型指定子は1つ目のタイプが@code{symbol}、2つ目のオプションのパラメーターのタイプが@code{float}であり、@code{integer}をリターンするような関数を表している。
 
 @example
  (function (symbol &optional float) integer)
 @end example
 
 @item (integer @var{lower-bound} @var{upper-bound})
-The @code{integer} type specifier can also be used as a compound type
-specifier to define a subset of integer values by specifying a range.  This
-allows to precisely control which integers are valid for a given type.
+型指定子@code{integer}は、範囲を指定することで整数のサブセットを定義する複合型として用いることもできる。この複合型を使えば、与えられた型にたいしてどんな整数が有効かを精密に制御できるだろう。
 
-@var{lower-bound} is the minimum integer value in the range and
-@var{upper-bound} the maximum.  You can use @code{*} instead of the lower or
-upper bound to indicate no limit.
+ここで@var{lower-bound}は範囲で最小の整数、@var{upper-bound}は最大の整数の値である。下限や上限に制限がないことを示すために、@code{*}を使うことができる。
 
-The following represents all integers from -10 to 10:
+以下は-10から10までの整数を表している:
 
 @example
 (integer -10 10)
 @end example
 
-The following represents the single value of 10:
+以下は単一の10という値を表す:
 
 @example
 (integer 10 10)
 @end example
 
-The following represents all the integers from negative infinity to 10:
+以下は負の無限大から10までのすべての整数:
 
 @example
 (integer * 10)
