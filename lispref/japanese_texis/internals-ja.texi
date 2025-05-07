@@ -3,9 +3,10 @@
 @c This file was generated with po4a. Translate the source file.
 @c
 @c ===========================================================================
+
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990--1993, 1998--1999, 2001--2024 Free Software
+@c Copyright (C) 1990--1993, 1998--1999, 2001--2025 Free Software
 @c Foundation, Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node GNU Emacs Internals
@@ -622,7 +623,11 @@ Cソース内の変数名。
 Cコメントとしての変数用のドキュメント。詳細は@ref{Documentation Basics}を参照のこと。
 @end table
 
-  慣例として``ネイティブ''なタイプ(@code{int}と@code{bool})の変数の定義時には、Cの変数名はLisp変数の@code{-}が@code{_}で置換されます。変数がタイプ@code{Lisp_Object}をもつ際には、Cの変数名に@code{V}も前置します。たとえば
+  By convention, when defining variables of a ``native'' type (@code{int} and
+@code{bool}), the name of the C variable is the name of the Lisp variable
+with @code{-} replaced by @code{_}.  When the variable has type
+@code{Lisp_Object}, the convention is to also prefix the C variable name
+with @code{V}.  This is an example:
 
 @smallexample
 DEFVAR_INT ("my-int-variable", my_int_variable,
@@ -632,7 +637,12 @@ DEFVAR_LISP ("my-lisp-variable", Vmy_lisp_variable,
            doc: /* A Lisp variable.  */);
 @end smallexample
 
-  Lispではシンボルの値ではなくシンボル自身の参照を要する状況が存在します。1つは変数の値の一時的なオーバーライドであり、これはLispでは@code{let}で行われます。これはCソースでは、@code{specbind}を使用して対応する定数シンボルを定義することにより行われます。慣例により@code{Qmy_lisp_variable}は@code{Vmy_lisp_variable}に対応します。これを定義するには@code{DEFSYM}マクロを使用します。たとえば
+  There are situations in Lisp where you need to refer to the symbol itself
+rather than the value of that symbol.  One such case is when temporarily
+overriding the value of a variable, which in Lisp is done with @code{let}.
+In C sources, this is done by defining a corresponding, constant symbol, and
+using @code{specbind}.  By convention, @code{Qmy_lisp_variable} corresponds
+to @code{Vmy_lisp_variable}; to define it, use the @code{DEFSYM} macro.
 
 @smallexample
 DEFSYM (Qmy_lisp_variable, "my-lisp-variable");
@@ -644,14 +654,17 @@ DEFSYM (Qmy_lisp_variable, "my-lisp-variable");
 specbind (Qmy_lisp_variable, Qt);
 @end smallexample
 
-  Lispシンボルではクォートの使用が必要な場合がありますが、Cで同様の効果を達成するためには対応する定数シンボル@code{Qmy_lisp_variable}を使用します。たとえばLispでバッファーローカル変数(@ref{Buffer-Local
-Variables}を参照)を作成する際には以下のように記述します:
+  In Lisp, symbols sometimes need to be quoted.  To achieve the same effect in
+C, you again use the corresponding constant symbol
+@code{Qmy_lisp_variable}.  For example, when creating a buffer-local
+variable (@pxref{Buffer-Local Variables}) in Lisp, you would write:
 
 @smallexample
 (make-variable-buffer-local 'my-lisp-variable)
 @end smallexample
 
-C側の対応するコードは、以下のように@code{DEFSYM}と組み合わせて@code{Fmake_variable_buffer_local}を使用します。
+In C, the corresponding code uses @code{Fmake_variable_buffer_local} in
+combination with @code{DEFSYM}:
 
 @smallexample
 DEFSYM (Qmy_lisp_variable, "my-lisp-variable");
@@ -736,8 +749,9 @@ DEFUN ("coordinates-in-window-p", Fcoordinates_in_window_p,
 
   @file{eval.c}は例を探すのに適したファイルです。@file{lisp.h}には重要なマクロと関数の定義がいくつか含まれています。
 
-  副作用がない関数や純粋関数を定義したら、@code{side-effect-free}や@code{pure}のプロパティに非@code{nil}を与えてください(@ref{Standard
-Properties}を参照)。
+  If you define a function which is side-effect free or pure, give it a
+non-@code{nil} @code{side-effect-free} or @code{pure} property, respectively
+(@pxref{Standard Properties}).  See the lists defined in @samp{byte-opt.el}.
 
 @node Writing Dynamic Modules
 @section 動的にロードされるモジュールの記述
@@ -874,8 +888,15 @@ functions)}の記述方法を説明します。
 モジュール関数は以下のような一般的なフォームとシグネチャをもっています:
 
 @deftypefn Function emacs_value emacs_function (emacs_env *@var{env}, ptrdiff_t @var{nargs}, emacs_value *@var{args}, void *@var{data})
-引数@var{env}はEmacsのオブジェクトや関数へのアクセスに必要となる@acronym{API}環境へのポインターを提供する。引数@var{nargs}は要求される引数の個数であり0もあり得る(引数の個数にたいするより柔軟な仕様については以下の@code{make_function}を参照)。@var{args}は関数の引数へのポインター。引数@var{data}は関数により要求される追加データへのポインターであり、@code{module_func}からEmacs関数を作成するために@code{emacs_function}
-(以下参照)が呼び出される際にアレンジされる。
+@tindex emacs_function
+The @var{env} argument provides a pointer to the @acronym{API} environment,
+needed to access Emacs objects and functions.  The @var{nargs} argument is
+the required number of arguments, which can be zero (see
+@code{make_function} below for more flexible specification of the argument
+number), and @var{args} is a pointer to the array of the function
+arguments.  The argument @var{data} points to additional data required by
+the function, which was arranged when @code{make_function} (see below) was
+called to create an Emacs function from @code{emacs_function}.
 
 モジュール関数はEmacsとモジュール間でLispオブジェクトをやり取りするためにタイプ@code{emacs_value}を使用する(@ref{Module
 Values}を参照)。以下で説明する@acronym{API}と以降のサブセクションではCの基本データ型と、それらに対応する@code{emacs_value}オブジェクトの慣習にたいする機能を提供する。
@@ -1789,7 +1810,10 @@ Display}を参照)に表示される文字の位置を指すマーカー。
 @code{window_end_pos}を含む行のウィンドウに相対的な垂直位置。
 
 @item window_end_valid
-このフィールドは@code{window_end_pos}および@code{window_end_vpos}が真に有効なら非0値にセットされる。これは重要な再表示が先に割り込んだ場合には、@code{window_end_pos}を算出した表示がスクリーン上に出現しなくなるので0になる。
+This field is set to a non-zero value if @code{window_end_pos} and
+@code{window_end_vpos} are truly valid.  This is zero if nontrivial
+redisplay is preempted, since in that case the display that
+@code{window_end_pos} was computed for did not get onto the screen.
 
 @item cursor
 そのウィンドウ内でカーソルがどこにあるかを記述する構造体。

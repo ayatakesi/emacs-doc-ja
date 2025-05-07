@@ -3,9 +3,10 @@
 @c This file was generated with po4a. Translate the source file.
 @c
 @c ===========================================================================
+
 @c -*-texinfo-*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990--2024 Free Software Foundation, Inc.
+@c Copyright (C) 1990--2025 Free Software Foundation, Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node Variables
 @chapter 変数
@@ -373,20 +374,38 @@ Lispは実際に、@code{defconst}で定義された変数の値の変更を妨�
 Definitions}を参照してください。
 
 @defspec defvar symbol [value [doc-string]]
-このスペシャルフォームは変数として@var{symbol}を定義する。@var{symbol}が評価されないことに注意。シンボルは@code{defvar}フォーム内に明示的に表記して定義される必要がある。この変数は@dfn{特別}だとマークされて、これは常に変数がダイナミックにバインドされることを意味する(@ref{Variable
-Scoping}を参照)。
+This special form defines @var{symbol} as a variable and optionally
+initializes and documents it.  Note that it doesn't evaluate @var{symbol};
+the symbol to be defined should appear explicitly in the @code{defvar}
+form.  @code{defvar} also marks @var{symbol} as @dfn{special}, meaning that
+its bindings should always be dynamic (@pxref{Variable Scoping}).
 
-@var{value}が指定されていて@var{symbol}がvoid(たとえばこのシンボルがダイナミックにバインドされた値を持たないとき。@ref{Void
-Variables}を参照)なら@var{value}が評価されて、その結果が@var{symbol}にセットされる。しかし@var{symbol}がvoidでなければ、@var{value}は評価されず@var{symbol}の値は変更されない。@var{value}が省略された場合は、いかなる場合も@var{symbol}の値は変更されない。
+If @var{value} is specified, and @var{symbol} is void (i.e., it has no
+dynamically bound value; @pxref{Void Variables}), then @code{defvar}
+evaluates @var{value}, and initializes @var{symbol} by setting it to the
+result of the evaluation.  But if @var{symbol} is not void, @code{defvar}
+does not evaluate @var{value}, and leaves @var{symbol}'s value unchanged.
+If @var{value} is omitted, @code{defvar} doesn't change the value of
+@var{symbol} in any case.
 
-たとえ@code{nil}であっても値を指定することにより、その変数は特別だと永続的にマークされることに注意。一方で@var{value}が省略されると変数はローカル(カレントのレキシカルスコープまたはトップレベルにあればファイル)でのみ特別だとマークされる。これはバイトコンパイルの警告を抑止するために有用。@ref{Compiler
-Errors}を参照のこと。
+Note that specifying a value, even @code{nil}, marks the variable as special
+permanently.  Whereas if @var{value} is omitted, then @code{defvar} marks
+the variable special only locally (i.e.@: within the current lexical scope,
+or within the current file, if @code{defvar} is at the top-level).  This can
+be useful for suppressing byte compilation warnings, see @ref{Compiler
+Errors}.
 
-@var{symbol}がカレントバッファー内でバッファーローカルなバインディングをもつ場合、@code{defvar}はデフォルト値に作用する。デフォルト値はバッファーローカルなバインディングではなく、バッファーにたいして独立である。デフォルト値がvoidのときはデフォルト値をセットする。@ref{Buffer-Local
-Variables}を参照のこと。
+If @var{symbol} has a buffer-local binding in the current buffer, and
+@var{value} is specified, @code{defvar} modifies the default value of
+@var{symbol}, which is buffer-independent, rather than the buffer-local
+binding.  It sets the default value if the default value is void.
+@xref{Buffer-Local Variables}.
 
-すでに@var{symbol}がletバインドされている(たとえば@code{let}フォーム内に@code{defvar}がある)場合には、@code{set-default-toplevel-value}と同じように@code{defvar}はトップレベルの値をセットする。letバインディングの構文を抜けるまでバインディングの効果は持続する。@ref{Variable
-Scoping}を参照のこと。
+If @var{symbol} is already let bound (e.g., if the @code{defvar} form occurs
+in a @code{let} form), then @code{defvar} sets the toplevel default value of
+@var{symbol}, like @code{set-default-toplevel-value}.  The let binding
+remains in effect until its binding construct exits.  @xref{Variable
+Scoping}.
 
 @cindex control-ja.texi.po
 @cindex @code{eval-last-sexp}, and @code{defvar} forms
@@ -822,9 +841,22 @@ x                        ; @r{@code{x}はグローバル値をもたないこと
 @end example
 
 @noindent
-@code{let}バインディングは、内部に変数@code{x}をもつレキシカル環境を定義して、変数は0にローカルにバインドされます。このバインディング構文内で@code{x}を1増加して、増加された値をリターンするクロージャを定義しています。このラムダ式は自動的にクロージャとなり、たとえ@code{let}構文を抜けた後でも、その内部ではレキシカル環境が存続します。クロージャを評価するときは、毎回レキシカル環境内の@code{x}のバインディングが使用されて、@code{x}が加算されます。
+Here, the @code{let} binding defines a lexical environment in which the
+variable @code{x} is locally bound to 0.  Within this binding construct, we
+define a lambda expression which increments @code{x} by one and returns the
+incremented value.  This lambda expression is automatically turned into a
+closure, in which the lexical environment lives on even after the @code{let}
+binding construct has exited.  Each time we evaluate the closure, it
+increments @code{x}, using the binding of @code{x} in that lexical
+environment.
 
   シンボルオブジェクト自体に束縛されるダイナミック変数と異なり、レキシカル変数とシンボルの関係はインタープリター(かコンパイラー)内にのみ存在します。したがって(@code{symbol-value}、@code{boundp}、@code{set}のような)シンボル引数を受け取る関数ができるのは、変数のダイナミックなバインディング(そのシンボルの値セルの内容)の取得と変更だけです。
+
+  Note also that variables may be declared special, in which case they will
+use dynamic binding, even for new bindings such as a @code{let} binding.
+Depending on how the variable is declared, it can be special globally, for a
+single file, or for a portion of a file.  @xref{Dynamic Binding} for
+details.
 
 @node Dynamic Binding
 @subsection ダイナミックバインディング
@@ -1529,9 +1561,24 @@ Emacsが一連のファイルローカル変数にしたがうかどうかユー
 1つは特別なファイルにそれを記述する方法、もう1つはそのディレクトリーに@dfn{プロジェクトクラス(project class)}を定義する方法です。
 
 @defvr Constant dir-locals-file
-この定数はEmacsがディレクトリーローカル変数を見つけることができると期待するファイルの名前。ファイル名は@file{.dir-locals.el}@footnote{MS-DOS版のEmacsはDOSファイルシステムの制限により、かわりに@file{_dir-locals.el}という名前を使用します。}。ディレクトリー内でその名前をもつファイルによりEmacsはディレクトリー内の任意のファイル、または任意のサブディレクトリー(オプションでサブディレクトリーを除外できる。以下参照)にセッティングを適用する。独自に@file{.dir-locals.el}をもつサブディレクトリーがある場合には、Emacsはサブディレクトリーで見つかったもっとも深いファイルのディレクトリーからディレクトリーツリーを上方に移動しながら、もっとも深いファイルのセッティングを使用する。この定数は2番目のdir-localsファイル@file{.dir-locals-2.el}の名前を導出するためにも使用される。この2番目のdir-localsファイルが与えられた場合には、そのファイルが@file{.dir-locals.el}に加えてロードされる。これは@file{.dir-locals.el}がバージョンコントロールの共有レポジトリの配下にあって個人のカスタマイズ用に使用できないときに有用。このファイルはローカル変数をフォーマットされたリストとして指定する。詳細は@ref{Directory
-Variables, , Per-directory Local Variables, emacs, The GNU Emacs
-Manual}を参照のこと。
+This constant is the name of the file where Emacs expects to find the
+directory-local variables.  The name of the file is
+@file{.dir-locals.el}@footnote{ The MS-DOS version of Emacs uses
+@file{_dir-locals.el} instead, due to limitations of the DOS filesystems.
+}.  A file by that name in a directory causes Emacs to apply its settings to
+any file in that directory or any of its subdirectories (optionally, you can
+exclude subdirectories; see below).  If some of the subdirectories have
+their own @file{.dir-locals.el} files, Emacs uses the settings from the
+deepest file it finds starting from the file's directory and moving up the
+directory tree.  This constant is also used to derive the name of a second
+dir-locals file @file{.dir-locals-2.el}.  If this second dir-locals file is
+present in the same directory as @file{.dir-locals.el}, then it will be
+loaded in addition to @file{.dir-locals.el}.  This is useful when
+@file{.dir-locals.el} is under version control in a shared repository and
+cannot be used for personal customizations.  The file specifies local
+variables as a specially formatted list; see @ref{Directory Variables, ,
+Per-directory Local Variables, emacs, The GNU Emacs Manual}, for more
+details.
 @end defvr
 
 @defun hack-dir-local-variables

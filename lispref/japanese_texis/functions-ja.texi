@@ -3,9 +3,10 @@
 @c This file was generated with po4a. Translate the source file.
 @c
 @c ===========================================================================
+
 @c -*- mode: texinfo; coding: utf-8 -*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990--1995, 1998--1999, 2001--2024 Free Software
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2025 Free Software
 @c Foundation, Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node Functions
@@ -14,8 +15,7 @@
   Lispプログラムは主にLisp関数で構成されます。このチャプターはで関数とは何か、引数を受け取る方法、そして関数を定義する方法を説明します。
 
 @menu
-* What Is a Function::       Lisp関数 
-                               vs. プリミティブ。専門用語。
+* What Is a Function::       Lisp functions vs.@: primitives; terminology.
 * Lambda Expressions::       関数がLispオブジェクトとして表現される方法。
 * Function Names::           シンボルは関数を命名できる。
 * Defining Functions::       関数定義のためのLisp式。
@@ -960,8 +960,10 @@ Lisp}を参照)で定義された@var{struct-type}という名前のクラス、
 (overwrite-mode (eql
 t))}は、メソッドを@code{overwrite-mode}がオンのときだけ適用可能にする。@code{&context}キーワードの後には任意個数のコンテキストスペシャライザーを続けることができる。コンテキストスペシャライザーはジェネリック関数の引数signatureの一部ではないので、これらを必要としないメソッドでは省略できる。
 
-型スペシャライザー@code{(@var{arg} @var{type})}は以下のリストの@dfn{システム型(system
-types)}のいずれかを指定できる。親の型が指定されたときは、型がより特化した子型、孫型、曾孫型、...のいずれかであるような任意の引数も互換となるだろう。
+The type specializer, @code{(@var{arg} @var{type})}, can specify one of the
+@dfn{system types} in the following list.  When a parent type is specified,
+an argument whose type is any of its more specific child types, as well as
+grand-children, grand-grand-children, etc.@: will also be compatible.
 
 @table @code
 @item integer
@@ -1881,13 +1883,16 @@ Variables}を参照)。これによりその関数に発行されるネイティ
 この関数に有効な@code{compilation-safety}の値を指定する。これにより、その関数に発行されるコードにたいする安全レベルを、関数のレベルで制御できるようになる(@ref{Native-Compilation
 Variables}を参照)。
 
+@cindex function type declaration
 @item (ftype @var{type} &optional @var{function})
 この関数のタイプを@var{type}と宣言する。@code{describe-function}によるドキュメント化で使用。コード生成の改善やタイプ宣言なしで他の関数のタイプをより正確に取得するためにネイティブコンパイラー(@ref{Native
 Compilation}を参照)によって使用されることもあり得る。
 
-@var{type}は@w{@code{(function (ARG-1-TYPE ... ARG-N-TYPE)
-RETURN-TYPE)}}という形式のタイプ識別子。引数タイプには関数の引数(@ref{Argument
-List}を参照)とマッチするように@code{&optional}、@code{&rest}のシンボルを差し込むことができる。
+@var{type} is a @dfn{type specifier} (@pxref{Type Specifiers}) in the form
+@w{@code{(function (@var{arg-1-type} @dots{} @var{arg-n-type})
+RETURN-TYPE)}}.  Argument types can be interleaved with symbols
+@code{&optional} and @code{&rest} to match the function's arguments
+(@pxref{Argument List}).
 
 @var{function}が与えられる場合には、定義される関数の名前であること。
 
@@ -1988,7 +1993,14 @@ Spreadsheet,,ses}を参照)。 ユーザーファイルは素性があやふや�
 @var{form}が@dfn{安全(safe)}なLisp式なら@code{nil}、危険ならなぜその式が危険かもしれないのか説明するリストをリターンする。引数@var{unsafep-vars}は、この時点で一時的なバインドだと判っているシンボルのリスト。これは主に内部的な再帰呼び出しで使用される。カレントバッファーは暗黙の引数になり、これはバッファーローカルなバインディングのリストを提供する。
 @end defun
 
-高速かつシンプルにするために、@code{unsafep}は非常に軽量な分析を行うので、実際には安全な多くのLisp式を拒絶します。安全ではない式にたいして@code{unsafep}が@code{nil}をリターンするケースは確認されていません。しかし安全なLisp式は@code{display}プロパティと一緒に文字列をリターンでき、これはその文字列がバッファーに挿入された後に実行される、割り当てられたLisp式を含むことができます。割り当てられた式はウィルスかもしれません。安全であるためにはバッファーへ挿入する前に、ユーザーコードで計算されたすべての文字列からプロパティを削除しなければなりません。
+Being quick and simple, @code{unsafep} does a very light analysis and
+rejects many Lisp expressions that are actually safe.  There are no known
+cases where @code{unsafep} returns @code{nil} for an unsafe expression.
+However, a safe Lisp expression can return a string with a @code{display}
+property, containing an associated Lisp expression to be executed after the
+string is inserted into a buffer.  This associated expression can be
+malicious.  In order to be safe, you must delete properties from all strings
+calculated by user code before inserting them into buffers.
 
 @ignore
 What is a safe Lisp expression?  Basically, it's an expression that

@@ -3,9 +3,10 @@
 @c This file was generated with po4a. Translate the source file.
 @c
 @c ===========================================================================
+
 @c -*- mode: texinfo; coding: utf-8 -*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 2021--2024 Free Software Foundation, Inc.
+@c Copyright (C) 2021--2025 Free Software Foundation, Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node Parsing Program Source
 @chapter プログラムソースの解析
@@ -1148,7 +1149,11 @@ S式の他にも、Emacsでは使用するtree-sitterのネイティブクエリ
 
 Emacsの``things''機能はtree-sitterのパターンマッチング機能とは独立した機能であり、パワーは比較的劣るもののパースツリーのナビゲーションと横断にはより適しています。
 
-thingsは@code{treesit-thing-settings}で定義することができます。
+@findex treesit-thing-definition
+@findex treesit-thing-defined-p
+You can define things with @var{treesit-thing-settings}, retrieve the
+predicate of a defined thing with @code{treesit-thing-definition}, and test
+if a thing is defined with @code{treesit-thing-defined-p}.
 
 @defvar treesit-thing-settings
 これは言語それぞれにたいするthing定義のalistである。各エントリーのキーは言語シンボル、値は@w{@code{(@var{thing}
@@ -1186,13 +1191,41 @@ sentence)}}はこのあist内の他のルールとして定義された@code{sex
 これは教示目的のために修正された例であって、C/C@t{++}のモードが実際にthingを定義する方法とは異なることに注意。
 @end defvar
 
+Emacs builtin functions already make use some thing definitions.  Command
+@code{treesit-forward-sexp} uses the @code{sexp} definition if major mode
+defines it; @code{treesit-forward-sentence} uses the @code{sentence}
+definition.  Defun movement functions like @code{treesit-end-of-defun} uses
+the @code{defun} definition (@code{defun} definition is overridden by
+@var{treesit-defun-type-regexp} for backward compatibility).  Major modes
+can also define @code{comment}, @code{string}, @code{text} (generally
+comments and strings).
+
 このセクションの残りの部分では、thing定義の恩恵を受ける関数をいくつか紹介します。以下の関数の他にもthing機能を利用する、たとえば@code{treesit-search-forward}や@code{treesit-induce-sparse-tree}等のツリー横断関数のような他の関数も別の場所で紹介されています。@ref{Retrieving
 Nodes}を参照してください。
+
+@defun treesit-node-match-p node thing &optional ignore-missing
+This function checks whether @var{node} is a @var{thing}.
+
+If @var{node} is a @var{thing}, return non-@code{nil}, otherwise return
+@code{nil}.  For convenience, if @code{node} is @code{nil}, this function
+just returns @code{nil}.
+
+The @var{thing} can be either a thing symbol like @code{defun}, or simply a
+predicate that defines a thing, like @code{"function_definition"}, or
+@w{@code{(or comment string)}}.
+
+By default, if @var{thing} is undefined or malformed, this function signals
+@code{treesit-invalid-predicate} error.  If @var{ignore-missing} is
+@code{t}, this function doesn't signal the error when @var{thing} is
+undefined and just returns @code{nil}; but it still signals the error if
+@var{thing} is a malformed predicate.
+
+@end defun
 
 @defun treesit-thing-prev position thing
 この関数は@var{position}の前にある指定された@var{thing}であるような最初のノードをリターンする。そのようなノードがなければ@code{nil}をリターンする。ノードがリターンされた場合には、ノード終端位置は@var{position}以前であることが保証されている。言い換えると、この関数が@var{position}を取り囲むようなノードをリターンすることはあり得ない
 
-@var{thing}は@code{defun}のようなthingシンボル、あるいは@code{"function_definition"}のように単なるthing定義でもよい。
+Again, @var{thing} can be either a symbol or a predicate.
 @end defun
 
 @defun treesit-thing-next position thing
@@ -1204,7 +1237,8 @@ Nodes}を参照してください。
 
 正の@var{arg}は@var{thing}のその個数のインスタンス分前方への移動、負の@var{arg}は後方への移動を意味する。この関数は@var{side}が@code{beg}なら@var{thing}の先頭で停止、@code{end}なら@var{thing}の終端で停止する。
 
-@code{treesit-thing-prev}の場合のように@var{thing}は@code{treesit-thing-settings}で定義されたthingシンボル、あるいはthing定義を指定できる。
+Like in @code{treesit-thing-prev}, @var{thing} can be a thing symbol defined
+in @code{treesit-thing-settings}, or a predicate.
 
 @var{tactic}はこの関数がthing間を移動する方法を決定する。@code{nested}、@code{top-level}、@code{restricted}、@code{nil}のいずれか。@code{nested}と@code{nil}は通常のネストされたナビゲーションを意味する。まず兄弟を横断しての移動を試み、カレントレベルに兄弟がなければ親に移動してその兄弟を横断、のように移動する。@code{top-level}はネストされたthingを無視してトップレベルのthingだけを横断した移動、@code{restricted}は@var{position}を囲い込むようなthingがあればその中に制限された移動を意味する。このtactic(戦術)はカレントネストレベルに留まって上位に移動したくないようなコマンドにたいして有用。
 @end defun
@@ -1216,7 +1250,8 @@ Nodes}を参照してください。
 
 @var{strict}が非@code{nil}なら、この関数は厳格な比較を使用する。すなわち開始位置は@var{position}より厳密に前、終端位置は@var{position}より厳密に後でなければならない。
 
-@var{thing}は@code{treesit-thing-settings}で定義されたthingシンボル、またはthing定義のいずれか。
+@var{thing} can be either a thing symbol defined in
+@code{treesit-thing-settings}, or a predicate.
 @end defun
 
 @findex treesit-beginning-of-thing

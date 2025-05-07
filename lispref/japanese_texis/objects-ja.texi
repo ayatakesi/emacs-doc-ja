@@ -3,9 +3,10 @@
 @c This file was generated with po4a. Translate the source file.
 @c
 @c ===========================================================================
+
 @c -*- mode: texinfo; coding: utf-8 -*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990--1995, 1998--1999, 2001--2024 Free Software
+@c Copyright (C) 1990--1995, 1998--1999, 2001--2025 Free Software
 @c Foundation, Inc.
 @c See the file elisp-ja.texi for copying conditions.
 @node Lisp Data Types
@@ -194,6 +195,7 @@ Lispに固有です。
 * Closure Type::             Lispで記述された関数。
 * Record Type::              プログラーが定義する合成オブジェクト型。
 * Type Descriptors::         型に関する情報を保持するオブジェクト。
+* Type Specifiers::          Expressions which describe types.
 * Autoload Type::            頻繁に使用されない関数を自動的にロードするために使用される型。
 * Finalizer Type::           オブジェクトが到達不能になった際に実行するコード。
 
@@ -337,7 +339,21 @@ tab)、フォームフィード(formfeed)、スペース(space)、キャリッ�
   バックスラッシュがエスケープ文字の役割を果たすので、これらのバックスラッシュで始まるシーケンスは@dfn{エスケープシーケンス(escape
 sequences)}とも呼ばれます。この用語法は文字@key{ESC}とは関係ありません。@samp{\s}は文字定数としての使用を意図しており、文字定数の内部では単にスペースを記述します。
 
-  エスケープという特別な意味を与えずに、任意の文字の前にバックスラッシュの使用することは許されていて害もありません。したがって@samp{?\+}は@samp{?+}と等価です。ほとんどの文字の前にバックスラッシュを追加することに理由はありません。しかし文字@samp{()[]\;"}の前にはバックスラッシュを追加しなければならず、Lispコードを編集するEmacsコマンドが混乱するのを避けるために@samp{|'`#.,}の前にもバックスラッシュを追加するべきです。コードを読む人の混乱を避けるために、前に言及した@acronym{ASCII}文字と類似したUnicode文字の前にもバックスラッシュを追加する必要があります。これを奨励するために、@samp{‘}のような一般的には混乱を招くエスケープされていない文字をハイライトします。スペース、タブ、改行、フォームフィードのような空白文字の前にもバックスラッシュを追加できます。しかしタブやスペースspaceのような実際の空白文字のかわりに、@samp{\t}や@samp{\s}のような可読性のあるエスケープシーケンスを使用するほうが明解です(スペースを後にともなうバックスラッシュを記述する場合、後続のテキストと区別するために、文字定数の後に余分なスペースを記述すること)。
+  A backslash is allowed, and harmless, preceding any character without a
+special escape meaning; thus, @samp{?\+} is equivalent to @samp{?+}.  There
+is no reason to add a backslash before most characters.  However, you must
+add a backslash before any of the characters @samp{()[]\;"}, and you should
+add a backslash before any of the characters @samp{|'`#.,} to avoid
+confusing the Emacs commands for editing Lisp code.  You should also add a
+backslash before Unicode characters which resemble the previously mentioned
+@acronym{ASCII} ones, to avoid confusing people reading your code.  Emacs
+will highlight some non-escaped commonly confused characters such as
+@samp{‘} to encourage this.  You can also add a backslash before whitespace
+characters such as space and tab.  However, it is cleaner to use one of the
+easily readable escape sequences, such as @samp{\t} or @samp{\s}, instead of
+an actual whitespace character such as a tab or a space.  (If you do write
+backslash followed by a space, you should write an extra space after the
+character constant to separate it from the following text.)
 
 @node General Escape Syntax
 @subsubsection 一般的なエスケープ構文
@@ -1059,6 +1075,96 @@ Objects}を参照してください。
 descriptor)}は型に関する情報を保持する@code{record}です。レコードの1つ目のスロットは型を命名するシンボルでなければならず、@code{type-of}は@code{record}オブジェクトの型をリターンするためにこれに依存しています。他の型記述子スロットをEmacsは使用しません。これらをLisp拡張が使用するのは自由です。
 
 @code{cl-structure-class}のインスタンスはすべて型記述子の例です。
+
+@node Type Specifiers
+@subsection Type Specifiers
+@cindex type specifier
+
+A type specifier is an expression that denotes a type.  A type represents a
+set of possible values.  Type specifiers can be classified into primitive
+types and compound types.
+
+Type specifiers are in use for several purposes, including: documenting
+function interfaces through declaration (@pxref{Declare Form}), specifying
+structure slot values (@pxref{Structures,,, cl, Common Lisp Extensions for
+GNU Emacs Lisp}), type-checking through @code{cl-the}
+(@pxref{Declarations,,, cl, Common Lisp Extensions for GNU Emacs Lisp}), and
+others.
+
+@table @asis
+@item Primitive type specifiers
+Primitive types specifiers are the basic types (i.e.@: not composed by other
+type specifiers).
+
+Built-in primitive types (like @code{integer}, @code{float}, @code{string}
+etc.@:) are listed in @ref{Type Hierarchy}.
+
+@item Compound type specifiers
+Compound types serve the purpose of defining more complex or precise type
+specifications by combining or modifying simpler types.
+
+List of compound type specifiers:
+
+@table @code
+@item (or @var{type-1} @dots{} @var{type-n})
+The @code{or} type specifier describes a type that satisfies at least one of
+the given types.
+
+@item (and @var{type-1} @dots{} @var{type-n})
+Similarly the @code{and} type specifier describes a type that satisfies all
+of the given types.
+
+@item (not @var{type})
+The @code{not} type specifier defines any type except the specified one.
+
+@item (member @var{value-1} @dots{} @var{value-n})
+The @code{member} type specifier allows to specify a type that includes only
+the explicitly listed values.
+
+@cindex declared type of a function
+@item (function (@var{arg-1-type} @dots{} @var{arg-n-type}) @var{return-type})
+The @code{function} type specifier is used to describe the argument types
+and the return type of a function.  Argument types can be interleaved with
+symbols @code{&optional} and @code{&rest} to match the function's arguments
+(@pxref{Argument List}).
+
+The type specifier represent a function whose first parameter is of type
+@code{symbol}, the second optional parameter is of type @code{float}, and
+which returns an @code{integer}:
+
+@example
+ (function (symbol &optional float) integer)
+@end example
+
+@item (integer @var{lower-bound} @var{upper-bound})
+The @code{integer} type specifier can also be used as a compound type
+specifier to define a subset of integer values by specifying a range.  This
+allows to precisely control which integers are valid for a given type.
+
+@var{lower-bound} is the minimum integer value in the range and
+@var{upper-bound} the maximum.  You can use @code{*} instead of the lower or
+upper bound to indicate no limit.
+
+The following represents all integers from -10 to 10:
+
+@example
+(integer -10 10)
+@end example
+
+The following represents the single value of 10:
+
+@example
+(integer 10 10)
+@end example
+
+The following represents all the integers from negative infinity to 10:
+
+@example
+(integer * 10)
+@end example
+
+@end table
+@end table
 
 @node Autoload Type
 @subsection autoload型
